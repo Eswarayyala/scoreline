@@ -1,4 +1,16 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import {
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
+import { db, auth, googleProvider } from "./firebase";
+
+const DOC_REF = doc(db, "scoreline", "shared-data");
 
 const FONT_LINK_ID = "scoreline-fonts";
 
@@ -12,8 +24,6 @@ function ensureFonts() {
     "https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap";
   document.head.appendChild(link);
 }
-
-const STORAGE_KEY = "scoreline-data-v1";
 
 const emptyData = () => ({
   tournaments: [],
@@ -59,6 +69,8 @@ function kda(k, d, a) {
   const assists = Number(a) || 0;
   return ((kills + assists) / Math.max(1, deaths)).toFixed(2);
 }
+
+// ---------- shared UI atoms ----------
 
 function Eyebrow({ children, color = "#FFC22E" }) {
   return (
@@ -211,33 +223,205 @@ function Toast({ message }) {
   );
 }
 
+// ---------- auth screen ----------
+
+function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy }) {
+  const [mode, setMode] = useState("signin"); // 'signin' | 'signup'
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const submit = (e) => {
+    e.preventDefault();
+    onEmailAuth(mode, { name, email, password });
+  };
+
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+        background: "#0A0E12",
+      }}
+    >
+      <div style={{ width: "100%", maxWidth: 380 }}>
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 34, color: "#EDF1F4", letterSpacing: "0.04em" }}>
+            SCORELINE
+          </div>
+          <Eyebrow color="#3FD6C0">Sign in to upload tournament data</Eyebrow>
+        </div>
+
+        <button
+          onClick={onGoogleSignIn}
+          disabled={authBusy}
+          style={{
+            width: "100%",
+            background: "#EDF1F4",
+            color: "#0A0E12",
+            border: "none",
+            padding: "12px 16px",
+            fontFamily: "'Inter', sans-serif",
+            fontWeight: 700,
+            fontSize: 14,
+            cursor: authBusy ? "not-allowed" : "pointer",
+            opacity: authBusy ? 0.6 : 1,
+            marginBottom: 16,
+          }}
+        >
+          Continue with Google
+        </button>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0" }}>
+          <div style={{ flex: 1, height: 1, background: "#232B33" }} />
+          <span style={{ fontSize: 11, color: "#5B6772", fontFamily: "'JetBrains Mono', monospace" }}>OR</span>
+          <div style={{ flex: 1, height: 1, background: "#232B33" }} />
+        </div>
+
+        <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {mode === "signup" && (
+            <Field label="Display name">
+              <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="ghostpeak" required />
+            </Field>
+          )}
+          <Field label="Email">
+            <TextInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
+          </Field>
+          <Field label="Password">
+            <TextInput
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="At least 6 characters"
+              minLength={6}
+              required
+            />
+          </Field>
+
+          {authError && <div style={{ fontSize: 13, color: "#FF5C5C" }}>{authError}</div>}
+
+          <Button type="submit" disabled={authBusy} style={{ marginTop: 4 }}>
+            {mode === "signin" ? "Sign in" : "Create account"}
+          </Button>
+        </form>
+
+        <div style={{ textAlign: "center", marginTop: 18, fontSize: 13, color: "#8B98A5" }}>
+          {mode === "signin" ? (
+            <>
+              New here?{" "}
+              <button
+                onClick={() => setMode("signup")}
+                style={{ background: "none", border: "none", color: "#3FD6C0", cursor: "pointer", fontSize: 13 }}
+              >
+                Create an account
+              </button>
+            </>
+          ) : (
+            <>
+              Already have an account?{" "}
+              <button
+                onClick={() => setMode("signin")}
+                style={{ background: "none", border: "none", color: "#3FD6C0", cursor: "pointer", fontSize: 13 }}
+              >
+                Sign in
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- app ----------
+
 export default function App() {
   const [data, setData] = useState(emptyData());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [toast, setToast] = useState("");
-  const [view, setView] = useState("list");
+  const [view, setView] = useState("list"); // 'list' | 'detail'
   const [selectedId, setSelectedId] = useState(null);
   const [detailTab, setDetailTab] = useState("teams");
   const [showNewTournament, setShowNewTournament] = useState(false);
+
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setAuthLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  const handleGoogleSignIn = useCallback(async () => {
+    setAuthError("");
+    setAuthBusy(true);
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (e) {
+      setAuthError("Couldn't sign in with Google — try again");
+    } finally {
+      setAuthBusy(false);
+    }
+  }, []);
+
+  const handleEmailAuth = useCallback(async (mode, { name, email, password }) => {
+    setAuthError("");
+    setAuthBusy(true);
+    try {
+      if (mode === "signup") {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        if (name.trim()) {
+          await updateProfile(cred.user, { displayName: name.trim() });
+        }
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+    } catch (e) {
+      const messages = {
+        "auth/email-already-in-use": "That email is already registered — try signing in instead.",
+        "auth/invalid-credential": "Incorrect email or password.",
+        "auth/weak-password": "Password should be at least 6 characters.",
+        "auth/invalid-email": "That email address doesn't look right.",
+      };
+      setAuthError(messages[e.code] || "Something went wrong — try again.");
+    } finally {
+      setAuthBusy(false);
+    }
+  }, []);
+
+  const handleSignOut = useCallback(() => {
+    signOut(auth);
+  }, []);
 
   useEffect(() => {
     ensureFonts();
   }, []);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        setData({ ...emptyData(), ...parsed });
+    const unsubscribe = onSnapshot(
+      DOC_REF,
+      (snap) => {
+        if (snap.exists()) {
+          setData({ ...emptyData(), ...snap.data() });
+        }
+        setLoading(false);
+      },
+      (err) => {
+        setLoadError(true);
+        setLoading(false);
       }
-    } catch (e) {
-      setLoadError(true);
-    } finally {
-      setLoading(false);
-    }
+    );
+    return () => unsubscribe();
   }, []);
 
   const showToast = useCallback((msg) => {
@@ -247,22 +431,28 @@ export default function App() {
   }, []);
 
   const persist = useCallback(
-    (next) => {
+    async (next) => {
       setData(next);
       setSaving(true);
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        await setDoc(DOC_REF, next);
       } catch (e) {
-        showToast("Couldn't save — storage may be full");
+        showToast("Couldn't save — check your connection");
       } finally {
-        setTimeout(() => setSaving(false), 150);
+        setSaving(false);
       }
     },
     [showToast]
   );
 
+  // ---- mutations ----
   const addTournament = (t) => {
-    const tournament = { id: uid(), createdAt: Date.now(), ...t };
+    const tournament = {
+      id: uid(),
+      createdAt: Date.now(),
+      createdBy: user ? { uid: user.uid, name: user.displayName || user.email } : null,
+      ...t,
+    };
     persist({ ...data, tournaments: [tournament, ...data.tournaments] });
     showToast("Tournament created");
     setShowNewTournament(false);
@@ -333,6 +523,29 @@ export default function App() {
 
   const selected = data.tournaments.find((t) => t.id === selectedId) || null;
 
+  if (authLoading) {
+    return (
+      <div style={shellStyle}>
+        <div style={{ color: "#8B98A5", fontFamily: "'Inter', sans-serif", padding: 40, textAlign: "center" }}>
+          Loading…
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div style={shellStyle}>
+        <AuthScreen
+          onGoogleSignIn={handleGoogleSignIn}
+          onEmailAuth={handleEmailAuth}
+          authError={authError}
+          authBusy={authBusy}
+        />
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div style={shellStyle}>
@@ -356,7 +569,7 @@ export default function App() {
         @keyframes sl-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
       `}</style>
 
-      <Header saving={saving} onReset={resetAll} hasData={data.tournaments.length > 0} />
+      <Header saving={saving} onReset={resetAll} hasData={data.tournaments.length > 0} user={user} onSignOut={handleSignOut} />
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "0 20px 80px" }}>
         {view === "list" && (
@@ -410,7 +623,7 @@ const shellStyle = {
   fontFamily: "'Inter', sans-serif",
 };
 
-function Header({ saving, onReset, hasData }) {
+function Header({ saving, onReset, hasData, user, onSignOut }) {
   return (
     <div style={{ borderBottom: "1px solid #1B222A" }}>
       <div
@@ -463,6 +676,27 @@ function Header({ saving, onReset, hasData }) {
             }}>
               Clear all data
             </Button>
+          )}
+          {user && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span
+                style={{
+                  fontFamily: "'Inter', sans-serif",
+                  fontSize: 13,
+                  color: "#8B98A5",
+                  maxWidth: 140,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+                title={user.displayName || user.email}
+              >
+                {user.displayName || user.email}
+              </span>
+              <Button variant="ghost" onClick={onSignOut}>
+                Sign out
+              </Button>
+            </div>
           )}
         </div>
       </div>
