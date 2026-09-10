@@ -250,7 +250,7 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy }) {
       <div style={{ width: "100%", maxWidth: 380 }}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 34, color: "#EDF1F4", letterSpacing: "0.04em" }}>
-            SCORELINE
+            GRINDINFO
           </div>
           <Eyebrow color="#3FD6C0">Sign in to upload tournament data</Eyebrow>
         </div>
@@ -645,7 +645,7 @@ function Header({ saving, onReset, hasData, user, onSignOut }) {
               color: "#EDF1F4",
             }}
           >
-            SCORELINE
+            GRINDINFO
           </span>
           <span
             style={{
