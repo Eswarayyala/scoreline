@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, collection, onSnapshot, setDoc } from "firebase/firestore";
 import {
   onAuthStateChanged,
   signInWithPopup,
@@ -11,6 +11,8 @@ import {
 import { db, auth, googleProvider } from "./firebase";
 
 const DOC_REF = doc(db, "scoreline", "shared-data");
+const PLAYERS_COLLECTION = collection(db, "players");
+const playerDocRef = (uid) => doc(db, "players", uid);
 
 const FONT_LINK_ID = "scoreline-fonts";
 
@@ -42,7 +44,67 @@ const GAME_PRESETS = [
   "Overwatch 2",
   "Rocket League",
   "Apex Legends",
+  "PUBG Mobile (BGMI)",
+  "Mobile Legends: Bang Bang",
+  "Free Fire",
+  "Call of Duty",
+  "Fortnite",
+  "Rainbow Six Siege",
+  "Honor of Kings",
+  "Clash Royale",
+  "Brawl Stars",
+  "PUBG: Battlegrounds",
+  "StarCraft 2",
+  "Teamfight Tactics",
   "Other",
+];
+
+const REGIONS = [
+  "North America",
+  "South America",
+  "Europe",
+  "South Asia",
+  "Southeast Asia",
+  "East Asia",
+  "Middle East",
+  "Oceania",
+  "Africa",
+];
+
+const LANGUAGES = [
+  "English",
+  "Hindi",
+  "Tamil",
+  "Telugu",
+  "Kannada",
+  "Malayalam",
+  "Bengali",
+  "Marathi",
+  "Punjabi",
+  "Gujarati",
+  "Urdu",
+  "Spanish",
+  "Portuguese",
+  "Filipino",
+  "Indonesian",
+  "Arabic",
+  "French",
+  "German",
+  "Russian",
+  "Korean",
+  "Japanese",
+  "Mandarin",
+  "Vietnamese",
+  "Thai",
+  "Other",
+];
+
+const PLAY_STYLES = [
+  "IGL / Shotcaller",
+  "Entry / Aggressive",
+  "Support",
+  "Sniper / Precision",
+  "Flex / All-rounder",
 ];
 
 const FORMATS = ["Single elimination", "Double elimination", "Round robin", "Swiss", "Group stage"];
@@ -336,6 +398,258 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy }) {
   );
 }
 
+// ---------- player profile ----------
+
+function MultiToggle({ options, selected, onToggle }) {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      {options.map((opt) => {
+        const active = selected.includes(opt);
+        return (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => onToggle(opt)}
+            style={{
+              fontFamily: "'Inter', sans-serif",
+              fontSize: 12,
+              fontWeight: 600,
+              padding: "7px 12px",
+              border: `1px solid ${active ? "#FFC22E" : "#2E3946"}`,
+              background: active ? "rgba(255,194,46,0.12)" : "transparent",
+              color: active ? "#FFC22E" : "#8B98A5",
+              cursor: "pointer",
+            }}
+          >
+            {opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ProfileModal({ initialProfile, onSave, onSkip, onClose }) {
+  const [games, setGames] = useState(initialProfile?.games || []);
+  const [region, setRegion] = useState(initialProfile?.region || "");
+  const [language, setLanguage] = useState(initialProfile?.language || "");
+  const [style, setStyle] = useState(initialProfile?.style || "");
+  const [error, setError] = useState("");
+
+  const toggleGame = (g) => {
+    setGames((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
+  };
+
+  const submit = () => {
+    if (games.length === 0 || !region || !language) {
+      setError("Pick at least one game, a region, and a language");
+      return;
+    }
+    onSave({ games, region, language, style });
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(4,6,8,0.75)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+        zIndex: 40,
+      }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "#12181F",
+          border: "1px solid #232B33",
+          padding: 28,
+          width: "100%",
+          maxWidth: 520,
+          maxHeight: "85vh",
+          overflowY: "auto",
+        }}
+      >
+        <Eyebrow>Find teammates</Eyebrow>
+        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, margin: "4px 0 6px" }}>
+          Set up your player profile
+        </div>
+        <div style={{ fontSize: 13, color: "#8B98A5", marginBottom: 20 }}>
+          Let other players on GRINDINFO find you by game, region, and language. You can skip this and fill it in
+          later.
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <Field label="Games you play">
+            <MultiToggle options={GAME_PRESETS} selected={games} onToggle={toggleGame} />
+          </Field>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 150 }}>
+              <Field label="Region">
+                <Select value={region} onChange={(e) => setRegion(e.target.value)}>
+                  <option value="">Select…</option>
+                  {REGIONS.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
+            <div style={{ flex: 1, minWidth: 150 }}>
+              <Field label="Language">
+                <Select value={language} onChange={(e) => setLanguage(e.target.value)}>
+                  <option value="">Select…</option>
+                  {LANGUAGES.map((l) => (
+                    <option key={l} value={l}>
+                      {l}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
+          </div>
+          <Field label="Playing style (optional)">
+            <Select value={style} onChange={(e) => setStyle(e.target.value)}>
+              <option value="">Not specified</option>
+              {PLAY_STYLES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+
+        {error && <div style={{ fontSize: 13, color: "#FF5C5C", marginTop: 14 }}>{error}</div>}
+
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 24 }}>
+          <Button variant="ghost" onClick={onSkip}>
+            Skip for now
+          </Button>
+          <Button onClick={submit}>Save profile</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PlayerCard({ player }) {
+  return (
+    <div style={{ background: "#12181F", border: "1px solid #232B33", padding: "16px 18px" }}>
+      <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: "0.02em" }}>
+        {player.displayName}
+      </div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "8px 0" }}>
+        {(player.games || []).map((g) => (
+          <span
+            key={g}
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 10,
+              padding: "3px 8px",
+              border: "1px solid #2E3946",
+              color: "#3FD6C0",
+            }}
+          >
+            {g}
+          </span>
+        ))}
+      </div>
+      <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "#8B98A5" }}>
+        {player.region} · {player.language}
+        {player.style ? ` · ${player.style}` : ""}
+      </div>
+    </div>
+  );
+}
+
+function FindPlayersPage({ players, currentUid, onEditProfile }) {
+  const [gameFilter, setGameFilter] = useState("");
+  const [regionFilter, setRegionFilter] = useState("");
+  const [languageFilter, setLanguageFilter] = useState("");
+
+  const filtered = players.filter((p) => {
+    if (gameFilter && !(p.games || []).includes(gameFilter)) return false;
+    if (regionFilter && p.region !== regionFilter) return false;
+    if (languageFilter && p.language !== languageFilter) return false;
+    return true;
+  });
+
+  const hasOwnProfile = players.some((p) => p.uid === currentUid);
+
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          padding: "36px 0 20px",
+          flexWrap: "wrap",
+          gap: 16,
+        }}
+      >
+        <div>
+          <Eyebrow>Squad up</Eyebrow>
+          <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 44, margin: "4px 0 0" }}>Find players</h1>
+        </div>
+        <Button onClick={onEditProfile}>{hasOwnProfile ? "Edit my profile" : "+ Create my profile"}</Button>
+      </div>
+
+      <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
+        <div style={{ minWidth: 160 }}>
+          <Select value={gameFilter} onChange={(e) => setGameFilter(e.target.value)}>
+            <option value="">All games</option>
+            {GAME_PRESETS.map((g) => (
+              <option key={g} value={g}>
+                {g}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div style={{ minWidth: 160 }}>
+          <Select value={regionFilter} onChange={(e) => setRegionFilter(e.target.value)}>
+            <option value="">All regions</option>
+            {REGIONS.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div style={{ minWidth: 160 }}>
+          <Select value={languageFilter} onChange={(e) => setLanguageFilter(e.target.value)}>
+            <option value="">All languages</option>
+            {LANGUAGES.map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </div>
+
+      {filtered.length === 0 ? (
+        <EmptyState
+          title="No players match yet"
+          body="Try widening your filters, or be the first to create a profile."
+        />
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
+          {filtered.map((p) => (
+            <PlayerCard key={p.uid} player={p} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---------- app ----------
 
 export default function App() {
@@ -403,6 +717,40 @@ export default function App() {
     signOut(auth);
   }, []);
 
+  // ---- player profiles ----
+  const [section, setSection] = useState("tournaments"); // 'tournaments' | 'players'
+  const [players, setPlayers] = useState([]);
+  const [myProfile, setMyProfile] = useState(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+
+  useEffect(() => {
+    const unsub = onSnapshot(PLAYERS_COLLECTION, (snap) => {
+      setPlayers(snap.docs.map((d) => ({ uid: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setMyProfile(null);
+      return;
+    }
+    const unsub = onSnapshot(playerDocRef(user.uid), (snap) => {
+      const profile = snap.exists() ? snap.data() : null;
+      setMyProfile(profile);
+      const dismissed = localStorage.getItem(`profilePromptDismissed_${user.uid}`);
+      if (!profile && !dismissed) {
+        setShowProfileModal(true);
+      }
+    });
+    return () => unsub();
+  }, [user]);
+
+  const skipProfile = useCallback(() => {
+    if (user) localStorage.setItem(`profilePromptDismissed_${user.uid}`, "1");
+    setShowProfileModal(false);
+  }, [user]);
+
   useEffect(() => {
     ensureFonts();
   }, []);
@@ -429,6 +777,24 @@ export default function App() {
     window.clearTimeout(showToast._t);
     showToast._t = window.setTimeout(() => setToast(""), 2200);
   }, []);
+
+  const saveProfile = useCallback(
+    async (fields) => {
+      if (!user) return;
+      try {
+        await setDoc(playerDocRef(user.uid), {
+          displayName: user.displayName || user.email,
+          ...fields,
+          updatedAt: Date.now(),
+        });
+        showToast("Profile saved");
+      } catch (e) {
+        showToast("Couldn't save profile — try again");
+      }
+      setShowProfileModal(false);
+    },
+    [user, showToast]
+  );
 
   const persist = useCallback(
     async (next) => {
@@ -571,8 +937,39 @@ export default function App() {
 
       <Header saving={saving} onReset={resetAll} hasData={data.tournaments.length > 0} user={user} onSignOut={handleSignOut} />
 
+      <div style={{ maxWidth: 980, margin: "0 auto", padding: "16px 20px 0" }}>
+        <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #1B222A" }}>
+          {[
+            { id: "tournaments", label: "Tournaments" },
+            { id: "players", label: `Find players (${players.length})` },
+          ].map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setSection(s.id)}
+              style={{
+                background: "none",
+                border: "none",
+                borderBottom: section === s.id ? "2px solid #3FD6C0" : "2px solid transparent",
+                color: section === s.id ? "#EDF1F4" : "#8B98A5",
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 12,
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+                padding: "10px 14px",
+                cursor: "pointer",
+              }}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "0 20px 80px" }}>
-        {view === "list" && (
+        {section === "players" && (
+          <FindPlayersPage players={players} currentUid={user.uid} onEditProfile={() => setShowProfileModal(true)} />
+        )}
+        {section === "tournaments" && view === "list" && (
           <TournamentList
             tournaments={data.tournaments}
             teams={data.teams}
@@ -586,7 +983,7 @@ export default function App() {
           />
         )}
 
-        {view === "detail" && selected && (
+        {section === "tournaments" && view === "detail" && selected && (
           <TournamentDetail
             tournament={selected}
             teams={data.teams.filter((t) => t.tournamentId === selected.id)}
@@ -609,6 +1006,15 @@ export default function App() {
 
       {showNewTournament && (
         <NewTournamentModal onClose={() => setShowNewTournament(false)} onCreate={addTournament} />
+      )}
+
+      {showProfileModal && (
+        <ProfileModal
+          initialProfile={myProfile}
+          onSave={saveProfile}
+          onSkip={skipProfile}
+          onClose={() => setShowProfileModal(false)}
+        />
       )}
 
       <Toast message={toast} />
