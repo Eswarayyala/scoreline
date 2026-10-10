@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { doc, collection, onSnapshot, setDoc } from "firebase/firestore";
+import {
+  doc,
+  collection,
+  onSnapshot,
+  setDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+} from "firebase/firestore";
 import {
   onAuthStateChanged,
   signInWithPopup,
@@ -10,9 +18,14 @@ import {
 } from "firebase/auth";
 import { db, auth, googleProvider } from "./firebase";
 
-const DOC_REF = doc(db, "scoreline", "shared-data");
 const PLAYERS_COLLECTION = collection(db, "players");
 const playerDocRef = (uid) => doc(db, "players", uid);
+
+const TOURNAMENTS_COLLECTION = collection(db, "tournaments");
+const tournamentDocRef = (id) => doc(db, "tournaments", id);
+const teamsCollectionRef = (tid) => collection(db, "tournaments", tid, "teams");
+const matchesCollectionRef = (tid) => collection(db, "tournaments", tid, "matches");
+const statsCollectionRef = (tid) => collection(db, "tournaments", tid, "stats");
 
 const FONT_LINK_ID = "scoreline-fonts";
 
@@ -26,13 +39,6 @@ function ensureFonts() {
     "https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap";
   document.head.appendChild(link);
 }
-
-const emptyData = () => ({
-  tournaments: [],
-  teams: [],
-  matches: [],
-  stats: [],
-});
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
@@ -573,14 +579,18 @@ function FindPlayersPage({ players, currentUid, onEditProfile }) {
   const [regionFilter, setRegionFilter] = useState("");
   const [languageFilter, setLanguageFilter] = useState("");
 
-  const filtered = players.filter((p) => {
-    if (gameFilter && !(p.games || []).includes(gameFilter)) return false;
-    if (regionFilter && p.region !== regionFilter) return false;
-    if (languageFilter && p.language !== languageFilter) return false;
-    return true;
-  });
+  const myPlayerProfile = players.find((p) => p.uid === currentUid) || null;
 
-  const hasOwnProfile = players.some((p) => p.uid === currentUid);
+  const filtered = players
+    .filter((p) => p.uid !== currentUid)
+    .filter((p) => {
+      if (gameFilter && !(p.games || []).includes(gameFilter)) return false;
+      if (regionFilter && p.region !== regionFilter) return false;
+      if (languageFilter && p.language !== languageFilter) return false;
+      return true;
+    });
+
+  const hasOwnProfile = !!myPlayerProfile;
 
   return (
     <div>
@@ -653,10 +663,12 @@ function FindPlayersPage({ players, currentUid, onEditProfile }) {
 // ---------- app ----------
 
 export default function App() {
-  const [data, setData] = useState(emptyData());
+  const [tournaments, setTournaments] = useState([]);
+  const [selectedTeams, setSelectedTeams] = useState([]);
+  const [selectedMatches, setSelectedMatches] = useState([]);
+  const [selectedStats, setSelectedStats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [loadError, setLoadError] = useState(false);
   const [toast, setToast] = useState("");
   const [view, setView] = useState("list"); // 'list' | 'detail'
   const [selectedId, setSelectedId] = useState(null);
@@ -757,20 +769,37 @@ export default function App() {
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
-      DOC_REF,
+      TOURNAMENTS_COLLECTION,
       (snap) => {
-        if (snap.exists()) {
-          setData({ ...emptyData(), ...snap.data() });
-        }
+        setTournaments(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
         setLoading(false);
       },
-      (err) => {
-        setLoadError(true);
-        setLoading(false);
-      }
+      () => setLoading(false)
     );
     return () => unsubscribe();
   }, []);
+
+  // Sub-collections for whichever tournament is currently open
+  useEffect(() => {
+    if (!selectedId) {
+      setSelectedTeams([]);
+      setSelectedMatches([]);
+      setSelectedStats([]);
+      return;
+    }
+    const unsubs = [
+      onSnapshot(teamsCollectionRef(selectedId), (snap) =>
+        setSelectedTeams(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      ),
+      onSnapshot(matchesCollectionRef(selectedId), (snap) =>
+        setSelectedMatches(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      ),
+      onSnapshot(statsCollectionRef(selectedId), (snap) =>
+        setSelectedStats(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      ),
+    ];
+    return () => unsubs.forEach((u) => u());
+  }, [selectedId]);
 
   const showToast = useCallback((msg) => {
     setToast(msg);
@@ -796,98 +825,112 @@ export default function App() {
     [user, showToast]
   );
 
-  const persist = useCallback(
-    async (next) => {
-      setData(next);
-      setSaving(true);
-      try {
-        await setDoc(DOC_REF, next);
-      } catch (e) {
-        showToast("Couldn't save — check your connection");
-      } finally {
-        setSaving(false);
-      }
-    },
-    [showToast]
-  );
-
-  // ---- mutations ----
-  const addTournament = (t) => {
-    const tournament = {
-      id: uid(),
-      createdAt: Date.now(),
-      createdBy: user ? { uid: user.uid, name: user.displayName || user.email } : null,
-      ...t,
-    };
-    persist({ ...data, tournaments: [tournament, ...data.tournaments] });
-    showToast("Tournament created");
-    setShowNewTournament(false);
+  // ---- mutations (now writing to the tournaments collection + sub-collections) ----
+  const addTournament = async (t) => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      await addDoc(TOURNAMENTS_COLLECTION, {
+        ...t,
+        adminUserId: user.uid,
+        coAdminUserIds: [],
+        status: t.status || "upcoming",
+        isLegacyImport: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      showToast("Tournament created");
+      setShowNewTournament(false);
+    } catch (e) {
+      showToast("Couldn't create tournament — try again");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const deleteTournament = (id) => {
-    persist({
-      tournaments: data.tournaments.filter((t) => t.id !== id),
-      teams: data.teams.filter((t) => t.tournamentId !== id),
-      matches: data.matches.filter((m) => m.tournamentId !== id),
-      stats: data.stats.filter((s) => s.tournamentId !== id),
-    });
-    showToast("Tournament deleted");
-    setView("list");
+  const deleteTournament = async (id) => {
+    setSaving(true);
+    try {
+      await Promise.all([
+        ...selectedTeams.map((t) => deleteDoc(doc(teamsCollectionRef(id), t.id))),
+        ...selectedMatches.map((m) => deleteDoc(doc(matchesCollectionRef(id), m.id))),
+        ...selectedStats.map((s) => deleteDoc(doc(statsCollectionRef(id), s.id))),
+      ]);
+      await deleteDoc(tournamentDocRef(id));
+      showToast("Tournament deleted");
+      setView("list");
+    } catch (e) {
+      showToast("Couldn't delete tournament — try again");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const addTeam = (tournamentId, team) => {
-    const t = { id: uid(), tournamentId, ...team };
-    persist({ ...data, teams: [...data.teams, t] });
-    showToast("Team added");
+  const addTeam = async (tournamentId, team) => {
+    try {
+      await addDoc(teamsCollectionRef(tournamentId), team);
+      showToast("Team added");
+    } catch (e) {
+      showToast("Couldn't add team — try again");
+    }
   };
 
-  const deleteTeam = (id) => {
-    persist({
-      ...data,
-      teams: data.teams.filter((t) => t.id !== id),
-    });
-    showToast("Team removed");
+  const deleteTeam = async (tournamentId, teamId) => {
+    try {
+      await deleteDoc(doc(teamsCollectionRef(tournamentId), teamId));
+      showToast("Team removed");
+    } catch (e) {
+      showToast("Couldn't remove team — try again");
+    }
   };
 
-  const addMatch = (tournamentId, match) => {
-    const m = { id: uid(), tournamentId, ...match };
-    persist({ ...data, matches: [...data.matches, m] });
-    showToast("Match added");
+  const addMatch = async (tournamentId, match) => {
+    try {
+      await addDoc(matchesCollectionRef(tournamentId), match);
+      showToast("Match added");
+    } catch (e) {
+      showToast("Couldn't add match — try again");
+    }
   };
 
-  const updateMatch = (id, patch) => {
-    persist({
-      ...data,
-      matches: data.matches.map((m) => (m.id === id ? { ...m, ...patch } : m)),
-    });
+  const updateMatch = async (tournamentId, matchId, patch) => {
+    try {
+      await updateDoc(doc(matchesCollectionRef(tournamentId), matchId), patch);
+    } catch (e) {
+      showToast("Couldn't update match — try again");
+    }
   };
 
-  const deleteMatch = (id) => {
-    persist({
-      ...data,
-      matches: data.matches.filter((m) => m.id !== id),
-      stats: data.stats.filter((s) => s.matchId !== id),
-    });
-    showToast("Match deleted");
+  const deleteMatch = async (tournamentId, matchId) => {
+    try {
+      const relatedStats = selectedStats.filter((s) => s.matchId === matchId);
+      await Promise.all(relatedStats.map((s) => deleteDoc(doc(statsCollectionRef(tournamentId), s.id))));
+      await deleteDoc(doc(matchesCollectionRef(tournamentId), matchId));
+      showToast("Match deleted");
+    } catch (e) {
+      showToast("Couldn't delete match — try again");
+    }
   };
 
-  const addStat = (tournamentId, stat) => {
-    const s = { id: uid(), tournamentId, ...stat };
-    persist({ ...data, stats: [...data.stats, s] });
-    showToast("Stat line added");
+  const addStat = async (tournamentId, stat) => {
+    try {
+      await addDoc(statsCollectionRef(tournamentId), stat);
+      showToast("Stat line added");
+    } catch (e) {
+      showToast("Couldn't add stat — try again");
+    }
   };
 
-  const deleteStat = (id) => {
-    persist({ ...data, stats: data.stats.filter((s) => s.id !== id) });
+  const deleteStat = async (tournamentId, statId) => {
+    try {
+      await deleteDoc(doc(statsCollectionRef(tournamentId), statId));
+    } catch (e) {
+      showToast("Couldn't delete stat — try again");
+    }
   };
 
-  const resetAll = () => {
-    persist(emptyData());
-    setView("list");
-    showToast("All data cleared");
-  };
-
-  const selected = data.tournaments.find((t) => t.id === selectedId) || null;
+  const selected = tournaments.find((t) => t.id === selectedId) || null;
+  const isAdmin = !!(selected && user && selected.adminUserId === user.uid);
 
   if (authLoading) {
     return (
@@ -935,7 +978,7 @@ export default function App() {
         @keyframes sl-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
       `}</style>
 
-      <Header saving={saving} onReset={resetAll} hasData={data.tournaments.length > 0} user={user} onSignOut={handleSignOut} />
+      <Header saving={saving} user={user} onSignOut={handleSignOut} />
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "16px 20px 0" }}>
         <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #1B222A" }}>
@@ -971,9 +1014,7 @@ export default function App() {
         )}
         {section === "tournaments" && view === "list" && (
           <TournamentList
-            tournaments={data.tournaments}
-            teams={data.teams}
-            matches={data.matches}
+            tournaments={tournaments}
             onOpen={(id) => {
               setSelectedId(id);
               setView("detail");
@@ -986,20 +1027,21 @@ export default function App() {
         {section === "tournaments" && view === "detail" && selected && (
           <TournamentDetail
             tournament={selected}
-            teams={data.teams.filter((t) => t.tournamentId === selected.id)}
-            matches={data.matches.filter((m) => m.tournamentId === selected.id)}
-            stats={data.stats.filter((s) => s.tournamentId === selected.id)}
+            teams={selectedTeams}
+            matches={selectedMatches}
+            stats={selectedStats}
             tab={detailTab}
             setTab={setDetailTab}
+            isAdmin={isAdmin}
             onBack={() => setView("list")}
             onDelete={() => deleteTournament(selected.id)}
             onAddTeam={(team) => addTeam(selected.id, team)}
-            onDeleteTeam={deleteTeam}
+            onDeleteTeam={(teamId) => deleteTeam(selected.id, teamId)}
             onAddMatch={(m) => addMatch(selected.id, m)}
-            onUpdateMatch={updateMatch}
-            onDeleteMatch={deleteMatch}
+            onUpdateMatch={(matchId, patch) => updateMatch(selected.id, matchId, patch)}
+            onDeleteMatch={(matchId) => deleteMatch(selected.id, matchId)}
             onAddStat={(s) => addStat(selected.id, s)}
-            onDeleteStat={deleteStat}
+            onDeleteStat={(statId) => deleteStat(selected.id, statId)}
           />
         )}
       </div>
@@ -1029,7 +1071,7 @@ const shellStyle = {
   fontFamily: "'Inter', sans-serif",
 };
 
-function Header({ saving, onReset, hasData, user, onSignOut }) {
+function Header({ saving, user, onSignOut }) {
   return (
     <div style={{ borderBottom: "1px solid #1B222A" }}>
       <div
@@ -1076,13 +1118,6 @@ function Header({ saving, onReset, hasData, user, onSignOut }) {
           >
             {saving ? "SAVING…" : "SAVED"}
           </span>
-          {hasData && (
-            <Button variant="ghost" onClick={() => {
-              if (window.confirm("Clear every tournament, team, match, and stat? This can't be undone.")) onReset();
-            }}>
-              Clear all data
-            </Button>
-          )}
           {user && (
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span
@@ -1110,7 +1145,7 @@ function Header({ saving, onReset, hasData, user, onSignOut }) {
   );
 }
 
-function TournamentList({ tournaments, teams, matches, onOpen, onNew }) {
+function TournamentList({ tournaments, onOpen, onNew }) {
   return (
     <div>
       <div
@@ -1155,9 +1190,6 @@ function TournamentList({ tournaments, teams, matches, onOpen, onNew }) {
           }}
         >
           {tournaments.map((t, i) => {
-            const teamCount = teams.filter((x) => x.tournamentId === t.id).length;
-            const tMatches = matches.filter((x) => x.tournamentId === t.id);
-            const completed = tMatches.filter((m) => m.status === "completed").length;
             return (
               <button
                 key={t.id}
@@ -1188,12 +1220,18 @@ function TournamentList({ tournaments, teams, matches, onOpen, onNew }) {
                 >
                   {t.name}
                 </div>
-                <div style={{ display: "flex", gap: 16, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "#8B98A5" }}>
-                  <span>{teamCount} teams</span>
-                  <span>
-                    {completed}/{tMatches.length} matches
-                  </span>
-                </div>
+                {t.isLegacyImport && (
+                  <div
+                    style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 10,
+                      color: "#5B6772",
+                      marginBottom: 6,
+                    }}
+                  >
+                    LEGACY IMPORT
+                  </div>
+                )}
                 <div style={{ marginTop: 12, fontSize: 12, color: "#5B6772" }}>
                   {fmtDate(t.startDate)} {t.endDate ? `– ${fmtDate(t.endDate)}` : ""}
                 </div>
@@ -1319,6 +1357,7 @@ function TournamentDetail(props) {
     stats,
     tab,
     setTab,
+    isAdmin,
     onBack,
     onDelete,
     onAddTeam,
@@ -1366,15 +1405,33 @@ function TournamentDetail(props) {
           <div style={{ fontSize: 13, color: "#5B6772" }}>
             {fmtDate(tournament.startDate)} {tournament.endDate ? `– ${fmtDate(tournament.endDate)}` : ""}
           </div>
+          {isAdmin && (
+            <div
+              style={{
+                display: "inline-block",
+                marginTop: 10,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10,
+                letterSpacing: "0.1em",
+                color: "#0A0E12",
+                background: "#FFC22E",
+                padding: "4px 10px",
+              }}
+            >
+              ADMIN · You manage this tournament
+            </div>
+          )}
         </div>
-        <Button
-          variant="danger"
-          onClick={() => {
-            if (window.confirm(`Delete "${tournament.name}" and all its teams, matches, and stats?`)) onDelete();
-          }}
-        >
-          Delete tournament
-        </Button>
+        {isAdmin && (
+          <Button
+            variant="danger"
+            onClick={() => {
+              if (window.confirm(`Delete "${tournament.name}" and all its teams, matches, and stats?`)) onDelete();
+            }}
+          >
+            Delete tournament
+          </Button>
+        )}
       </div>
 
       <div style={{ display: "flex", gap: 4, marginTop: 28, borderBottom: "1px solid #1B222A", flexWrap: "wrap" }}>
@@ -1401,18 +1458,19 @@ function TournamentDetail(props) {
       </div>
 
       <div style={{ paddingTop: 26 }}>
-        {tab === "teams" && <TeamsPanel teams={teams} onAdd={onAddTeam} onDelete={onDeleteTeam} />}
+        {tab === "teams" && <TeamsPanel teams={teams} isAdmin={isAdmin} onAdd={onAddTeam} onDelete={onDeleteTeam} />}
         {tab === "matches" && (
           <MatchesPanel
             teams={teams}
             matches={matches}
+            isAdmin={isAdmin}
             onAdd={onAddMatch}
             onUpdate={onUpdateMatch}
             onDelete={onDeleteMatch}
           />
         )}
         {tab === "stats" && (
-          <StatsPanel teams={teams} matches={matches} stats={stats} onAdd={onAddStat} onDelete={onDeleteStat} />
+          <StatsPanel teams={teams} matches={matches} stats={stats} isAdmin={isAdmin} onAdd={onAddStat} onDelete={onDeleteStat} />
         )}
         {tab === "leaderboard" && <LeaderboardPanel teams={teams} stats={stats} />}
       </div>
@@ -1420,7 +1478,7 @@ function TournamentDetail(props) {
   );
 }
 
-function TeamsPanel({ teams, onAdd, onDelete }) {
+function TeamsPanel({ teams, isAdmin, onAdd, onDelete }) {
   const [name, setName] = useState("");
   const [tag, setTag] = useState("");
   const [error, setError] = useState("");
@@ -1437,32 +1495,34 @@ function TeamsPanel({ teams, onAdd, onDelete }) {
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap", alignItems: "flex-end" }}>
-        <div style={{ minWidth: 200 }}>
-          <Field label="Team name">
-            <TextInput
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                if (error) setError("");
-              }}
-              placeholder="Nova Esports"
-              onKeyDown={(e) => e.key === "Enter" && submit()}
-            />
-          </Field>
+      {isAdmin && (
+        <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div style={{ minWidth: 200 }}>
+            <Field label="Team name">
+              <TextInput
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (error) setError("");
+                }}
+                placeholder="Nova Esports"
+                onKeyDown={(e) => e.key === "Enter" && submit()}
+              />
+            </Field>
+          </div>
+          <div style={{ width: 110 }}>
+            <Field label="Tag">
+              <TextInput
+                value={tag}
+                onChange={(e) => setTag(e.target.value)}
+                placeholder="NOVA"
+                onKeyDown={(e) => e.key === "Enter" && submit()}
+              />
+            </Field>
+          </div>
+          <Button onClick={submit}>Add team</Button>
         </div>
-        <div style={{ width: 110 }}>
-          <Field label="Tag">
-            <TextInput
-              value={tag}
-              onChange={(e) => setTag(e.target.value)}
-              placeholder="NOVA"
-              onKeyDown={(e) => e.key === "Enter" && submit()}
-            />
-          </Field>
-        </div>
-        <Button onClick={submit}>Add team</Button>
-      </div>
+      )}
       {error && <div style={{ fontSize: 13, color: "#FF5C5C", marginBottom: 14 }}>{error}</div>}
 
       {teams.length === 0 ? (
@@ -1491,13 +1551,15 @@ function TeamsPanel({ teams, onAdd, onDelete }) {
                   </div>
                 )}
               </div>
-              <button
-                onClick={() => onDelete(t.id)}
-                aria-label={`Remove ${t.name}`}
-                style={{ background: "none", border: "none", color: "#5B6772", cursor: "pointer", fontSize: 16 }}
-              >
-                ×
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => onDelete(t.id)}
+                  aria-label={`Remove ${t.name}`}
+                  style={{ background: "none", border: "none", color: "#5B6772", cursor: "pointer", fontSize: 16 }}
+                >
+                  ×
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -1506,7 +1568,7 @@ function TeamsPanel({ teams, onAdd, onDelete }) {
   );
 }
 
-function MatchesPanel({ teams, matches, onAdd, onUpdate, onDelete }) {
+function MatchesPanel({ teams, matches, isAdmin, onAdd, onUpdate, onDelete }) {
   const [teamA, setTeamA] = useState("");
   const [teamB, setTeamB] = useState("");
   const [round, setRound] = useState("");
@@ -1553,7 +1615,7 @@ function MatchesPanel({ teams, matches, onAdd, onUpdate, onDelete }) {
 
   return (
     <div>
-      {teams.length < 2 ? (
+      {!isAdmin ? null : teams.length < 2 ? (
         <EmptyState title="Add teams first" body="You need at least two teams before scheduling a match." />
       ) : (
         <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap", alignItems: "flex-end" }}>
@@ -1612,6 +1674,7 @@ function MatchesPanel({ teams, matches, onAdd, onUpdate, onDelete }) {
                     teamBName={teamName(m.teamBId)}
                     teamATag={teamTag(m.teamAId)}
                     teamBTag={teamTag(m.teamBId)}
+                    isAdmin={isAdmin}
                     onUpdate={(patch) => onUpdate(m.id, patch)}
                     onDelete={() => onDelete(m.id)}
                   />
@@ -1625,7 +1688,7 @@ function MatchesPanel({ teams, matches, onAdd, onUpdate, onDelete }) {
   );
 }
 
-function MatchRow({ match, teamAName, teamBName, teamATag, teamBTag, onUpdate, onDelete }) {
+function MatchRow({ match, teamAName, teamBName, teamATag, teamBTag, isAdmin, onUpdate, onDelete }) {
   const [scoreA, setScoreA] = useState(match.scoreA ?? 0);
   const [scoreB, setScoreB] = useState(match.scoreB ?? 0);
 
@@ -1666,33 +1729,41 @@ function MatchRow({ match, teamAName, teamBName, teamATag, teamBTag, onUpdate, o
         >
           {teamAName} {teamATag && <span style={{ color: "#5B6772", fontSize: 11 }}>({teamATag})</span>}
         </span>
-        <input
-          type="number"
-          value={scoreA}
-          onChange={(e) => setScoreA(e.target.value)}
-          onBlur={commitScores}
-          style={{
-            ...inputStyle,
-            width: 48,
-            textAlign: "center",
-            fontFamily: "'JetBrains Mono', monospace",
-            padding: "6px 4px",
-          }}
-        />
+        {isAdmin ? (
+          <input
+            type="number"
+            value={scoreA}
+            onChange={(e) => setScoreA(e.target.value)}
+            onBlur={commitScores}
+            style={{
+              ...inputStyle,
+              width: 48,
+              textAlign: "center",
+              fontFamily: "'JetBrains Mono', monospace",
+              padding: "6px 4px",
+            }}
+          />
+        ) : (
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 16, fontWeight: 700 }}>{scoreA}</span>
+        )}
         <span style={{ color: "#5B6772", fontFamily: "'JetBrains Mono', monospace", fontSize: 12 }}>–</span>
-        <input
-          type="number"
-          value={scoreB}
-          onChange={(e) => setScoreB(e.target.value)}
-          onBlur={commitScores}
-          style={{
-            ...inputStyle,
-            width: 48,
-            textAlign: "center",
-            fontFamily: "'JetBrains Mono', monospace",
-            padding: "6px 4px",
-          }}
-        />
+        {isAdmin ? (
+          <input
+            type="number"
+            value={scoreB}
+            onChange={(e) => setScoreB(e.target.value)}
+            onBlur={commitScores}
+            style={{
+              ...inputStyle,
+              width: 48,
+              textAlign: "center",
+              fontFamily: "'JetBrains Mono', monospace",
+              padding: "6px 4px",
+            }}
+          />
+        ) : (
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 16, fontWeight: 700 }}>{scoreB}</span>
+        )}
         <span
           style={{
             fontFamily: "'Inter', sans-serif",
@@ -1706,11 +1777,17 @@ function MatchRow({ match, teamAName, teamBName, teamATag, teamBTag, onUpdate, o
         </span>
       </div>
 
-      <Select value={match.status} onChange={(e) => onUpdate({ status: e.target.value })} style={{ width: 130 }}>
-        <option value="upcoming">Upcoming</option>
-        <option value="live">Live</option>
-        <option value="completed">Completed</option>
-      </Select>
+      {isAdmin ? (
+        <Select value={match.status} onChange={(e) => onUpdate({ status: e.target.value })} style={{ width: 130 }}>
+          <option value="upcoming">Upcoming</option>
+          <option value="live">Live</option>
+          <option value="completed">Completed</option>
+        </Select>
+      ) : (
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, textTransform: "uppercase", color: "#8B98A5" }}>
+          {match.status}
+        </span>
+      )}
       <span
         style={{
           width: 8,
@@ -1723,18 +1800,20 @@ function MatchRow({ match, teamAName, teamBName, teamATag, teamBTag, onUpdate, o
       <span style={{ fontSize: 12, color: "#5B6772", fontFamily: "'JetBrains Mono', monospace", minWidth: 80 }}>
         {fmtDate(match.date)}
       </span>
-      <button
-        onClick={onDelete}
-        aria-label="Delete match"
-        style={{ background: "none", border: "none", color: "#5B6772", cursor: "pointer", fontSize: 16 }}
-      >
-        ×
-      </button>
+      {isAdmin && (
+        <button
+          onClick={onDelete}
+          aria-label="Delete match"
+          style={{ background: "none", border: "none", color: "#5B6772", cursor: "pointer", fontSize: 16 }}
+        >
+          ×
+        </button>
+      )}
     </div>
   );
 }
 
-function StatsPanel({ teams, matches, stats, onAdd, onDelete }) {
+function StatsPanel({ teams, matches, stats, isAdmin, onAdd, onDelete }) {
   const [player, setPlayer] = useState("");
   const [teamId, setTeamId] = useState("");
   const [matchId, setMatchId] = useState("");
@@ -1774,9 +1853,10 @@ function StatsPanel({ teams, matches, stats, onAdd, onDelete }) {
 
   return (
     <div>
-      {teams.length === 0 ? (
+      {isAdmin && teams.length === 0 && (
         <EmptyState title="Add teams first" body="Player stats attach to a team, so add teams before logging stats." />
-      ) : (
+      )}
+      {isAdmin && teams.length > 0 && (
         <div
           style={{
             display: "grid",
@@ -1822,7 +1902,7 @@ function StatsPanel({ teams, matches, stats, onAdd, onDelete }) {
           </Field>
         </div>
       )}
-      {teams.length > 0 && (
+      {isAdmin && teams.length > 0 && (
         <div style={{ marginBottom: 18 }}>
           <Button onClick={submit}>Log stat line</Button>
         </div>
@@ -1857,13 +1937,15 @@ function StatsPanel({ teams, matches, stats, onAdd, onDelete }) {
                   <td style={{ padding: "8px 10px", textAlign: "right" }}>{s.assists}</td>
                   <td style={{ padding: "8px 10px", textAlign: "right", color: "#FFC22E" }}>{s.score}</td>
                   <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                    <button
-                      onClick={() => onDelete(s.id)}
-                      aria-label={`Delete stat line for ${s.player}`}
-                      style={{ background: "none", border: "none", color: "#5B6772", cursor: "pointer", fontSize: 15 }}
-                    >
-                      ×
-                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => onDelete(s.id)}
+                        aria-label={`Delete stat line for ${s.player}`}
+                        style={{ background: "none", border: "none", color: "#5B6772", cursor: "pointer", fontSize: 15 }}
+                      >
+                        ×
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
