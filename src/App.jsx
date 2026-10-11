@@ -134,13 +134,22 @@ const PLAY_STYLES = [
   "Sniper / Precision",
   "Flex / All-rounder",
 ];
+const PLAYER_AVATARS = ["🎮", "⚡", "🎯", "🛡️", "🔥", "❄️"];
+const QUICK_PICK_GAMES = ["Valorant", "BGMI", "PUBG Mobile", "Apex Legends"];
+const BIO_EXAMPLES = [
+  { label: "Friendly", text: "Here to improve, have fun, and find a friendly squad." },
+  { label: "Competitive", text: "Focused on ranked games, clear comms, and steady improvement." },
+  { label: "Flexible", text: "Happy to fill roles and play a few games when schedules line up." },
+];
+
+const THEME_CSS = "[data-theme=\"glacier\"] {\n  --page-bg: radial-gradient(circle at 12% 0%, rgba(74, 174, 232, 0.16), transparent 28%), linear-gradient(145deg, #EAF6FF 0%, #F7FBFF 52%, #E3F1FF 100%);\n  --page-bg-solid: #EFF8FF;\n  --page-text: #102B45;\n  --panel-bg: rgba(255, 255, 255, 0.94);\n  --panel-raised: #F1F8FF;\n  --input-bg: #F8FBFF;\n  --text-muted: #526C86;\n  --text-dim: #7189A1;\n  --border: #C9DFF1;\n  --border-strong: #AFCBE2;\n  --accent: #087FEA;\n  --accent-secondary: #13AFC7;\n  --accent-contrast: #FFFFFF;\n  --danger: #C83D4A;\n  --danger-border: #E7BDC5;\n  --rank-second: #70889F;\n  --rank-third: #A9653B;\n  --success: #148A72;\n  --google-bg: #FFFFFF;\n  --google-text: #102B45;\n  --panel-shadow: 0 8px 24px rgba(42, 112, 163, 0.10);\n}\n\n[data-theme=\"solar-flare\"] {\n  --page-bg: radial-gradient(circle at 90% 0%, rgba(255, 132, 39, 0.12), transparent 30%), linear-gradient(145deg, #17110F 0%, #1A1412 58%, #211510 100%);\n  --page-bg-solid: #17110F;\n  --page-text: #FFF1E6;\n  --panel-bg: rgba(34, 25, 21, 0.96);\n  --panel-raised: #2B1E19;\n  --input-bg: #1A1411;\n  --text-muted: #C3AA9A;\n  --text-dim: #967D70;\n  --border: #493025;\n  --border-strong: #684534;\n  --accent: #FF8A24;\n  --accent-secondary: #FFC04B;\n  --accent-contrast: #23120B;\n  --danger: #FF6B5D;\n  --danger-border: #673832;\n  --rank-second: #D2B99F;\n  --rank-third: #C8804A;\n  --success: #55CEA2;\n  --google-bg: #F8F7F4;\n  --google-text: #17110F;\n  --panel-shadow: 0 8px 26px rgba(255, 118, 29, 0.10);\n}\n\n[data-theme=\"glacier\"] [style*=\"var(--panel-bg)\"],\n[data-theme=\"solar-flare\"] [style*=\"var(--panel-bg)\"] {\n  box-shadow: var(--panel-shadow);\n}";
 
 const FORMATS = ["Single elimination", "Double elimination", "Round robin", "Swiss", "Group stage"];
 
 const STATUS_COLORS = {
-  upcoming: "#8B98A5",
-  live: "#3FD6C0",
-  completed: "#FFC22E",
+  upcoming: "var(--text-muted)",
+  live: "var(--accent-secondary)",
+  completed: "var(--accent)",
 };
 
 function fmtDate(d) {
@@ -162,7 +171,7 @@ function kda(k, d, a) {
 
 // ---------- shared UI atoms ----------
 
-function Eyebrow({ children, color = "#FFC22E" }) {
+function Eyebrow({ children, color = "var(--accent)" }) {
   return (
     <div
       style={{
@@ -180,7 +189,7 @@ function Eyebrow({ children, color = "#FFC22E" }) {
 }
 
 function Divider() {
-  return <div style={{ height: 1, background: "#232B33", width: "100%" }} />;
+  return <div style={{ height: 1, background: "var(--border)", width: "100%" }} />;
 }
 
 function Button({ children, onClick, variant = "primary", type = "button", style, disabled }) {
@@ -196,16 +205,16 @@ function Button({ children, onClick, variant = "primary", type = "button", style
     transition: "background 120ms ease, border-color 120ms ease, color 120ms ease",
   };
   const variants = {
-    primary: { background: "#FFC22E", color: "#0A0E12", borderColor: "#FFC22E" },
-    ghost: { background: "transparent", color: "var(--page-text)", borderColor: "#2E3946" },
-    danger: { background: "transparent", color: "#FF5C5C", borderColor: "#4A2626" },
+    primary: { background: "var(--accent)", color: "var(--accent-contrast)", borderColor: "var(--accent)" },
+    ghost: { background: "transparent", color: "var(--page-text)", borderColor: "var(--border-strong)" },
+    danger: { background: "transparent", color: "var(--danger)", borderColor: "var(--danger-border)" },
   };
   return (
     <button
       type={type}
       disabled={disabled}
       onClick={onClick}
-      onFocus={(e) => (e.currentTarget.style.outline = "2px solid #3FD6C0")}
+      onFocus={(e) => (e.currentTarget.style.outline = "2px solid var(--accent-secondary)")}
       onBlur={(e) => (e.currentTarget.style.outline = "none")}
       style={{ ...base, ...variants[variant], ...style }}
     >
@@ -217,15 +226,15 @@ function Button({ children, onClick, variant = "primary", type = "button", style
 function Field({ label, children }) {
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 6, fontFamily: "'Inter', sans-serif" }}>
-      <span style={{ fontSize: 12, color: "#8B98A5", fontWeight: 600 }}>{label}</span>
+      <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>{label}</span>
       {children}
     </label>
   );
 }
 
 const inputStyle = {
-  background: "#131920",
-  border: "1px solid #2E3946",
+  background: "var(--input-bg)",
+  border: "1px solid var(--border-strong)",
   color: "var(--page-text)",
   padding: "10px 12px",
   fontSize: 14,
@@ -239,11 +248,11 @@ function TextInput(props) {
       {...props}
       style={{ ...inputStyle, ...(props.style || {}) }}
       onFocus={(e) => {
-        e.currentTarget.style.borderColor = "#3FD6C0";
+        e.currentTarget.style.borderColor = "var(--accent-secondary)";
         props.onFocus && props.onFocus(e);
       }}
       onBlur={(e) => {
-        e.currentTarget.style.borderColor = "#2E3946";
+        e.currentTarget.style.borderColor = "var(--border-strong)";
         props.onBlur && props.onBlur(e);
       }}
     />
@@ -256,10 +265,10 @@ function Select(props) {
       {...props}
       style={{ ...inputStyle, ...(props.style || {}) }}
       onFocus={(e) => {
-        e.currentTarget.style.borderColor = "#3FD6C0";
+        e.currentTarget.style.borderColor = "var(--accent-secondary)";
       }}
       onBlur={(e) => {
-        e.currentTarget.style.borderColor = "#2E3946";
+        e.currentTarget.style.borderColor = "var(--border-strong)";
       }}
     >
       {props.children}
@@ -271,7 +280,7 @@ function EmptyState({ title, body, actionLabel, onAction }) {
   return (
     <div
       style={{
-        border: "1px dashed #2E3946",
+        border: "1px dashed var(--border-strong)",
         padding: "48px 24px",
         textAlign: "center",
         display: "flex",
@@ -283,7 +292,7 @@ function EmptyState({ title, body, actionLabel, onAction }) {
       <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, color: "var(--page-text)", letterSpacing: "0.02em" }}>
         {title}
       </div>
-      <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 14, color: "#8B98A5", maxWidth: 380 }}>{body}</div>
+      <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 14, color: "var(--text-muted)", maxWidth: 380 }}>{body}</div>
       {actionLabel && <Button onClick={onAction}>{actionLabel}</Button>}
     </div>
   );
@@ -298,8 +307,8 @@ function Toast({ message }) {
         bottom: 20,
         left: "50%",
         transform: "translateX(-50%)",
-        background: "#1A222B",
-        border: "1px solid #2E3946",
+        background: "var(--panel-raised)",
+        border: "1px solid var(--border-strong)",
         color: "var(--page-text)",
         padding: "10px 18px",
         fontSize: 13,
@@ -328,21 +337,25 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy }) {
 
   return (
     <div
+      data-theme="glacier"
       style={{
         minHeight: "100vh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         padding: 20,
-        background: "#0A0E12",
+        background: "var(--page-bg-solid)",
+        color: "var(--page-text)",
+        fontFamily: "'Inter', sans-serif",
       }}
     >
+      <style>{THEME_CSS}</style>
       <div style={{ width: "100%", maxWidth: 380 }}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 34, color: "var(--page-text)", letterSpacing: "0.04em" }}>
             GRINDINFO
           </div>
-          <Eyebrow color="#3FD6C0">Sign in to upload tournament data</Eyebrow>
+          <Eyebrow color="var(--accent-secondary)">Sign in to upload tournament data</Eyebrow>
         </div>
 
         <button
@@ -350,8 +363,8 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy }) {
           disabled={authBusy}
           style={{
             width: "100%",
-            background: "#EDF1F4",
-            color: "#0A0E12",
+            background: "var(--google-bg)",
+            color: "var(--google-text)",
             border: "none",
             padding: "12px 16px",
             fontFamily: "'Inter', sans-serif",
@@ -366,9 +379,9 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy }) {
         </button>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0" }}>
-          <div style={{ flex: 1, height: 1, background: "#232B33" }} />
-          <span style={{ fontSize: 11, color: "#5B6772", fontFamily: "'JetBrains Mono', monospace" }}>OR</span>
-          <div style={{ flex: 1, height: 1, background: "#232B33" }} />
+          <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+          <span style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "'JetBrains Mono', monospace" }}>OR</span>
+          <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
         </div>
 
         <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -391,20 +404,20 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy }) {
             />
           </Field>
 
-          {authError && <div style={{ fontSize: 13, color: "#FF5C5C" }}>{authError}</div>}
+          {authError && <div style={{ fontSize: 13, color: "var(--danger)" }}>{authError}</div>}
 
           <Button type="submit" disabled={authBusy} style={{ marginTop: 4 }}>
             {mode === "signin" ? "Sign in" : "Create account"}
           </Button>
         </form>
 
-        <div style={{ textAlign: "center", marginTop: 18, fontSize: 13, color: "#8B98A5" }}>
+        <div style={{ textAlign: "center", marginTop: 18, fontSize: 13, color: "var(--text-muted)" }}>
           {mode === "signin" ? (
             <>
               New here?{" "}
               <button
                 onClick={() => setMode("signup")}
-                style={{ background: "none", border: "none", color: "#3FD6C0", cursor: "pointer", fontSize: 13 }}
+                style={{ background: "none", border: "none", color: "var(--accent-secondary)", cursor: "pointer", fontSize: 13 }}
               >
                 Create an account
               </button>
@@ -414,7 +427,7 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy }) {
               Already have an account?{" "}
               <button
                 onClick={() => setMode("signin")}
-                style={{ background: "none", border: "none", color: "#3FD6C0", cursor: "pointer", fontSize: 13 }}
+                style={{ background: "none", border: "none", color: "var(--accent-secondary)", cursor: "pointer", fontSize: 13 }}
               >
                 Sign in
               </button>
@@ -443,9 +456,9 @@ function MultiToggle({ options, selected, onToggle }) {
               fontSize: 12,
               fontWeight: 600,
               padding: "7px 12px",
-              border: `1px solid ${active ? "#FFC22E" : "#2E3946"}`,
+              border: `1px solid ${active ? "var(--accent)" : "var(--border-strong)"}`,
               background: active ? "rgba(255,194,46,0.12)" : "transparent",
-              color: active ? "#FFC22E" : "#8B98A5",
+              color: active ? "var(--accent)" : "var(--text-muted)",
               cursor: "pointer",
             }}
           >
@@ -464,6 +477,7 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
   const [language, setLanguage] = useState(initialProfile?.language || "");
   const [style, setStyle] = useState(initialProfile?.style || "");
   const [bio, setBio] = useState(initialProfile?.bio || "");
+  const [avatar, setAvatar] = useState(initialProfile?.avatar || "🎮");
   const [discoverable, setDiscoverable] = useState(initialProfile?.discoverable === true);
   const [error, setError] = useState("");
 
@@ -480,7 +494,7 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
       setError("Pick at least one game, a region, and a language");
       return;
     }
-    onSave({ displayName: displayName.trim(), games, region, language, style, bio: bio.trim(), discoverable });
+    onSave({ displayName: displayName.trim(), games, region, language, style, bio: bio.trim(), avatar, discoverable });
   };
 
   return (
@@ -501,7 +515,7 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "var(--panel-bg)",
-          border: "1px solid #232B33",
+          border: "1px solid var(--border)",
           padding: 28,
           width: "100%",
           maxWidth: 520,
@@ -513,11 +527,66 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, margin: "4px 0 6px" }}>
           Set up your player profile
         </div>
-        <div style={{ fontSize: 13, color: "#8B98A5", marginBottom: 20 }}>
+        <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>
           Your profile stays out of player search unless you choose to be discoverable. Use a gaming name and keep personal contact details private.
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <div style={{ background: "var(--panel-raised)", border: "1px solid var(--border)", padding: 14 }}>
+            <Eyebrow>Profile ideas</Eyebrow>
+            <div style={{ fontSize: 13, color: "var(--text-muted)", margin: "6px 0 10px" }}>
+              Pick a quick avatar and try a starter bio or game. You can change these any time.
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+              {PLAYER_AVATARS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-label={"Choose avatar " + option}
+                  aria-pressed={avatar === option}
+                  onClick={() => setAvatar(option)}
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: "50%",
+                    border: avatar === option ? "2px solid var(--accent)" : "1px solid var(--border)",
+                    background: avatar === option ? "var(--panel-bg)" : "transparent",
+                    color: "var(--page-text)",
+                    fontSize: 18,
+                    cursor: "pointer",
+                  }}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+            <div style={{ fontSize: 11, color: "var(--text-dim)", marginBottom: 6 }}>QUICK GAME PICKS</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+              {QUICK_PICK_GAMES.map((game) => (
+                <Button
+                  key={game}
+                  variant={games.includes(game) ? "primary" : "ghost"}
+                  style={{ padding: "6px 9px", fontSize: 11 }}
+                  onClick={() => toggleGame(game)}
+                >
+                  {games.includes(game) ? "✓ " : "+ "}{game}
+                </Button>
+              ))}
+            </div>
+            <div style={{ fontSize: 11, color: "var(--text-dim)", marginBottom: 6 }}>BIO STARTERS</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {BIO_EXAMPLES.map((example) => (
+                <Button
+                  key={example.label}
+                  variant="ghost"
+                  style={{ padding: "6px 9px", fontSize: 11 }}
+                  onClick={() => setBio(example.text)}
+                >
+                  {example.label}
+                </Button>
+              ))}
+            </div>
+          </div>
           <Field label="Player name">
             <TextInput value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={40} placeholder="ghostpeak" />
           </Field>
@@ -575,18 +644,18 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
               type="checkbox"
               checked={discoverable}
               onChange={(e) => setDiscoverable(e.target.checked)}
-              style={{ marginTop: 2, accentColor: "#3FD6C0" }}
+              style={{ marginTop: 2, accentColor: "var(--accent-secondary)" }}
             />
             <span>
               <strong>Show me in player search</strong>
-              <span style={{ display: "block", color: "#8B98A5", marginTop: 3 }}>
+              <span style={{ display: "block", color: "var(--text-muted)", marginTop: 3 }}>
                 Only turn this on if you want signed-in GrindInfo players to find this profile.
               </span>
             </span>
           </label>
         </div>
 
-        {error && <div style={{ fontSize: 13, color: "#FF5C5C", marginTop: 14 }}>{error}</div>}
+        {error && <div style={{ fontSize: 13, color: "var(--danger)", marginTop: 14 }}>{error}</div>}
 
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 24 }}>
           <Button variant="ghost" onClick={onSkip}>
@@ -601,8 +670,11 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
 
 function PlayerCard({ player }) {
   return (
-    <div style={{ background: "var(--panel-bg)", border: "1px solid #232B33", padding: "16px 18px" }}>
-      <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: "0.02em" }}>
+    <div className="sl-card" style={{ background: "var(--panel-bg)", border: "1px solid var(--border)", padding: "16px 18px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: "0.02em" }}>
+        <span aria-hidden="true" style={{ width: 38, height: 38, borderRadius: "50%", display: "grid", placeItems: "center", background: "var(--panel-raised)", border: "1px solid var(--border)", fontSize: 20 }}>
+          {player.avatar || "🎮"}
+        </span>
         {player.displayName}
       </div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "8px 0" }}>
@@ -613,15 +685,15 @@ function PlayerCard({ player }) {
               fontFamily: "'JetBrains Mono', monospace",
               fontSize: 10,
               padding: "3px 8px",
-              border: "1px solid #2E3946",
-              color: "#3FD6C0",
+              border: "1px solid var(--border-strong)",
+              color: "var(--accent-secondary)",
             }}
           >
             {g}
           </span>
         ))}
       </div>
-      <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "#8B98A5" }}>
+      <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--text-muted)" }}>
         {player.region} · {player.language}
         {player.style ? ` · ${player.style}` : ""}
       </div>
@@ -703,7 +775,7 @@ function FindPlayersPage({ currentUid, myProfile, onEditProfile }) {
         <Button onClick={onEditProfile}>{hasOwnProfile ? "Edit my profile" : "+ Create my profile"}</Button>
       </div>
 
-      <div style={{ fontSize: 13, color: "#8B98A5", marginBottom: 14, borderLeft: "2px solid #FFC22E", paddingLeft: 12 }}>
+      <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14, borderLeft: "2px solid var(--accent)", paddingLeft: 12 }}>
         Online teammates are people you may not know. Keep personal contact details private and stop interacting if someone makes you uncomfortable.
       </div>
       <div style={{ display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
@@ -755,16 +827,16 @@ function FindPlayersPage({ currentUid, myProfile, onEditProfile }) {
         </div>
       </div>
       {myProfile && (
-        <div style={{ fontSize: 12, color: "#8B98A5", marginBottom: 16 }}>
+        <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
           “Use my interests” fills these filters from your profile. You can change them before searching.
         </div>
       )}
 
-      {playersError && <div style={{ fontSize: 13, color: "#FF5C5C", marginBottom: 14 }}>{playersError}</div>}
+      {playersError && <div style={{ fontSize: 13, color: "var(--danger)", marginBottom: 14 }}>{playersError}</div>}
       {!hasFilters ? (
         <EmptyState title="Choose a search filter" body="Select one or more games, a region, or a language to search profiles that opted in to discovery. Playing style can narrow your matches." />
       ) : playersLoading ? (
-        <div style={{ color: "#8B98A5", fontSize: 13, padding: 20 }}>Searching opted-in players…</div>
+        <div style={{ color: "var(--text-muted)", fontSize: 13, padding: 20 }}>Searching opted-in players…</div>
       ) : filtered.length === 0 ? (
         <EmptyState title="No players match yet" body="Try another game, region, language, or playing style." />
       ) : (
@@ -781,7 +853,7 @@ function FindPlayersPage({ currentUid, myProfile, onEditProfile }) {
 // ---------- app ----------
 
 export default function App() {
-  const [theme, setTheme] = useState("cyberpunk");
+  const [theme, setTheme] = useState("glacier");
   const [tournaments, setTournaments] = useState([]);
   const [selectedTeams, setSelectedTeams] = useState([]);
   const [selectedMatches, setSelectedMatches] = useState([]);
@@ -1048,7 +1120,7 @@ export default function App() {
   if (authLoading) {
     return (
       <div style={shellStyle}>
-        <div style={{ color: "#8B98A5", fontFamily: "'Inter', sans-serif", padding: 40, textAlign: "center" }}>
+        <div style={{ color: "var(--text-muted)", fontFamily: "'Inter', sans-serif", padding: 40, textAlign: "center" }}>
           Loading…
         </div>
       </div>
@@ -1071,7 +1143,7 @@ export default function App() {
   if (loading) {
     return (
       <div style={shellStyle}>
-        <div style={{ color: "#8B98A5", fontFamily: "'Inter', sans-serif", padding: 40, textAlign: "center" }}>
+        <div style={{ color: "var(--text-muted)", fontFamily: "'Inter', sans-serif", padding: 40, textAlign: "center" }}>
           Loading tournaments…
         </div>
       </div>
@@ -1080,20 +1152,10 @@ export default function App() {
 
   return (
     <div style={shellStyle} data-theme={theme}>
+      <style>{THEME_CSS}</style>
       <style>{`
-      [data-theme="cyberpunk"] {
-  --page-bg: #090611;
-  --page-text: #F4F0FF;
-  --panel-bg: #170F24;
-}
-
-[data-theme="dark"] {
-  --page-bg: #0A0E12;
-  --page-text: #EDF1F4;
-  --panel-bg: #12181F;
-}
         * { box-sizing: border-box; }
-        ::selection { background: #FFC22E; color: #0A0E12; }
+        ::selection { background: var(--accent); color: var(--accent-contrast); }
         button:active { transform: scale(0.98); }
         @media (prefers-reduced-motion: reduce) {
           * { transition: none !important; animation: none !important; }
@@ -1105,7 +1167,7 @@ export default function App() {
       <Header saving={saving} user={user} onSignOut={handleSignOut} theme={theme} setTheme={setTheme} />
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "16px 20px 0" }}>
-        <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #1B222A" }}>
+        <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--border)" }}>
           {[
             { id: "tournaments", label: "Tournaments" },
             { id: "players", label: "Find players" },
@@ -1116,8 +1178,8 @@ export default function App() {
               style={{
                 background: "none",
                 border: "none",
-                borderBottom: section === s.id ? "2px solid #3FD6C0" : "2px solid transparent",
-                color: section === s.id ? "var(--page-text)" : "#8B98A5",
+                borderBottom: section === s.id ? "2px solid var(--accent-secondary)" : "2px solid transparent",
+                color: section === s.id ? "var(--page-text)" : "var(--text-muted)",
                 fontFamily: "'JetBrains Mono', monospace",
                 fontSize: 12,
                 letterSpacing: "0.05em",
@@ -1191,91 +1253,63 @@ export default function App() {
 
 const shellStyle = {
   minHeight: "100vh",
-  background: "var(--page-bg, #0A0E12)",
-  color: "var(--page-text, #EDF1F4)",
+  background: "var(--page-bg)",
+  color: "var(--page-text)",
   fontFamily: "'Inter', sans-serif",
 };
 
 function Header({ saving, user, onSignOut, theme, setTheme }) {
+  const displayName = user?.displayName || user?.email || "Player";
+  const initials = safeProfileName(user?.displayName).slice(0, 1).toUpperCase();
+
   return (
-    <div style={{ borderBottom: "1px solid #1B222A" }}>
-      <div
-        style={{
-          maxWidth: 980,
-          margin: "0 auto",
-          padding: "20px 20px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-          <span
-            style={{
-              fontFamily: "'Bebas Neue', sans-serif",
-              fontSize: 28,
-              letterSpacing: "0.04em",
-              color: "var(--page-text)",
-            }}
-          >
+    <div style={{ borderBottom: "1px solid var(--border)" }}>
+      <div style={{ maxWidth: 980, margin: "0 auto", padding: "20px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, letterSpacing: "0.04em", color: "var(--page-text)" }}>
             GRINDINFO
           </span>
-          <span
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: 11,
-              color: "#3FD6C0",
-              letterSpacing: "0.1em",
-            }}
-          >
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--accent-secondary)", letterSpacing: "0.1em" }}>
             TOURNAMENT OPS
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <span
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: 11,
-              color: saving ? "#FFC22E" : "#8B98A5",
-              minWidth: 70,
-              textAlign: "right",
-            }}
-          >
+          <span aria-live="polite" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: saving ? "var(--accent)" : "var(--text-muted)", minWidth: 70, textAlign: "right" }}>
             {saving ? "SAVING…" : "SAVED"}
           </span>
-          <Button
-            variant="ghost"
-            onClick={() => setTheme(theme === "cyberpunk" ? "dark" : "cyberpunk")}
-          >
-            {theme === "cyberpunk" ? "Switch to Dark" : "Switch to Cyberpunk"}
-          </Button>
-          {user && (
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span
-                style={{
-                  fontFamily: "'Inter', sans-serif",
-                  fontSize: 13,
-                  color: "#8B98A5",
-                  maxWidth: 140,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-                title={user.displayName || user.email}
-              >
-                {user.displayName || user.email}
-              </span>
-              <Button variant="ghost" onClick={onSignOut}>
+          <details style={{ position: "relative" }}>
+            <summary
+              aria-label="Account menu"
+              style={{ listStyle: "none", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "var(--page-text)", border: "1px solid var(--border)", background: "var(--panel-bg)", padding: "6px 9px", fontFamily: "'Inter', sans-serif", fontSize: 12 }}
+            >
+              {user?.photoURL ? (
+                <img src={user.photoURL} alt="" style={{ width: 30, height: 30, objectFit: "cover", borderRadius: "50%" }} />
+              ) : (
+                <span aria-hidden="true" style={{ width: 30, height: 30, borderRadius: "50%", display: "grid", placeItems: "center", background: "var(--accent)", color: "var(--accent-contrast)", fontWeight: 700 }}>
+                  {initials}
+                </span>
+              )}
+              <span style={{ maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</span>
+              <span aria-hidden="true" style={{ color: "var(--text-muted)" }}>⌄</span>
+            </summary>
+            <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 60, width: 250, padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)", boxShadow: "var(--panel-shadow)" }}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>{displayName}</div>
+              <Field label="Theme">
+                <Select value={theme} onChange={(event) => setTheme(event.target.value)}>
+                  <option value="glacier">Glacier (default)</option>
+                  <option value="solar-flare">Solar Flare (dark)</option>
+                </Select>
+              </Field>
+              <Button variant="ghost" style={{ width: "100%", marginTop: 14 }} onClick={onSignOut}>
                 Sign out
               </Button>
             </div>
-          )}
+          </details>
         </div>
       </div>
     </div>
   );
 }
-
 function TournamentList({ tournaments, onOpen, onNew }) {
   return (
     <div>
@@ -1329,18 +1363,18 @@ function TournamentList({ tournaments, onOpen, onNew }) {
                 style={{
                   textAlign: "left",
                   background: "var(--panel-bg)",
-                  border: "1px solid #232B33",
+                  border: "1px solid var(--border)",
                   padding: "18px 18px 16px",
                   cursor: "pointer",
                   color: "inherit",
                   animationDelay: `${i * 30}ms`,
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#3FD6C0")}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#232B33")}
-                onFocus={(e) => (e.currentTarget.style.outline = "2px solid #3FD6C0")}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--accent-secondary)")}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
+                onFocus={(e) => (e.currentTarget.style.outline = "2px solid var(--accent-secondary)")}
                 onBlur={(e) => (e.currentTarget.style.outline = "none")}
               >
-                <Eyebrow color="#8B98A5">{t.game || "Game TBD"}</Eyebrow>
+                <Eyebrow color="var(--text-muted)">{t.game || "Game TBD"}</Eyebrow>
                 <div
                   style={{
                     fontFamily: "'Bebas Neue', sans-serif",
@@ -1356,14 +1390,14 @@ function TournamentList({ tournaments, onOpen, onNew }) {
                     style={{
                       fontFamily: "'JetBrains Mono', monospace",
                       fontSize: 10,
-                      color: "#5B6772",
+                      color: "var(--text-dim)",
                       marginBottom: 6,
                     }}
                   >
                     LEGACY IMPORT
                   </div>
                 )}
-                <div style={{ marginTop: 12, fontSize: 12, color: "#5B6772" }}>
+                <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-dim)" }}>
                   {fmtDate(t.startDate)} {t.endDate ? `– ${fmtDate(t.endDate)}` : ""}
                 </div>
               </button>
@@ -1409,7 +1443,7 @@ function NewTournamentModal({ onClose, onCreate }) {
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "var(--panel-bg)",
-          border: "1px solid #232B33",
+          border: "1px solid var(--border)",
           padding: 28,
           width: "100%",
           maxWidth: 460,
@@ -1431,7 +1465,7 @@ function NewTournamentModal({ onClose, onCreate }) {
               autoFocus
             />
           </Field>
-          {error && <div style={{ fontSize: 13, color: "#FF5C5C" }}>{error}</div>}
+          {error && <div style={{ fontSize: 13, color: "var(--danger)" }}>{error}</div>}
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ flex: 1 }}>
               <Field label="Game">
@@ -1514,7 +1548,7 @@ function TournamentDetail(props) {
         style={{
           background: "none",
           border: "none",
-          color: "#8B98A5",
+          color: "var(--text-muted)",
           fontFamily: "'JetBrains Mono', monospace",
           fontSize: 12,
           cursor: "pointer",
@@ -1527,13 +1561,13 @@ function TournamentDetail(props) {
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
         <div>
-          <Eyebrow color="#8B98A5">
+          <Eyebrow color="var(--text-muted)">
             {tournament.game} · {tournament.format}
           </Eyebrow>
           <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 38, margin: "4px 0 6px" }}>
             {tournament.name}
           </h1>
-          <div style={{ fontSize: 13, color: "#5B6772" }}>
+          <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
             {fmtDate(tournament.startDate)} {tournament.endDate ? `– ${fmtDate(tournament.endDate)}` : ""}
           </div>
           {isAdmin && (
@@ -1544,8 +1578,8 @@ function TournamentDetail(props) {
                 fontFamily: "'JetBrains Mono', monospace",
                 fontSize: 10,
                 letterSpacing: "0.1em",
-                color: "#0A0E12",
-                background: "#FFC22E",
+                color: "var(--accent-contrast)",
+                background: "var(--accent)",
                 padding: "4px 10px",
               }}
             >
@@ -1565,7 +1599,7 @@ function TournamentDetail(props) {
         )}
       </div>
 
-      <div style={{ display: "flex", gap: 4, marginTop: 28, borderBottom: "1px solid #1B222A", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 4, marginTop: 28, borderBottom: "1px solid var(--border)", flexWrap: "wrap" }}>
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -1573,8 +1607,8 @@ function TournamentDetail(props) {
             style={{
               background: "none",
               border: "none",
-              borderBottom: tab === t.id ? "2px solid #FFC22E" : "2px solid transparent",
-              color: tab === t.id ? "var(--page-text)" : "#8B98A5",
+              borderBottom: tab === t.id ? "2px solid var(--accent)" : "2px solid transparent",
+              color: tab === t.id ? "var(--page-text)" : "var(--text-muted)",
               fontFamily: "'JetBrains Mono', monospace",
               fontSize: 12,
               letterSpacing: "0.05em",
@@ -1654,7 +1688,7 @@ function TeamsPanel({ teams, isAdmin, onAdd, onDelete }) {
           <Button onClick={submit}>Add team</Button>
         </div>
       )}
-      {error && <div style={{ fontSize: 13, color: "#FF5C5C", marginBottom: 14 }}>{error}</div>}
+      {error && <div style={{ fontSize: 13, color: "var(--danger)", marginBottom: 14 }}>{error}</div>}
 
       {teams.length === 0 ? (
         <EmptyState title="No teams yet" body="Add the teams competing in this tournament." />
@@ -1665,7 +1699,7 @@ function TeamsPanel({ teams, isAdmin, onAdd, onDelete }) {
               key={t.id}
               style={{
                 background: "var(--panel-bg)",
-                border: "1px solid #232B33",
+                border: "1px solid var(--border)",
                 padding: "14px 16px",
                 display: "flex",
                 justifyContent: "space-between",
@@ -1677,7 +1711,7 @@ function TeamsPanel({ teams, isAdmin, onAdd, onDelete }) {
                   {t.name}
                 </div>
                 {t.tag && (
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "#3FD6C0" }}>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--accent-secondary)" }}>
                     {t.tag}
                   </div>
                 )}
@@ -1686,7 +1720,7 @@ function TeamsPanel({ teams, isAdmin, onAdd, onDelete }) {
                 <button
                   onClick={() => onDelete(t.id)}
                   aria-label={`Remove ${t.name}`}
-                  style={{ background: "none", border: "none", color: "#5B6772", cursor: "pointer", fontSize: 16 }}
+                  style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: 16 }}
                 >
                   ×
                 </button>
@@ -1787,7 +1821,7 @@ function MatchesPanel({ teams, matches, isAdmin, onAdd, onUpdate, onDelete }) {
           <Button onClick={submit}>Schedule match</Button>
         </div>
       )}
-      {error && <div style={{ fontSize: 13, color: "#FF5C5C", marginBottom: 14 }}>{error}</div>}
+      {error && <div style={{ fontSize: 13, color: "var(--danger)", marginBottom: 14 }}>{error}</div>}
 
       {matches.length === 0 ? (
         <EmptyState title="No matches scheduled" body="Schedule a match between two teams to start tracking results." />
@@ -1839,7 +1873,7 @@ function MatchRow({ match, teamAName, teamBName, teamATag, teamBTag, isAdmin, on
     <div
       style={{
         background: "var(--panel-bg)",
-        border: "1px solid #232B33",
+        border: "1px solid var(--border)",
         padding: "12px 16px",
         display: "flex",
         alignItems: "center",
@@ -1853,12 +1887,12 @@ function MatchRow({ match, teamAName, teamBName, teamATag, teamBTag, isAdmin, on
             fontFamily: "'Inter', sans-serif",
             fontSize: 14,
             fontWeight: aWins ? 700 : 400,
-            color: aWins ? "#FFC22E" : "var(--page-text)",
+            color: aWins ? "var(--accent)" : "var(--page-text)",
             flex: 1,
             textAlign: "right",
           }}
         >
-          {teamAName} {teamATag && <span style={{ color: "#5B6772", fontSize: 11 }}>({teamATag})</span>}
+          {teamAName} {teamATag && <span style={{ color: "var(--text-dim)", fontSize: 11 }}>({teamATag})</span>}
         </span>
         {isAdmin ? (
           <input
@@ -1877,7 +1911,7 @@ function MatchRow({ match, teamAName, teamBName, teamATag, teamBTag, isAdmin, on
         ) : (
           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 16, fontWeight: 700 }}>{scoreA}</span>
         )}
-        <span style={{ color: "#5B6772", fontFamily: "'JetBrains Mono', monospace", fontSize: 12 }}>–</span>
+        <span style={{ color: "var(--text-dim)", fontFamily: "'JetBrains Mono', monospace", fontSize: 12 }}>–</span>
         {isAdmin ? (
           <input
             type="number"
@@ -1900,11 +1934,11 @@ function MatchRow({ match, teamAName, teamBName, teamATag, teamBTag, isAdmin, on
             fontFamily: "'Inter', sans-serif",
             fontSize: 14,
             fontWeight: bWins ? 700 : 400,
-            color: bWins ? "#FFC22E" : "var(--page-text)",
+            color: bWins ? "var(--accent)" : "var(--page-text)",
             flex: 1,
           }}
         >
-          {teamBName} {teamBTag && <span style={{ color: "#5B6772", fontSize: 11 }}>({teamBTag})</span>}
+          {teamBName} {teamBTag && <span style={{ color: "var(--text-dim)", fontSize: 11 }}>({teamBTag})</span>}
         </span>
       </div>
 
@@ -1915,7 +1949,7 @@ function MatchRow({ match, teamAName, teamBName, teamATag, teamBTag, isAdmin, on
           <option value="completed">Completed</option>
         </Select>
       ) : (
-        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, textTransform: "uppercase", color: "#8B98A5" }}>
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, textTransform: "uppercase", color: "var(--text-muted)" }}>
           {match.status}
         </span>
       )}
@@ -1924,18 +1958,18 @@ function MatchRow({ match, teamAName, teamBName, teamATag, teamBTag, isAdmin, on
           width: 8,
           height: 8,
           borderRadius: "50%",
-          background: STATUS_COLORS[match.status] || "#8B98A5",
+          background: STATUS_COLORS[match.status] || "var(--text-muted)",
           flexShrink: 0,
         }}
       />
-      <span style={{ fontSize: 12, color: "#5B6772", fontFamily: "'JetBrains Mono', monospace", minWidth: 80 }}>
+      <span style={{ fontSize: 12, color: "var(--text-dim)", fontFamily: "'JetBrains Mono', monospace", minWidth: 80 }}>
         {fmtDate(match.date)}
       </span>
       {isAdmin && (
         <button
           onClick={onDelete}
           aria-label="Delete match"
-          style={{ background: "none", border: "none", color: "#5B6772", cursor: "pointer", fontSize: 16 }}
+          style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: 16 }}
         >
           ×
         </button>
@@ -2038,7 +2072,7 @@ function StatsPanel({ teams, matches, stats, isAdmin, onAdd, onDelete }) {
           <Button onClick={submit}>Log stat line</Button>
         </div>
       )}
-      {error && <div style={{ fontSize: 13, color: "#FF5C5C", marginBottom: 14 }}>{error}</div>}
+      {error && <div style={{ fontSize: 13, color: "var(--danger)", marginBottom: 14 }}>{error}</div>}
 
       {stats.length === 0 ? (
         <EmptyState title="No stats logged" body="Log kills, deaths, assists, and score per player to build the leaderboard." />
@@ -2046,7 +2080,7 @@ function StatsPanel({ teams, matches, stats, isAdmin, onAdd, onDelete }) {
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "'JetBrains Mono', monospace", fontSize: 13 }}>
             <thead>
-              <tr style={{ borderBottom: "1px solid #232B33", color: "#8B98A5", textAlign: "left" }}>
+              <tr style={{ borderBottom: "1px solid var(--border)", color: "var(--text-muted)", textAlign: "left" }}>
                 <th style={{ padding: "8px 10px", fontWeight: 600 }}>Player</th>
                 <th style={{ padding: "8px 10px", fontWeight: 600 }}>Team</th>
                 <th style={{ padding: "8px 10px", fontWeight: 600 }}>Match</th>
@@ -2059,20 +2093,20 @@ function StatsPanel({ teams, matches, stats, isAdmin, onAdd, onDelete }) {
             </thead>
             <tbody>
               {stats.map((s) => (
-                <tr key={s.id} style={{ borderBottom: "1px solid #1B222A" }}>
+                <tr key={s.id} style={{ borderBottom: "1px solid var(--border)" }}>
                   <td style={{ padding: "8px 10px", fontFamily: "'Inter', sans-serif" }}>{s.player}</td>
-                  <td style={{ padding: "8px 10px", color: "#8B98A5" }}>{teamName(s.teamId)}</td>
-                  <td style={{ padding: "8px 10px", color: "#5B6772", fontSize: 12 }}>{matchLabel(s.matchId)}</td>
+                  <td style={{ padding: "8px 10px", color: "var(--text-muted)" }}>{teamName(s.teamId)}</td>
+                  <td style={{ padding: "8px 10px", color: "var(--text-dim)", fontSize: 12 }}>{matchLabel(s.matchId)}</td>
                   <td style={{ padding: "8px 10px", textAlign: "right" }}>{s.kills}</td>
                   <td style={{ padding: "8px 10px", textAlign: "right" }}>{s.deaths}</td>
                   <td style={{ padding: "8px 10px", textAlign: "right" }}>{s.assists}</td>
-                  <td style={{ padding: "8px 10px", textAlign: "right", color: "#FFC22E" }}>{s.score}</td>
+                  <td style={{ padding: "8px 10px", textAlign: "right", color: "var(--accent)" }}>{s.score}</td>
                   <td style={{ padding: "8px 10px", textAlign: "right" }}>
                     {isAdmin && (
                       <button
                         onClick={() => onDelete(s.id)}
                         aria-label={`Delete stat line for ${s.player}`}
-                        style={{ background: "none", border: "none", color: "#5B6772", cursor: "pointer", fontSize: 15 }}
+                        style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: 15 }}
                       >
                         ×
                       </button>
@@ -2119,7 +2153,7 @@ function LeaderboardPanel({ teams, stats }) {
     return <EmptyState title="Nothing to rank yet" body="Log player stats to see the leaderboard fill in." />;
   }
 
-  const rankColor = (i) => (i === 0 ? "#FFC22E" : i === 1 ? "#C8D0D8" : i === 2 ? "#C8804A" : "#5B6772");
+  const rankColor = (i) => (i === 0 ? "var(--accent)" : i === 1 ? "var(--rank-second)" : i === 2 ? "var(--rank-third)" : "var(--text-dim)");
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
@@ -2130,7 +2164,7 @@ function LeaderboardPanel({ teams, stats }) {
           padding: "0 14px 8px",
           fontFamily: "'JetBrains Mono', monospace",
           fontSize: 11,
-          color: "#8B98A5",
+          color: "var(--text-muted)",
           letterSpacing: "0.05em",
         }}
       >
@@ -2152,8 +2186,8 @@ function LeaderboardPanel({ teams, stats }) {
             gridTemplateColumns: "44px 1.6fr 1fr 60px 60px 60px 70px 70px",
             alignItems: "center",
             padding: "12px 14px",
-            background: i < 3 ? "#12181F" : "transparent",
-            borderBottom: "1px solid #1B222A",
+            background: i < 3 ? "var(--panel-raised)" : "transparent",
+            borderBottom: "1px solid var(--border)",
           }}
         >
           <span
@@ -2167,7 +2201,7 @@ function LeaderboardPanel({ teams, stats }) {
             {String(i + 1).padStart(2, "0")}
           </span>
           <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 14, fontWeight: 600 }}>{r.player}</span>
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "#8B98A5" }}>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--text-muted)" }}>
             {teamName(r.teamId)}
           </span>
           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, textAlign: "right" }}>
@@ -2179,7 +2213,7 @@ function LeaderboardPanel({ teams, stats }) {
           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, textAlign: "right" }}>
             {r.assists}
           </span>
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, textAlign: "right", color: "#3FD6C0" }}>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, textAlign: "right", color: "var(--accent-secondary)" }}>
             {kda(r.kills, r.deaths, r.assists)}
           </span>
           <span
@@ -2187,7 +2221,7 @@ function LeaderboardPanel({ teams, stats }) {
               fontFamily: "'JetBrains Mono', monospace",
               fontSize: 13,
               textAlign: "right",
-              color: "#FFC22E",
+              color: "var(--accent)",
               fontWeight: 700,
             }}
           >
