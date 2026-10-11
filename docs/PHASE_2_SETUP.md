@@ -10,7 +10,7 @@ This change is prepared on the `phase-2-community-tournament-tools` branch for r
 - Tournament links can be copied from the tournament detail page. Visitors need to sign in to open the app and view the linked tournament.
 - A player can request to connect with the tournament host. Accepted requests do not create a direct-message feature.
 - Players and tournaments can be reported for abuse/harassment, scams/fraud, inappropriate content, or another concern. Reports are private to platform moderators.
-- A moderator-only CSV import and public browsing page for historical esports results.
+- A moderator-only CSV import and read-only archive page for signed-in players.
 
 ## Set up the first moderator
 
