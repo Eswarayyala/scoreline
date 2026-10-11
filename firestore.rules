@@ -180,6 +180,9 @@ service cloud.firestore {
         allow read: if isAdmin(parent(tid))
                     || (request.auth != null && request.auth.uid == resource.data.playerId);
         allow create: if request.auth != null
+                      && exists(/databases/$(database)/documents/tournaments/$(tid))
+                      && (!parent(tid).keys().hasAny(['registrationOpen'])
+                          || parent(tid).registrationOpen == true)
                       && request.auth.uid == playerId
                       && request.resource.data.keys().hasOnly(['playerId', 'displayName', 'status', 'requestedAt'])
                       && request.resource.data.playerId == request.auth.uid
