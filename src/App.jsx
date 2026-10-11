@@ -7,6 +7,8 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  getDoc,
+  writeBatch,
   query,
   where,
 } from "firebase/firestore";
@@ -28,6 +30,12 @@ const tournamentDocRef = (id) => doc(db, "tournaments", id);
 const teamsCollectionRef = (tid) => collection(db, "tournaments", tid, "teams");
 const matchesCollectionRef = (tid) => collection(db, "tournaments", tid, "matches");
 const statsCollectionRef = (tid) => collection(db, "tournaments", tid, "stats");
+const registrationsCollectionRef = (tid) => collection(db, "tournaments", tid, "registrations");
+const REPORTS_COLLECTION = collection(db, "reports");
+const FRIEND_REQUESTS_COLLECTION = collection(db, "friendRequests");
+const ARCHIVE_COLLECTION = collection(db, "esportsArchive");
+const PRIZE_PRESETS = [0, 500, 1000, 2500, 5000, 10000];
+const REPORT_REASONS = ["Abuse or harassment", "Scam or fraud", "Inappropriate content", "Other"];
 
 const FONT_LINK_ID = "scoreline-fonts";
 
@@ -721,7 +729,7 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
   );
 }
 
-function PlayerCard({ player }) {
+function PlayerCard({ player, onReport }) {
   return (
     <div className="sl-card" style={{ background: "var(--panel-bg)", border: "1px solid var(--border)", padding: "16px 18px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: "0.02em" }}>
@@ -754,11 +762,12 @@ function PlayerCard({ player }) {
         {player.style ? ` · ${player.style}` : ""}
       </div>
       {player.bio && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--page-text)", marginTop: 10 }}>{player.bio}</div>}
+      <Button variant="ghost" onClick={() => onReport(player)} style={{ marginTop: 12, padding: "7px 10px", fontSize: 11 }}>Report player</Button>
     </div>
   );
 }
 
-function FindPlayersPage({ currentUid, myProfile, onEditProfile }) {
+function FindPlayersPage({ currentUid, myProfile, onEditProfile, onReport }) {
   const [gameFilters, setGameFilters] = useState([]);
   const [regionFilter, setRegionFilter] = useState("");
   const [languageFilter, setLanguageFilter] = useState("");
@@ -897,11 +906,175 @@ function FindPlayersPage({ currentUid, myProfile, onEditProfile }) {
         <EmptyState title="No players match yet" body="Try another game, region, language, or playing style." />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
-          {filtered.map((p) => (
-            <PlayerCard key={p.uid} player={p} />
+            {filtered.map((p) => (
+            <PlayerCard key={p.uid} player={p} onReport={onReport} />
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function ReportModal({ target, onClose, onSubmit }) {
+  const [reason, setReason] = useState(REPORT_REASONS[0]);
+  const [details, setDetails] = useState("");
+  const [error, setError] = useState("");
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(4,6,8,.72)", display: "grid", placeItems: "center", padding: 18 }} onClick={onClose}>
+      <div onClick={(event) => event.stopPropagation()} style={{ width: "100%", maxWidth: 440, padding: 22, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+        <Eyebrow>Safety report</Eyebrow>
+        <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 27, margin: "4px 0 8px" }}>Report {target.type}</h2>
+        <div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 14 }}>{target.name || "This account or tournament"} · Reports are private to GrindInfo moderators.</div>
+        <div style={{ display: "grid", gap: 12 }}>
+          <Field label="What happened?">
+            <Select value={reason} onChange={(event) => setReason(event.target.value)}>{REPORT_REASONS.map((item) => <option key={item}>{item}</option>)}</Select>
+          </Field>
+          <Field label="Details (optional)">
+            <textarea value={details} maxLength={1000} onChange={(event) => setDetails(event.target.value)} rows={4} style={{ ...inputStyle, resize: "vertical" }} placeholder="Share enough context for the safety team to review." />
+          </Field>
+          {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 13 }}>{error}</div>}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <Button variant="ghost" onClick={onClose}>Cancel</Button>
+            <Button onClick={async () => { const message = await onSubmit({ reason, details: details.trim() }); if (message) setError(message); }}>Send report</Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RegistrationPanel({ tournament, requests, currentUserId, currentUserName, isAdmin, onRequest, onDecision }) {
+  const mine = requests.find((request) => request.playerId === currentUserId);
+  const pending = requests.filter((request) => request.status === "pending");
+  return (
+    <section style={{ marginTop: 20, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+      <Eyebrow>Free registration</Eyebrow>
+      <div style={{ fontSize: 13, color: "var(--text-muted)", margin: "8px 0 12px" }}>
+        {mine ? `Your request is ${mine.status}.` : "Request a place. The tournament host or co-host must approve it."}
+      </div>
+      {!isAdmin && !mine && <Button onClick={() => onRequest({ playerId: currentUserId, displayName: currentUserName })}>Request to join</Button>}
+      {isAdmin && (
+        <div style={{ display: "grid", gap: 8 }}>
+          {pending.length === 0 ? <div style={{ fontSize: 13, color: "var(--text-dim)" }}>No requests waiting.</div> : pending.map((request) => (
+            <div key={request.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", borderTop: "1px solid var(--border)", paddingTop: 9 }}>
+              <span>{request.displayName || "Player"}</span>
+              <span style={{ display: "flex", gap: 6 }}><Button onClick={() => onDecision(request.id, "approved")}>Approve</Button><Button variant="danger" onClick={() => onDecision(request.id, "declined")}>Decline</Button></span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function CoAdminPanel({ tournament, isOwner, onChange }) {
+  const [accountId, setAccountId] = useState("");
+  if (!isOwner) return null;
+  const ids = tournament.coAdminUserIds || [];
+  return (
+    <section style={{ marginTop: 16, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+      <Eyebrow>Co-host access</Eyebrow>
+      <div style={{ color: "var(--text-muted)", fontSize: 12, margin: "7px 0 10px" }}>Add a trusted player using their Firebase account UID. Co-hosts can manage this tournament; only you can transfer ownership or delete it.</div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <TextInput aria-label="Co-host account UID" value={accountId} onChange={(event) => setAccountId(event.target.value)} placeholder="Paste account UID" />
+        <Button disabled={!accountId.trim() || ids.includes(accountId.trim())} onClick={() => { onChange([...ids, accountId.trim()]); setAccountId(""); }}>Add co-host</Button>
+      </div>
+      {ids.map((id) => <div key={id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", padding: "8px 0", marginTop: 8, fontSize: 12 }}>{id}<Button variant="danger" onClick={() => onChange(ids.filter((item) => item !== id))}>Remove</Button></div>)}
+    </section>
+  );
+}
+
+function FriendRequestCenter({ requests, currentUserId, onDecision }) {
+  const incoming = requests.filter((request) => request.recipientId === currentUserId && request.status === "pending");
+  const sent = requests.filter((request) => request.requesterId === currentUserId);
+  return (
+    <div style={{ paddingTop: 34 }}>
+      <Eyebrow>Player connections</Eyebrow>
+      <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 18px" }}>Friend requests</h1>
+      {incoming.length === 0 ? <div style={{ color: "var(--text-muted)", marginBottom: 18 }}>No pending requests to review.</div> : <div style={{ display: "grid", gap: 10, marginBottom: 20 }}>{incoming.map((request) => <div key={request.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}><span>{request.requesterName || "Player"} wants to connect</span><span style={{ display: "flex", gap: 6 }}><Button onClick={() => onDecision(request.id, "accepted")}>Accept</Button><Button variant="danger" onClick={() => onDecision(request.id, "declined")}>Decline</Button></span></div>)}</div>}
+      {sent.length > 0 && <div><Eyebrow>Requests you sent</Eyebrow><div style={{ display: "grid", gap: 8, marginTop: 10 }}>{sent.map((request) => <div key={request.id} style={{ padding: 12, background: "var(--panel-bg)", border: "1px solid var(--border)", fontSize: 13 }}>Host connection request · {request.status}</div>)}</div></div>}
+    </div>
+  );
+}
+
+function ReportsInbox({ reports, onStatusChange }) {
+  return (
+    <div style={{ paddingTop: 34 }}>
+      <Eyebrow>Moderator tools · private</Eyebrow>
+      <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 18px" }}>Safety reports</h1>
+      {reports.length === 0 ? <EmptyState title="No reports to review" body="New abuse, scam and inappropriate-content reports appear here." /> : <div style={{ display: "grid", gap: 10 }}>{reports.map((report) => <article key={report.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{report.status || "submitted"} · {report.targetType} · {report.reason}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0", fontSize: 22 }}>{report.targetName || "Reported item"}</h2><p style={{ fontSize: 13, color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{report.details || "No extra details provided."}</p><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><Button variant="ghost" onClick={() => onStatusChange(report.id, "reviewing")}>Mark reviewing</Button><Button onClick={() => onStatusChange(report.id, "closed")}>Close report</Button></div></article>)}</div>}
+    </div>
+  );
+}
+
+function HistoricalArchive({ entries, isModerator, onImport }) {
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [preview, setPreview] = useState(null);
+  const parseCsv = (text) => {
+    const rows = []; let row = [], cell = "", quoted = false;
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (char === '"' && quoted && text[i + 1] === '"') { cell += '"'; i++; }
+      else if (char === '"') quoted = !quoted;
+      else if (char === "," && !quoted) { row.push(cell.trim()); cell = ""; }
+      else if ((char === "\n" || char === "\r") && !quoted) { if (cell || row.length) { row.push(cell.trim()); rows.push(row); } row = []; cell = ""; if (char === "\r" && text[i + 1] === "\n") i++; }
+      else cell += char;
+    }
+    if (cell || row.length) { row.push(cell.trim()); rows.push(row); }
+    if (rows.length < 2) throw new Error("The CSV needs a header and at least one event.");
+    const headers = rows.shift().map((header) => header.toLowerCase());
+    const required = ["tournament", "game", "eventdate", "winner"];
+    if (required.some((header) => !headers.includes(header))) throw new Error("Required CSV columns: tournament, game, eventDate, winner.");
+    return rows.filter((cells) => cells.some(Boolean)).map((cells) => Object.fromEntries(headers.map((header, index) => [header, cells[index] || ""]))).slice(0, 200);
+  };
+  return (
+    <div style={{ paddingTop: 34 }}>
+      <Eyebrow>International esports history</Eyebrow>
+      <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 8px" }}>Past results archive</h1>
+      <div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 18 }}>Browse past events, winners, runners-up and MVPs. To add records, select a CSV with columns tournament, game, eventDate, winner, runnerUp, mvp and source.</div>
+      {isModerator && <Field label="Import CSV (up to 200 rows)">
+        <input type="file" accept=".csv,text/csv" onChange={async (event) => {
+          setError(""); setMessage("");
+          const file = event.target.files?.[0]; if (!file) return;
+          if (file.size > 1024 * 1024) { setError("Choose a CSV smaller than 1 MB."); return; }
+          try {
+            const records = parseCsv(await file.text());
+            const known = new Set(entries.map((entry) => [entry.tournament, entry.game, entry.eventDate].map((part) => String(part || "").toLowerCase()).join("|")));
+            const clean = records.filter((entry) => entry.tournament && entry.game && entry.eventdate && entry.winner).map((entry) => ({
+              tournament: entry.tournament.slice(0, 120), game: entry.game.slice(0, 60), eventDate: entry.eventdate.slice(0, 40),
+              winner: entry.winner.slice(0, 100), runnerUp: (entry.runnerup || "").slice(0, 100), mvp: (entry.mvp || "").slice(0, 100),
+              source: (entry.source || "").trim().slice(0, 500),
+            })).filter((entry) => {
+              if (entry.source && !/^https:\/\//i.test(entry.source)) throw new Error("Source links must start with https://.");
+              const key = [entry.tournament, entry.game, entry.eventDate].map((part) => part.toLowerCase()).join("|");
+              if (known.has(key)) return false;
+              known.add(key);
+              return true;
+            });
+            if (!clean.length) throw new Error("No new complete records found. Check the required columns and duplicates.");
+            setPreview(clean); setMessage("Review the records below, then choose Import to publish them.");
+          } catch (issue) { setError(issue.message || "Could not read this CSV."); }
+          event.target.value = "";
+        }} />
+      </Field>}
+      {error && <div role="alert" style={{ color: "var(--danger)", marginTop: 10, fontSize: 13 }}>{error}</div>}
+      {message && <div role="status" style={{ color: "var(--success)", marginTop: 10, fontSize: 13 }}>{message}</div>}
+      {preview && <section style={{ marginTop: 14, padding: 14, border: "1px solid var(--border-strong)", background: "var(--panel-bg)" }}>
+        <Eyebrow>Import preview · {preview.length} record(s)</Eyebrow>
+        <div style={{ display: "grid", gap: 6, margin: "10px 0 14px", fontSize: 12, color: "var(--text-muted)" }}>
+          {preview.slice(0, 8).map((entry, index) => <div key={index}>{entry.eventDate} · {entry.game} · {entry.tournament} · Winner: {entry.winner}</div>)}
+          {preview.length > 8 && <div>and {preview.length - 8} more…</div>}
+        </div>
+        <div style={{ display: "flex", gap: 8 }}><Button onClick={async () => {
+          setError(""); setMessage("");
+          try { await onImport(preview); setMessage(`Imported ${preview.length} event record(s).`); setPreview(null); }
+          catch (issue) { setError(issue.message || "Could not import these records."); }
+        }}>Import {preview.length} records</Button><Button variant="ghost" onClick={() => { setPreview(null); setMessage(""); }}>Cancel import</Button></div>
+      </section>}
+      <div style={{ display: "grid", gap: 10, marginTop: 20 }}>
+      {entries.length === 0 ? <EmptyState title="Archive is ready for records" body="Add historical international esports results with the moderator CSV import." /> : entries.map((entry) => <article key={entry.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{entry.game} · {entry.eventDate}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0", fontSize: 24 }}>{entry.tournament}</h2><div>🏆 {entry.winner}{entry.runnerUp ? ` · Runner-up: ${entry.runnerUp}` : ""}{entry.mvp ? ` · MVP: ${entry.mvp}` : ""}</div>{entry.source && <a href={entry.source} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 8, color: "var(--accent)" }}>Source</a>}</article>)}
+      </div>
     </div>
   );
 }
@@ -914,13 +1087,19 @@ export default function App() {
   const [selectedTeams, setSelectedTeams] = useState([]);
   const [selectedMatches, setSelectedMatches] = useState([]);
   const [selectedStats, setSelectedStats] = useState([]);
+  const [selectedRegistrations, setSelectedRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
-  const [view, setView] = useState("list"); // 'list' | 'detail'
-  const [selectedId, setSelectedId] = useState(null);
+  const [view, setView] = useState(() => new URLSearchParams(window.location.search).has("tournament") ? "detail" : "list");
+  const [selectedId, setSelectedId] = useState(() => new URLSearchParams(window.location.search).get("tournament"));
   const [detailTab, setDetailTab] = useState("teams");
   const [showNewTournament, setShowNewTournament] = useState(false);
+  const [reportTarget, setReportTarget] = useState(null);
+  const [isModerator, setIsModerator] = useState(false);
+  const [friendRequests, setFriendRequests] = useState([]);
+  const [archiveEntries, setArchiveEntries] = useState([]);
+  const [privateReports, setPrivateReports] = useState([]);
 
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -984,6 +1163,7 @@ export default function App() {
   useEffect(() => {
     if (!user) {
       setMyProfile(null);
+      setIsModerator(false);
       return;
     }
     const unsub = onSnapshot(playerDocRef(user.uid), (snap) => {
@@ -996,6 +1176,39 @@ export default function App() {
     });
     return () => unsub();
   }, [user]);
+
+  useEffect(() => {
+    if (!user) return undefined;
+    let active = true;
+    getDoc(doc(db, "moderators", user.uid)).then((snapshot) => {
+      if (active) setIsModerator(snapshot.exists() && snapshot.data().enabled === true);
+    }).catch(() => { if (active) setIsModerator(false); });
+    return () => { active = false; };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) { setFriendRequests([]); return undefined; }
+    let incoming = [], outgoing = [];
+    const publish = () => setFriendRequests([...incoming, ...outgoing.filter((out) => !incoming.some((inbox) => inbox.id === out.id))]);
+    const stopIncoming = onSnapshot(query(FRIEND_REQUESTS_COLLECTION, where("recipientId", "==", user.uid)), (snapshot) => {
+      incoming = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); publish();
+    }, () => { incoming = []; publish(); });
+    const stopOutgoing = onSnapshot(query(FRIEND_REQUESTS_COLLECTION, where("requesterId", "==", user.uid)), (snapshot) => {
+      outgoing = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); publish();
+    }, () => { outgoing = []; publish(); });
+    return () => { stopIncoming(); stopOutgoing(); };
+  }, [user]);
+
+  useEffect(() => onSnapshot(ARCHIVE_COLLECTION, (snapshot) => {
+    setArchiveEntries(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
+  }, () => setArchiveEntries([])), []);
+
+  useEffect(() => {
+    if (!isModerator) { setPrivateReports([]); return undefined; }
+    return onSnapshot(REPORTS_COLLECTION, (snapshot) => {
+      setPrivateReports(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
+    }, () => setPrivateReports([]));
+  }, [isModerator]);
 
   const skipProfile = useCallback(() => {
     if (user) localStorage.setItem(`profilePromptDismissed_${user.uid}`, "1");
@@ -1040,6 +1253,17 @@ export default function App() {
     return () => unsubs.forEach((u) => u());
   }, [selectedId]);
 
+  useEffect(() => {
+    if (!selectedId || !user) { setSelectedRegistrations([]); return undefined; }
+    const tournament = tournaments.find((item) => item.id === selectedId);
+    const canReview = tournament && (tournament.adminUserId === user.uid || tournament.coAdminUserIds?.includes(user.uid));
+    const requests = registrationsCollectionRef(selectedId);
+    const registrationQuery = canReview ? requests : query(requests, where("playerId", "==", user.uid));
+    return onSnapshot(registrationQuery, (snapshot) => {
+      setSelectedRegistrations(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
+    }, () => setSelectedRegistrations([]));
+  }, [selectedId, user, tournaments]);
+
   const showToast = useCallback((msg) => {
     setToast(msg);
     window.clearTimeout(showToast._t);
@@ -1073,6 +1297,9 @@ export default function App() {
     try {
       await addDoc(TOURNAMENTS_COLLECTION, {
         ...t,
+        prizeAmount: Number(t.prizeAmount) || 0,
+        prizeCurrency: t.prizeCurrency || "INR",
+        registrationOpen: true,
         adminUserId: user.uid,
         adminDisplayName: safeProfileName(myProfile?.displayName, user.displayName),
         coAdminUserIds: [],
@@ -1112,10 +1339,13 @@ export default function App() {
         ...selectedTeams.map((t) => deleteDoc(doc(teamsCollectionRef(id), t.id))),
         ...selectedMatches.map((m) => deleteDoc(doc(matchesCollectionRef(id), m.id))),
         ...selectedStats.map((s) => deleteDoc(doc(statsCollectionRef(id), s.id))),
+        ...selectedRegistrations.map((request) => deleteDoc(doc(registrationsCollectionRef(id), request.id))),
       ]);
       await deleteDoc(tournamentDocRef(id));
       showToast("Tournament deleted");
       setView("list");
+      setSelectedId(null);
+      const url = new URL(window.location.href); url.searchParams.delete("tournament"); window.history.replaceState({}, "", url);
     } catch (e) {
       showToast("Couldn't delete tournament — try again");
     } finally {
@@ -1186,8 +1416,79 @@ export default function App() {
     }
   };
 
+  const requestRegistration = async (tournamentId, player) => {
+    if (!user) return;
+    try {
+      await setDoc(doc(registrationsCollectionRef(tournamentId), user.uid), {
+        playerId: user.uid, displayName: safeProfileName(player.displayName),
+        status: "pending", requestedAt: Date.now(),
+      });
+      showToast("Join request sent to the tournament host");
+    } catch (e) { showToast("Couldn't send the request — it may already exist"); }
+  };
+
+  const decideRegistration = async (tournamentId, requestId, status) => {
+    try {
+      await updateDoc(doc(registrationsCollectionRef(tournamentId), requestId), { status, reviewedAt: Date.now(), reviewedBy: user.uid });
+      showToast(status === "approved" ? "Player approved" : "Request declined");
+    } catch (e) { showToast("Couldn't update the registration request"); }
+  };
+
+  const updateCoAdmins = async (tournamentId, ids) => {
+    try { await updateDoc(tournamentDocRef(tournamentId), { coAdminUserIds: ids, updatedAt: Date.now() }); showToast("Co-host access updated"); }
+    catch (e) { showToast("Couldn't update co-host access"); }
+  };
+
+  const shareTournament = async (tournament) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("tournament", tournament.id);
+    try { await navigator.clipboard.writeText(url.toString()); showToast("Tournament link copied"); }
+    catch (e) { window.prompt("Copy this tournament link", url.toString()); }
+  };
+
+  const requestHostFriend = async (tournament) => {
+    if (!user || tournament.adminUserId === user.uid) return;
+    try {
+      await setDoc(doc(FRIEND_REQUESTS_COLLECTION, `${user.uid}_${tournament.adminUserId}`), {
+        requesterId: user.uid, requesterName: safeProfileName(myProfile?.displayName, user.displayName),
+        recipientId: tournament.adminUserId, status: "pending", createdAt: Date.now(),
+      });
+      showToast("Friend request sent to the host");
+    } catch (e) { showToast("A request may already have been sent to this host"); }
+  };
+
+  const decideFriendRequest = async (requestId, status) => {
+    try { await updateDoc(doc(FRIEND_REQUESTS_COLLECTION, requestId), { status, reviewedAt: Date.now() }); }
+    catch (e) { showToast("Couldn't update the friend request"); }
+  };
+
+  const submitReport = async ({ reason, details }) => {
+    if (!reportTarget || !user) return "Sign in again to submit this report.";
+    const reportId = `${user.uid}_${reportTarget.type}_${reportTarget.id}`;
+    try {
+      await setDoc(doc(REPORTS_COLLECTION, reportId), {
+        reporterId: user.uid, targetType: reportTarget.type, targetId: reportTarget.id,
+        targetName: String(reportTarget.name || "").slice(0, 120), reason,
+        details: String(details || "").slice(0, 1000), status: "submitted", createdAt: Date.now(),
+      });
+      setReportTarget(null); showToast("Report sent privately to GrindInfo moderators"); return "";
+    } catch (e) { return "This report could not be sent. You may already have reported this item."; }
+  };
+
+  const importArchiveEntries = async (records) => {
+    const batch = writeBatch(db);
+    records.forEach((entry) => batch.set(doc(ARCHIVE_COLLECTION), { ...entry, createdAt: Date.now(), createdBy: user.uid }));
+    await batch.commit();
+  };
+
+  const updateReportStatus = async (reportId, status) => {
+    try { await updateDoc(doc(REPORTS_COLLECTION, reportId), { status, reviewedAt: Date.now() }); }
+    catch (e) { showToast("Couldn't update report status"); }
+  };
+
   const selected = tournaments.find((t) => t.id === selectedId) || null;
-  const isAdmin = !!(selected && user && selected.adminUserId === user.uid);
+  const isOwner = !!(selected && user && selected.adminUserId === user.uid);
+  const isAdmin = !!(selected && user && (isOwner || selected.coAdminUserIds?.includes(user.uid)));
 
   if (authLoading) {
     return (
@@ -1243,6 +1544,9 @@ export default function App() {
           {[
             { id: "tournaments", label: "Tournaments" },
             { id: "players", label: "Find players" },
+            { id: "archive", label: "Esports archive" },
+            { id: "requests", label: `Friend requests${friendRequests.filter((request) => request.status === "pending").length ? ` (${friendRequests.filter((request) => request.status === "pending").length})` : ""}` },
+            ...(isModerator ? [{ id: "reports", label: "Safety reports" }] : []),
     ].map((s) => (
             <button
               key={s.id}
@@ -1268,8 +1572,11 @@ export default function App() {
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "0 20px 80px" }}>
         {section === "players" && (
-          <FindPlayersPage currentUid={user.uid} myProfile={myProfile} onEditProfile={() => setShowProfileModal(true)} />
+          <FindPlayersPage currentUid={user.uid} myProfile={myProfile} onEditProfile={() => setShowProfileModal(true)} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} />
         )}
+        {section === "archive" && <HistoricalArchive entries={archiveEntries} isModerator={isModerator} onImport={importArchiveEntries} />}
+        {section === "requests" && <FriendRequestCenter requests={friendRequests} currentUserId={user.uid} onDecision={decideFriendRequest} />}
+        {section === "reports" && isModerator && <ReportsInbox reports={privateReports} onStatusChange={updateReportStatus} />}
         {section === "tournaments" && view === "list" && (
           <TournamentList
             tournaments={tournaments}
@@ -1278,6 +1585,7 @@ export default function App() {
             onOpen={(id) => {
               setSelectedId(id);
               setView("detail");
+              const url = new URL(window.location.href); url.searchParams.set("tournament", id); window.history.replaceState({}, "", url);
               setDetailTab("teams");
             }}
             onNew={() => setShowNewTournament(true)}
@@ -1293,10 +1601,18 @@ export default function App() {
             tab={detailTab}
             setTab={setDetailTab}
             isAdmin={isAdmin}
+            isOwner={isOwner}
             currentUserId={user.uid}
             currentUserName={safeProfileName(myProfile?.displayName, user.displayName)}
+            registrations={selectedRegistrations}
             onSaveResults={(results) => saveTournamentResults(selected.id, results)}
-            onBack={() => setView("list")}
+            onBack={() => { setView("list"); setSelectedId(null); const url = new URL(window.location.href); url.searchParams.delete("tournament"); window.history.replaceState({}, "", url); }}
+            onShare={() => shareTournament(selected)}
+            onRequestFriend={() => requestHostFriend(selected)}
+            onRequestRegistration={(player) => requestRegistration(selected.id, player)}
+            onRegistrationDecision={(requestId, status) => decideRegistration(selected.id, requestId, status)}
+            onCoAdminsChange={(ids) => updateCoAdmins(selected.id, ids)}
+            onReport={() => setReportTarget({ type: "tournament", id: selected.id, name: selected.name })}
             onDelete={() => deleteTournament(selected.id)}
             onAddTeam={(team) => addTeam(selected.id, team)}
             onDeleteTeam={(teamId) => deleteTeam(selected.id, teamId)}
@@ -1323,6 +1639,7 @@ export default function App() {
         />
       )}
 
+      {reportTarget && <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} onSubmit={submitReport} />}
       <Toast message={toast} />
     </div>
   );
@@ -1513,6 +1830,8 @@ function NewTournamentModal({ onClose, onCreate }) {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [artwork, setArtwork] = useState(TOURNAMENT_ARTWORKS[0].icon);
+  const [prizeAmount, setPrizeAmount] = useState("0");
+  const [customPrize, setCustomPrize] = useState("");
   const [error, setError] = useState("");
 
   const submit = () => {
@@ -1520,7 +1839,9 @@ function NewTournamentModal({ onClose, onCreate }) {
       setError("Enter a tournament name first");
       return;
     }
-    onCreate({ name: name.trim(), game, format, startDate, endDate, artwork });
+    const amount = prizeAmount === "custom" ? Number(customPrize) : Number(prizeAmount);
+    if (!Number.isFinite(amount) || amount < 0 || amount > 100000000) { setError("Enter a valid prize information amount."); return; }
+    onCreate({ name: name.trim(), game, format, startDate, endDate, artwork, prizeAmount: amount, prizeCurrency: "INR" });
   };
 
   return (
@@ -1629,6 +1950,14 @@ function NewTournamentModal({ onClose, onCreate }) {
               </Field>
             </div>
           </div>
+          <Field label="Prize information (INR · no payment collection)">
+            <Select value={prizeAmount} onChange={(event) => setPrizeAmount(event.target.value)}>
+              {PRIZE_PRESETS.map((amount) => <option key={amount} value={String(amount)}>{amount === 0 ? "No prize listed" : `₹${amount.toLocaleString()}`}</option>)}
+              <option value="custom">Custom amount</option>
+            </Select>
+          </Field>
+          {prizeAmount === "custom" && <Field label="Custom prize information amount (₹)"><TextInput type="number" min="0" max="100000000" value={customPrize} onChange={(event) => setCustomPrize(event.target.value)} placeholder="Enter amount" /></Field>}
+          <div style={{ fontSize: 11, color: "var(--text-dim)" }}>Registration is free in GrindInfo. Prize amounts are informational only; payments are not processed here.</div>
         </div>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 24 }}>
           <Button variant="ghost" onClick={onClose}>
@@ -1741,10 +2070,18 @@ function TournamentDetail(props) {
     tab,
     setTab,
     isAdmin,
+    isOwner,
     currentUserId,
     currentUserName,
+    registrations,
     onSaveResults,
     onBack,
+    onShare,
+    onRequestFriend,
+    onRequestRegistration,
+    onRegistrationDecision,
+    onCoAdminsChange,
+    onReport,
     onDelete,
     onAddTeam,
     onDeleteTeam,
@@ -1814,6 +2151,9 @@ function TournamentDetail(props) {
           <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
             {fmtDate(tournament.startDate)} {tournament.endDate ? `– ${fmtDate(tournament.endDate)}` : ""}
           </div>
+          <div style={{ fontSize: 13, color: "var(--accent-secondary)", marginTop: 7 }}>
+            {Number(tournament.prizeAmount) > 0 ? `Prize information: ${tournament.prizeCurrency || "INR"} ${Number(tournament.prizeAmount).toLocaleString()}` : "Free tournament"}
+          </div>
           {isAdmin && (
             <div
               style={{
@@ -1831,7 +2171,11 @@ function TournamentDetail(props) {
             </div>
           )}
         </div>
-        {isAdmin && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Button variant="ghost" onClick={onShare}>Share tournament</Button>
+          <Button variant="danger" onClick={onReport}>Report tournament</Button>
+          {!isOwner && <Button variant="ghost" onClick={onRequestFriend}>Request host as friend</Button>}
+        {isOwner && (
           <Button
             variant="danger"
             onClick={() => {
@@ -1841,8 +2185,11 @@ function TournamentDetail(props) {
             Delete tournament
           </Button>
         )}
+        </div>
       </div>
 
+      <RegistrationPanel tournament={tournament} requests={registrations || []} currentUserId={currentUserId} currentUserName={currentUserName} isAdmin={isAdmin} onRequest={onRequestRegistration} onDecision={onRegistrationDecision} />
+      <CoAdminPanel tournament={tournament} isOwner={isOwner} onChange={onCoAdminsChange} />
       <TournamentResults results={tournament.results} isAdmin={isAdmin} onSave={onSaveResults} />
 
       <div style={{ display: "flex", gap: 4, marginTop: 28, borderBottom: "1px solid var(--border)", flexWrap: "wrap" }}>
