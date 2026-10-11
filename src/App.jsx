@@ -729,7 +729,17 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
   );
 }
 
-function PlayerCard({ player, onReport }) {
+function PlayerCard({ player, currentUid, friendRequest, onFriendRequest, onFriendDecision, onReport }) {
+  const incoming = friendRequest?.status === "pending" && friendRequest.recipientId === currentUid;
+  const sentByMe = friendRequest?.requesterId === currentUid;
+  const friendLabel = !friendRequest
+    ? "Add friend"
+    : friendRequest.status === "accepted"
+      ? "Friends"
+      : friendRequest.status === "pending"
+        ? (sentByMe ? "Request sent" : "Pending")
+        : "Request declined";
+
   return (
     <div className="sl-card" style={{ background: "var(--panel-bg)", border: "1px solid var(--border)", padding: "16px 18px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: "0.02em" }}>
@@ -762,12 +772,23 @@ function PlayerCard({ player, onReport }) {
         {player.style ? ` · ${player.style}` : ""}
       </div>
       {player.bio && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--page-text)", marginTop: 10 }}>{player.bio}</div>}
-      <Button variant="ghost" onClick={() => onReport(player)} style={{ marginTop: 12, padding: "7px 10px", fontSize: 11 }}>Report player</Button>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+        {incoming ? (
+          <>
+            <Button onClick={() => onFriendDecision(friendRequest.id, "accepted")}>Accept request</Button>
+            <Button variant="danger" onClick={() => onFriendDecision(friendRequest.id, "declined")}>Decline</Button>
+          </>
+        ) : (
+          <Button variant={friendRequest ? "ghost" : "primary"} disabled={Boolean(friendRequest)} onClick={() => onFriendRequest(player)}>
+            {friendLabel}
+          </Button>
+        )}
+        <Button variant="ghost" onClick={() => onReport(player)} style={{ padding: "7px 10px", fontSize: 11 }}>Report player</Button>
+      </div>
     </div>
   );
 }
-
-function FindPlayersPage({ currentUid, myProfile, onEditProfile, onReport }) {
+function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendRequest, onFriendDecision, onEditProfile, onReport }) {
   const [gameFilters, setGameFilters] = useState([]);
   const [regionFilter, setRegionFilter] = useState("");
   const [languageFilter, setLanguageFilter] = useState("");
@@ -906,9 +927,23 @@ function FindPlayersPage({ currentUid, myProfile, onEditProfile, onReport }) {
         <EmptyState title="No players match yet" body="Try another game, region, language, or playing style." />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
-            {filtered.map((p) => (
-            <PlayerCard key={p.uid} player={p} onReport={onReport} />
-          ))}
+            {filtered.map((p) => {
+              const friendRequest = friendRequests.find((request) =>
+                (request.requesterId === currentUid && request.recipientId === p.uid)
+                || (request.recipientId === currentUid && request.requesterId === p.uid)
+              );
+              return (
+                <PlayerCard
+                  key={p.uid}
+                  player={p}
+                  currentUid={currentUid}
+                  friendRequest={friendRequest}
+                  onFriendRequest={onFriendRequest}
+                  onFriendDecision={onFriendDecision}
+                  onReport={onReport}
+                />
+              );
+            })}
         </div>
       )}
     </div>
@@ -1426,14 +1461,22 @@ export default function App() {
         status: "pending", requestedAt: Date.now(),
       });
       showToast("Join request sent to the tournament host");
-    } catch (e) { showToast("Couldn't send the request — it may already exist"); }
+    } catch (e) {
+      showToast(e?.code === "permission-denied"
+        ? "Firebase blocked the join request. The Firestore rules may need to be published."
+        : "Couldn't send the join request. Check whether one is already pending.");
+    }
   };
 
   const decideRegistration = async (tournamentId, requestId, status) => {
     try {
       await updateDoc(doc(registrationsCollectionRef(tournamentId), requestId), { status, reviewedAt: Date.now(), reviewedBy: user.uid });
       showToast(status === "approved" ? "Player approved" : "Request declined");
-    } catch (e) { showToast("Couldn't update the registration request"); }
+    } catch (e) {
+      showToast(e?.code === "permission-denied"
+        ? "Firebase blocked this decision. The Firestore rules may need to be published."
+        : "Couldn't update the registration request.");
+    }
   };
 
   const updateCoAdmins = async (tournamentId, ids) => {
@@ -1448,20 +1491,37 @@ export default function App() {
     catch (e) { window.prompt("Copy this tournament link", url.toString()); }
   };
 
-  const requestHostFriend = async (tournament) => {
-    if (!user || tournament.adminUserId === user.uid) return;
+  const requestFriend = async (recipientId) => {
+    if (!user || !recipientId || recipientId === user.uid) return;
     try {
-      await setDoc(doc(FRIEND_REQUESTS_COLLECTION, `${user.uid}_${tournament.adminUserId}`), {
-        requesterId: user.uid, requesterName: safeProfileName(myProfile?.displayName, user.displayName),
-        recipientId: tournament.adminUserId, status: "pending", createdAt: Date.now(),
+      await setDoc(doc(FRIEND_REQUESTS_COLLECTION, `${user.uid}_${recipientId}`), {
+        requesterId: user.uid,
+        requesterName: safeProfileName(myProfile?.displayName, user.displayName),
+        recipientId,
+        status: "pending",
+        createdAt: Date.now(),
       });
-      showToast("Friend request sent to the host");
-    } catch (e) { showToast("A request may already have been sent to this host"); }
+      showToast("Friend request sent");
+    } catch (e) {
+      showToast(e?.code === "permission-denied"
+        ? "Firebase blocked the friend request. The Firestore rules may need to be published."
+        : "Couldn't send the friend request. A request may already exist.");
+    }
+  };
+
+  const requestHostFriend = async (tournament) => {
+    await requestFriend(tournament.adminUserId);
   };
 
   const decideFriendRequest = async (requestId, status) => {
-    try { await updateDoc(doc(FRIEND_REQUESTS_COLLECTION, requestId), { status, reviewedAt: Date.now() }); }
-    catch (e) { showToast("Couldn't update the friend request"); }
+    try {
+      await updateDoc(doc(FRIEND_REQUESTS_COLLECTION, requestId), { status, reviewedAt: Date.now() });
+      showToast(status === "accepted" ? "Friend request accepted" : "Friend request declined");
+    } catch (e) {
+      showToast(e?.code === "permission-denied"
+        ? "Firebase blocked this decision. The Firestore rules may need to be published."
+        : "Couldn't update the friend request.");
+    }
   };
 
   const submitReport = async ({ reason, details }) => {
@@ -1574,7 +1634,7 @@ export default function App() {
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "0 20px 80px" }}>
         {section === "players" && (
-          <FindPlayersPage currentUid={user.uid} myProfile={myProfile} onEditProfile={() => setShowProfileModal(true)} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} />
+          <FindPlayersPage currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid)} onFriendDecision={decideFriendRequest} onEditProfile={() => setShowProfileModal(true)} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} />
         )}
         {section === "archive" && <HistoricalArchive entries={archiveEntries} isModerator={isModerator} onImport={importArchiveEntries} />}
         {section === "requests" && <FriendRequestCenter requests={friendRequests} currentUserId={user.uid} onDecision={decideFriendRequest} />}
