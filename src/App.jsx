@@ -1074,6 +1074,7 @@ export default function App() {
       await addDoc(TOURNAMENTS_COLLECTION, {
         ...t,
         adminUserId: user.uid,
+        adminDisplayName: safeProfileName(myProfile?.displayName, user.displayName),
         coAdminUserIds: [],
         status: t.status || "upcoming",
         isLegacyImport: false,
@@ -1084,6 +1085,21 @@ export default function App() {
       setShowNewTournament(false);
     } catch (e) {
       showToast("Couldn't create tournament — try again");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveTournamentResults = async (id, results) => {
+    setSaving(true);
+    try {
+      await updateDoc(tournamentDocRef(id), {
+        results,
+        updatedAt: Date.now(),
+      });
+      showToast("Tournament results posted");
+    } catch (e) {
+      showToast("Couldn't post tournament results — try again");
     } finally {
       setSaving(false);
     }
@@ -1257,6 +1273,8 @@ export default function App() {
         {section === "tournaments" && view === "list" && (
           <TournamentList
             tournaments={tournaments}
+            currentUserId={user.uid}
+            currentUserName={safeProfileName(myProfile?.displayName, user.displayName)}
             onOpen={(id) => {
               setSelectedId(id);
               setView("detail");
@@ -1275,6 +1293,9 @@ export default function App() {
             tab={detailTab}
             setTab={setDetailTab}
             isAdmin={isAdmin}
+            currentUserId={user.uid}
+            currentUserName={safeProfileName(myProfile?.displayName, user.displayName)}
+            onSaveResults={(results) => saveTournamentResults(selected.id, results)}
             onBack={() => setView("list")}
             onDelete={() => deleteTournament(selected.id)}
             onAddTeam={(team) => addTeam(selected.id, team)}
@@ -1366,7 +1387,7 @@ function Header({ saving, user, onSignOut, theme, setTheme }) {
     </div>
   );
 }
-function TournamentList({ tournaments, onOpen, onNew }) {
+function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, onNew }) {
   return (
     <div>
       <div
@@ -1430,7 +1451,10 @@ function TournamentList({ tournaments, onOpen, onNew }) {
                 onFocus={(e) => (e.currentTarget.style.outline = "2px solid var(--accent-secondary)")}
                 onBlur={(e) => (e.currentTarget.style.outline = "none")}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <Eyebrow color="var(--text-dim)">
+                  Hosted by {t.adminDisplayName || (t.adminUserId === currentUserId ? currentUserName : "Tournament host")}
+                </Eyebrow>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 0" }}>
                   <GameIcon game={t.game} size={32} />
                   <Eyebrow color="var(--text-muted)">{t.game || "Game TBD"}</Eyebrow>
                 </div>
@@ -1617,6 +1641,97 @@ function NewTournamentModal({ onClose, onCreate }) {
   );
 }
 
+function TournamentResults({ results, isAdmin, onSave }) {
+  const [winner, setWinner] = useState(results?.winner || "");
+  const [mvp, setMvp] = useState(results?.mvp || "");
+  const [runnerUp, setRunnerUp] = useState(results?.runnerUp || "");
+  const [secondRunnerUp, setSecondRunnerUp] = useState(results?.secondRunnerUp || "");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setWinner(results?.winner || "");
+    setMvp(results?.mvp || "");
+    setRunnerUp(results?.runnerUp || "");
+    setSecondRunnerUp(results?.secondRunnerUp || "");
+  }, [results?.winner, results?.mvp, results?.runnerUp, results?.secondRunnerUp]);
+
+  const hasResults = [results?.winner, results?.mvp, results?.runnerUp, results?.secondRunnerUp]
+    .some((value) => typeof value === "string" && value.trim());
+
+  const submit = () => {
+    const nextResults = {
+      winner: winner.trim(),
+      mvp: mvp.trim(),
+      runnerUp: runnerUp.trim(),
+      secondRunnerUp: secondRunnerUp.trim(),
+    };
+    if (Object.values(nextResults).some((value) => !value)) {
+      setError("Fill in all four result names before posting.");
+      return;
+    }
+    setError("");
+    onSave(nextResults);
+  };
+
+  return (
+    <section
+      aria-label="Tournament results"
+      style={{
+        marginTop: 24,
+        padding: 18,
+        border: "1px solid var(--border)",
+        background: "var(--panel-bg)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 14,
+      }}
+    >
+      <div>
+        <Eyebrow>Final results</Eyebrow>
+        <div style={{ marginTop: 5, color: "var(--text-muted)", fontSize: 13 }}>
+          {isAdmin ? "Post the tournament placements and MVP." : hasResults ? "Tournament placements and MVP." : "Results have not been posted yet."}
+        </div>
+      </div>
+      {isAdmin ? (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+            <Field label="Winner">
+              <TextInput value={winner} onChange={(e) => setWinner(e.target.value)} placeholder="Winning player or team" maxLength={80} />
+            </Field>
+            <Field label="MVP">
+              <TextInput value={mvp} onChange={(e) => setMvp(e.target.value)} placeholder="Most valuable player" maxLength={80} />
+            </Field>
+            <Field label="Runner-up">
+              <TextInput value={runnerUp} onChange={(e) => setRunnerUp(e.target.value)} placeholder="Second place" maxLength={80} />
+            </Field>
+            <Field label="2nd Runner-up">
+              <TextInput value={secondRunnerUp} onChange={(e) => setSecondRunnerUp(e.target.value)} placeholder="Third place" maxLength={80} />
+            </Field>
+          </div>
+          {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 13 }}>{error}</div>}
+          <div>
+            <Button onClick={submit}>Post results</Button>
+          </div>
+        </>
+      ) : hasResults ? (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
+          {[
+            ["Winner", results?.winner],
+            ["MVP", results?.mvp],
+            ["Runner-up", results?.runnerUp],
+            ["2nd Runner-up", results?.secondRunnerUp],
+          ].filter(([, value]) => value).map(([label, value]) => (
+            <div key={label} style={{ padding: 12, background: "var(--panel-raised)", border: "1px solid var(--border)" }}>
+              <Eyebrow color="var(--text-dim)">{label}</Eyebrow>
+              <div style={{ marginTop: 5, fontWeight: 600 }}>{value}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function TournamentDetail(props) {
   const {
     tournament,
@@ -1626,6 +1741,9 @@ function TournamentDetail(props) {
     tab,
     setTab,
     isAdmin,
+    currentUserId,
+    currentUserName,
+    onSaveResults,
     onBack,
     onDelete,
     onAddTeam,
@@ -1649,21 +1767,28 @@ function TournamentDetail(props) {
       <button
         onClick={onBack}
         style={{
-          background: "none",
-          border: "none",
+          display: "inline-flex",
+          alignItems: "center",
+          alignSelf: "flex-start",
+          textAlign: "left",
+          background: "var(--panel-bg)",
+          border: "1px solid var(--border)",
           color: "var(--text-muted)",
           fontFamily: "'JetBrains Mono', monospace",
           fontSize: 12,
           cursor: "pointer",
-          padding: 0,
+          padding: "9px 12px",
           marginBottom: 18,
         }}
       >
-        ← All tournaments
+        ← Back to all tournaments
       </button>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
         <div>
+          <Eyebrow color="var(--text-dim)">
+            Hosted by {tournament.adminDisplayName || (tournament.adminUserId === currentUserId ? currentUserName : "Tournament host")}
+          </Eyebrow>
           <div
             aria-hidden="true"
             style={{
@@ -1717,6 +1842,8 @@ function TournamentDetail(props) {
           </Button>
         )}
       </div>
+
+      <TournamentResults results={tournament.results} isAdmin={isAdmin} onSave={onSaveResults} />
 
       <div style={{ display: "flex", gap: 4, marginTop: 28, borderBottom: "1px solid var(--border)", flexWrap: "wrap" }}>
         {tabs.map((t) => (
