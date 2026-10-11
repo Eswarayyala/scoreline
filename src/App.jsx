@@ -619,13 +619,20 @@ function PlayerCard({ player }) {
 }
 
 function FindPlayersPage({ currentUid, myProfile, onEditProfile }) {
-  const [gameFilter, setGameFilter] = useState("");
+  const [gameFilters, setGameFilters] = useState([]);
   const [regionFilter, setRegionFilter] = useState("");
   const [languageFilter, setLanguageFilter] = useState("");
+  const [styleFilter, setStyleFilter] = useState("");
   const [players, setPlayers] = useState([]);
   const [playersLoading, setPlayersLoading] = useState(false);
   const [playersError, setPlayersError] = useState("");
-  const hasFilters = Boolean(gameFilter || regionFilter || languageFilter);
+  const hasFilters = Boolean(gameFilters.length || regionFilter || languageFilter);
+  const useMyInterests = () => {
+    setGameFilters(myProfile?.games || []);
+    setRegionFilter(myProfile?.region || "");
+    setLanguageFilter(myProfile?.language || "");
+    setStyleFilter(myProfile?.style || "");
+  };
 
   useEffect(() => {
     setPlayersError("");
@@ -637,7 +644,7 @@ function FindPlayersPage({ currentUid, myProfile, onEditProfile }) {
 
     setPlayersLoading(true);
     const filters = [where("discoverable", "==", true)];
-    if (gameFilter) filters.push(where("games", "array-contains", gameFilter));
+    if (gameFilters.length) filters.push(where("games", "array-contains-any", gameFilters));
     if (regionFilter) filters.push(where("region", "==", regionFilter));
     if (languageFilter) filters.push(where("language", "==", languageFilter));
 
@@ -653,9 +660,11 @@ function FindPlayersPage({ currentUid, myProfile, onEditProfile }) {
         setPlayersLoading(false);
       }
     );
-  }, [gameFilter, regionFilter, languageFilter, hasFilters]);
+  }, [gameFilters, regionFilter, languageFilter, hasFilters]);
 
-  const filtered = players.filter((p) => p.uid !== currentUid);
+  const filtered = players.filter(
+    (p) => p.uid !== currentUid && (!styleFilter || p.style === styleFilter)
+  );
   const hasOwnProfile = !!myProfile;
 
   return (
@@ -680,16 +689,22 @@ function FindPlayersPage({ currentUid, myProfile, onEditProfile }) {
       <div style={{ fontSize: 13, color: "#8B98A5", marginBottom: 14, borderLeft: "2px solid #FFC22E", paddingLeft: 12 }}>
         Online teammates are people you may not know. Keep personal contact details private and stop interacting if someone makes you uncomfortable.
       </div>
-      <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
-        <div style={{ minWidth: 160 }}>
-          <Select value={gameFilter} onChange={(e) => setGameFilter(e.target.value)}>
-            <option value="">All games</option>
-            {GAME_PRESETS.map((g) => (
-              <option key={g} value={g}>
-                {g}
-              </option>
-            ))}
-          </Select>
+      <div style={{ display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+        {myProfile && <Button variant="ghost" onClick={useMyInterests}>Use my interests</Button>}
+        <div style={{ width: "100%" }}>
+          <Field label="Games (choose any)">
+            <MultiToggle
+              options={GAME_PRESETS}
+              selected={gameFilters}
+              onToggle={(game) =>
+                setGameFilters((previous) =>
+                  previous.includes(game)
+                    ? previous.filter((item) => item !== game)
+                    : [...previous, game]
+                )
+              }
+            />
+          </Field>
         </div>
         <div style={{ minWidth: 160 }}>
           <Select value={regionFilter} onChange={(e) => setRegionFilter(e.target.value)}>
@@ -711,15 +726,30 @@ function FindPlayersPage({ currentUid, myProfile, onEditProfile }) {
             ))}
           </Select>
         </div>
+        <div style={{ minWidth: 190 }}>
+          <Select value={styleFilter} onChange={(e) => setStyleFilter(e.target.value)} aria-label="Playing style">
+            <option value="">Any playing style</option>
+            {PLAY_STYLES.map((style) => (
+              <option key={style} value={style}>
+                {style}
+              </option>
+            ))}
+          </Select>
+        </div>
       </div>
+      {myProfile && (
+        <div style={{ fontSize: 12, color: "#8B98A5", marginBottom: 16 }}>
+          “Use my interests” fills these filters from your profile. You can change them before searching.
+        </div>
+      )}
 
       {playersError && <div style={{ fontSize: 13, color: "#FF5C5C", marginBottom: 14 }}>{playersError}</div>}
       {!hasFilters ? (
-        <EmptyState title="Choose a search filter" body="Select a game, region, or language to search profiles that opted in to discovery." />
+        <EmptyState title="Choose a search filter" body="Select one or more games, a region, or a language to search profiles that opted in to discovery. Playing style can narrow your matches." />
       ) : playersLoading ? (
         <div style={{ color: "#8B98A5", fontSize: 13, padding: 20 }}>Searching opted-in players…</div>
       ) : filtered.length === 0 ? (
-        <EmptyState title="No players match yet" body="Try another game, region, or language." />
+        <EmptyState title="No players match yet" body="Try another game, region, language, or playing style." />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
           {filtered.map((p) => (
