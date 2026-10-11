@@ -34,6 +34,7 @@ const registrationsCollectionRef = (tid) => collection(db, "tournaments", tid, "
 const REPORTS_COLLECTION = collection(db, "reports");
 const FRIEND_REQUESTS_COLLECTION = collection(db, "friendRequests");
 const ARCHIVE_COLLECTION = collection(db, "esportsArchive");
+const BLOG_POSTS_COLLECTION = collection(db, "blogPosts");
 const PRIZE_PRESETS = [0, 500, 1000, 2500, 5000, 10000];
 const REPORT_REASONS = ["Abuse or harassment", "Scam or fraud", "Inappropriate content", "Other"];
 
@@ -190,6 +191,14 @@ const STATUS_COLORS = {
   live: "var(--accent-secondary)",
   completed: "var(--accent)",
 };
+
+function isTournamentArchived(t) {
+  if (t.archived === true || t.status === "completed") return true;
+  const date = t.endDate || t.startDate;
+  if (!date) return false;
+  const cutoff = new Date(`${date}T23:59:59`).getTime() + 7 * 24 * 60 * 60 * 1000;
+  return Date.now() > cutoff;
+}
 
 function fmtDate(d) {
   if (!d) return "TBD";
@@ -788,11 +797,12 @@ function PlayerCard({ player, currentUid, friendRequest, onFriendRequest, onFrie
     </div>
   );
 }
-function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendRequest, onFriendDecision, onEditProfile, onReport }) {
+function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendRequest, onFriendDecision, onReport }) {
   const [gameFilters, setGameFilters] = useState([]);
   const [regionFilter, setRegionFilter] = useState("");
   const [languageFilter, setLanguageFilter] = useState("");
   const [styleFilter, setStyleFilter] = useState("");
+  const [nameFilter, setNameFilter] = useState("");
   const [players, setPlayers] = useState([]);
   const [playersLoading, setPlayersLoading] = useState(false);
   const [playersError, setPlayersError] = useState("");
@@ -837,10 +847,8 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
     );
   }, [gameFilters, regionFilter, languageFilter, hasFilters]);
 
-  const filtered = players.filter(
-    (p) => p.uid !== currentUid && (!styleFilter || p.style === styleFilter)
-  );
-  const hasOwnProfile = !!myProfile;
+  const filtered = players.filter((p) => p.uid !== currentUid && (!styleFilter || p.style === styleFilter)
+    && (!nameFilter.trim() || (p.displayName || "").toLowerCase().includes(nameFilter.trim().toLowerCase())));
 
   return (
     <div>
@@ -858,7 +866,6 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
           <Eyebrow>Squad up</Eyebrow>
           <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 44, margin: "4px 0 0" }}>Find players</h1>
         </div>
-        <Button onClick={onEditProfile}>{hasOwnProfile ? "Edit my profile" : "+ Create my profile"}</Button>
       </div>
 
       <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14, borderLeft: "2px solid var(--accent)", paddingLeft: 12 }}>
@@ -912,6 +919,7 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
           </Select>
         </div>
       </div>
+      <div style={{ maxWidth: 360, margin: "8px 0 16px" }}><Field label="Search names in these matches"><TextInput value={nameFilter} onChange={(event) => setNameFilter(event.target.value)} placeholder="Type a player name" /></Field></div>
       {myProfile && (
         <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
           “Use my interests” fills these filters from your profile. You can change them before searching.
@@ -988,7 +996,8 @@ function RegistrationPanel({ tournament, requests, currentUserId, currentUserNam
       <div style={{ fontSize: 13, color: "var(--text-muted)", margin: "8px 0 12px" }}>
         {mine ? `Your request is ${mine.status}.` : "Request a place. The tournament host or co-host must approve it."}
       </div>
-      {!isAdmin && !mine && <Button onClick={() => onRequest({ playerId: currentUserId, displayName: currentUserName })}>Request to join</Button>}
+      {!isAdmin && !mine && tournament.registrationOpen !== false && !isTournamentArchived(tournament) && <Button onClick={() => onRequest({ playerId: currentUserId, displayName: currentUserName })}>Request to join</Button>}
+      {!isAdmin && (tournament.registrationOpen === false || isTournamentArchived(tournament)) && <div style={{ color: "var(--text-dim)", fontSize: 12 }}>Registration is closed.</div>}
       {isAdmin && (
         <div style={{ display: "grid", gap: 8 }}>
           {pending.length === 0 ? <div style={{ fontSize: 13, color: "var(--text-dim)" }}>No requests waiting.</div> : pending.map((request) => (
@@ -1116,10 +1125,21 @@ function HistoricalArchive({ entries, isModerator, onImport }) {
   );
 }
 
+function LoadingScreen({ label }) {
+  return <div role="status" aria-live="polite" style={{ minHeight: "60vh", display: "grid", placeItems: "center", background: "var(--page-bg-solid, #101820)", color: "var(--page-text, #EDF1F4)", fontFamily: "'Inter',sans-serif" }}><div style={{ textAlign: "center" }}><div className="grind-loader" aria-hidden="true"><span>G</span></div><div style={{ marginTop: 16 }}>{label}…</div><style>{`.grind-loader{width:68px;height:68px;margin:auto;border:2px solid var(--border,#314);border-top-color:var(--accent,#08f);border-right-color:var(--accent-secondary,#0dc);border-radius:50%;display:grid;place-items:center;animation:grind-spin 1.2s linear infinite}.grind-loader span{font-family:'Bebas Neue',sans-serif;font-size:30px;animation:grind-spin 1.2s linear infinite reverse}@keyframes grind-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.grind-loader,.grind-loader span{animation:none}}`}</style></div></div>;
+}
+
+function BlogPage({ posts, user, isModerator, onSubmit, onReview }) {
+  const [title, setTitle] = useState(""); const [game, setGame] = useState(""); const [content, setContent] = useState(""); const [source, setSource] = useState(""); const [error, setError] = useState("");
+  const submit = async () => { if (!title.trim() || !game.trim() || !content.trim()) { setError("Add a title, game, and post text."); return; } await onSubmit({ title: title.trim(), game: game.trim(), content: content.trim(), source: source.trim() }); setTitle(""); setGame(""); setContent(""); setSource(""); setError(""); };
+  const visible = posts.filter((post) => post.status === "published" || post.authorId === user.uid || (isModerator && post.status === "pending"));
+  return <div style={{ paddingTop: 32 }}><Eyebrow>Community stories</Eyebrow><h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42 }}>Esports blog</h1><p style={{ color: "var(--text-muted)" }}>Send a tournament recap or esports story to the GrindInfo owner for review before it appears publicly.</p><section style={{ display: "grid", gap: 10, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)", maxWidth: 680 }}><Field label="Post title"><TextInput value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} /></Field><Field label="Game"><TextInput value={game} maxLength={60} onChange={(e) => setGame(e.target.value)} placeholder="e.g. Valorant" /></Field><Field label="Story or tournament update"><textarea value={content} maxLength={6000} onChange={(e) => setContent(e.target.value)} rows={6} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput value={source} maxLength={500} onChange={(e) => setSource(e.target.value)} placeholder="https://" /></Field>{error && <span style={{ color: "var(--danger)" }}>{error}</span>}<Button onClick={submit}>Request publication</Button></section><div style={{ display: "grid", gap: 12, marginTop: 20 }}>{visible.map((post) => <article key={post.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue',sans-serif" }}>{post.title}</h2><div style={{ color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{post.content}</div><div style={{ marginTop: 8, fontSize: 12 }}>By {post.authorName || "Player"}</div>{post.source && <a href={post.source} target="_blank" rel="noreferrer">Source</a>}{isModerator && post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button onClick={() => onReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div></div>;
+}
+
 // ---------- app ----------
 
 export default function App() {
-  const [theme, setTheme] = useState("glacier");
+  const [theme, setTheme] = useState(() => localStorage.getItem("grindinfo-theme") || "glacier");
   const [tournaments, setTournaments] = useState([]);
   const [selectedTeams, setSelectedTeams] = useState([]);
   const [selectedMatches, setSelectedMatches] = useState([]);
@@ -1136,6 +1156,7 @@ export default function App() {
   const [isModerator, setIsModerator] = useState(false);
   const [friendRequests, setFriendRequests] = useState([]);
   const [archiveEntries, setArchiveEntries] = useState([]);
+  const [blogPosts, setBlogPosts] = useState([]);
   const [privateReports, setPrivateReports] = useState([]);
 
   const [user, setUser] = useState(null);
@@ -1236,6 +1257,18 @@ export default function App() {
     return () => { stopIncoming(); stopOutgoing(); };
   }, [user]);
 
+  useEffect(() => {
+    if (!user) { setBlogPosts([]); return undefined; }
+    let publicPosts = [], ownPosts = [], pendingPosts = [];
+    const publish = () => setBlogPosts([...new Map([...publicPosts, ...ownPosts, ...pendingPosts].map((post) => [post.id, post])).values()]);
+    const stops = [
+      onSnapshot(query(BLOG_POSTS_COLLECTION, where("status", "==", "published")), (snap) => { publicPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() })); publish(); }, () => { publicPosts = []; publish(); }),
+      onSnapshot(query(BLOG_POSTS_COLLECTION, where("authorId", "==", user.uid)), (snap) => { ownPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() })); publish(); }, () => { ownPosts = []; publish(); }),
+    ];
+    if (isModerator) stops.push(onSnapshot(query(BLOG_POSTS_COLLECTION, where("status", "==", "pending")), (snap) => { pendingPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() })); publish(); }, () => { pendingPosts = []; publish(); }));
+    return () => stops.forEach((stop) => stop());
+  }, [user, isModerator]);
+
   useEffect(() => onSnapshot(ARCHIVE_COLLECTION, (snapshot) => {
     setArchiveEntries(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
   }, () => setArchiveEntries([])), []);
@@ -1251,6 +1284,10 @@ export default function App() {
     if (user) localStorage.setItem(`profilePromptDismissed_${user.uid}`, "1");
     setShowProfileModal(false);
   }, [user]);
+
+  useEffect(() => {
+    localStorage.setItem("grindinfo-theme", theme);
+  }, [theme]);
 
   useEffect(() => {
     ensureFonts();
@@ -1358,8 +1395,8 @@ export default function App() {
     setSaving(true);
     try {
       await updateDoc(tournamentDocRef(id), {
-        results,
-        updatedAt: Date.now(),
+        results, status: "completed", registrationOpen: false, archived: true,
+        archivedAt: Date.now(), updatedAt: Date.now(),
       });
       showToast("Tournament results posted");
     } catch (e) {
@@ -1479,6 +1516,21 @@ export default function App() {
     }
   };
 
+  const closeTournament = async (tournamentId) => {
+    try { await updateDoc(tournamentDocRef(tournamentId), { registrationOpen: false, archived: true, archivedAt: Date.now(), updatedAt: Date.now() }); showToast("Tournament closed and moved to archive"); }
+    catch (e) { showToast("Couldn\u2019t close tournament. Check Firestore rules."); }
+  };
+
+  const submitBlogPost = async (post) => {
+    try { await addDoc(BLOG_POSTS_COLLECTION, { ...post, authorId: user.uid, authorName: safeProfileName(myProfile?.displayName, user.displayName), status: "pending", createdAt: Date.now() }); showToast("Blog request sent for review"); }
+    catch (e) { showToast("Couldn\u2019t submit blog request. Firestore rules may need to be published."); }
+  };
+
+  const reviewBlogPost = async (postId, status) => {
+    try { await updateDoc(doc(BLOG_POSTS_COLLECTION, postId), { status, reviewedAt: Date.now(), reviewedBy: user.uid }); showToast(status === "published" ? "Blog post published" : "Blog request declined"); }
+    catch (e) { showToast("Couldn\u2019t update blog request"); }
+  };
+
   const updateCoAdmins = async (tournamentId, ids) => {
     try { await updateDoc(tournamentDocRef(tournamentId), { coAdminUserIds: ids, updatedAt: Date.now() }); showToast("Co-host access updated"); }
     catch (e) { showToast("Couldn't update co-host access"); }
@@ -1556,7 +1608,7 @@ export default function App() {
     return (
       <div style={shellStyle}>
         <div style={{ color: "var(--text-muted)", fontFamily: "'Inter', sans-serif", padding: 40, textAlign: "center" }}>
-          Loading…
+          <LoadingScreen label="Loading GrindInfo" />
         </div>
       </div>
     );
@@ -1579,7 +1631,7 @@ export default function App() {
     return (
       <div style={shellStyle}>
         <div style={{ color: "var(--text-muted)", fontFamily: "'Inter', sans-serif", padding: 40, textAlign: "center" }}>
-          Loading tournaments…
+          <LoadingScreen label="Loading tournaments" />
         </div>
       </div>
     );
@@ -1599,7 +1651,7 @@ export default function App() {
         @keyframes sl-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
       `}</style>
 
-      <Header saving={saving} user={user} onSignOut={handleSignOut} theme={theme} setTheme={setTheme} />
+      <Header saving={saving} user={user} onSignOut={handleSignOut} theme={theme} setTheme={setTheme} onEditProfile={() => setShowProfileModal(true)} onNavigate={setSection} friendRequestCount={friendRequests.filter((request) => request.recipientId === user.uid && request.status === "pending").length} />
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "16px 20px 0" }}>
         <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--border)" }}>
@@ -1607,7 +1659,7 @@ export default function App() {
             { id: "tournaments", label: "Tournaments" },
             { id: "players", label: "Find players" },
             { id: "archive", label: "Esports archive" },
-            { id: "requests", label: `Friend requests${friendRequests.filter((request) => request.status === "pending").length ? ` (${friendRequests.filter((request) => request.status === "pending").length})` : ""}` },
+            { id: "blog", label: "Community blog" },
             ...(isModerator ? [{ id: "reports", label: "Safety reports" }] : []),
     ].map((s) => (
             <button
@@ -1634,9 +1686,10 @@ export default function App() {
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "0 20px 80px" }}>
         {section === "players" && (
-          <FindPlayersPage currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid)} onFriendDecision={decideFriendRequest} onEditProfile={() => setShowProfileModal(true)} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} />
+          <FindPlayersPage currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid)} onFriendDecision={decideFriendRequest} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} />
         )}
         {section === "archive" && <HistoricalArchive entries={archiveEntries} isModerator={isModerator} onImport={importArchiveEntries} />}
+        {section === "blog" && <BlogPage posts={blogPosts} user={user} isModerator={isModerator} onSubmit={submitBlogPost} onReview={reviewBlogPost} />}
         {section === "requests" && <FriendRequestCenter requests={friendRequests} currentUserId={user.uid} onDecision={decideFriendRequest} />}
         {section === "reports" && isModerator && <ReportsInbox reports={privateReports} onStatusChange={updateReportStatus} />}
         {section === "tournaments" && view === "list" && (
@@ -1668,6 +1721,7 @@ export default function App() {
             currentUserName={safeProfileName(myProfile?.displayName, user.displayName)}
             registrations={selectedRegistrations}
             onSaveResults={(results) => saveTournamentResults(selected.id, results)}
+            onCloseTournament={() => closeTournament(selected.id)}
             onBack={() => { setView("list"); setSelectedId(null); const url = new URL(window.location.href); url.searchParams.delete("tournament"); window.history.replaceState({}, "", url); }}
             onShare={() => shareTournament(selected)}
             onRequestFriend={() => requestHostFriend(selected)}
@@ -1714,7 +1768,7 @@ const shellStyle = {
   fontFamily: "'Inter', sans-serif",
 };
 
-function Header({ saving, user, onSignOut, theme, setTheme }) {
+function Header({ saving, user, onSignOut, theme, setTheme, onEditProfile, onNavigate, friendRequestCount }) {
   const displayName = user?.displayName || user?.email || "Player";
   const initials = safeProfileName(user?.displayName).slice(0, 1).toUpperCase();
 
@@ -1750,6 +1804,8 @@ function Header({ saving, user, onSignOut, theme, setTheme }) {
             </summary>
             <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 60, width: 250, padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)", boxShadow: "var(--panel-shadow)" }}>
               <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>{displayName}</div>
+              <Button variant="ghost" style={{ width: "100%", marginBottom: 8 }} onClick={(event) => { onEditProfile(); event.currentTarget.closest("details")?.removeAttribute("open"); }}>{user?.displayName ? "Edit my profile" : "Create my profile"}</Button>
+              <Button variant="ghost" style={{ width: "100%", marginBottom: 12 }} onClick={(event) => { onNavigate("requests"); event.currentTarget.closest("details")?.removeAttribute("open"); }}>Friend requests{friendRequestCount ? ` (${friendRequestCount})` : ""}</Button>
               <Field label="Theme">
                 <Select value={theme} onChange={(event) => setTheme(event.target.value)}>
                   <option value="glacier">Glacier (default)</option>
@@ -1767,6 +1823,8 @@ function Header({ saving, user, onSignOut, theme, setTheme }) {
   );
 }
 function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, onNew }) {
+  const [showArchived, setShowArchived] = useState(false);
+  const visibleTournaments = tournaments.filter((t) => isTournamentArchived(t) === showArchived);
   return (
     <div>
       <div
@@ -1795,10 +1853,11 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
         <Button onClick={onNew}>+ New tournament</Button>
       </div>
 
-      {tournaments.length === 0 ? (
+      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}><Button variant={showArchived ? "ghost" : "primary"} onClick={() => setShowArchived(false)}>Active</Button><Button variant={showArchived ? "primary" : "ghost"} onClick={() => setShowArchived(true)}>Archive</Button></div>
+      {visibleTournaments.length === 0 ? (
         <EmptyState
-          title="No tournaments yet"
-          body="Create your first tournament to start tracking teams, matches, and player stats."
+          title={showArchived ? "No archived tournaments" : "No active tournaments"}
+          body={showArchived ? "Completed or older tournaments will appear here with their results." : "Create your first tournament to start tracking teams, matches, and player stats."}
           actionLabel="+ New tournament"
           onAction={onNew}
         />
@@ -1810,7 +1869,7 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
             gap: 14,
           }}
         >
-          {tournaments.map((t, i) => {
+          {visibleTournaments.map((t, i) => {
             return (
               <button
                 key={t.id}
@@ -2145,6 +2204,7 @@ function TournamentDetail(props) {
     onCoAdminsChange,
     onReport,
     onDelete,
+    onCloseTournament,
     onAddTeam,
     onDeleteTeam,
     onAddMatch,
@@ -2234,6 +2294,7 @@ function TournamentDetail(props) {
           )}
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {isAdmin && !isTournamentArchived(tournament) && <Button variant="ghost" onClick={onCloseTournament}>Close tournament</Button>}
           <Button variant="ghost" onClick={onShare}>Share tournament</Button>
           <Button variant="danger" onClick={onReport}>Report tournament</Button>
           {!isOwner && <Button variant="ghost" onClick={onRequestFriend}>Request host as friend</Button>}
