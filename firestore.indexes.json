@@ -1,0 +1,123 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "players",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "discoverable",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "games",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "region",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "language",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "players",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "discoverable",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "games",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "region",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "players",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "discoverable",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "games",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "language",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "players",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "discoverable",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "games",
+          "arrayConfig": "CONTAINS"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "players",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "discoverable",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "region",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "language",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "players",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "discoverable",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "region",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "players",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "discoverable",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "language",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
