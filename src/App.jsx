@@ -946,6 +946,7 @@ function ReportModal({ target, onClose, onSubmit }) {
 function RegistrationPanel({ tournament, requests, currentUserId, currentUserName, isAdmin, onRequest, onDecision }) {
   const mine = requests.find((request) => request.playerId === currentUserId);
   const pending = requests.filter((request) => request.status === "pending");
+  const approved = requests.filter((request) => request.status === "approved");
   return (
     <section style={{ marginTop: 20, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
       <Eyebrow>Free registration</Eyebrow>
@@ -961,6 +962,7 @@ function RegistrationPanel({ tournament, requests, currentUserId, currentUserNam
               <span style={{ display: "flex", gap: 6 }}><Button onClick={() => onDecision(request.id, "approved")}>Approve</Button><Button variant="danger" onClick={() => onDecision(request.id, "declined")}>Decline</Button></span>
             </div>
           ))}
+          {approved.length > 0 && <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10, marginTop: 4, fontSize: 12, color: "var(--text-muted)" }}>Approved players: {approved.map((request) => request.displayName || "Player").join(", ")}</div>}
         </div>
       )}
     </section>
