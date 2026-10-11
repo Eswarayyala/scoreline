@@ -134,7 +134,38 @@ const PLAY_STYLES = [
   "Sniper / Precision",
   "Flex / All-rounder",
 ];
-const PLAYER_AVATARS = ["🎮", "⚡", "🎯", "🛡️", "🔥", "❄️"];
+const PLAYER_AVATARS = ["🎮", "⚡", "🎯", "🛡️", "🔥", "❄️", "🐺", "🦊", "🦁", "🤖", "👾", "🌟"];
+const GAME_ICONS = {
+  "Valorant": "🎯",
+  "League of Legends": "🛡️",
+  "CS2": "🎯",
+  "Dota 2": "🔮",
+  "Overwatch 2": "🦾",
+  "Rocket League": "🚗",
+  "Apex Legends": "🏹",
+  "BGMI": "🎮",
+  "PUBG Mobile": "🎮",
+  "PUBG PC": "🎖️",
+  "Mobile Legends: Bang Bang": "⚔️",
+  "Free Fire": "🔥",
+  "Call of Duty": "🎖️",
+  "Fortnite": "🪂",
+  "Rainbow Six Siege": "🛡️",
+  "Honor of Kings": "👑",
+  "Clash Royale": "👑",
+  "Brawl Stars": "⭐",
+  "StarCraft 2": "🚀",
+  "Teamfight Tactics": "♟️",
+  "Other": "🎮",
+};
+const TOURNAMENT_ARTWORKS = [
+  { icon: "🏆", label: "Championship" },
+  { icon: "🌌", label: "Cosmic" },
+  { icon: "⚡", label: "Energy" },
+  { icon: "🔥", label: "Inferno" },
+  { icon: "❄️", label: "Frost" },
+  { icon: "🐉", label: "Dragon" },
+];
 const QUICK_PICK_GAMES = ["Valorant", "BGMI", "PUBG Mobile", "Apex Legends"];
 const BIO_EXAMPLES = [
   { label: "Friendly", text: "Here to improve, have fun, and find a friendly squad." },
@@ -185,6 +216,28 @@ function Eyebrow({ children, color = "var(--accent)" }) {
     >
       {children}
     </div>
+  );
+}
+
+function GameIcon({ game, size = 30 }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        width: size,
+        height: size,
+        display: "inline-grid",
+        placeItems: "center",
+        flexShrink: 0,
+        borderRadius: 8,
+        background: "var(--panel-raised)",
+        border: "1px solid var(--border)",
+        fontSize: Math.round(size * 0.56),
+        lineHeight: 1,
+      }}
+    >
+      {GAME_ICONS[game] || "🎮"}
+    </span>
   );
 }
 
@@ -682,6 +735,9 @@ function PlayerCard({ player }) {
           <span
             key={g}
             style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
               fontFamily: "'JetBrains Mono', monospace",
               fontSize: 10,
               padding: "3px 8px",
@@ -689,7 +745,7 @@ function PlayerCard({ player }) {
               color: "var(--accent-secondary)",
             }}
           >
-            {g}
+            <GameIcon game={g} size={16} /> {g}
           </span>
         ))}
       </div>
@@ -1374,7 +1430,24 @@ function TournamentList({ tournaments, onOpen, onNew }) {
                 onFocus={(e) => (e.currentTarget.style.outline = "2px solid var(--accent-secondary)")}
                 onBlur={(e) => (e.currentTarget.style.outline = "none")}
               >
-                <Eyebrow color="var(--text-muted)">{t.game || "Game TBD"}</Eyebrow>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                  <GameIcon game={t.game} size={32} />
+                  <Eyebrow color="var(--text-muted)">{t.game || "Game TBD"}</Eyebrow>
+                </div>
+                <div
+                  aria-hidden="true"
+                  style={{
+                    display: "grid",
+                    placeItems: "center",
+                    height: 104,
+                    margin: "-2px -2px 14px",
+                    border: "1px solid var(--border)",
+                    background: "linear-gradient(135deg, var(--panel-raised), var(--panel-bg))",
+                    fontSize: 48,
+                  }}
+                >
+                  {t.artwork || "🏆"}
+                </div>
                 <div
                   style={{
                     fontFamily: "'Bebas Neue', sans-serif",
@@ -1415,6 +1488,7 @@ function NewTournamentModal({ onClose, onCreate }) {
   const [format, setFormat] = useState(FORMATS[0]);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [artwork, setArtwork] = useState(TOURNAMENT_ARTWORKS[0].icon);
   const [error, setError] = useState("");
 
   const submit = () => {
@@ -1422,7 +1496,7 @@ function NewTournamentModal({ onClose, onCreate }) {
       setError("Enter a tournament name first");
       return;
     }
-    onCreate({ name: name.trim(), game, format, startDate, endDate });
+    onCreate({ name: name.trim(), game, format, startDate, endDate, artwork });
   };
 
   return (
@@ -1466,16 +1540,45 @@ function NewTournamentModal({ onClose, onCreate }) {
             />
           </Field>
           {error && <div style={{ fontSize: 13, color: "var(--danger)" }}>{error}</div>}
+          <Field label="Tournament artwork">
+            <div role="group" aria-label="Choose tournament artwork" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {TOURNAMENT_ARTWORKS.map((option) => (
+                <button
+                  key={option.label}
+                  type="button"
+                  title={option.label}
+                  aria-label={"Choose " + option.label + " artwork"}
+                  aria-pressed={artwork === option.icon}
+                  onClick={() => setArtwork(option.icon)}
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 8,
+                    border: artwork === option.icon ? "2px solid var(--accent)" : "1px solid var(--border)",
+                    background: "var(--panel-raised)",
+                    color: "var(--page-text)",
+                    fontSize: 24,
+                    cursor: "pointer",
+                  }}
+                >
+                  {option.icon}
+                </button>
+              ))}
+            </div>
+          </Field>
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ flex: 1 }}>
               <Field label="Game">
-                <Select value={game} onChange={(e) => setGame(e.target.value)}>
-                  {GAME_PRESETS.map((g) => (
-                    <option key={g} value={g}>
-                      {g}
-                    </option>
-                  ))}
-                </Select>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <GameIcon game={game} size={38} />
+                  <Select value={game} onChange={(e) => setGame(e.target.value)} style={{ flex: 1 }}>
+                    {GAME_PRESETS.map((g) => (
+                      <option key={g} value={g}>
+                        {g}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
               </Field>
             </div>
             <div style={{ flex: 1 }}>
@@ -1561,6 +1664,22 @@ function TournamentDetail(props) {
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
         <div>
+          <div
+            aria-hidden="true"
+            style={{
+              width: 88,
+              height: 88,
+              display: "grid",
+              placeItems: "center",
+              marginBottom: 12,
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              background: "linear-gradient(135deg, var(--panel-raised), var(--panel-bg))",
+              fontSize: 48,
+            }}
+          >
+            {tournament.artwork || "🏆"}
+          </div>
           <Eyebrow color="var(--text-muted)">
             {tournament.game} · {tournament.format}
           </Eyebrow>
