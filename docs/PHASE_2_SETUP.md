@@ -32,6 +32,6 @@ The site does not contain a verified three-year history dataset yet. Gather and 
 
 ## Publishing safely
 
-The source rules in this branch must be reviewed against the currently deployed Firestore rules before publishing. In particular, the player profile rules now include the avatar field already written by the app. Do not paste a partial rules fragment; publish the complete reviewed `firestore.rules` file in Firebase Console → Firestore Database → Rules only after review.
+The current live Firestore rules in Firebase project `scoreliner` differ from the repository rules: live player documents currently allow public reads, and the new reports, registrations, co-host and archive collections do not have rules yet. Review the complete `firestore.rules` file in this branch before publishing it in Firebase Console → Firestore Database → Rules. It restricts player reads to the owner or players who opted into discovery, validates the existing profile fields including avatars, and secures the new collections. Do not paste a partial fragment; publish the complete reviewed file before using Phase 2 features.
 
 The branch changes do not alter Firebase Authentication authorized domains and do not fix the separate Google sign-in preview issue. Theme persistence is also a separate follow-up.
