@@ -1857,7 +1857,7 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
       {visibleTournaments.length === 0 ? (
         <EmptyState
           title={showArchived ? "No archived tournaments" : "No active tournaments"}
-          body={showArchived ? "Completed or older tournaments will appear here with their results." : "Create your first tournament to start tracking teams, matches, and player stats."
+          body={showArchived ? "Completed or older tournaments will appear here with their results." : "Create your first tournament to start tracking teams, matches, and player stats."}
           actionLabel="+ New tournament"
           onAction={onNew}
         />
