@@ -71,7 +71,7 @@ service cloud.firestore {
                'name', 'game', 'format', 'startDate', 'endDate', 'artwork',
                'prizeAmount', 'prizeCurrency', 'registrationOpen',
                'adminUserId', 'adminDisplayName', 'coAdminUserIds', 'status',
-               'isLegacyImport', 'createdAt', 'updatedAt', 'results'
+               'isLegacyImport', 'createdAt', 'updatedAt', 'results', 'archived', 'archivedAt'
              ]))
              && data.name is string && data.name.size() > 0 && data.name.size() <= 120
              && data.game is string && data.game.size() <= 60
@@ -86,6 +86,8 @@ service cloud.firestore {
              && (!data.keys().hasAny(['isLegacyImport']) || data.isLegacyImport is bool)
              && (!data.keys().hasAny(['createdAt']) || data.createdAt is int)
              && (!data.keys().hasAny(['updatedAt']) || data.updatedAt is int)
+             && (!data.keys().hasAny(['archived']) || data.archived is bool)
+             && (!data.keys().hasAny(['archivedAt']) || data.archivedAt is int)
              && (!data.keys().hasAny(['prizeAmount'])
                  || ((data.prizeAmount is int || data.prizeAmount is float)
                      && data.prizeAmount >= 0 && data.prizeAmount <= 100000000))
@@ -146,7 +148,7 @@ service cloud.firestore {
                     && (request.resource.data.coAdminUserIds == resource.data.coAdminUserIds
                         || isOwner(resource.data))
                     && request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['coAdminUserIds', 'updatedAt', 'results'])
+                         .hasOnly(['coAdminUserIds', 'updatedAt', 'results', 'status', 'registrationOpen', 'archived', 'archivedAt'])
                     && validTournament(request.resource.data, false);
 
       allow delete: if isOwner(resource.data);
@@ -183,6 +185,8 @@ service cloud.firestore {
                       && exists(/databases/$(database)/documents/tournaments/$(tid))
                       && (!parent(tid).keys().hasAny(['registrationOpen'])
                           || parent(tid).registrationOpen == true)
+                      && (!parent(tid).keys().hasAny(['archived']) || parent(tid).archived != true)
+                      && parent(tid).status != 'completed'
                       && request.auth.uid == playerId
                       && request.resource.data.keys().hasOnly(['playerId', 'displayName', 'status', 'requestedAt'])
                       && request.resource.data.playerId == request.auth.uid
@@ -203,6 +207,37 @@ service cloud.firestore {
     match /moderators/{userId} {
       allow get: if request.auth != null && request.auth.uid == userId;
       allow list, create, update, delete: if false;
+    }
+
+    match /blogPosts/{postId} {
+      allow get, list: if request.auth != null
+                       && (resource.data.status == 'published'
+                           || resource.data.authorId == request.auth.uid
+                           || isModerator());
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasOnly(['title', 'game', 'content', 'source', 'authorId', 'authorName', 'status', 'createdAt'])
+                    && request.resource.data.authorId == request.auth.uid
+                    && request.resource.data.authorName is string
+                    && request.resource.data.authorName.size() <= 40
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() > 0
+                    && request.resource.data.title.size() <= 120
+                    && request.resource.data.game is string
+                    && request.resource.data.game.size() > 0
+                    && request.resource.data.game.size() <= 60
+                    && request.resource.data.content is string
+                    && request.resource.data.content.size() > 0
+                    && request.resource.data.content.size() <= 6000
+                    && request.resource.data.source is string
+                    && request.resource.data.source.size() <= 500
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.createdAt is int;
+      allow update: if isModerator()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy'])
+                    && request.resource.data.status in ['published', 'rejected']
+                    && request.resource.data.reviewedAt is int
+                    && request.resource.data.reviewedBy == request.auth.uid;
+      allow delete: if false;
     }
 
     match /reports/{reportId} {
