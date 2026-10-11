@@ -7,6 +7,8 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  query,
+  where,
 } from "firebase/firestore";
 import {
   onAuthStateChanged,
@@ -41,6 +43,14 @@ function ensureFonts() {
 }
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+function isEmailLike(value) {
+  return typeof value === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function safeProfileName(...names) {
+  return names.find((name) => typeof name === "string" && name.trim() && !isEmailLike(name))?.trim().slice(0, 40) || "Player";
+}
 
 const GAME_PRESETS = [
   "Valorant",
@@ -435,11 +445,14 @@ function MultiToggle({ options, selected, onToggle }) {
   );
 }
 
-function ProfileModal({ initialProfile, onSave, onSkip, onClose }) {
+function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onClose }) {
+  const [displayName, setDisplayName] = useState(safeProfileName(initialProfile?.displayName, defaultDisplayName));
   const [games, setGames] = useState(initialProfile?.games || []);
   const [region, setRegion] = useState(initialProfile?.region || "");
   const [language, setLanguage] = useState(initialProfile?.language || "");
   const [style, setStyle] = useState(initialProfile?.style || "");
+  const [bio, setBio] = useState(initialProfile?.bio || "");
+  const [discoverable, setDiscoverable] = useState(initialProfile?.discoverable === true);
   const [error, setError] = useState("");
 
   const toggleGame = (g) => {
@@ -447,11 +460,15 @@ function ProfileModal({ initialProfile, onSave, onSkip, onClose }) {
   };
 
   const submit = () => {
+    if (!displayName.trim() || isEmailLike(displayName)) {
+      setError("Choose a player name, not an email address");
+      return;
+    }
     if (games.length === 0 || !region || !language) {
       setError("Pick at least one game, a region, and a language");
       return;
     }
-    onSave({ games, region, language, style });
+    onSave({ displayName: displayName.trim(), games, region, language, style, bio: bio.trim(), discoverable });
   };
 
   return (
@@ -485,11 +502,13 @@ function ProfileModal({ initialProfile, onSave, onSkip, onClose }) {
           Set up your player profile
         </div>
         <div style={{ fontSize: 13, color: "#8B98A5", marginBottom: 20 }}>
-          Let other players on GRINDINFO find you by game, region, and language. You can skip this and fill it in
-          later.
+          Your profile stays out of player search unless you choose to be discoverable. Use a gaming name and keep personal contact details private.
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <Field label="Player name">
+            <TextInput value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={40} placeholder="ghostpeak" />
+          </Field>
           <Field label="Games you play">
             <MultiToggle options={GAME_PRESETS} selected={games} onToggle={toggleGame} />
           </Field>
@@ -529,6 +548,30 @@ function ProfileModal({ initialProfile, onSave, onSkip, onClose }) {
               ))}
             </Select>
           </Field>
+          <Field label="Bio (optional)">
+            <textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value.slice(0, 200))}
+              maxLength={200}
+              rows={3}
+              placeholder="What kind of teammate are you looking for?"
+              style={{ ...inputStyle, resize: "vertical" }}
+            />
+          </Field>
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 10, color: "#EDF1F4", fontSize: 13 }}>
+            <input
+              type="checkbox"
+              checked={discoverable}
+              onChange={(e) => setDiscoverable(e.target.checked)}
+              style={{ marginTop: 2, accentColor: "#3FD6C0" }}
+            />
+            <span>
+              <strong>Show me in player search</strong>
+              <span style={{ display: "block", color: "#8B98A5", marginTop: 3 }}>
+                Only turn this on if you want signed-in GrindInfo players to find this profile.
+              </span>
+            </span>
+          </label>
         </div>
 
         {error && <div style={{ fontSize: 13, color: "#FF5C5C", marginTop: 14 }}>{error}</div>}
@@ -570,27 +613,50 @@ function PlayerCard({ player }) {
         {player.region} · {player.language}
         {player.style ? ` · ${player.style}` : ""}
       </div>
+      {player.bio && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "#EDF1F4", marginTop: 10 }}>{player.bio}</div>}
     </div>
   );
 }
 
-function FindPlayersPage({ players, currentUid, onEditProfile }) {
+function FindPlayersPage({ currentUid, myProfile, onEditProfile }) {
   const [gameFilter, setGameFilter] = useState("");
   const [regionFilter, setRegionFilter] = useState("");
   const [languageFilter, setLanguageFilter] = useState("");
+  const [players, setPlayers] = useState([]);
+  const [playersLoading, setPlayersLoading] = useState(false);
+  const [playersError, setPlayersError] = useState("");
+  const hasFilters = Boolean(gameFilter || regionFilter || languageFilter);
 
-  const myPlayerProfile = players.find((p) => p.uid === currentUid) || null;
+  useEffect(() => {
+    setPlayersError("");
+    if (!hasFilters) {
+      setPlayers([]);
+      setPlayersLoading(false);
+      return undefined;
+    }
 
-  const filtered = players
-    .filter((p) => p.uid !== currentUid)
-    .filter((p) => {
-      if (gameFilter && !(p.games || []).includes(gameFilter)) return false;
-      if (regionFilter && p.region !== regionFilter) return false;
-      if (languageFilter && p.language !== languageFilter) return false;
-      return true;
-    });
+    setPlayersLoading(true);
+    const filters = [where("discoverable", "==", true)];
+    if (gameFilter) filters.push(where("games", "array-contains", gameFilter));
+    if (regionFilter) filters.push(where("region", "==", regionFilter));
+    if (languageFilter) filters.push(where("language", "==", languageFilter));
 
-  const hasOwnProfile = !!myPlayerProfile;
+    const playersQuery = query(PLAYERS_COLLECTION, ...filters);
+    return onSnapshot(
+      playersQuery,
+      (snap) => {
+        setPlayers(snap.docs.map((d) => ({ uid: d.id, ...d.data() })));
+        setPlayersLoading(false);
+      },
+      () => {
+        setPlayersError("Couldn't load players. Check your connection or database indexes, then try again.");
+        setPlayersLoading(false);
+      }
+    );
+  }, [gameFilter, regionFilter, languageFilter, hasFilters]);
+
+  const filtered = players.filter((p) => p.uid !== currentUid);
+  const hasOwnProfile = !!myProfile;
 
   return (
     <div>
@@ -611,6 +677,9 @@ function FindPlayersPage({ players, currentUid, onEditProfile }) {
         <Button onClick={onEditProfile}>{hasOwnProfile ? "Edit my profile" : "+ Create my profile"}</Button>
       </div>
 
+      <div style={{ fontSize: 13, color: "#8B98A5", marginBottom: 14, borderLeft: "2px solid #FFC22E", paddingLeft: 12 }}>
+        Online teammates are people you may not know. Keep personal contact details private and stop interacting if someone makes you uncomfortable.
+      </div>
       <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
         <div style={{ minWidth: 160 }}>
           <Select value={gameFilter} onChange={(e) => setGameFilter(e.target.value)}>
@@ -644,11 +713,13 @@ function FindPlayersPage({ players, currentUid, onEditProfile }) {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          title="No players match yet"
-          body="Try widening your filters, or be the first to create a profile."
-        />
+      {playersError && <div style={{ fontSize: 13, color: "#FF5C5C", marginBottom: 14 }}>{playersError}</div>}
+      {!hasFilters ? (
+        <EmptyState title="Choose a search filter" body="Select a game, region, or language to search profiles that opted in to discovery." />
+      ) : playersLoading ? (
+        <div style={{ color: "#8B98A5", fontSize: 13, padding: 20 }}>Searching opted-in players…</div>
+      ) : filtered.length === 0 ? (
+        <EmptyState title="No players match yet" body="Try another game, region, or language." />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
           {filtered.map((p) => (
@@ -731,16 +802,8 @@ export default function App() {
 
   // ---- player profiles ----
   const [section, setSection] = useState("tournaments"); // 'tournaments' | 'players'
-  const [players, setPlayers] = useState([]);
   const [myProfile, setMyProfile] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
-
-  useEffect(() => {
-    const unsub = onSnapshot(PLAYERS_COLLECTION, (snap) => {
-      setPlayers(snap.docs.map((d) => ({ uid: d.id, ...d.data() })));
-    });
-    return () => unsub();
-  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -812,8 +875,10 @@ export default function App() {
       if (!user) return;
       try {
         await setDoc(playerDocRef(user.uid), {
-          displayName: user.displayName || user.email,
           ...fields,
+          displayName: safeProfileName(fields.displayName, user.displayName),
+          bio: String(fields.bio || "").slice(0, 200),
+          discoverable: fields.discoverable === true,
           updatedAt: Date.now(),
         });
         showToast("Profile saved");
@@ -984,7 +1049,7 @@ export default function App() {
         <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #1B222A" }}>
           {[
             { id: "tournaments", label: "Tournaments" },
-            { id: "players", label: `Find players (${players.length})` },
+            { id: "players", label: "Find players" },
           ].map((s) => (
             <button
               key={s.id}
@@ -1010,7 +1075,7 @@ export default function App() {
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "0 20px 80px" }}>
         {section === "players" && (
-          <FindPlayersPage players={players} currentUid={user.uid} onEditProfile={() => setShowProfileModal(true)} />
+          <FindPlayersPage currentUid={user.uid} myProfile={myProfile} onEditProfile={() => setShowProfileModal(true)} />
         )}
         {section === "tournaments" && view === "list" && (
           <TournamentList
@@ -1053,6 +1118,7 @@ export default function App() {
       {showProfileModal && (
         <ProfileModal
           initialProfile={myProfile}
+          defaultDisplayName={user.displayName}
           onSave={saveProfile}
           onSkip={skipProfile}
           onClose={() => setShowProfileModal(false)}
