@@ -197,7 +197,7 @@ function Button({ children, onClick, variant = "primary", type = "button", style
   };
   const variants = {
     primary: { background: "#FFC22E", color: "#0A0E12", borderColor: "#FFC22E" },
-    ghost: { background: "transparent", color: "#EDF1F4", borderColor: "#2E3946" },
+    ghost: { background: "transparent", color: "var(--page-text)", borderColor: "#2E3946" },
     danger: { background: "transparent", color: "#FF5C5C", borderColor: "#4A2626" },
   };
   return (
@@ -226,7 +226,7 @@ function Field({ label, children }) {
 const inputStyle = {
   background: "#131920",
   border: "1px solid #2E3946",
-  color: "#EDF1F4",
+  color: "var(--page-text)",
   padding: "10px 12px",
   fontSize: 14,
   fontFamily: "'Inter', sans-serif",
@@ -280,7 +280,7 @@ function EmptyState({ title, body, actionLabel, onAction }) {
         gap: 14,
       }}
     >
-      <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, color: "#EDF1F4", letterSpacing: "0.02em" }}>
+      <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, color: "var(--page-text)", letterSpacing: "0.02em" }}>
         {title}
       </div>
       <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 14, color: "#8B98A5", maxWidth: 380 }}>{body}</div>
@@ -300,7 +300,7 @@ function Toast({ message }) {
         transform: "translateX(-50%)",
         background: "#1A222B",
         border: "1px solid #2E3946",
-        color: "#EDF1F4",
+        color: "var(--page-text)",
         padding: "10px 18px",
         fontSize: 13,
         fontFamily: "'Inter', sans-serif",
@@ -339,7 +339,7 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy }) {
     >
       <div style={{ width: "100%", maxWidth: 380 }}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 34, color: "#EDF1F4", letterSpacing: "0.04em" }}>
+          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 34, color: "var(--page-text)", letterSpacing: "0.04em" }}>
             GRINDINFO
           </div>
           <Eyebrow color="#3FD6C0">Sign in to upload tournament data</Eyebrow>
@@ -500,7 +500,7 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "#12181F",
+          background: "var(--panel-bg)",
           border: "1px solid #232B33",
           padding: 28,
           width: "100%",
@@ -570,7 +570,7 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
               style={{ ...inputStyle, resize: "vertical" }}
             />
           </Field>
-          <label style={{ display: "flex", alignItems: "flex-start", gap: 10, color: "#EDF1F4", fontSize: 13 }}>
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 10, color: "var(--page-text)", fontSize: 13 }}>
             <input
               type="checkbox"
               checked={discoverable}
@@ -601,7 +601,7 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
 
 function PlayerCard({ player }) {
   return (
-    <div style={{ background: "#12181F", border: "1px solid #232B33", padding: "16px 18px" }}>
+    <div style={{ background: "var(--panel-bg)", border: "1px solid #232B33", padding: "16px 18px" }}>
       <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: "0.02em" }}>
         {player.displayName}
       </div>
@@ -625,7 +625,7 @@ function PlayerCard({ player }) {
         {player.region} · {player.language}
         {player.style ? ` · ${player.style}` : ""}
       </div>
-      {player.bio && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "#EDF1F4", marginTop: 10 }}>{player.bio}</div>}
+      {player.bio && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--page-text)", marginTop: 10 }}>{player.bio}</div>}
     </div>
   );
 }
@@ -781,6 +781,7 @@ function FindPlayersPage({ currentUid, myProfile, onEditProfile }) {
 // ---------- app ----------
 
 export default function App() {
+  const [theme, setTheme] = useState("cyberpunk");
   const [tournaments, setTournaments] = useState([]);
   const [selectedTeams, setSelectedTeams] = useState([]);
   const [selectedMatches, setSelectedMatches] = useState([]);
@@ -1078,8 +1079,19 @@ export default function App() {
   }
 
   return (
-    <div style={shellStyle}>
+    <div style={shellStyle} data-theme={theme}>
       <style>{`
+      [data-theme="cyberpunk"] {
+  --page-bg: #090611;
+  --page-text: #F4F0FF;
+  --panel-bg: #170F24;
+}
+
+[data-theme="dark"] {
+  --page-bg: #0A0E12;
+  --page-text: #EDF1F4;
+  --panel-bg: #12181F;
+}
         * { box-sizing: border-box; }
         ::selection { background: #FFC22E; color: #0A0E12; }
         button:active { transform: scale(0.98); }
@@ -1090,14 +1102,14 @@ export default function App() {
         @keyframes sl-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
       `}</style>
 
-      <Header saving={saving} user={user} onSignOut={handleSignOut} />
+      <Header saving={saving} user={user} onSignOut={handleSignOut} theme={theme} setTheme={setTheme} />
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "16px 20px 0" }}>
         <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #1B222A" }}>
           {[
             { id: "tournaments", label: "Tournaments" },
             { id: "players", label: "Find players" },
-          ].map((s) => (
+    ].map((s) => (
             <button
               key={s.id}
               onClick={() => setSection(s.id)}
@@ -1105,7 +1117,7 @@ export default function App() {
                 background: "none",
                 border: "none",
                 borderBottom: section === s.id ? "2px solid #3FD6C0" : "2px solid transparent",
-                color: section === s.id ? "#EDF1F4" : "#8B98A5",
+                color: section === s.id ? "var(--page-text)" : "#8B98A5",
                 fontFamily: "'JetBrains Mono', monospace",
                 fontSize: 12,
                 letterSpacing: "0.05em",
@@ -1179,12 +1191,12 @@ export default function App() {
 
 const shellStyle = {
   minHeight: "100vh",
-  background: "#0A0E12",
-  color: "#EDF1F4",
+  background: "var(--page-bg, #0A0E12)",
+  color: "var(--page-text, #EDF1F4)",
   fontFamily: "'Inter', sans-serif",
 };
 
-function Header({ saving, user, onSignOut }) {
+function Header({ saving, user, onSignOut, theme, setTheme }) {
   return (
     <div style={{ borderBottom: "1px solid #1B222A" }}>
       <div
@@ -1203,7 +1215,7 @@ function Header({ saving, user, onSignOut }) {
               fontFamily: "'Bebas Neue', sans-serif",
               fontSize: 28,
               letterSpacing: "0.04em",
-              color: "#EDF1F4",
+              color: "var(--page-text)",
             }}
           >
             GRINDINFO
@@ -1231,6 +1243,12 @@ function Header({ saving, user, onSignOut }) {
           >
             {saving ? "SAVING…" : "SAVED"}
           </span>
+          <Button
+            variant="ghost"
+            onClick={() => setTheme(theme === "cyberpunk" ? "dark" : "cyberpunk")}
+          >
+            {theme === "cyberpunk" ? "Switch to Dark" : "Switch to Cyberpunk"}
+          </Button>
           {user && (
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span
@@ -1310,7 +1328,7 @@ function TournamentList({ tournaments, onOpen, onNew }) {
                 onClick={() => onOpen(t.id)}
                 style={{
                   textAlign: "left",
-                  background: "#12181F",
+                  background: "var(--panel-bg)",
                   border: "1px solid #232B33",
                   padding: "18px 18px 16px",
                   cursor: "pointer",
@@ -1390,7 +1408,7 @@ function NewTournamentModal({ onClose, onCreate }) {
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "#12181F",
+          background: "var(--panel-bg)",
           border: "1px solid #232B33",
           padding: 28,
           width: "100%",
@@ -1556,7 +1574,7 @@ function TournamentDetail(props) {
               background: "none",
               border: "none",
               borderBottom: tab === t.id ? "2px solid #FFC22E" : "2px solid transparent",
-              color: tab === t.id ? "#EDF1F4" : "#8B98A5",
+              color: tab === t.id ? "var(--page-text)" : "#8B98A5",
               fontFamily: "'JetBrains Mono', monospace",
               fontSize: 12,
               letterSpacing: "0.05em",
@@ -1646,7 +1664,7 @@ function TeamsPanel({ teams, isAdmin, onAdd, onDelete }) {
             <div
               key={t.id}
               style={{
-                background: "#12181F",
+                background: "var(--panel-bg)",
                 border: "1px solid #232B33",
                 padding: "14px 16px",
                 display: "flex",
@@ -1820,7 +1838,7 @@ function MatchRow({ match, teamAName, teamBName, teamATag, teamBTag, isAdmin, on
   return (
     <div
       style={{
-        background: "#12181F",
+        background: "var(--panel-bg)",
         border: "1px solid #232B33",
         padding: "12px 16px",
         display: "flex",
@@ -1835,7 +1853,7 @@ function MatchRow({ match, teamAName, teamBName, teamATag, teamBTag, isAdmin, on
             fontFamily: "'Inter', sans-serif",
             fontSize: 14,
             fontWeight: aWins ? 700 : 400,
-            color: aWins ? "#FFC22E" : "#EDF1F4",
+            color: aWins ? "#FFC22E" : "var(--page-text)",
             flex: 1,
             textAlign: "right",
           }}
@@ -1882,7 +1900,7 @@ function MatchRow({ match, teamAName, teamBName, teamATag, teamBTag, isAdmin, on
             fontFamily: "'Inter', sans-serif",
             fontSize: 14,
             fontWeight: bWins ? 700 : 400,
-            color: bWins ? "#FFC22E" : "#EDF1F4",
+            color: bWins ? "#FFC22E" : "var(--page-text)",
             flex: 1,
           }}
         >
