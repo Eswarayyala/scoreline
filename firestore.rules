@@ -14,14 +14,19 @@ service cloud.firestore {
     function parent(tid) {
       return get(/databases/$(database)/documents/tournaments/$(tid)).data;
     }
+    function isModerator() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/moderators/$(request.auth.uid))
+        && get(/databases/$(database)/documents/moderators/$(request.auth.uid)).data.enabled == true;
+    }
     function validPlayerProfile(data) {
       return data.keys().hasOnly([
                'displayName', 'games', 'region', 'language', 'style',
-               'bio', 'discoverable', 'updatedAt'
+               'bio', 'avatar', 'discoverable', 'updatedAt'
              ])
              && data.keys().hasAll([
                'displayName', 'games', 'region', 'language', 'style',
-               'bio', 'discoverable', 'updatedAt'
+               'bio', 'avatar', 'discoverable', 'updatedAt'
              ])
              && data.displayName is string
              && data.displayName.size() > 0
@@ -36,8 +41,95 @@ service cloud.firestore {
              && data.style.size() <= 60
              && data.bio is string
              && data.bio.size() <= 200
+             && data.avatar is string
+             && data.avatar.size() <= 16
              && data.discoverable is bool
              && data.updatedAt is int;
+    }
+
+    function validReport(data) {
+      return data.keys().hasOnly([
+               'reporterId', 'targetType', 'targetId', 'targetName',
+               'reason', 'details', 'status', 'createdAt'
+             ])
+             && data.reporterId == request.auth.uid
+             && data.targetType in ['player', 'tournament']
+             && data.targetId is string
+             && data.targetId.size() > 0
+             && data.targetId.size() <= 128
+             && data.targetName is string
+             && data.targetName.size() <= 120
+             && data.reason in ['Abuse or harassment', 'Scam or fraud', 'Inappropriate content', 'Other']
+             && data.details is string
+             && data.details.size() <= 1000
+             && data.status == 'submitted'
+             && data.createdAt is int;
+    }
+
+    function validTournament(data, strictKeys) {
+      return (!strictKeys || data.keys().hasOnly([
+               'name', 'game', 'format', 'startDate', 'endDate', 'artwork',
+               'prizeAmount', 'prizeCurrency', 'registrationOpen',
+               'adminUserId', 'adminDisplayName', 'coAdminUserIds', 'status',
+               'isLegacyImport', 'createdAt', 'updatedAt', 'results'
+             ]))
+             && data.name is string && data.name.size() > 0 && data.name.size() <= 120
+             && data.game is string && data.game.size() <= 60
+             && data.format is string && data.format.size() <= 60
+             && data.adminUserId is string
+             && (!data.keys().hasAny(['startDate']) || (data.startDate is string && data.startDate.size() <= 40))
+             && (!data.keys().hasAny(['endDate']) || (data.endDate is string && data.endDate.size() <= 40))
+             && (!data.keys().hasAny(['artwork']) || (data.artwork is string && data.artwork.size() <= 16))
+             && (!data.keys().hasAny(['adminDisplayName']) || (data.adminDisplayName is string && data.adminDisplayName.size() <= 40))
+             && data.coAdminUserIds is list && data.coAdminUserIds.size() <= 20
+             && data.status in ['upcoming', 'live', 'completed']
+             && (!data.keys().hasAny(['isLegacyImport']) || data.isLegacyImport is bool)
+             && (!data.keys().hasAny(['createdAt']) || data.createdAt is int)
+             && (!data.keys().hasAny(['updatedAt']) || data.updatedAt is int)
+             && (!data.keys().hasAny(['prizeAmount'])
+                 || ((data.prizeAmount is int || data.prizeAmount is float)
+                     && data.prizeAmount >= 0 && data.prizeAmount <= 100000000))
+             && (!data.keys().hasAny(['prizeCurrency'])
+                 || (data.prizeCurrency is string && data.prizeCurrency == 'INR'))
+             && (!data.keys().hasAny(['registrationOpen']) || data.registrationOpen is bool)
+             && (!data.keys().hasAny(['results'])
+                 || (data.results is map
+                     && data.results.keys().hasOnly(['winner', 'mvp', 'runnerUp', 'secondRunnerUp'])
+                     && data.results.winner is string && data.results.winner.size() <= 80
+                     && data.results.mvp is string && data.results.mvp.size() <= 80
+                     && data.results.runnerUp is string && data.results.runnerUp.size() <= 80
+                     && data.results.secondRunnerUp is string && data.results.secondRunnerUp.size() <= 80));
+    }
+
+    function validTeam(data) {
+      return data.keys().hasOnly(['name', 'tag'])
+             && data.name is string && data.name.size() > 0 && data.name.size() <= 80
+             && data.tag is string && data.tag.size() <= 5;
+    }
+
+    function validMatch(data) {
+      return data.keys().hasOnly(['teamAId', 'teamBId', 'round', 'date', 'scoreA', 'scoreB', 'status'])
+             && data.keys().hasAll(['teamAId', 'teamBId', 'round', 'date', 'scoreA', 'scoreB', 'status'])
+             && data.teamAId is string && data.teamAId.size() <= 128
+             && data.teamBId is string && data.teamBId.size() <= 128
+             && data.teamAId != data.teamBId
+             && data.round is string && data.round.size() <= 60
+             && data.date is string && data.date.size() <= 40
+             && (data.scoreA is int || data.scoreA is float) && data.scoreA >= 0 && data.scoreA <= 1000000
+             && (data.scoreB is int || data.scoreB is float) && data.scoreB >= 0 && data.scoreB <= 1000000
+             && data.status in ['upcoming', 'live', 'completed'];
+    }
+
+    function validStat(data) {
+      return data.keys().hasOnly(['player', 'teamId', 'matchId', 'kills', 'deaths', 'assists', 'score'])
+             && data.keys().hasAll(['player', 'teamId', 'matchId', 'kills', 'deaths', 'assists', 'score'])
+             && data.player is string && data.player.size() > 0 && data.player.size() <= 100
+             && (data.teamId == null || (data.teamId is string && data.teamId.size() <= 128))
+             && (data.matchId == null || (data.matchId is string && data.matchId.size() <= 128))
+             && (data.kills is int || data.kills is float) && data.kills >= 0 && data.kills <= 1000000
+             && (data.deaths is int || data.deaths is float) && data.deaths >= 0 && data.deaths <= 1000000
+             && (data.assists is int || data.assists is float) && data.assists >= 0 && data.assists <= 1000000
+             && (data.score is int || data.score is float) && data.score >= 0 && data.score <= 100000000;
     }
 
     match /tournaments/{tid} {
@@ -46,18 +138,133 @@ service cloud.firestore {
       allow create: if request.auth != null
                     && request.resource.data.adminUserId == request.auth.uid
                     && request.resource.data.coAdminUserIds is list
-                    && request.resource.data.coAdminUserIds.size() == 0;
+                    && request.resource.data.coAdminUserIds.size() == 0
+                    && validTournament(request.resource.data, true);
 
       allow update: if isAdmin(resource.data)
                     && request.resource.data.adminUserId == resource.data.adminUserId
                     && (request.resource.data.coAdminUserIds == resource.data.coAdminUserIds
-                        || isOwner(resource.data));
+                        || isOwner(resource.data))
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['coAdminUserIds', 'updatedAt', 'results'])
+                    && validTournament(request.resource.data, false);
 
       allow delete: if isOwner(resource.data);
 
-      match /teams/{id}   { allow read: if true; allow write: if isAdmin(parent(tid)); }
-      match /matches/{id} { allow read: if true; allow write: if isAdmin(parent(tid)); }
-      match /stats/{id}   { allow read: if true; allow write: if isAdmin(parent(tid)); }
+      match /teams/{id} {
+        allow read: if true;
+        allow create: if isAdmin(parent(tid)) && validTeam(request.resource.data);
+        allow update: if isAdmin(parent(tid)) && validTeam(request.resource.data);
+        allow delete: if isAdmin(parent(tid));
+      }
+      match /matches/{id} {
+        allow read: if true;
+        allow create: if isAdmin(parent(tid)) && validMatch(request.resource.data);
+        allow update: if isAdmin(parent(tid))
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scoreA', 'scoreB', 'status'])
+                      && (request.resource.data.scoreA is int || request.resource.data.scoreA is float)
+                      && request.resource.data.scoreA >= 0 && request.resource.data.scoreA <= 1000000
+                      && (request.resource.data.scoreB is int || request.resource.data.scoreB is float)
+                      && request.resource.data.scoreB >= 0 && request.resource.data.scoreB <= 1000000
+                      && request.resource.data.status in ['upcoming', 'live', 'completed'];
+        allow delete: if isAdmin(parent(tid));
+      }
+      match /stats/{id} {
+        allow read: if true;
+        allow create: if isAdmin(parent(tid)) && validStat(request.resource.data);
+        allow update: if isAdmin(parent(tid)) && validStat(request.resource.data);
+        allow delete: if isAdmin(parent(tid));
+      }
+
+      match /registrations/{playerId} {
+        allow read: if isAdmin(parent(tid))
+                    || (request.auth != null && request.auth.uid == resource.data.playerId);
+        allow create: if request.auth != null
+                      && exists(/databases/$(database)/documents/tournaments/$(tid))
+                      && (!parent(tid).keys().hasAny(['registrationOpen'])
+                          || parent(tid).registrationOpen == true)
+                      && request.auth.uid == playerId
+                      && request.resource.data.keys().hasOnly(['playerId', 'displayName', 'status', 'requestedAt'])
+                      && request.resource.data.playerId == request.auth.uid
+                      && request.resource.data.displayName is string
+                      && request.resource.data.displayName.size() <= 40
+                      && request.resource.data.status == 'pending'
+                      && request.resource.data.requestedAt is int;
+        allow update: if isAdmin(parent(tid))
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['status', 'reviewedAt', 'reviewedBy'])
+                      && request.resource.data.status in ['approved', 'declined']
+                      && request.resource.data.reviewedBy == request.auth.uid
+                      && request.resource.data.reviewedAt is int;
+        allow delete: if isAdmin(parent(tid));
+      }
+    }
+
+    match /moderators/{userId} {
+      allow get: if request.auth != null && request.auth.uid == userId;
+      allow list, create, update, delete: if false;
+    }
+
+    match /reports/{reportId} {
+      allow create: if request.auth != null
+                    && validReport(request.resource.data)
+                    && reportId == request.auth.uid + '_' + request.resource.data.targetType
+                         + '_' + request.resource.data.targetId;
+      allow get, list: if isModerator();
+      allow update: if isModerator()
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['status', 'reviewedAt'])
+                    && request.resource.data.status in ['reviewing', 'closed']
+                    && request.resource.data.reviewedAt is int;
+      allow delete: if false;
+    }
+
+    match /friendRequests/{requestId} {
+      allow read: if request.auth != null
+                  && (resource.data.requesterId == request.auth.uid
+                      || resource.data.recipientId == request.auth.uid);
+      allow create: if request.auth != null
+                    && request.resource.data.keys().hasOnly(['requesterId', 'requesterName', 'recipientId', 'status', 'createdAt'])
+                    && request.resource.data.requesterId == request.auth.uid
+                    && request.resource.data.recipientId is string
+                    && request.resource.data.recipientId != request.auth.uid
+                    && requestId == request.auth.uid + '_' + request.resource.data.recipientId
+                    && request.resource.data.requesterName is string
+                    && request.resource.data.requesterName.size() <= 40
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.createdAt is int;
+      allow update: if request.auth != null
+                    && resource.data.recipientId == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt'])
+                    && request.resource.data.status in ['accepted', 'declined']
+                    && request.resource.data.reviewedAt is int;
+      allow delete: if false;
+    }
+
+    match /esportsArchive/{entryId} {
+      allow read: if true;
+      allow create: if isModerator()
+                    && request.resource.data.keys().hasOnly([
+                         'tournament', 'game', 'eventDate', 'winner', 'runnerUp',
+                         'mvp', 'source', 'createdAt', 'createdBy'
+                       ])
+                    && request.resource.data.tournament is string
+                    && request.resource.data.tournament.size() <= 120
+                    && request.resource.data.game is string
+                    && request.resource.data.game.size() <= 60
+                    && request.resource.data.eventDate is string
+                    && request.resource.data.eventDate.size() <= 40
+                    && request.resource.data.winner is string
+                    && request.resource.data.winner.size() <= 100
+                    && request.resource.data.runnerUp is string
+                    && request.resource.data.runnerUp.size() <= 100
+                    && request.resource.data.mvp is string
+                    && request.resource.data.mvp.size() <= 100
+                    && request.resource.data.source is string
+                    && request.resource.data.source.size() <= 500
+                    && request.resource.data.createdAt is int
+                    && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isModerator();
     }
 
     match /players/{userId} {
