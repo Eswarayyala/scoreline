@@ -52,6 +52,16 @@ function safeProfileName(...names) {
   return names.find((name) => typeof name === "string" && name.trim() && !isEmailLike(name))?.trim().slice(0, 40) || "Player";
 }
 
+const LEGACY_GAME_NAMES = { "PUBG Mobile (BGMI)": "BGMI and PUBG Mobile" };
+
+function normalizeGameName(game) {
+  return LEGACY_GAME_NAMES[game] || game;
+}
+
+function normalizeGameNames(games = []) {
+  return [...new Set(games.map(normalizeGameName))];
+}
+
 const GAME_PRESETS = [
   "Valorant",
   "League of Legends",
@@ -60,7 +70,9 @@ const GAME_PRESETS = [
   "Overwatch 2",
   "Rocket League",
   "Apex Legends",
-  "PUBG Mobile (BGMI)",
+  "BGMI",
+  "PUBG Mobile",
+  "PUBG PC",
   "Mobile Legends: Bang Bang",
   "Free Fire",
   "Call of Duty",
@@ -69,7 +81,6 @@ const GAME_PRESETS = [
   "Honor of Kings",
   "Clash Royale",
   "Brawl Stars",
-  "PUBG: Battlegrounds",
   "StarCraft 2",
   "Teamfight Tactics",
   "Other",
@@ -81,6 +92,7 @@ const REGIONS = [
   "Europe",
   "South Asia",
   "Southeast Asia",
+  "India",
   "East Asia",
   "Middle East",
   "Oceania",
@@ -447,7 +459,7 @@ function MultiToggle({ options, selected, onToggle }) {
 
 function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onClose }) {
   const [displayName, setDisplayName] = useState(safeProfileName(initialProfile?.displayName, defaultDisplayName));
-  const [games, setGames] = useState(initialProfile?.games || []);
+  const [games, setGames] = useState(normalizeGameNames(initialProfile?.games || []));
   const [region, setRegion] = useState(initialProfile?.region || "");
   const [language, setLanguage] = useState(initialProfile?.language || "");
   const [style, setStyle] = useState(initialProfile?.style || "");
@@ -594,7 +606,7 @@ function PlayerCard({ player }) {
         {player.displayName}
       </div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "8px 0" }}>
-        {(player.games || []).map((g) => (
+        {normalizeGameNames(player.games || []).map((g) => (
           <span
             key={g}
             style={{
@@ -628,7 +640,7 @@ function FindPlayersPage({ currentUid, myProfile, onEditProfile }) {
   const [playersError, setPlayersError] = useState("");
   const hasFilters = Boolean(gameFilters.length || regionFilter || languageFilter);
   const useMyInterests = () => {
-    setGameFilters(myProfile?.games || []);
+    setGameFilters(normalizeGameNames(myProfile?.games || []));
     setRegionFilter(myProfile?.region || "");
     setLanguageFilter(myProfile?.language || "");
     setStyleFilter(myProfile?.style || "");
@@ -644,7 +656,12 @@ function FindPlayersPage({ currentUid, myProfile, onEditProfile }) {
 
     setPlayersLoading(true);
     const filters = [where("discoverable", "==", true)];
-    if (gameFilters.length) filters.push(where("games", "array-contains-any", gameFilters));
+    if (gameFilters.length) {
+      const queryGames = normalizeGameNames(gameFilters).flatMap((game) =>
+        game === "BGMI and PUBG Mobile" ? [game, "PUBG Mobile (BGMI)"] : [game]
+      );
+      filters.push(where("games", "array-contains-any", [...new Set(queryGames)]));
+    }
     if (regionFilter) filters.push(where("region", "==", regionFilter));
     if (languageFilter) filters.push(where("language", "==", languageFilter));
 
