@@ -52,13 +52,14 @@ service cloud.firestore {
              && get(/databases/$(database)/documents/friendRequests/$(secondUid + '_' + firstUid)).data.status == 'accepted'));
     }
     function validSitePopup(data) {
-      return data.keys().hasOnly(['title', 'message', 'type', 'enabled', 'frequency', 'startsAt', 'endsAt', 'createdAt', 'updatedAt'])
+      return data.keys().hasOnly(['title', 'message', 'type', 'enabled', 'frequency', 'minimumOnline', 'startsAt', 'endsAt', 'createdAt', 'updatedAt'])
         && data.keys().hasAll(['title', 'message', 'type', 'enabled', 'frequency', 'startsAt', 'endsAt', 'createdAt', 'updatedAt'])
         && data.title is string && data.title.size() > 0 && data.title.size() <= 100
         && data.message is string && data.message.size() > 0 && data.message.size() <= 1000
         && data.type in ['disclaimer', 'motivation']
         && data.enabled is bool
-        && data.frequency in ['daily', 'session', 'random']
+        && data.frequency in ['registration', 'session', 'random', 'hourly', 'busy']
+        && (!data.keys().hasAny(['minimumOnline']) || (data.minimumOnline is int && data.minimumOnline >= 0 && data.minimumOnline <= 1000000))
         && data.startsAt is int && data.startsAt >= 0
         && data.endsAt is int && data.endsAt >= 0
         && (data.endsAt == 0 || data.startsAt == 0 || data.endsAt > data.startsAt)
@@ -69,7 +70,7 @@ service cloud.firestore {
     function validPlayerProfile(data) {
       return data.keys().hasOnly([
                'displayName', 'games', 'region', 'language', 'style',
-               'bio', 'avatar', 'discoverable', 'updatedAt'
+               'bio', 'avatar', 'discoverable', 'updatedAt', 'playerTag'
              ])
              && data.keys().hasAll([
                'displayName', 'games', 'region', 'language', 'style',
@@ -91,7 +92,8 @@ service cloud.firestore {
              && data.avatar is string
              && data.avatar.size() <= 16
              && data.discoverable is bool
-             && data.updatedAt is int;
+             && data.updatedAt is int
+             && (!data.keys().hasAny(['playerTag']) || (data.playerTag is string && data.playerTag.matches('^[0-9]{8}$')));
     }
 
     function validReport(data) {
@@ -210,7 +212,7 @@ service cloud.firestore {
       return (!strictKeys || data.keys().hasOnly([
                'name', 'game', 'format', 'startDate', 'endDate', 'artwork',
                'prizeAmount', 'prizeCurrency', 'registrationOpen',
-               'adminUserId', 'adminDisplayName', 'coAdminUserIds', 'status',
+               'adminUserId', 'adminDisplayName', 'coAdminUserIds', 'coAdminPlayerTags', 'status',
                'isLegacyImport', 'createdAt', 'updatedAt', 'results', 'archived', 'archivedAt'
              ]))
              && data.name is string && data.name.size() > 0 && data.name.size() <= 120
@@ -223,6 +225,7 @@ service cloud.firestore {
              && (!data.keys().hasAny(['artwork']) || (data.artwork is string && data.artwork.size() <= 16))
              && (!data.keys().hasAny(['adminDisplayName']) || (data.adminDisplayName is string && data.adminDisplayName.size() <= 40))
              && data.coAdminUserIds is list && data.coAdminUserIds.size() <= 20
+             && (!data.keys().hasAny(['coAdminPlayerTags']) || (data.coAdminPlayerTags is map && data.coAdminPlayerTags.keys().size() <= 20 && data.coAdminPlayerTags.keys().hasOnly(data.coAdminUserIds)))
              && data.status in ['upcoming', 'live', 'completed']
              && (!data.keys().hasAny(['isLegacyImport']) || data.isLegacyImport is bool)
              && (!data.keys().hasAny(['createdAt']) || data.createdAt is int)
@@ -290,7 +293,8 @@ service cloud.firestore {
                     && (request.resource.data.coAdminUserIds == resource.data.coAdminUserIds
                         || isOwner(resource.data))
                     && request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['coAdminUserIds', 'updatedAt', 'results', 'status', 'registrationOpen', 'archived', 'archivedAt'])
+                         .hasOnly(['coAdminUserIds', 'coAdminPlayerTags', 'updatedAt', 'results', 'status', 'registrationOpen', 'archived', 'archivedAt'])
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['coAdminPlayerTags']) || isOwner(resource.data))
                     && validTournament(request.resource.data, false);
 
       allow delete: if isOwner(resource.data);
@@ -484,6 +488,42 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /tournamentInvites/{inviteId} {
+      allow get, list: if isActiveSiteUser()
+        && (resource.data.inviteeUid == request.auth.uid || resource.data.invitedBy == request.auth.uid);
+      allow create: if isActiveSiteUser()
+        && request.resource.data.keys().hasOnly(['tournamentId', 'tournamentName', 'game', 'invitedBy', 'inviterName', 'inviteeUid', 'inviteeName', 'status', 'createdAt'])
+        && request.resource.data.keys().hasAll(['tournamentId', 'tournamentName', 'game', 'invitedBy', 'inviterName', 'inviteeUid', 'inviteeName', 'status', 'createdAt'])
+        && request.resource.data.tournamentId is string && request.resource.data.tournamentId.size() > 0 && request.resource.data.tournamentId.size() <= 128
+        && inviteId == request.resource.data.tournamentId + '_' + request.resource.data.inviteeUid
+        && request.resource.data.tournamentName is string && request.resource.data.tournamentName.size() > 0 && request.resource.data.tournamentName.size() <= 120
+        && request.resource.data.game is string && request.resource.data.game.size() <= 60
+        && request.resource.data.invitedBy == request.auth.uid
+        && request.resource.data.inviterName is string && request.resource.data.inviterName.size() <= 40
+        && request.resource.data.inviteeUid is string && request.resource.data.inviteeUid != request.auth.uid && request.resource.data.inviteeUid.size() <= 128
+        && request.resource.data.inviteeName is string && request.resource.data.inviteeName.size() <= 40
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt is int
+        && exists(/databases/$(database)/documents/tournaments/$(request.resource.data.tournamentId))
+        && parent(request.resource.data.tournamentId).status != 'completed'
+        && (!parent(request.resource.data.tournamentId).keys().hasAny(['archived']) || parent(request.resource.data.tournamentId).archived != true)
+        && isAcceptedFriend(request.auth.uid, request.resource.data.inviteeUid);
+      allow update: if isActiveSiteUser()
+        && ((resource.data.inviteeUid == request.auth.uid
+             && resource.data.status == 'pending'
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'respondedAt'])
+             && request.resource.data.status in ['accepted', 'declined']
+             && request.resource.data.respondedAt is int)
+            || (resource.data.invitedBy == request.auth.uid
+                && resource.data.status == 'declined'
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'createdAt', 'inviterName', 'inviteeName'])
+                && request.resource.data.status == 'pending'
+                && request.resource.data.createdAt is int
+                && request.resource.data.inviterName is string && request.resource.data.inviterName.size() <= 40
+                && request.resource.data.inviteeName is string && request.resource.data.inviteeName.size() <= 40));
+      allow delete: if false;
+    }
+
     match /conversations/{conversationId} {
       function validConversation(data) {
         return data.keys().hasOnly(['participants', 'createdAt'])
@@ -545,9 +585,16 @@ service cloud.firestore {
       allow list: if isActiveSiteUser()
                   && resource.data.discoverable == true;
 
-      allow create, update: if isActiveSiteUser()
-                            && request.auth.uid == userId
-                            && validPlayerProfile(request.resource.data);
+      allow create: if isActiveSiteUser()
+                    && request.auth.uid == userId
+                    && !request.resource.data.keys().hasAny(['playerTag'])
+                    && validPlayerProfile(request.resource.data);
+      allow update: if isActiveSiteUser()
+                    && request.auth.uid == userId
+                    && validPlayerProfile(request.resource.data)
+                    && (!resource.data.keys().hasAny(['playerTag'])
+                        ? !request.resource.data.keys().hasAny(['playerTag'])
+                        : request.resource.data.playerTag == resource.data.playerTag);
 
       allow delete: if isActiveSiteUser() && request.auth.uid == userId;
     }
@@ -563,4 +610,5 @@ service cloud.firestore {
     }
   }
 }
+
 

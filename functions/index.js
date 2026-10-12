@@ -5,11 +5,58 @@ import { getDatabase } from "firebase-admin/database";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { defineString } from "firebase-functions/params";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
+import { onValueWritten } from "firebase-functions/v2/database";
 
 initializeApp();
 const db = getFirestore();
 const RTDB_URL = defineString("GRINDINFO_RTDB_URL");
 const rtdb = () => getDatabase(undefined, RTDB_URL.value());
+
+export const trackActivePresence = onValueWritten("status/{uid}", async (event) => {
+  const uid = event.params.uid;
+  const after = event.data?.after.val();
+  const changedAt = Number(after?.lastChanged) || Date.parse(event.time) || Date.now();
+  const isActive = after?.state === "online" || after?.state === "away";
+  const stateRef = db.doc(`presenceStates/${uid}`);
+  const countRef = db.doc("systemCounters/onlinePlayers");
+  await db.runTransaction(async (transaction) => {
+    const [state, counter] = await Promise.all([transaction.get(stateRef), transaction.get(countRef)]);
+    if (changedAt <= (Number(state.data()?.changedAt) || 0)) return;
+    const wasActive = state.data()?.active === true;
+    const currentCount = Math.max(0, Number(counter.data()?.count) || 0);
+    const nextCount = Math.max(0, currentCount + (isActive === wasActive ? 0 : (isActive ? 1 : -1)));
+    transaction.set(stateRef, { active: isActive, changedAt });
+    transaction.set(countRef, { count: nextCount, updatedAt: Date.now() });
+  });
+});
+
+export const getOnlinePlayerCount = onCall({ maxInstances: 5 }, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Sign in to check popup availability.");
+  if ((await db.doc(`siteBans/${request.auth.uid}`).get()).data()?.active === true) {
+    throw new HttpsError("permission-denied", "Banned accounts cannot use GrindInfo.");
+  }
+  const snapshot = await db.doc("systemCounters/onlinePlayers").get();
+  return { count: Math.max(0, Number(snapshot.data()?.count) || 0) };
+});
+
+export const getOrCreatePlayerTag = onCall({ maxInstances: 5 }, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Sign in to get your GrindInfo ID.");
+  const playerRef = db.doc(`players/${request.auth.uid}`);
+  const counterRef = db.doc("systemCounters/playerTagSequence");
+  return db.runTransaction(async (transaction) => {
+    const player = await transaction.get(playerRef);
+    if (!player.exists) throw new HttpsError("failed-precondition", "Save your player profile before creating a GrindInfo ID.");
+    const existingTag = player.data()?.playerTag;
+    if (typeof existingTag === "string" && /^\d{8}$/.test(existingTag)) return { playerTag: existingTag };
+    const counter = await transaction.get(counterRef);
+    const next = (Number.isSafeInteger(counter.data()?.value) ? counter.data().value : 10000000) + 1;
+    if (next > 99999999) throw new HttpsError("resource-exhausted", "GrindInfo IDs are temporarily unavailable.");
+    const playerTag = String(next);
+    transaction.set(counterRef, { value: next });
+    transaction.update(playerRef, { playerTag });
+    return { playerTag };
+  });
+});
 
 async function setFriendPresenceLink(firstUid, secondUid, connected) {
   const link = rtdb().ref(`friendConnections/${firstUid}/${secondUid}`);
@@ -151,3 +198,4 @@ export const setPlayerBan = onCall({ maxInstances: 3 }, async (request) => {
   if (active) await removeUserPresenceLinks(targetUid);
   return { active, targetUid };
 });
+
