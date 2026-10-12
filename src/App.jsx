@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 41143)
+Total output lines: 3368
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   doc,
@@ -10,6 +13,8 @@ import {
   writeBatch,
   query,
   where,
+  orderBy,
+  limit,
 } from "firebase/firestore";
 import {
   onAuthStateChanged,
@@ -36,6 +41,8 @@ const ARCHIVE_COLLECTION = collection(db, "esportsArchive");
 const BLOG_POSTS_COLLECTION = collection(db, "blogPosts");
 const SITE_POPUPS_COLLECTION = collection(db, "sitePopups");
 const SITE_ROLES_COLLECTION = collection(db, "siteRoles");
+const ARCHIVE_SUBMISSIONS_COLLECTION = collection(db, "archiveSubmissions");
+const STAFF_ACTIONS_COLLECTION = collection(db, "staffActions");
 const PRIZE_PRESETS = [0, 500, 1000, 2500, 5000, 10000];
 const REPORT_REASONS = ["Abuse or harassment", "Scam or fraud", "Inappropriate content", "Other"];
 
@@ -1054,6 +1061,53 @@ function ReportsInbox({ reports, onStatusChange }) {
   );
 }
 
+function ArchiveSubmissionInbox({ submissions, onDecision }) {
+  const pending = submissions.filter((item) => item.status === "pending");
+  return <section>
+    <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Review community-submitted historical event records before adding them to the public archive.</p>
+    {pending.length === 0 ? <EmptyState title="No archive requests waiting" body="New event submissions will appear here for review." /> : <div style={{ display: "grid", gap: 10 }}>{pending.map((item) => <article key={item.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{item.game} · {item.eventDate} · by {item.submitterName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{item.tournament}</h2><p style={{ margin: "6px 0" }}>Winner: {item.winner}{item.runnerUp ? ` · Runner-up: ${item.runnerUp}` : ""}{item.mvp ? ` · MVP: ${item.mvp}` : ""}</p>{item.source && <a href={item.source} target="_blank" rel="noopener noreferrer">Source</a>}<div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onDecision(item.id, "approved")}>Approve to archive</Button><Button variant="danger" onClick={() => onDecision(item.id, "rejected")}>Decline</Button></div></article>)}</div>}
+  </section>;
+}
+
+function StaffActivityLog({ actions }) {
+  const ordered = [...actions].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 100);
+  return <section>
+    <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Recent owner and support actions. This log is visible to the owner only.</p>
+    {ordered.length === 0 ? <EmptyState title="No staff actions recorded yet" body="Report, blog, archive, popup, and support-access decisions will appear here." /> : <div style={{ display: "grid", gap: 8 }}>{ordered.map((item) => <article key={item.id} style={{ padding: 12, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{new Date(item.createdAt || 0).toLocaleString()} · {item.actorName || "Staff"}</Eyebrow><div style={{ marginTop: 5 }}>{item.summary}</div></article>)}</div>}
+  </section>;
+}
+
+function BlogArchivePromoter({ posts, onPromote }) {
+  const candidates = posts.filter((post) => post.status === "published");
+  const [postId, setPostId] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [winner, setWinner] = useState("");
+  const [runnerUp, setRunnerUp] = useState("");
+  const [mvp, setMvp] = useState("");
+  const [source, setSource] = useState("");
+  const [error, setError] = useState("");
+  const selected = candidates.find((post) => post.id === postId);
+  const choosePost = (id) => {
+    const post = candidates.find((item) => item.id === id);
+    setPostId(id); setEventDate(""); setWinner(""); setRunnerUp(""); setMvp(""); setSource(post?.source || ""); setError("");
+  };
+  return <section style={{ maxWidth: 680 }}>
+    <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Turn a published blog into a separate structured archive record. Add the event date and winner before saving.</p>
+    {candidates.length === 0 ? <EmptyState title="No published blogs to add" body="Publish a blog first, then you can create an archive record from it." /> : <>
+      <Field label="Published blog"><Select value={postId} onChange={(event) => choosePost(event.target.value)}><option value="">Choose a post…</option>{candidates.map((post) => <option key={post.id} value={post.id}>{post.title} · {post.game}</option>)}</Select></Field>
+      {selected && <div style={{ display: "grid", gap: 8, marginTop: 10, padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+        <Field label="Event date"><TextInput maxLength={40} value={eventDate} onChange={(event) => setEventDate(event.target.value)} placeholder="YYYY or YYYY-MM-DD" /></Field>
+        <Field label="Winner"><TextInput maxLength={100} value={winner} onChange={(event) => setWinner(event.target.value)} /></Field>
+        <Field label="Runner-up (optional)"><TextInput maxLength={100} value={runnerUp} onChange={(event) => setRunnerUp(event.target.value)} /></Field>
+        <Field label="MVP (optional)"><TextInput maxLength={100} value={mvp} onChange={(event) => setMvp(event.target.value)} /></Field>
+        <Field label="Source link (optional)"><TextInput maxLength={500} value={source} onChange={(event) => setSource(event.target.value)} /></Field>
+        {error && <div role="alert" style={{ color: "var(--danger)" }}>{error}</div>}
+        <Button onClick={async () => { if (!eventDate.trim() || !winner.trim()) { setError("Add the event date and winner."); return; } try { await onPromote(selected, { eventDate, winner, runnerUp, mvp, source }); choosePost(""); } catch { setError("Could not add this record to the archive."); } }}>Add event to archive</Button>
+      </div>}
+    </>}
+  </section>;
+}
+
 function SitePopup({ popup, onDismiss }) {
   if (!popup) return null;
   return (
@@ -1068,16 +1122,16 @@ function SitePopup({ popup, onDismiss }) {
   );
 }
 
-function OwnerDashboard({ role, reports, onStatusChange, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview }) {
+function OwnerDashboard({ role, reports, onStatusChange, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [] }) {
   const isOwner = role === "owner";
   const [tab, setTab] = useState("overview");
   const [editing, setEditing] = useState(null);
   const [staffUid, setStaffUid] = useState("");
   const [popupError, setPopupError] = useState("");
   const [staffError, setStaffError] = useState("");
-
   const activeReports = reports.filter((item) => item.status !== "closed").length;
   const pendingBlogs = blogPosts.filter((post) => post.status === "pending").length;
+  const pendingArchiveRequests = archiveSubmissions.filter((item) => item.status === "pending").length;
   const activeTournaments = tournaments.filter((item) => !isTournamentArchived(item)).length;
   const openEditor = (popup = null) => {
     setPopupError("");
@@ -1119,15 +1173,18 @@ function OwnerDashboard({ role, reports, onStatusChange, popups, onSavePopup, on
       <Eyebrow>{isOwner ? "Owner controls · protected" : "Support workspace · restricted"}</Eyebrow>
       <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 18px" }}>{isOwner ? "Owner dashboard" : "Support dashboard"}</h1>
       <div role="tablist" aria-label="Dashboard sections" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-        {["overview", "reports", "blogs", ...(isOwner ? ["popups", "support access"] : [])].map((name) => <Button key={name} variant={tab === name ? "primary" : "ghost"} onClick={() => setTab(name)}>{name[0].toUpperCase() + name.slice(1)}</Button>)}
+        {["overview", "reports", "blogs", "archive requests", "blog to archive", ...(isOwner ? ["activity log", "popups", "support access"] : [])].map((name) => <Button key={name} variant={tab === name ? "primary" : "ghost"} onClick={() => setTab(name)}>{name[0].toUpperCase() + name.slice(1)}</Button>)}
       </div>
       {tab === "overview" && <>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 18 }}>
-          {[["Open reports", activeReports], ["Pending blogs", pendingBlogs], ["Active tournaments", activeTournaments], ["Archive records", archiveEntries.length]].map(([label, value]) => <article key={label} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{label}</Eyebrow><strong style={{ display: "block", fontSize: 25, marginTop: 8 }}>{value}</strong></article>)}
+          {[["Open reports", activeReports], ["Pending blogs", pendingBlogs], ["Archive requests", pendingArchiveRequests], ["Active tournaments", activeTournaments], ["Archive records", archiveEntries.length]].map(([label, value]) => <article key={label} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{label}</Eyebrow><strong style={{ display: "block", fontSize: 25, marginTop: 8 }}>{value}</strong></article>)}
         </div>
         <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Use the dashboard tabs to review safety reports{isOwner ? ", manage site popups, and control support access." : "."}</p>
       </>}
       {tab === "reports" && <ReportsInbox reports={reports} onStatusChange={onStatusChange} />}
+      {tab === "archive requests" && <ArchiveSubmissionInbox submissions={archiveSubmissions} onDecision={onArchiveDecision} />}
+      {tab === "blog to archive" && <BlogArchivePromoter posts={blogPosts} onPromote={onPromoteBlog} />}
+      {tab === "activity log" && isOwner && <StaffActivityLog actions={auditLog} />}
       {tab === "blogs" && <section><p style={{ color: "var(--text-muted)", fontSize: 13 }}>Preview submitted and published community posts.</p>{blogPosts.length === 0 ? <EmptyState title="No blog posts yet" body="Community submissions will appear here for preview." /> : <div style={{ display: "grid", gap: 10 }}>{[...blogPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 30).map((post) => <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status} · by {post.authorName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{post.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{post.content}</p>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onBlogReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onBlogReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div>}</section>}
       {tab === "popups" && isOwner && <section>
         <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Create plain-text safety reminders and motivation messages. Changes appear on GrindInfo without editing the website code.</p>
@@ -1146,627 +1203,63 @@ function OwnerDashboard({ role, reports, onStatusChange, popups, onSavePopup, on
         <div style={{ display: "grid", gap: 10, marginTop: 14 }}>{popups.map((popup) => <article key={popup.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{popup.enabled ? "Enabled" : "Disabled"} · {popup.type}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "5px 0" }}>{popup.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{popup.message}</p><div style={{ display: "flex", gap: 8 }}><Button variant="ghost" onClick={() => openEditor(popup)}>Edit</Button><Button variant="danger" onClick={() => onDeletePopup(popup.id)}>Delete</Button></div></article>)}</div>
       </section>}
       {tab === "support access" && isOwner && <section style={{ maxWidth: 680 }}>
-        <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Support can review reports. Add only trusted people. For now, copy their Firebase Authentication UID from Firebase Console → Authentication → Users.</p>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><TextInput aria-label="Support account UID" placeholder="Paste support person's UID" value={staffUid} onChange={(e) => setStaffUid(e.target.value)} /><Button onClick={assignSupport}>Grant support access</Button></div>
-        {staffError && <div role="alert" style={{ color: "var(--danger)", marginTop: 8 }}>{staffError}</div>}
-        <div style={{ display: "grid", gap: 8, marginTop: 16 }}>{staff.filter((item) => item.role === "support" && item.enabled !== false).map((item) => <article key={item.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", padding: 12, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><code>{item.id}</code><Button variant="danger" onClick={() => onSetSupport(item.id, false)}>Remove access</Button></article>)}</div>
-      </section>}
-    </div>
-  );
-}
-
-function HistoricalArchive({ entries, isModerator, onImport }) {
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
-  const [preview, setPreview] = useState(null);
-  const parseCsv = (text) => {
-    const rows = []; let row = [], cell = "", quoted = false;
-    for (let i = 0; i < text.length; i++) {
-      const char = text[i];
-      if (char === '"' && quoted && text[i + 1] === '"') { cell += '"'; i++; }
-      else if (char === '"') quoted = !quoted;
-      else if (char === "," && !quoted) { row.push(cell.trim()); cell = ""; }
-      else if ((char === "\n" || char === "\r") && !quoted) { if (cell || row.length) { row.push(cell.trim()); rows.push(row); } row = []; cell = ""; if (char === "\r" && text[i + 1] === "\n") i++; }
-      else cell += char;
-    }
-    if (cell || row.length) { row.push(cell.trim()); rows.push(row); }
-    if (rows.length < 2) throw new Error("The CSV needs a header and at least one event.");
-    const headers = rows.shift().map((header) => header.toLowerCase());
-    const required = ["tournament", "game", "eventdate", "winner"];
-    if (required.some((header) => !headers.includes(header))) throw new Error("Required CSV columns: tournament, game, eventDate, winner.");
-    return rows.filter((cells) => cells.some(Boolean)).map((cells) => Object.fromEntries(headers.map((header, index) => [header, cells[index] || ""]))).slice(0, 200);
-  };
-  return (
-    <div style={{ paddingTop: 34 }}>
-      <Eyebrow>International esports history</Eyebrow>
-      <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 8px" }}>Past results archive</h1>
-      <div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 18 }}>Browse past events, winners, runners-up and MVPs. To add records, select a CSV with columns tournament, game, eventDate, winner, runnerUp, mvp and source.</div>
-      {isModerator && <Field label="Import CSV (up to 200 rows)">
-        <input type="file" accept=".csv,text/csv" onChange={async (event) => {
-          setError(""); setMessage("");
-          const file = event.target.files?.[0]; if (!file) return;
-          if (file.size > 1024 * 1024) { setError("Choose a CSV smaller than 1 MB."); return; }
-          try {
-            const records = parseCsv(await file.text());
-            const known = new Set(entries.map((entry) => [entry.tournament, entry.game, entry.eventDate].map((part) => String(part || "").toLowerCase()).join("|")));
-            const clean = records.filter((entry) => entry.tournament && entry.game && entry.eventdate && entry.winner).map((entry) => ({
-              tournament: entry.tournament.slice(0, 120), game: entry.game.slice(0, 60), eventDate: entry.eventdate.slice(0, 40),
-              winner: entry.winner.slice(0, 100), runnerUp: (entry.runnerup || "").slice(0, 100), mvp: (entry.mvp || "").slice(0, 100),
-              source: (entry.source || "").trim().slice(0, 500),
-            })).filter((entry) => {
-              if (entry.source && !/^https:\/\//i.test(entry.source)) throw new Error("Source links must start with https://.");
-              const key = [entry.tournament, entry.game, entry.eventDate].map((part) => part.toLowerCase()).join("|");
-              if (known.has(key)) return false;
-              known.add(key);
-              return true;
-            });
-            if (!clean.length) throw new Error("No new complete records found. Check the required columns and duplicates.");
-            setPreview(clean); setMessage("Review the records below, then choose Import to publish them.");
-          } catch (issue) { setError(issue.message || "Could not read this CSV."); }
-          event.target.value = "";
-        }} />
-      </Field>}
-      {error && <div role="alert" style={{ color: "var(--danger)", marginTop: 10, fontSize: 13 }}>{error}</div>}
-      {message && <div role="status" style={{ color: "var(--success)", marginTop: 10, fontSize: 13 }}>{message}</div>}
-      {preview && <section style={{ marginTop: 14, padding: 14, border: "1px solid var(--border-strong)", background: "var(--panel-bg)" }}>
-        <Eyebrow>Import preview · {preview.length} record(s)</Eyebrow>
-        <div style={{ display: "grid", gap: 6, margin: "10px 0 14px", fontSize: 12, color: "var(--text-muted)" }}>
-          {preview.slice(0, 8).map((entry, index) => <div key={index}>{entry.eventDate} · {entry.game} · {entry.tournament} · Winner: {entry.winner}</div>)}
-          {preview.length > 8 && <div>and {preview.length - 8} more…</div>}
-        </div>
-        <div style={{ display: "flex", gap: 8 }}><Button onClick={async () => {
-          setError(""); setMessage("");
-          try { await onImport(preview); setMessage(`Imported ${preview.length} event record(s).`); setPreview(null); }
-          catch (issue) { setError(issue.message || "Could not import these records."); }
-        }}>Import {preview.length} records</Button><Button variant="ghost" onClick={() => { setPreview(null); setMessage(""); }}>Cancel import</Button></div>
-      </section>}
-      <div style={{ display: "grid", gap: 10, marginTop: 20 }}>
-      {entries.length === 0 ? <EmptyState title="Archive is ready for records" body="Add historical international esports results with the moderator CSV import." /> : entries.map((entry) => <article key={entry.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{entry.game} · {entry.eventDate}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0", fontSize: 24 }}>{entry.tournament}</h2><div>🏆 {entry.winner}{entry.runnerUp ? ` · Runner-up: ${entry.runnerUp}` : ""}{entry.mvp ? ` · MVP: ${entry.mvp}` : ""}</div>{entry.source && <a href={entry.source} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 8, color: "var(--accent)" }}>Source</a>}</article>)}
-      </div>
-    </div>
-  );
-}
-
-function LoadingScreen({ label }) {
-  return <div role="status" aria-live="polite" style={{ minHeight: "60vh", display: "grid", placeItems: "center", background: "var(--page-bg-solid, #101820)", color: "var(--page-text, #EDF1F4)", fontFamily: "'Inter',sans-serif" }}><div style={{ textAlign: "center" }}><div className="grind-loader" aria-hidden="true"><span>G</span></div><div style={{ marginTop: 16 }}>{label}…</div><style>{`.grind-loader{width:68px;height:68px;margin:auto;border:2px solid var(--border,#314);border-top-color:var(--accent,#08f);border-right-color:var(--accent-secondary,#0dc);border-radius:50%;display:grid;place-items:center;animation:grind-spin 1.2s linear infinite}.grind-loader span{font-family:'Bebas Neue',sans-serif;font-size:30px;animation:grind-spin 1.2s linear infinite reverse}@keyframes grind-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.grind-loader,.grind-loader span{animation:none}}`}</style></div></div>;
-}
-
-function BlogPage({ posts, user, isModerator, onSubmit, onReview }) {
-  const [title, setTitle] = useState(""); const [game, setGame] = useState(""); const [content, setContent] = useState(""); const [source, setSource] = useState(""); const [error, setError] = useState("");
-  const submit = async () => { if (!title.trim() || !game.trim() || !content.trim()) { setError("Add a title, game, and post text."); return; } await onSubmit({ title: title.trim(), game: game.trim(), content: content.trim(), source: source.trim() }); setTitle(""); setGame(""); setContent(""); setSource(""); setError(""); };
-  const visible = posts.filter((post) => post.status === "published" || post.authorId === user.uid || (isModerator && post.status === "pending"));
-  return <div style={{ paddingTop: 32 }}><Eyebrow>Community stories</Eyebrow><h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42 }}>Esports blog</h1><p style={{ color: "var(--text-muted)" }}>Send a tournament recap or esports story to the GrindInfo owner for review before it appears publicly.</p><section style={{ display: "grid", gap: 10, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)", maxWidth: 680 }}><Field label="Post title"><TextInput value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} /></Field><Field label="Game"><TextInput value={game} maxLength={60} onChange={(e) => setGame(e.target.value)} placeholder="e.g. Valorant" /></Field><Field label="Story or tournament update"><textarea value={content} maxLength={6000} onChange={(e) => setContent(e.target.value)} rows={6} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput value={source} maxLength={500} onChange={(e) => setSource(e.target.value)} placeholder="https://" /></Field>{error && <span style={{ color: "var(--danger)" }}>{error}</span>}<Button onClick={submit}>Request publication</Button></section><div style={{ display: "grid", gap: 12, marginTop: 20 }}>{visible.map((post) => <article key={post.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue',sans-serif" }}>{post.title}</h2><div style={{ color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{post.content}</div><div style={{ marginTop: 8, fontSize: 12 }}>By {post.authorName || "Player"}</div>{post.source && <a href={post.source} target="_blank" rel="noreferrer">Source</a>}{isModerator && post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button onClick={() => onReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div></div>;
-}
-
-// ---------- app ----------
-
-export default function App() {
-  const [theme, setTheme] = useState(() => localStorage.getItem("grindinfo-theme") || "glacier");
-  const [tournaments, setTournaments] = useState([]);
-  const [selectedTeams, setSelectedTeams] = useState([]);
-  const [selectedMatches, setSelectedMatches] = useState([]);
-  const [selectedStats, setSelectedStats] = useState([]);
-  const [selectedRegistrations, setSelectedRegistrations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState("");
-  const [view, setView] = useState(() => new URLSearchParams(window.location.search).has("tournament") ? "detail" : "list");
-  const [selectedId, setSelectedId] = useState(() => new URLSearchParams(window.location.search).get("tournament"));
-  const [detailTab, setDetailTab] = useState("teams");
-  const [showNewTournament, setShowNewTournament] = useState(false);
-  const [reportTarget, setReportTarget] = useState(null);
-  const [isModerator, setIsModerator] = useState(false);
-  const [siteRole, setSiteRole] = useState(null);
-  const [friendRequests, setFriendRequests] = useState([]);
-  const [archiveEntries, setArchiveEntries] = useState([]);
-  const [blogPosts, setBlogPosts] = useState([]);
-  const [privateReports, setPrivateReports] = useState([]);
-  const [activePopups, setActivePopups] = useState([]);
-  const [adminPopups, setAdminPopups] = useState([]);
-  const [siteStaff, setSiteStaff] = useState([]);
-  const [currentPopup, setCurrentPopup] = useState(null);
-  const [popupScanTick, setPopupScanTick] = useState(0);
-
-  const [user, setUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [authError, setAuthError] = useState("");
-  const [authBusy, setAuthBusy] = useState(false);
-
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setAuthLoading(false);
-    });
-    return () => unsub();
-  }, []);
-
-  const handleGoogleSignIn = useCallback(async () => {
-    setAuthError("");
-    setAuthBusy(true);
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (e) {
-      setAuthError("Couldn't sign in with Google — try again");
-    } finally {
-      setAuthBusy(false);
-    }
-  }, []);
-
-  const handleEmailAuth = useCallback(async (mode, { name, email, password }) => {
-    setAuthError("");
-    setAuthBusy(true);
-    try {
-      if (mode === "signup") {
-        const cred = await createUserWithEmailAndPassword(auth, email, password);
-        if (name.trim()) {
-          await updateProfile(cred.user, { displayName: name.trim() });
-        }
-      } else {
-        await signInWithEmailAndPassword(auth, email, password);
-      }
-    } catch (e) {
-      const messages = {
-        "auth/email-already-in-use": "That email is already registered — try signing in instead.",
-        "auth/invalid-credential": "Incorrect email or password.",
-        "auth/weak-password": "Password should be at least 6 characters.",
-        "auth/invalid-email": "That email address doesn't look right.",
-      };
-      setAuthError(messages[e.code] || "Something went wrong — try again.");
-    } finally {
-      setAuthBusy(false);
-    }
-  }, []);
-
-  const handleSignOut = useCallback(() => {
-    signOut(auth);
-  }, []);
-
-  // ---- player profiles ----
-  const [section, setSection] = useState("tournaments"); // 'tournaments' | 'players'
-  const [myProfile, setMyProfile] = useState(null);
-  const [showProfileModal, setShowProfileModal] = useState(false);
-
-  useEffect(() => {
-    if (!user) {
-      setMyProfile(null);
-      return;
-    }
-    const unsub = onSnapshot(playerDocRef(user.uid), (snap) => {
-      const profile = snap.exists() ? snap.data() : null;
-      setMyProfile(profile);
-      const dismissed = localStorage.getItem(`profilePromptDismissed_${user.uid}`);
-      if (!profile && !dismissed) {
-        setShowProfileModal(true);
-      }
-    });
-    return () => unsub();
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) { setIsModerator(false); setSiteRole(null); return undefined; }
-    const stopRole = onSnapshot(doc(SITE_ROLES_COLLECTION, user.uid), (snapshot) => {
-      const data = snapshot.exists() ? snapshot.data() : null;
-      setSiteRole(data?.enabled !== false && ["owner", "support"].includes(data?.role) ? data.role : null);
-    }, () => setSiteRole(null));
-    const stopModerator = onSnapshot(doc(db, "moderators", user.uid), (snapshot) => {
-      setIsModerator(snapshot.exists() && snapshot.data().enabled === true);
-    }, () => setIsModerator(false));
-    return () => { stopRole(); stopModerator(); };
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) { setFriendRequests([]); return undefined; }
-    let incoming = [], outgoing = [];
-    const publish = () => setFriendRequests([...incoming, ...outgoing.filter((out) => !incoming.some((inbox) => inbox.id === out.id))]);
-    const stopIncoming = onSnapshot(query(FRIEND_REQUESTS_COLLECTION, where("recipientId", "==", user.uid)), (snapshot) => {
-      incoming = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); publish();
-    }, () => { incoming = []; publish(); });
-    const stopOutgoing = onSnapshot(query(FRIEND_REQUESTS_COLLECTION, where("requesterId", "==", user.uid)), (snapshot) => {
-      outgoing = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); publish();
-    }, () => { outgoing = []; publish(); });
-    return () => { stopIncoming(); stopOutgoing(); };
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) { setBlogPosts([]); return undefined; }
-    let publicPosts = [], ownPosts = [], pendingPosts = [];
-    const publish = () => setBlogPosts([...new Map([...publicPosts, ...ownPosts, ...pendingPosts].map((post) => [post.id, post])).values()]);
-    const stops = [
-      onSnapshot(query(BLOG_POSTS_COLLECTION, where("status", "==", "published")), (snap) => { publicPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() })); publish(); }, () => { publicPosts = []; publish(); }),
-      onSnapshot(query(BLOG_POSTS_COLLECTION, where("authorId", "==", user.uid)), (snap) => { ownPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() })); publish(); }, () => { ownPosts = []; publish(); }),
-    ];
-    if (isModerator || siteRole === "owner" || siteRole === "support") stops.push(onSnapshot(query(BLOG_POSTS_COLLECTION, where("status", "==", "pending")), (snap) => { pendingPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() })); publish(); }, () => { pendingPosts = []; publish(); }));
-    return () => stops.forEach((stop) => stop());
-  }, [user, isModerator, siteRole]);
-
-  useEffect(() => onSnapshot(ARCHIVE_COLLECTION, (snapshot) => {
-    setArchiveEntries(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
-  }, () => setArchiveEntries([])), []);
-
-  useEffect(() => {
-    if (siteRole !== "owner" && siteRole !== "support") { setPrivateReports([]); return undefined; }
-    return onSnapshot(REPORTS_COLLECTION, (snapshot) => {
-      setPrivateReports(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
-    }, () => setPrivateReports([]));
-  }, [isModerator, siteRole]);
-
-  useEffect(() => onSnapshot(query(SITE_POPUPS_COLLECTION, where("enabled", "==", true)), (snapshot) => {
-    setActivePopups(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
-  }, () => setActivePopups([])), []);
-
-  useEffect(() => {
-    if (siteRole !== "owner") { setAdminPopups([]); setSiteStaff([]); return undefined; }
-    const stopPopups = onSnapshot(SITE_POPUPS_COLLECTION, (snapshot) => setAdminPopups(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))), () => setAdminPopups([]));
-    const stopStaff = onSnapshot(SITE_ROLES_COLLECTION, (snapshot) => setSiteStaff(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))), () => setSiteStaff([]));
-    return () => { stopPopups(); stopStaff(); };
-  }, [siteRole]);
-
-  useEffect(() => {
-    if (showProfileModal) { setCurrentPopup(null); return; }
-    const now = Date.now();
-    const nextBoundary = activePopups
-      .flatMap((popup) => [popup.startsAt, popup.endsAt])
-      .filter((time) => typeof time === "number" && time > now)
-      .sort((a, b) => a - b)[0];
-    const timer = nextBoundary
-      ? window.setTimeout(() => setPopupScanTick((tick) => tick + 1), Math.min(nextBoundary - now + 50, 2147483000))
-      : null;
-    const eligible = activePopups.filter((popup) => {
-      if (popup.enabled !== true || (popup.startsAt && popup.startsAt > now) || (popup.endsAt && popup.endsAt < now)) return false;
-      const version = popup.updatedAt || popup.createdAt || 0;
-      const key = `grindinfo-popup:${popup.id}:${version}`;
-      const seen = popup.frequency === "session" ? sessionStorage.getItem(key) : localStorage.getItem(key);
-      const today = new Date().toISOString().slice(0, 10);
-      return !seen || (popup.frequency !== "session" && seen !== today);
-    });
-    const disclaimers = eligible.filter((popup) => popup.type === "disclaimer");
-    const motivations = eligible.filter((popup) => popup.type === "motivation");
-    const list = disclaimers.length ? disclaimers : motivations;
-    if (!list.length) { setCurrentPopup(null); return () => { if (timer) window.clearTimeout(timer); }; }
-    const selected = list[Math.floor(Math.random() * list.length)];
-    setCurrentPopup(selected);
-    return () => { if (timer) window.clearTimeout(timer); };
-  }, [activePopups, popupScanTick, showProfileModal]);
-
-  const skipProfile = useCallback(() => {
-    if (user) localStorage.setItem(`profilePromptDismissed_${user.uid}`, "1");
-    setShowProfileModal(false);
-  }, [user]);
-
-  useEffect(() => {
-    localStorage.setItem("grindinfo-theme", theme);
-  }, [theme]);
-
-  useEffect(() => {
-    ensureFonts();
-  }, []);
-
-  useEffect(() => {
-    const unsubscribe = onSnapshot(
-      TOURNAMENTS_COLLECTION,
-      (snap) => {
-        setTournaments(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-        setLoading(false);
-      },
-      () => setLoading(false)
-    );
-    return () => unsubscribe();
-  }, []);
-
-  // Sub-collections for whichever tournament is currently open
-  useEffect(() => {
-    if (!selectedId) {
-      setSelectedTeams([]);
-      setSelectedMatches([]);
-      setSelectedStats([]);
-      return;
-    }
-    const unsubs = [
-      onSnapshot(teamsCollectionRef(selectedId), (snap) =>
-        setSelectedTeams(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-      ),
-      onSnapshot(matchesCollectionRef(selectedId), (snap) =>
-        setSelectedMatches(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-      ),
-      onSnapshot(statsCollectionRef(selectedId), (snap) =>
-        setSelectedStats(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-      ),
-    ];
-    return () => unsubs.forEach((u) => u());
-  }, [selectedId]);
-
-  useEffect(() => {
-    if (!selectedId || !user) { setSelectedRegistrations([]); return undefined; }
-    const tournament = tournaments.find((item) => item.id === selectedId);
-    const canReview = tournament && (tournament.adminUserId === user.uid || tournament.coAdminUserIds?.includes(user.uid));
-    const requests = registrationsCollectionRef(selectedId);
-    const registrationQuery = canReview ? requests : query(requests, where("playerId", "==", user.uid));
-    return onSnapshot(registrationQuery, (snapshot) => {
-      setSelectedRegistrations(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
-    }, () => setSelectedRegistrations([]));
-  }, [selectedId, user, tournaments]);
-
-  const showToast = useCallback((msg) => {
-    setToast(msg);
-    window.clearTimeout(showToast._t);
-    showToast._t = window.setTimeout(() => setToast(""), 2200);
-  }, []);
-
-  const saveProfile = useCallback(
-    async (fields) => {
-      if (!user) return;
-      try {
-        await setDoc(playerDocRef(user.uid), {
-          ...fields,
-          displayName: safeProfileName(fields.displayName, user.displayName),
-          bio: String(fields.bio || "").slice(0, 200),
-          discoverable: fields.discoverable === true,
-          updatedAt: Date.now(),
-        });
-        showToast("Profile saved");
-      } catch (e) {
-        showToast("Couldn't save profile — try again");
-      }
-      setShowProfileModal(false);
-    },
-    [user, showToast]
-  );
-
-  // ---- mutations (now writing to the tournaments collection + sub-collections) ----
-  const addTournament = async (t) => {
-    if (!user) return;
-    setSaving(true);
-    try {
-      await addDoc(TOURNAMENTS_COLLECTION, {
-        ...t,
-        prizeAmount: Number(t.prizeAmount) || 0,
-        prizeCurrency: t.prizeCurrency || "INR",
-        registrationOpen: true,
-        adminUserId: user.uid,
-        adminDisplayName: safeProfileName(myProfile?.displayName, user.displayName),
-        coAdminUserIds: [],
-        status: t.status || "upcoming",
-        isLegacyImport: false,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-      showToast("Tournament created");
-      setShowNewTournament(false);
-    } catch (e) {
-      showToast("Couldn't create tournament — try again");
-    } finally {
-      setSaving(false);
+        <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Support can review report…11143 tokens truncated…t declined");
+    } catch (error) {
+      console.error("Could not review archive submission", error);
+      showToast("Couldn't review this archive request. Check the published Firebase rules and try again.");
     }
   };
 
-  const saveTournamentResults = async (id, results) => {
-    setSaving(true);
-    try {
-      await updateDoc(tournamentDocRef(id), {
-        results, status: "completed", registrationOpen: false, archived: true,
-        archivedAt: Date.now(), updatedAt: Date.now(),
-      });
-      showToast("Tournament results posted");
-    } catch (e) {
-      showToast("Couldn't post tournament results — try again");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const deleteTournament = async (id) => {
-    setSaving(true);
-    try {
-      await Promise.all([
-        ...selectedTeams.map((t) => deleteDoc(doc(teamsCollectionRef(id), t.id))),
-        ...selectedMatches.map((m) => deleteDoc(doc(matchesCollectionRef(id), m.id))),
-        ...selectedStats.map((s) => deleteDoc(doc(statsCollectionRef(id), s.id))),
-        ...selectedRegistrations.map((request) => deleteDoc(doc(registrationsCollectionRef(id), request.id))),
-      ]);
-      await deleteDoc(tournamentDocRef(id));
-      showToast("Tournament deleted");
-      setView("list");
-      setSelectedId(null);
-      const url = new URL(window.location.href); url.searchParams.delete("tournament"); window.history.replaceState({}, "", url);
-    } catch (e) {
-      showToast("Couldn't delete tournament — try again");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const addTeam = async (tournamentId, team) => {
-    try {
-      await addDoc(teamsCollectionRef(tournamentId), team);
-      showToast("Team added");
-    } catch (e) {
-      showToast("Couldn't add team — try again");
-    }
-  };
-
-  const deleteTeam = async (tournamentId, teamId) => {
-    try {
-      await deleteDoc(doc(teamsCollectionRef(tournamentId), teamId));
-      showToast("Team removed");
-    } catch (e) {
-      showToast("Couldn't remove team — try again");
-    }
-  };
-
-  const addMatch = async (tournamentId, match) => {
-    try {
-      await addDoc(matchesCollectionRef(tournamentId), match);
-      showToast("Match added");
-    } catch (e) {
-      showToast("Couldn't add match — try again");
-    }
-  };
-
-  const updateMatch = async (tournamentId, matchId, patch) => {
-    try {
-      await updateDoc(doc(matchesCollectionRef(tournamentId), matchId), patch);
-    } catch (e) {
-      showToast("Couldn't update match — try again");
-    }
-  };
-
-  const deleteMatch = async (tournamentId, matchId) => {
-    try {
-      const relatedStats = selectedStats.filter((s) => s.matchId === matchId);
-      await Promise.all(relatedStats.map((s) => deleteDoc(doc(statsCollectionRef(tournamentId), s.id))));
-      await deleteDoc(doc(matchesCollectionRef(tournamentId), matchId));
-      showToast("Match deleted");
-    } catch (e) {
-      showToast("Couldn't delete match — try again");
-    }
-  };
-
-  const addStat = async (tournamentId, stat) => {
-    try {
-      await addDoc(statsCollectionRef(tournamentId), stat);
-      showToast("Stat line added");
-    } catch (e) {
-      showToast("Couldn't add stat — try again");
-    }
-  };
-
-  const deleteStat = async (tournamentId, statId) => {
-    try {
-      await deleteDoc(doc(statsCollectionRef(tournamentId), statId));
-    } catch (e) {
-      showToast("Couldn't delete stat — try again");
-    }
-  };
-
-  const requestRegistration = async (tournamentId, player) => {
-    if (!user) return;
-    try {
-      await setDoc(doc(registrationsCollectionRef(tournamentId), user.uid), {
-        playerId: user.uid, displayName: safeProfileName(player.displayName),
-        status: "pending", requestedAt: Date.now(),
-      });
-      showToast("Join request sent to the tournament host");
-    } catch (e) {
-      showToast(e?.code === "permission-denied"
-        ? "Firebase blocked the join request. The Firestore rules may need to be published."
-        : "Couldn't send the join request. Check whether one is already pending.");
-    }
-  };
-
-  const decideRegistration = async (tournamentId, requestId, status) => {
-    try {
-      await updateDoc(doc(registrationsCollectionRef(tournamentId), requestId), { status, reviewedAt: Date.now(), reviewedBy: user.uid });
-      showToast(status === "approved" ? "Player approved" : "Request declined");
-    } catch (e) {
-      showToast(e?.code === "permission-denied"
-        ? "Firebase blocked this decision. The Firestore rules may need to be published."
-        : "Couldn't update the registration request.");
-    }
-  };
-
-  const closeTournament = async (tournamentId) => {
-    try { await updateDoc(tournamentDocRef(tournamentId), { registrationOpen: false, archived: true, archivedAt: Date.now(), updatedAt: Date.now() }); showToast("Tournament closed and moved to archive"); }
-    catch (e) { showToast("Couldn\u2019t close tournament. Check Firestore rules."); }
-  };
-
-  const submitBlogPost = async (post) => {
-    try { await addDoc(BLOG_POSTS_COLLECTION, { ...post, authorId: user.uid, authorName: safeProfileName(myProfile?.displayName, user.displayName), status: "pending", createdAt: Date.now() }); showToast("Blog request sent for review"); }
-    catch (e) { showToast("Couldn\u2019t submit blog request. Firestore rules may need to be published."); }
-  };
-
-  const reviewBlogPost = async (postId, status) => {
-    try { await updateDoc(doc(BLOG_POSTS_COLLECTION, postId), { status, reviewedAt: Date.now(), reviewedBy: user.uid }); showToast(status === "published" ? "Blog post published" : "Blog request declined"); }
-    catch (e) { showToast("Couldn\u2019t update blog request"); }
-  };
-
-  const updateCoAdmins = async (tournamentId, ids) => {
-    try { await updateDoc(tournamentDocRef(tournamentId), { coAdminUserIds: ids, updatedAt: Date.now() }); showToast("Co-host access updated"); }
-    catch (e) { showToast("Couldn't update co-host access"); }
-  };
-
-  const shareTournament = async (tournament) => {
-    const url = new URL(window.location.href);
-    url.searchParams.set("tournament", tournament.id);
-    try { await navigator.clipboard.writeText(url.toString()); showToast("Tournament link copied"); }
-    catch (e) { window.prompt("Copy this tournament link", url.toString()); }
-  };
-
-  const requestFriend = async (recipientId) => {
-    if (!user || !recipientId || recipientId === user.uid) return;
-    try {
-      await setDoc(doc(FRIEND_REQUESTS_COLLECTION, `${user.uid}_${recipientId}`), {
-        requesterId: user.uid,
-        requesterName: safeProfileName(myProfile?.displayName, user.displayName),
-        recipientId,
-        status: "pending",
-        createdAt: Date.now(),
-      });
-      showToast("Friend request sent");
-    } catch (e) {
-      showToast(e?.code === "permission-denied"
-        ? "Firebase blocked the friend request. The Firestore rules may need to be published."
-        : "Couldn't send the friend request. A request may already exist.");
-    }
-  };
-
-  const requestHostFriend = async (tournament) => {
-    await requestFriend(tournament.adminUserId);
-  };
-
-  const decideFriendRequest = async (requestId, status) => {
-    try {
-      await updateDoc(doc(FRIEND_REQUESTS_COLLECTION, requestId), { status, reviewedAt: Date.now() });
-      showToast(status === "accepted" ? "Friend request accepted" : "Friend request declined");
-    } catch (e) {
-      showToast(e?.code === "permission-denied"
-        ? "Firebase blocked this decision. The Firestore rules may need to be published."
-        : "Couldn't update the friend request.");
-    }
-  };
-
-  const submitReport = async ({ reason, details }) => {
-    if (!reportTarget || !user) return "Sign in again to submit this report.";
-    const reportId = `${user.uid}_${reportTarget.type}_${reportTarget.id}`;
-    try {
-      await setDoc(doc(REPORTS_COLLECTION, reportId), {
-        reporterId: user.uid, targetType: reportTarget.type, targetId: reportTarget.id,
-        targetName: String(reportTarget.name || "").slice(0, 120), reason,
-        details: String(details || "").slice(0, 1000), status: "submitted", createdAt: Date.now(),
-      });
-      setReportTarget(null); showToast("Report sent privately to GrindInfo's safety team"); return "";
-    } catch (e) { return "This report could not be sent. You may already have reported this item."; }
-  };
-
-  const importArchiveEntries = async (records) => {
+  const promoteBlogToArchive = async (post, fields) => {
+    if (!isSiteStaff || post.status !== "published") throw new Error("Only staff can promote published posts");
+    const source = String(fields.source || "").trim().slice(0, 500);
+    if (source && !/^https:\/\//i.test(source)) throw new Error("Use a secure https source link.");
     const batch = writeBatch(db);
-    records.forEach((entry) => batch.set(doc(ARCHIVE_COLLECTION), { ...entry, createdAt: Date.now(), createdBy: user.uid }));
+    const archiveRef = doc(ARCHIVE_COLLECTION);
+    batch.set(archiveRef, {
+      tournament: String(post.title || "").trim().slice(0, 120),
+      game: String(post.game || "").trim().slice(0, 60),
+      eventDate: String(fields.eventDate || "").trim().slice(0, 40),
+      winner: String(fields.winner || "").trim().slice(0, 100),
+      runnerUp: String(fields.runnerUp || "").trim().slice(0, 100),
+      mvp: String(fields.mvp || "").trim().slice(0, 100),
+      source, createdAt: Date.now(), createdBy: user.uid, blogPostId: post.id,
+    });
+    appendStaffAction(batch, "blog_added_to_archive", "archiveEntry", archiveRef.id, `Blog added to archive: ${post.title}`);
     await batch.commit();
+    showToast("Structured event added to the archive");
   };
 
   const updateReportStatus = async (reportId, status) => {
-    try { await updateDoc(doc(REPORTS_COLLECTION, reportId), { status, reviewedAt: Date.now() }); }
+    try { const batch = writeBatch(db); batch.update(doc(REPORTS_COLLECTION, reportId), { status, reviewedAt: Date.now() }); appendStaffAction(batch, "report_reviewed", "report", reportId, `Safety report marked ${status}`); await batch.commit(); }
     catch (e) { showToast("Couldn't update report status"); }
   };
 
   const saveSitePopup = async (popupId, fields) => {
     if (siteRole !== "owner") throw new Error("Owner access required");
     const ref = popupId ? doc(SITE_POPUPS_COLLECTION, popupId) : doc(SITE_POPUPS_COLLECTION);
-    if (popupId) await updateDoc(ref, fields);
-    else await setDoc(ref, { ...fields, createdAt: Date.now() });
+    const batch = writeBatch(db);
+    if (popupId) batch.update(ref, fields);
+    else batch.set(ref, { ...fields, createdAt: Date.now() });
+    appendStaffAction(batch, "popup_saved", "popup", popupId || ref.id, `${popupId ? "Popup updated" : "Popup created"}: ${fields.title}`);
+    await batch.commit();
     showToast("Popup saved");
   };
 
   const deleteSitePopup = async (popupId) => {
     if (siteRole !== "owner") return;
-    try { await deleteDoc(doc(SITE_POPUPS_COLLECTION, popupId)); showToast("Popup deleted"); }
+    try { const batch = writeBatch(db); batch.delete(doc(SITE_POPUPS_COLLECTION, popupId)); appendStaffAction(batch, "popup_deleted", "popup", popupId, `Popup deleted: ${popupId}`); await batch.commit(); showToast("Popup deleted"); }
     catch { showToast("Couldn't delete popup"); }
   };
 
   const setSupportAccess = async (targetUid, enabled) => {
     if (siteRole !== "owner" || targetUid === user?.uid) throw new Error("Owner access required");
     const ref = doc(SITE_ROLES_COLLECTION, targetUid);
-    if (enabled) await setDoc(ref, { role: "support", enabled: true, updatedAt: Date.now() });
-    else await updateDoc(ref, { enabled: false, updatedAt: Date.now() });
+    const batch = writeBatch(db);
+    if (enabled) batch.set(ref, { role: "support", enabled: true, updatedAt: Date.now() });
+    else batch.update(ref, { enabled: false, updatedAt: Date.now() });
+    appendStaffAction(batch, enabled ? "support_granted" : "support_revoked", "support", targetUid, `${enabled ? "Support access granted" : "Support access removed"} for ${targetUid}`);
+    await batch.commit();
     showToast(enabled ? "Support access granted" : "Support access removed");
   };
 
@@ -1872,8 +1365,8 @@ export default function App() {
         {section === "players" && (
           <FindPlayersPage currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid)} onFriendDecision={decideFriendRequest} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} />
         )}
-        {section === "archive" && <HistoricalArchive entries={archiveEntries} isModerator={isModerator} onImport={importArchiveEntries} />}
-        {section === "blog" && <BlogPage posts={blogPosts} user={user} isModerator={isSiteStaff || isModerator} onSubmit={submitBlogPost} onReview={reviewBlogPost} />}
+        {section === "archive" && <HistoricalArchive entries={archiveEntries} isModerator={isSiteStaff || isModerator} user={user} submissions={archiveSubmissions} onSubmitRequest={submitArchiveRequest} onImport={importArchiveEntries} />}
+        {section === "blog" && <BlogPage posts={blogPosts} user={user} isModerator={isSiteStaff || isModerator} onSubmit={submitBlogPost} onReview={reviewBlogPost} onEdit={editBlogPost} onDelete={deleteBlogPost} />}
         {section === "requests" && <FriendRequestCenter requests={friendRequests} currentUserId={user.uid} onDecision={decideFriendRequest} />}
         {section === "dashboard" && isSiteStaff && <OwnerDashboard
           role={siteRole || "support"}
@@ -1888,6 +1381,10 @@ export default function App() {
           archiveEntries={archiveEntries}
           blogPosts={blogPosts}
           onBlogReview={reviewBlogPost}
+          onPromoteBlog={promoteBlogToArchive}
+          archiveSubmissions={archiveSubmissions}
+          onArchiveDecision={decideArchiveSubmission}
+          auditLog={auditLog}
         />}
         {section === "tournaments" && view === "list" && (
           <TournamentList
