@@ -43,3 +43,14 @@ The same Functions deployment assigns player numbers, tracks the aggregate onlin
 - Change active popup wording and dates in **Owner dashboard → Popups**.
 - Change how bans are checked or audited in `functions/index.js`; never move owner verification into client-only code.
 - Change Realtime Database presence access in `database.rules.json` and its trusted friend-link sync in `functions/index.js`.
+
+## Friends: remove and block
+
+- The floating Friends panel controls remove, block, and unblock actions in `src/App.jsx` inside `FriendDock` and the nearby friend handlers.
+- Block records live in `userBlocks/{blockerUid}_{blockedUid}`. The matching Firestore rules prevent new friend requests, accepted chat access, and tournament invitations while the block exists. Existing chat documents are retained but unavailable during the block.
+- After merging the code, publish the updated `firestore.rules` from Firebase Console. The app cannot enforce block privacy without the matching rules.
+- Online indicators and the “friend is online” toast use Realtime Database presence. The Firebase project currently reports no default Realtime Database instance. Configure an RTDB instance and its rules, then set `VITE_FIREBASE_DATABASE_URL` in the website’s environment and `GRINDINFO_RTDB_URL` for Functions before expecting online alerts.
+
+## Public identity cleanup follow-up
+
+Guest-readable tournament records currently include host/co-host user IDs, and published blog records include author user IDs. Removing those fields safely requires a private ownership/access collection plus a one-time migration of existing records. Do that as a separate reviewed update so tournament hosting, co-host permissions, blog editing, and guest browsing continue to work.
