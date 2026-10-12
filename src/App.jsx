@@ -7,7 +7,6 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
-  getDoc,
   writeBatch,
   query,
   where,
@@ -35,6 +34,8 @@ const REPORTS_COLLECTION = collection(db, "reports");
 const FRIEND_REQUESTS_COLLECTION = collection(db, "friendRequests");
 const ARCHIVE_COLLECTION = collection(db, "esportsArchive");
 const BLOG_POSTS_COLLECTION = collection(db, "blogPosts");
+const SITE_POPUPS_COLLECTION = collection(db, "sitePopups");
+const SITE_ROLES_COLLECTION = collection(db, "siteRoles");
 const PRIZE_PRESETS = [0, 500, 1000, 2500, 5000, 10000];
 const REPORT_REASONS = ["Abuse or harassment", "Scam or fraud", "Inappropriate content", "Other"];
 
@@ -967,7 +968,7 @@ function ReportModal({ target, onClose, onSubmit }) {
       <div onClick={(event) => event.stopPropagation()} style={{ width: "100%", maxWidth: 440, padding: 22, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
         <Eyebrow>Safety report</Eyebrow>
         <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 27, margin: "4px 0 8px" }}>Report {target.type}</h2>
-        <div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 14 }}>{target.name || "This account or tournament"} · Reports are private to GrindInfo moderators.</div>
+        <div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 14 }}>{target.name || "This account or tournament"} · Reports are private to GrindInfo's owner and support team.</div>
         <div style={{ display: "grid", gap: 12 }}>
           <Field label="What happened?">
             <Select value={reason} onChange={(event) => setReason(event.target.value)}>{REPORT_REASONS.map((item) => <option key={item}>{item}</option>)}</Select>
@@ -1046,9 +1047,110 @@ function FriendRequestCenter({ requests, currentUserId, onDecision }) {
 function ReportsInbox({ reports, onStatusChange }) {
   return (
     <div style={{ paddingTop: 34 }}>
-      <Eyebrow>Moderator tools · private</Eyebrow>
+      <Eyebrow>Owner and support tools · private</Eyebrow>
       <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 18px" }}>Safety reports</h1>
       {reports.length === 0 ? <EmptyState title="No reports to review" body="New abuse, scam and inappropriate-content reports appear here." /> : <div style={{ display: "grid", gap: 10 }}>{reports.map((report) => <article key={report.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{report.status || "submitted"} · {report.targetType} · {report.reason}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0", fontSize: 22 }}>{report.targetName || "Reported item"}</h2><p style={{ fontSize: 13, color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{report.details || "No extra details provided."}</p><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><Button variant="ghost" onClick={() => onStatusChange(report.id, "reviewing")}>Mark reviewing</Button><Button onClick={() => onStatusChange(report.id, "closed")}>Close report</Button></div></article>)}</div>}
+    </div>
+  );
+}
+
+function SitePopup({ popup, onDismiss }) {
+  if (!popup) return null;
+  return (
+    <div role="dialog" aria-modal="true" aria-labelledby="site-popup-title" style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,.66)", display: "grid", placeItems: "center", padding: 18 }}>
+      <section style={{ width: "min(100%, 520px)", background: "var(--panel-bg)", color: "var(--page-text)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)", padding: 24 }}>
+        <Eyebrow color={popup.type === "disclaimer" ? "var(--danger)" : "var(--accent-secondary)"}>{popup.type === "disclaimer" ? "Safety reminder" : "GrindInfo boost"}</Eyebrow>
+        <h2 id="site-popup-title" style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 30, margin: "8px 0" }}>{popup.title}</h2>
+        <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.6, color: "var(--text-muted)" }}>{popup.message}</p>
+        <Button onClick={onDismiss}>{popup.type === "disclaimer" ? "I understand" : "Let's go"}</Button>
+      </section>
+    </div>
+  );
+}
+
+function OwnerDashboard({ role, reports, onStatusChange, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview }) {
+  const isOwner = role === "owner";
+  const [tab, setTab] = useState("overview");
+  const [editing, setEditing] = useState(null);
+  const [staffUid, setStaffUid] = useState("");
+  const [popupError, setPopupError] = useState("");
+  const [staffError, setStaffError] = useState("");
+
+  const activeReports = reports.filter((item) => item.status !== "closed").length;
+  const pendingBlogs = blogPosts.filter((post) => post.status === "pending").length;
+  const activeTournaments = tournaments.filter((item) => !isTournamentArchived(item)).length;
+  const openEditor = (popup = null) => {
+    setPopupError("");
+    const toLocalInput = (value) => {
+      if (!value) return "";
+      const date = new Date(Number(value));
+      if (!Number.isFinite(date.getTime())) return "";
+      date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+      return date.toISOString().slice(0, 16);
+    };
+    setEditing(popup ? { ...popup, startsAt: toLocalInput(popup.startsAt), endsAt: toLocalInput(popup.endsAt) } : { id: "", title: "", message: "", type: "motivation", enabled: true, frequency: "daily", startsAt: "", endsAt: "" });
+  };
+  const savePopup = async () => {
+    const title = String(editing?.title || "").trim();
+    const message = String(editing?.message || "").trim();
+    if (!title || !message) { setPopupError("Add both a title and message."); return; }
+    if (editing.startsAt && editing.endsAt && new Date(editing.endsAt).getTime() <= new Date(editing.startsAt).getTime()) { setPopupError("The end time must be later than the start time."); return; }
+    const payload = {
+      title: title.slice(0, 100), message: message.slice(0, 1000),
+      type: editing.type === "disclaimer" ? "disclaimer" : "motivation",
+      enabled: editing.enabled === true,
+      frequency: editing.frequency === "session" ? "session" : "daily",
+      startsAt: editing.startsAt ? new Date(editing.startsAt).getTime() : 0,
+      endsAt: editing.endsAt ? new Date(editing.endsAt).getTime() : 0,
+      updatedAt: Date.now(),
+    };
+    try { await onSavePopup(editing.id || null, payload); setEditing(null); }
+    catch { setPopupError("Could not save this popup. Check the published Firebase rules and try again."); }
+  };
+  const assignSupport = async () => {
+    const targetUid = staffUid.trim();
+    if (!targetUid || targetUid.length > 128) { setStaffError("Enter a valid Firebase account UID."); return; }
+    try { await onSetSupport(targetUid, true); setStaffUid(""); setStaffError(""); }
+    catch { setStaffError("Could not update support access. Check the published Firebase rules."); }
+  };
+
+  return (
+    <div style={{ paddingTop: 34 }}>
+      <Eyebrow>{isOwner ? "Owner controls · protected" : "Support workspace · restricted"}</Eyebrow>
+      <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 18px" }}>{isOwner ? "Owner dashboard" : "Support dashboard"}</h1>
+      <div role="tablist" aria-label="Dashboard sections" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
+        {["overview", "reports", "blogs", ...(isOwner ? ["popups", "support access"] : [])].map((name) => <Button key={name} variant={tab === name ? "primary" : "ghost"} onClick={() => setTab(name)}>{name[0].toUpperCase() + name.slice(1)}</Button>)}
+      </div>
+      {tab === "overview" && <>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 18 }}>
+          {[["Open reports", activeReports], ["Pending blogs", pendingBlogs], ["Active tournaments", activeTournaments], ["Archive records", archiveEntries.length]].map(([label, value]) => <article key={label} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{label}</Eyebrow><strong style={{ display: "block", fontSize: 25, marginTop: 8 }}>{value}</strong></article>)}
+        </div>
+        <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Use the dashboard tabs to review safety reports{isOwner ? ", manage site popups, and control support access." : "."}</p>
+      </>}
+      {tab === "reports" && <ReportsInbox reports={reports} onStatusChange={onStatusChange} />}
+      {tab === "blogs" && <section><p style={{ color: "var(--text-muted)", fontSize: 13 }}>Preview submitted and published community posts.</p>{blogPosts.length === 0 ? <EmptyState title="No blog posts yet" body="Community submissions will appear here for preview." /> : <div style={{ display: "grid", gap: 10 }}>{[...blogPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 30).map((post) => <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status} · by {post.authorName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{post.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{post.content}</p>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onBlogReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onBlogReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div>}</section>}
+      {tab === "popups" && isOwner && <section>
+        <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Create plain-text safety reminders and motivation messages. Changes appear on GrindInfo without editing the website code.</p>
+        <Button onClick={() => openEditor()}>Add popup</Button>
+        {editing && <div style={{ display: "grid", gap: 10, maxWidth: 620, padding: 16, marginTop: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+          <Field label="Title"><TextInput value={editing.title} maxLength={100} onChange={(e) => setEditing({ ...editing, title: e.target.value })} /></Field>
+          <Field label="Message"><textarea value={editing.message} maxLength={1000} rows={4} onChange={(e) => setEditing({ ...editing, message: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} /></Field>
+          <Field label="Type"><Select value={editing.type} onChange={(e) => setEditing({ ...editing, type: e.target.value })}><option value="motivation">Motivation</option><option value="disclaimer">Safety disclaimer</option></Select></Field>
+          <Field label="Show frequency"><Select value={editing.frequency} onChange={(e) => setEditing({ ...editing, frequency: e.target.value })}><option value="daily">Once per day</option><option value="session">Once per browser session</option></Select></Field>
+          <Field label="Start showing (optional)"><TextInput type="datetime-local" value={editing.startsAt || ""} onChange={(e) => setEditing({ ...editing, startsAt: e.target.value })} /></Field>
+          <Field label="Stop showing (optional)"><TextInput type="datetime-local" value={editing.endsAt || ""} onChange={(e) => setEditing({ ...editing, endsAt: e.target.value })} /></Field>
+          <label style={{ display: "flex", gap: 8, alignItems: "center" }}><input type="checkbox" checked={editing.enabled} onChange={(e) => setEditing({ ...editing, enabled: e.target.checked })} /> Enabled</label>
+          {popupError && <div role="alert" style={{ color: "var(--danger)" }}>{popupError}</div>}
+          <div style={{ display: "flex", gap: 8 }}><Button onClick={savePopup}>Save popup</Button><Button variant="ghost" onClick={() => setEditing(null)}>Cancel</Button></div>
+        </div>}
+        <div style={{ display: "grid", gap: 10, marginTop: 14 }}>{popups.map((popup) => <article key={popup.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{popup.enabled ? "Enabled" : "Disabled"} · {popup.type}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "5px 0" }}>{popup.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{popup.message}</p><div style={{ display: "flex", gap: 8 }}><Button variant="ghost" onClick={() => openEditor(popup)}>Edit</Button><Button variant="danger" onClick={() => onDeletePopup(popup.id)}>Delete</Button></div></article>)}</div>
+      </section>}
+      {tab === "support access" && isOwner && <section style={{ maxWidth: 680 }}>
+        <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Support can review reports. Add only trusted people. For now, copy their Firebase Authentication UID from Firebase Console → Authentication → Users.</p>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><TextInput aria-label="Support account UID" placeholder="Paste support person's UID" value={staffUid} onChange={(e) => setStaffUid(e.target.value)} /><Button onClick={assignSupport}>Grant support access</Button></div>
+        {staffError && <div role="alert" style={{ color: "var(--danger)", marginTop: 8 }}>{staffError}</div>}
+        <div style={{ display: "grid", gap: 8, marginTop: 16 }}>{staff.filter((item) => item.role === "support" && item.enabled !== false).map((item) => <article key={item.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", padding: 12, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><code>{item.id}</code><Button variant="danger" onClick={() => onSetSupport(item.id, false)}>Remove access</Button></article>)}</div>
+      </section>}
     </div>
   );
 }
@@ -1154,10 +1256,16 @@ export default function App() {
   const [showNewTournament, setShowNewTournament] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);
   const [isModerator, setIsModerator] = useState(false);
+  const [siteRole, setSiteRole] = useState(null);
   const [friendRequests, setFriendRequests] = useState([]);
   const [archiveEntries, setArchiveEntries] = useState([]);
   const [blogPosts, setBlogPosts] = useState([]);
   const [privateReports, setPrivateReports] = useState([]);
+  const [activePopups, setActivePopups] = useState([]);
+  const [adminPopups, setAdminPopups] = useState([]);
+  const [siteStaff, setSiteStaff] = useState([]);
+  const [currentPopup, setCurrentPopup] = useState(null);
+  const [popupScanTick, setPopupScanTick] = useState(0);
 
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -1221,7 +1329,6 @@ export default function App() {
   useEffect(() => {
     if (!user) {
       setMyProfile(null);
-      setIsModerator(false);
       return;
     }
     const unsub = onSnapshot(playerDocRef(user.uid), (snap) => {
@@ -1236,12 +1343,15 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    if (!user) return undefined;
-    let active = true;
-    getDoc(doc(db, "moderators", user.uid)).then((snapshot) => {
-      if (active) setIsModerator(snapshot.exists() && snapshot.data().enabled === true);
-    }).catch(() => { if (active) setIsModerator(false); });
-    return () => { active = false; };
+    if (!user) { setIsModerator(false); setSiteRole(null); return undefined; }
+    const stopRole = onSnapshot(doc(SITE_ROLES_COLLECTION, user.uid), (snapshot) => {
+      const data = snapshot.exists() ? snapshot.data() : null;
+      setSiteRole(data?.enabled !== false && ["owner", "support"].includes(data?.role) ? data.role : null);
+    }, () => setSiteRole(null));
+    const stopModerator = onSnapshot(doc(db, "moderators", user.uid), (snapshot) => {
+      setIsModerator(snapshot.exists() && snapshot.data().enabled === true);
+    }, () => setIsModerator(false));
+    return () => { stopRole(); stopModerator(); };
   }, [user]);
 
   useEffect(() => {
@@ -1265,20 +1375,58 @@ export default function App() {
       onSnapshot(query(BLOG_POSTS_COLLECTION, where("status", "==", "published")), (snap) => { publicPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() })); publish(); }, () => { publicPosts = []; publish(); }),
       onSnapshot(query(BLOG_POSTS_COLLECTION, where("authorId", "==", user.uid)), (snap) => { ownPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() })); publish(); }, () => { ownPosts = []; publish(); }),
     ];
-    if (isModerator) stops.push(onSnapshot(query(BLOG_POSTS_COLLECTION, where("status", "==", "pending")), (snap) => { pendingPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() })); publish(); }, () => { pendingPosts = []; publish(); }));
+    if (isModerator || siteRole === "owner" || siteRole === "support") stops.push(onSnapshot(query(BLOG_POSTS_COLLECTION, where("status", "==", "pending")), (snap) => { pendingPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() })); publish(); }, () => { pendingPosts = []; publish(); }));
     return () => stops.forEach((stop) => stop());
-  }, [user, isModerator]);
+  }, [user, isModerator, siteRole]);
 
   useEffect(() => onSnapshot(ARCHIVE_COLLECTION, (snapshot) => {
     setArchiveEntries(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
   }, () => setArchiveEntries([])), []);
 
   useEffect(() => {
-    if (!isModerator) { setPrivateReports([]); return undefined; }
+    if (siteRole !== "owner" && siteRole !== "support") { setPrivateReports([]); return undefined; }
     return onSnapshot(REPORTS_COLLECTION, (snapshot) => {
       setPrivateReports(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
     }, () => setPrivateReports([]));
-  }, [isModerator]);
+  }, [isModerator, siteRole]);
+
+  useEffect(() => onSnapshot(query(SITE_POPUPS_COLLECTION, where("enabled", "==", true)), (snapshot) => {
+    setActivePopups(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
+  }, () => setActivePopups([])), []);
+
+  useEffect(() => {
+    if (siteRole !== "owner") { setAdminPopups([]); setSiteStaff([]); return undefined; }
+    const stopPopups = onSnapshot(SITE_POPUPS_COLLECTION, (snapshot) => setAdminPopups(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))), () => setAdminPopups([]));
+    const stopStaff = onSnapshot(SITE_ROLES_COLLECTION, (snapshot) => setSiteStaff(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))), () => setSiteStaff([]));
+    return () => { stopPopups(); stopStaff(); };
+  }, [siteRole]);
+
+  useEffect(() => {
+    if (showProfileModal) { setCurrentPopup(null); return; }
+    const now = Date.now();
+    const nextBoundary = activePopups
+      .flatMap((popup) => [popup.startsAt, popup.endsAt])
+      .filter((time) => typeof time === "number" && time > now)
+      .sort((a, b) => a - b)[0];
+    const timer = nextBoundary
+      ? window.setTimeout(() => setPopupScanTick((tick) => tick + 1), Math.min(nextBoundary - now + 50, 2147483000))
+      : null;
+    const eligible = activePopups.filter((popup) => {
+      if (popup.enabled !== true || (popup.startsAt && popup.startsAt > now) || (popup.endsAt && popup.endsAt < now)) return false;
+      const version = popup.updatedAt || popup.createdAt || 0;
+      const key = `grindinfo-popup:${popup.id}:${version}`;
+      const seen = popup.frequency === "session" ? sessionStorage.getItem(key) : localStorage.getItem(key);
+      const today = new Date().toISOString().slice(0, 10);
+      return !seen || (popup.frequency !== "session" && seen !== today);
+    });
+    const disclaimers = eligible.filter((popup) => popup.type === "disclaimer");
+    const motivations = eligible.filter((popup) => popup.type === "motivation");
+    const list = disclaimers.length ? disclaimers : motivations;
+    if (!list.length) { setCurrentPopup(null); return () => { if (timer) window.clearTimeout(timer); }; }
+    const selected = list[Math.floor(Math.random() * list.length)];
+    setCurrentPopup(selected);
+    return () => { if (timer) window.clearTimeout(timer); };
+  }, [activePopups, popupScanTick, showProfileModal]);
 
   const skipProfile = useCallback(() => {
     if (user) localStorage.setItem(`profilePromptDismissed_${user.uid}`, "1");
@@ -1585,7 +1733,7 @@ export default function App() {
         targetName: String(reportTarget.name || "").slice(0, 120), reason,
         details: String(details || "").slice(0, 1000), status: "submitted", createdAt: Date.now(),
       });
-      setReportTarget(null); showToast("Report sent privately to GrindInfo moderators"); return "";
+      setReportTarget(null); showToast("Report sent privately to GrindInfo's safety team"); return "";
     } catch (e) { return "This report could not be sent. You may already have reported this item."; }
   };
 
@@ -1600,9 +1748,46 @@ export default function App() {
     catch (e) { showToast("Couldn't update report status"); }
   };
 
+  const saveSitePopup = async (popupId, fields) => {
+    if (siteRole !== "owner") throw new Error("Owner access required");
+    const ref = popupId ? doc(SITE_POPUPS_COLLECTION, popupId) : doc(SITE_POPUPS_COLLECTION);
+    if (popupId) await updateDoc(ref, fields);
+    else await setDoc(ref, { ...fields, createdAt: Date.now() });
+    showToast("Popup saved");
+  };
+
+  const deleteSitePopup = async (popupId) => {
+    if (siteRole !== "owner") return;
+    try { await deleteDoc(doc(SITE_POPUPS_COLLECTION, popupId)); showToast("Popup deleted"); }
+    catch { showToast("Couldn't delete popup"); }
+  };
+
+  const setSupportAccess = async (targetUid, enabled) => {
+    if (siteRole !== "owner" || targetUid === user?.uid) throw new Error("Owner access required");
+    const ref = doc(SITE_ROLES_COLLECTION, targetUid);
+    if (enabled) await setDoc(ref, { role: "support", enabled: true, updatedAt: Date.now() });
+    else await updateDoc(ref, { enabled: false, updatedAt: Date.now() });
+    showToast(enabled ? "Support access granted" : "Support access removed");
+  };
+
+  const dismissSitePopup = () => {
+    if (!currentPopup) return;
+    const key = `grindinfo-popup:${currentPopup.id}:${currentPopup.updatedAt || currentPopup.createdAt || 0}`;
+    if (currentPopup.frequency === "session") sessionStorage.setItem(key, "seen");
+    else localStorage.setItem(key, new Date().toISOString().slice(0, 10));
+    setCurrentPopup(null);
+    setPopupScanTick((tick) => tick + 1);
+  };
+
   const selected = tournaments.find((t) => t.id === selectedId) || null;
   const isOwner = !!(selected && user && selected.adminUserId === user.uid);
   const isAdmin = !!(selected && user && (isOwner || selected.coAdminUserIds?.includes(user.uid)));
+  const isSiteStaff = siteRole === "owner" || siteRole === "support";
+  const dashboardRole = isSiteStaff ? siteRole : null;
+
+  useEffect(() => {
+    if (!isSiteStaff && section === "dashboard") setSection("tournaments");
+  }, [isSiteStaff, section]);
 
   if (authLoading) {
     return (
@@ -1651,7 +1836,7 @@ export default function App() {
         @keyframes sl-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
       `}</style>
 
-      <Header saving={saving} user={user} onSignOut={handleSignOut} theme={theme} setTheme={setTheme} onEditProfile={() => setShowProfileModal(true)} onNavigate={setSection} friendRequestCount={friendRequests.filter((request) => request.recipientId === user.uid && request.status === "pending").length} />
+        <Header saving={saving} user={user} onSignOut={handleSignOut} theme={theme} setTheme={setTheme} onEditProfile={() => setShowProfileModal(true)} onNavigate={setSection} friendRequestCount={friendRequests.filter((request) => request.recipientId === user.uid && request.status === "pending").length} dashboardRole={dashboardRole} />
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "16px 20px 0" }}>
         <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--border)" }}>
@@ -1660,7 +1845,6 @@ export default function App() {
             { id: "players", label: "Find players" },
             { id: "archive", label: "Esports archive" },
             { id: "blog", label: "Community blog" },
-            ...(isModerator ? [{ id: "reports", label: "Safety reports" }] : []),
     ].map((s) => (
             <button
               key={s.id}
@@ -1689,9 +1873,22 @@ export default function App() {
           <FindPlayersPage currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid)} onFriendDecision={decideFriendRequest} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} />
         )}
         {section === "archive" && <HistoricalArchive entries={archiveEntries} isModerator={isModerator} onImport={importArchiveEntries} />}
-        {section === "blog" && <BlogPage posts={blogPosts} user={user} isModerator={isModerator} onSubmit={submitBlogPost} onReview={reviewBlogPost} />}
+        {section === "blog" && <BlogPage posts={blogPosts} user={user} isModerator={isSiteStaff || isModerator} onSubmit={submitBlogPost} onReview={reviewBlogPost} />}
         {section === "requests" && <FriendRequestCenter requests={friendRequests} currentUserId={user.uid} onDecision={decideFriendRequest} />}
-        {section === "reports" && isModerator && <ReportsInbox reports={privateReports} onStatusChange={updateReportStatus} />}
+        {section === "dashboard" && isSiteStaff && <OwnerDashboard
+          role={siteRole || "support"}
+          reports={privateReports}
+          onStatusChange={updateReportStatus}
+          popups={adminPopups}
+          onSavePopup={saveSitePopup}
+          onDeletePopup={deleteSitePopup}
+          staff={siteStaff}
+          onSetSupport={setSupportAccess}
+          tournaments={tournaments}
+          archiveEntries={archiveEntries}
+          blogPosts={blogPosts}
+          onBlogReview={reviewBlogPost}
+        />}
         {section === "tournaments" && view === "list" && (
           <TournamentList
             tournaments={tournaments}
@@ -1756,6 +1953,7 @@ export default function App() {
       )}
 
       {reportTarget && <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} onSubmit={submitReport} />}
+      <SitePopup popup={currentPopup} onDismiss={dismissSitePopup} />
       <Toast message={toast} />
     </div>
   );
@@ -1768,7 +1966,7 @@ const shellStyle = {
   fontFamily: "'Inter', sans-serif",
 };
 
-function Header({ saving, user, onSignOut, theme, setTheme, onEditProfile, onNavigate, friendRequestCount }) {
+function Header({ saving, user, onSignOut, theme, setTheme, onEditProfile, onNavigate, friendRequestCount, dashboardRole }) {
   const displayName = user?.displayName || user?.email || "Player";
   const initials = safeProfileName(user?.displayName).slice(0, 1).toUpperCase();
 
@@ -1806,6 +2004,7 @@ function Header({ saving, user, onSignOut, theme, setTheme, onEditProfile, onNav
               <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>{displayName}</div>
               <Button variant="ghost" style={{ width: "100%", marginBottom: 8 }} onClick={(event) => { onEditProfile(); event.currentTarget.closest("details")?.removeAttribute("open"); }}>{user?.displayName ? "Edit my profile" : "Create my profile"}</Button>
               <Button variant="ghost" style={{ width: "100%", marginBottom: 12 }} onClick={(event) => { onNavigate("requests"); event.currentTarget.closest("details")?.removeAttribute("open"); }}>Friend requests{friendRequestCount ? ` (${friendRequestCount})` : ""}</Button>
+              {dashboardRole && <Button variant="ghost" style={{ width: "100%", marginBottom: 12 }} onClick={(event) => { onNavigate("dashboard"); event.currentTarget.closest("details")?.removeAttribute("open"); }}>{dashboardRole === "owner" ? "Owner dashboard" : "Support dashboard"}</Button>}
               <Field label="Theme">
                 <Select value={theme} onChange={(event) => setTheme(event.target.value)}>
                   <option value="glacier">Glacier (default)</option>
@@ -2948,3 +3147,4 @@ function LeaderboardPanel({ teams, stats }) {
     </div>
   );
 }
+
