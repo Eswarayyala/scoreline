@@ -2,11 +2,17 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isSiteBanned() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/siteBans/$(request.auth.uid))
+        && get(/databases/$(database)/documents/siteBans/$(request.auth.uid)).data.active == true;
+    }
+
     function isOwner(t) {
-      return request.auth != null && request.auth.uid == t.adminUserId;
+      return request.auth != null && !isSiteBanned() && request.auth.uid == t.adminUserId;
     }
     function isAdmin(t) {
-      return request.auth != null && (
+      return request.auth != null && !isSiteBanned() && (
         request.auth.uid == t.adminUserId ||
         (t.coAdminUserIds is list && request.auth.uid in t.coAdminUserIds)
       );
@@ -15,18 +21,18 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/tournaments/$(tid)).data;
     }
     function isModerator() {
-      return request.auth != null
+      return request.auth != null && !isSiteBanned()
         && exists(/databases/$(database)/documents/moderators/$(request.auth.uid))
         && get(/databases/$(database)/documents/moderators/$(request.auth.uid)).data.enabled == true;
     }
     function isSiteOwner() {
-      return request.auth != null
+      return request.auth != null && !isSiteBanned()
         && exists(/databases/$(database)/documents/siteRoles/$(request.auth.uid))
         && get(/databases/$(database)/documents/siteRoles/$(request.auth.uid)).data.role == 'owner'
         && get(/databases/$(database)/documents/siteRoles/$(request.auth.uid)).data.enabled == true;
     }
     function isSiteSupport() {
-      return request.auth != null && (
+      return request.auth != null && !isSiteBanned() && (
         (exists(/databases/$(database)/documents/siteRoles/$(request.auth.uid))
           && get(/databases/$(database)/documents/siteRoles/$(request.auth.uid)).data.role == 'support'
           && get(/databases/$(database)/documents/siteRoles/$(request.auth.uid)).data.enabled == true)
@@ -35,6 +41,16 @@ service cloud.firestore {
     function isSiteStaff() {
       return isSiteOwner() || isSiteSupport();
     }
+    function isActiveSiteUser() {
+      return request.auth != null && !isSiteBanned();
+    }
+    function isAcceptedFriend(firstUid, secondUid) {
+      return request.auth != null && firstUid != secondUid
+        && ((exists(/databases/$(database)/documents/friendRequests/$(firstUid + '_' + secondUid))
+             && get(/databases/$(database)/documents/friendRequests/$(firstUid + '_' + secondUid)).data.status == 'accepted')
+            || (exists(/databases/$(database)/documents/friendRequests/$(secondUid + '_' + firstUid))
+             && get(/databases/$(database)/documents/friendRequests/$(secondUid + '_' + firstUid)).data.status == 'accepted'));
+    }
     function validSitePopup(data) {
       return data.keys().hasOnly(['title', 'message', 'type', 'enabled', 'frequency', 'startsAt', 'endsAt', 'createdAt', 'updatedAt'])
         && data.keys().hasAll(['title', 'message', 'type', 'enabled', 'frequency', 'startsAt', 'endsAt', 'createdAt', 'updatedAt'])
@@ -42,7 +58,7 @@ service cloud.firestore {
         && data.message is string && data.message.size() > 0 && data.message.size() <= 1000
         && data.type in ['disclaimer', 'motivation']
         && data.enabled is bool
-        && data.frequency in ['daily', 'session']
+        && data.frequency in ['daily', 'session', 'random']
         && data.startsAt is int && data.startsAt >= 0
         && data.endsAt is int && data.endsAt >= 0
         && (data.endsAt == 0 || data.startsAt == 0 || data.endsAt > data.startsAt)
@@ -179,9 +195,9 @@ service cloud.firestore {
                'blog_published', 'blog_declined', 'blog_edited', 'blog_deleted',
                'archive_imported', 'archive_request_approved', 'archive_request_rejected',
                'blog_added_to_archive', 'report_reviewed', 'popup_saved', 'popup_deleted',
-               'support_granted', 'support_revoked'
+             'support_granted', 'support_revoked', 'player_banned', 'player_unbanned'
              ]
-             && data.targetType in ['blog', 'archive', 'archiveSubmission', 'archiveEntry', 'report', 'popup', 'support']
+             && data.targetType in ['blog', 'archive', 'archiveSubmission', 'archiveEntry', 'report', 'popup', 'support', 'player']
              && data.targetId is string && data.targetId.size() > 0 && data.targetId.size() <= 128
              && data.targetLabel is string && data.targetLabel.size() <= 120
              && data.actorUid == request.auth.uid
@@ -261,9 +277,9 @@ service cloud.firestore {
     }
 
     match /tournaments/{tid} {
-      allow read: if true;
+      allow read: if isActiveSiteUser();
 
-      allow create: if request.auth != null
+      allow create: if isActiveSiteUser()
                     && request.resource.data.adminUserId == request.auth.uid
                     && request.resource.data.coAdminUserIds is list
                     && request.resource.data.coAdminUserIds.size() == 0
@@ -280,13 +296,13 @@ service cloud.firestore {
       allow delete: if isOwner(resource.data);
 
       match /teams/{id} {
-        allow read: if true;
+        allow read: if isActiveSiteUser();
         allow create: if isAdmin(parent(tid)) && validTeam(request.resource.data);
         allow update: if isAdmin(parent(tid)) && validTeam(request.resource.data);
         allow delete: if isAdmin(parent(tid));
       }
       match /matches/{id} {
-        allow read: if true;
+        allow read: if isActiveSiteUser();
         allow create: if isAdmin(parent(tid)) && validMatch(request.resource.data);
         allow update: if isAdmin(parent(tid))
                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scoreA', 'scoreB', 'status'])
@@ -298,7 +314,7 @@ service cloud.firestore {
         allow delete: if isAdmin(parent(tid));
       }
       match /stats/{id} {
-        allow read: if true;
+        allow read: if isActiveSiteUser();
         allow create: if isAdmin(parent(tid)) && validStat(request.resource.data);
         allow update: if isAdmin(parent(tid)) && validStat(request.resource.data);
         allow delete: if isAdmin(parent(tid));
@@ -307,8 +323,8 @@ service cloud.firestore {
 
       match /registrations/{playerId} {
         allow read: if isAdmin(parent(tid))
-                    || (request.auth != null && request.auth.uid == resource.data.playerId);
-        allow create: if request.auth != null
+                    || (isActiveSiteUser() && request.auth.uid == resource.data.playerId);
+        allow create: if isActiveSiteUser()
                       && exists(/databases/$(database)/documents/tournaments/$(tid))
                       && (!parent(tid).keys().hasAny(['registrationOpen'])
                           || parent(tid).registrationOpen == true)
@@ -332,7 +348,7 @@ service cloud.firestore {
     }
 
     match /moderators/{userId} {
-      allow get: if request.auth != null && request.auth.uid == userId;
+      allow get: if isActiveSiteUser() && request.auth.uid == userId;
       allow list, create, update, delete: if false;
     }
 
@@ -356,7 +372,7 @@ service cloud.firestore {
 
 
     match /sitePopups/{popupId} {
-      allow get, list: if isSiteOwner() || resource.data.enabled == true;
+      allow get, list: if !isSiteBanned() && (isSiteOwner() || resource.data.enabled == true);
       allow create: if isSiteOwner() && validSitePopup(request.resource.data);
       allow update: if isSiteOwner()
                     && validSitePopup(request.resource.data)
@@ -365,15 +381,15 @@ service cloud.firestore {
     }
 
     match /blogPosts/{postId} {
-      allow get, list: if request.auth != null
+      allow get, list: if isActiveSiteUser()
                        && (resource.data.status == 'published'
                            || resource.data.authorId == request.auth.uid
                            || isSiteStaff() || isModerator());
-      allow create: if request.auth != null
+      allow create: if isActiveSiteUser()
                     && request.resource.data.authorId == request.auth.uid
                     && request.resource.data.status == 'pending'
                     && validBlogPost(request.resource.data);
-      allow update: if request.auth != null
+      allow update: if isActiveSiteUser()
                     && validBlogPost(request.resource.data)
                     && request.resource.data.authorId == resource.data.authorId
                     && request.resource.data.authorName == resource.data.authorName
@@ -397,14 +413,14 @@ service cloud.firestore {
                        && request.resource.data.reviewedAt is int
                        && request.resource.data.reviewedBy == request.auth.uid)
                     );
-      allow delete: if request.auth != null
+      allow delete: if isActiveSiteUser()
                     && (resource.data.authorId == request.auth.uid || isSiteStaff() || isModerator());
     }
 
     match /archiveSubmissions/{submissionId} {
       allow get, list: if isSiteStaff()
-                       || (request.auth != null && resource.data.submitterId == request.auth.uid);
-      allow create: if request.auth != null
+                       || (isActiveSiteUser() && resource.data.submitterId == request.auth.uid);
+      allow create: if isActiveSiteUser()
 
                     && request.resource.data.submitterId == request.auth.uid
                     && request.resource.data.status == 'pending'
@@ -424,14 +440,14 @@ service cloud.firestore {
 
     match /staffActions/{actionId} {
       allow get, list: if isSiteOwner();
-      allow create: if request.auth != null
+      allow create: if isActiveSiteUser()
                     && (isSiteStaff() || isModerator())
                     && validStaffAction(request.resource.data);
       allow update, delete: if false;
     }
 
     match /reports/{reportId} {
-      allow create: if request.auth != null
+      allow create: if isActiveSiteUser()
                     && validReport(request.resource.data)
                     && reportId == request.auth.uid + '_' + request.resource.data.targetType
                          + '_' + request.resource.data.targetId;
@@ -445,21 +461,22 @@ service cloud.firestore {
     }
 
     match /friendRequests/{requestId} {
-      allow read: if request.auth != null
+      allow read: if isActiveSiteUser()
                   && (resource.data.requesterId == request.auth.uid
                       || resource.data.recipientId == request.auth.uid);
-      allow create: if request.auth != null
-                    && request.resource.data.keys().hasOnly(['requesterId', 'requesterName', 'recipientId', 'status', 'createdAt'])
+      allow create: if isActiveSiteUser()
+                    && request.resource.data.keys().hasOnly(['requesterId', 'requesterName', 'recipientId', 'recipientName', 'status', 'createdAt'])
                     && request.resource.data.requesterId == request.auth.uid
                     && request.resource.data.recipientId is string
                     && request.resource.data.recipientId != request.auth.uid
                     && requestId == request.auth.uid + '_' + request.resource.data.recipientId
                     && request.resource.data.requesterName is string
                     && request.resource.data.requesterName.size() <= 40
+                    && (!request.resource.data.keys().hasAny(['recipientName']) || (request.resource.data.recipientName is string && request.resource.data.recipientName.size() <= 40))
 
                     && request.resource.data.status == 'pending'
                     && request.resource.data.createdAt is int;
-      allow update: if request.auth != null
+      allow update: if isActiveSiteUser()
                     && resource.data.recipientId == request.auth.uid
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt'])
                     && request.resource.data.status in ['accepted', 'declined']
@@ -467,25 +484,72 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /conversations/{conversationId} {
+      function validConversation(data) {
+        return data.keys().hasOnly(['participants', 'createdAt'])
+          && data.keys().hasAll(['participants', 'createdAt'])
+          && data.participants is list && data.participants.size() == 2
+          && data.participants[0] is string && data.participants[1] is string
+          && data.participants[0] < data.participants[1]
+          && conversationId == data.participants[0] + '_' + data.participants[1]
+          && request.auth.uid in data.participants
+          && isAcceptedFriend(data.participants[0], data.participants[1])
+          && data.createdAt is int;
+      }
+      allow get: if isActiveSiteUser()
+        && (!exists(/databases/$(database)/documents/conversations/$(conversationId))
+            || request.auth.uid in resource.data.participants);
+      allow list: if isActiveSiteUser() && request.auth.uid in resource.data.participants;
+      allow create: if isActiveSiteUser() && validConversation(request.resource.data);
+      allow update, delete: if false;
+
+      match /messages/{messageId} {
+        function parentConversation() {
+          return get(/databases/$(database)/documents/conversations/$(conversationId)).data;
+        }
+        allow get, list: if isActiveSiteUser()
+          && exists(/databases/$(database)/documents/conversations/$(conversationId))
+          && request.auth.uid in parentConversation().participants;
+        allow create: if isActiveSiteUser()
+          && exists(/databases/$(database)/documents/conversations/$(conversationId))
+          && request.auth.uid in parentConversation().participants
+          && isAcceptedFriend(parentConversation().participants[0], parentConversation().participants[1])
+          && request.resource.data.keys().hasOnly(['senderId', 'text', 'createdAt'])
+          && request.resource.data.keys().hasAll(['senderId', 'text', 'createdAt'])
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000
+          && request.resource.data.createdAt is int;
+        allow update, delete: if false;
+      }
+    }
+
+    match /siteBans/{userId} {
+      allow get: if request.auth != null && (request.auth.uid == userId || isSiteStaff());
+      allow list: if isSiteStaff();
+      // Ban records are written only by the trusted Cloud Function.
+      allow create, update, delete: if false;
+    }
+
     match /esportsArchive/{entryId} {
-      allow read: if true;
+      allow read: if isActiveSiteUser();
       allow create: if (isSiteStaff() || isModerator())
                     && validArchiveEntry(request.resource.data);
       allow update, delete: if isModerator();
     }
 
     match /players/{userId} {
-      allow get: if request.auth != null
+      allow get: if isActiveSiteUser()
                  && (request.auth.uid == userId || resource.data.discoverable == true);
 
-      allow list: if request.auth != null
+      allow list: if isActiveSiteUser()
                   && resource.data.discoverable == true;
 
-      allow create, update: if request.auth != null
+      allow create, update: if isActiveSiteUser()
                             && request.auth.uid == userId
                             && validPlayerProfile(request.resource.data);
 
-      allow delete: if request.auth != null && request.auth.uid == userId;
+      allow delete: if isActiveSiteUser() && request.auth.uid == userId;
     }
 
     match /scoreline/shared-data {
