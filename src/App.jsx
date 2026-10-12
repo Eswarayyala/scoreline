@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   doc,
   collection,
   onSnapshot,
   setDoc,
+  getDoc,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -21,7 +22,9 @@ import {
   signInWithEmailAndPassword,
   updateProfile,
 } from "firebase/auth";
-import { db, auth, googleProvider } from "./firebase";
+import { db, auth, googleProvider, realtimeDb } from "./firebase";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { onValue, ref as databaseRef, onDisconnect, serverTimestamp, set as setDatabaseValue } from "firebase/database";
 
 const PLAYERS_COLLECTION = collection(db, "players");
 const playerDocRef = (uid) => doc(db, "players", uid);
@@ -34,10 +37,13 @@ const statsCollectionRef = (tid) => collection(db, "tournaments", tid, "stats");
 const registrationsCollectionRef = (tid) => collection(db, "tournaments", tid, "registrations");
 const REPORTS_COLLECTION = collection(db, "reports");
 const FRIEND_REQUESTS_COLLECTION = collection(db, "friendRequests");
+const CHAT_CONVERSATIONS_COLLECTION = collection(db, "conversations");
+const CHAT_MESSAGES_COLLECTION = (conversationId) => collection(db, "conversations", conversationId, "messages");
 const ARCHIVE_COLLECTION = collection(db, "esportsArchive");
 const BLOG_POSTS_COLLECTION = collection(db, "blogPosts");
 const SITE_POPUPS_COLLECTION = collection(db, "sitePopups");
 const SITE_ROLES_COLLECTION = collection(db, "siteRoles");
+const SITE_BANS_COLLECTION = collection(db, "siteBans");
 const ARCHIVE_SUBMISSIONS_COLLECTION = collection(db, "archiveSubmissions");
 const STAFF_ACTIONS_COLLECTION = collection(db, "staffActions");
 const PRIZE_PRESETS = [0, 500, 1000, 2500, 5000, 10000];
@@ -802,7 +808,7 @@ function PlayerCard({ player, currentUid, friendRequest, onFriendRequest, onFrie
     </div>
   );
 }
-function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendRequest, onFriendDecision, onReport }) {
+function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendRequest, onFriendDecision, onReport, onEditProfile }) {
   const [gameFilters, setGameFilters] = useState([]);
   const [regionFilter, setRegionFilter] = useState("");
   const [languageFilter, setLanguageFilter] = useState("");
@@ -871,6 +877,7 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
           <Eyebrow>Squad up</Eyebrow>
           <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 44, margin: "4px 0 0" }}>Find players</h1>
         </div>
+        <Button variant="ghost" onClick={onEditProfile}>{myProfile ? "Edit my profile" : "Create my profile"}</Button>
       </div>
 
       <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14, borderLeft: "2px solid var(--accent)", paddingLeft: 12 }}>
@@ -991,7 +998,8 @@ function ReportModal({ target, onClose, onSubmit }) {
   );
 }
 
-function RegistrationPanel({ tournament, requests, currentUserId, currentUserName, isAdmin, onRequest, onDecision }) {
+function RegistrationPanel({ tournament, requests, currentUserId, currentUserName, isAdmin, onRequest, onDecision, disclaimer, onDisclaimerVisibilityChange }) {
+  const [showJoinDisclaimer, setShowJoinDisclaimer] = useState(false);
   const mine = requests.find((request) => request.playerId === currentUserId);
   const pending = requests.filter((request) => request.status === "pending");
   const approved = requests.filter((request) => request.status === "approved");
@@ -1001,7 +1009,7 @@ function RegistrationPanel({ tournament, requests, currentUserId, currentUserNam
       <div style={{ fontSize: 13, color: "var(--text-muted)", margin: "8px 0 12px" }}>
         {mine ? `Your request is ${mine.status}.` : "Request a place. The tournament host or co-host must approve it."}
       </div>
-      {!isAdmin && !mine && tournament.registrationOpen !== false && !isTournamentArchived(tournament) && <Button onClick={() => onRequest({ playerId: currentUserId, displayName: currentUserName })}>Request to join</Button>}
+      {!isAdmin && !mine && tournament.registrationOpen !== false && !isTournamentArchived(tournament) && <Button onClick={() => { setShowJoinDisclaimer(true); onDisclaimerVisibilityChange(true); }}>Request to join</Button>}
       {!isAdmin && (tournament.registrationOpen === false || isTournamentArchived(tournament)) && <div style={{ color: "var(--text-dim)", fontSize: 12 }}>Registration is closed.</div>}
       {isAdmin && (
         <div style={{ display: "grid", gap: 8 }}>
@@ -1014,6 +1022,17 @@ function RegistrationPanel({ tournament, requests, currentUserId, currentUserNam
           {approved.length > 0 && <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10, marginTop: 4, fontSize: 12, color: "var(--text-muted)" }}>Approved players: {approved.map((request) => request.displayName || "Player").join(", ")}</div>}
         </div>
       )}
+      {showJoinDisclaimer && <div role="dialog" aria-modal="true" aria-labelledby="join-disclaimer-title" style={{ position: "fixed", inset: 0, zIndex: 90, background: "rgba(0,0,0,.72)", display: "grid", placeItems: "center", padding: 18 }}>
+        <section style={{ width: "min(100%, 480px)", padding: 22, background: "var(--panel-bg)", color: "var(--page-text)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)" }}>
+          <Eyebrow color="var(--danger)">Before you request</Eyebrow>
+          <h2 id="join-disclaimer-title" style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, margin: "6px 0" }}>{disclaimer?.title || "Tournament safety disclaimer"}</h2>
+          <p style={{ color: "var(--text-muted)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{disclaimer?.message || "Join only tournaments hosted by people you trust. Verify the details directly with the host, never send money or account credentials, and report suspicious activity. GrindInfo cannot guarantee a host's conduct."}</p>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <Button variant="ghost" onClick={() => { setShowJoinDisclaimer(false); onDisclaimerVisibilityChange(false); }}>Cancel</Button>
+            <Button onClick={() => { setShowJoinDisclaimer(false); onDisclaimerVisibilityChange(false); onRequest({ playerId: currentUserId, displayName: currentUserName }); }}>Continue to request</Button>
+          </div>
+        </section>
+      </div>}
     </section>
   );
 }
@@ -1048,12 +1067,91 @@ function FriendRequestCenter({ requests, currentUserId, onDecision }) {
   );
 }
 
-function ReportsInbox({ reports, onStatusChange }) {
+function FriendDock({ requests, currentUserId, onOpenChat, onOpenRequests, presenceDb, onFriendOnline }) {
+  const [expanded, setExpanded] = useState(false);
+  const [presence, setPresence] = useState({});
+  const friends = requests.filter((item) => item.status === "accepted").map((item) => ({
+    uid: item.requesterId === currentUserId ? item.recipientId : item.requesterId,
+    name: item.requesterId === currentUserId ? (item.recipientName || "Player") : (item.requesterName || "Player"),
+  })).filter((item, index, all) => all.findIndex((candidate) => candidate.uid === item.uid) === index);
+  const friendKey = friends.map((item) => item.uid).sort().join("|");
+  useEffect(() => {
+    setPresence({});
+    if (!presenceDb || !friends.length) { setPresence({}); return undefined; }
+    let active = true;
+    const stops = friends.map((friend) => {
+      let initialized = false;
+      let previousOnline = false;
+      return onValue(databaseRef(presenceDb, `status/${friend.uid}`), (snapshot) => {
+        if (!active) return;
+        const online = snapshot.val()?.state === "online";
+        setPresence((current) => ({ ...current, [friend.uid]: online ? "online" : (snapshot.val()?.state === "away" ? "away" : "offline") }));
+        if (initialized && online && !previousOnline) onFriendOnline(friend.name);
+        previousOnline = online;
+        initialized = true;
+      }, () => setPresence((current) => ({ ...current, [friend.uid]: "offline" })));
+    });
+    return () => { active = false; stops.forEach((stop) => stop()); };
+  }, [presenceDb, currentUserId, friendKey, onFriendOnline]);
+  return <aside style={{ position: "fixed", right: 14, bottom: 14, zIndex: 55, width: expanded ? "min(300px, calc(100vw - 28px))" : "auto", background: "var(--panel-bg)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)" }}>
+    <button type="button" onClick={() => setExpanded((open) => !open)} aria-expanded={expanded} style={{ width: "100%", padding: "12px 14px", border: 0, background: "transparent", color: "var(--page-text)", textAlign: "left", cursor: "pointer", fontWeight: 700 }}>
+      Friends <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>({friends.length})</span> <span style={{ float: "right" }}>{expanded ? "−" : "+"}</span>
+    </button>
+    {expanded && <div style={{ maxHeight: 320, overflowY: "auto", borderTop: "1px solid var(--border)", padding: 8 }}>
+      <button type="button" onClick={() => { onOpenRequests(); setExpanded(false); }} style={{ width: "100%", textAlign: "left", border: 0, borderBottom: "1px solid var(--border)", padding: 11, background: "transparent", color: "var(--accent-secondary)", cursor: "pointer" }}>Friend requests{requests.filter((item) => item.recipientId === currentUserId && item.status === "pending").length ? ` (${requests.filter((item) => item.recipientId === currentUserId && item.status === "pending").length})` : ""}</button>
+      {friends.length === 0 ? <div style={{ padding: 12, color: "var(--text-muted)", fontSize: 13 }}>Accepted friends will appear here.</div> : friends.map((friend) => <button type="button" key={friend.uid} onClick={() => onOpenChat(friend)} style={{ width: "100%", display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", border: 0, borderBottom: "1px solid var(--border)", padding: 11, background: "transparent", color: "var(--page-text)", textAlign: "left", cursor: "pointer" }}><span style={{ display: "flex", alignItems: "center", gap: 8 }}><span aria-label={presence[friend.uid] || "offline"} title={presence[friend.uid] || (presenceDb ? "offline" : "Online status needs setup")} style={{ width: 8, height: 8, borderRadius: "50%", background: presence[friend.uid] === "online" ? "var(--success)" : "var(--text-dim)" }} />{friend.name}</span><span style={{ color: "var(--accent-secondary)", fontSize: 11 }}>Chat</span></button>)}
+      {!presenceDb && <div style={{ padding: "8px 10px", color: "var(--text-dim)", fontSize: 11 }}>Live online status needs Realtime Database setup.</div>}
+    </div>}
+  </aside>;
+}
+
+function FriendChat({ currentUser, friend, onClose }) {
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState("");
+  const [error, setError] = useState("");
+  const [ready, setReady] = useState(false);
+  const participants = [currentUser.uid, friend.uid].sort();
+  const conversationId = `${participants[0]}_${participants[1]}`;
+  useEffect(() => {
+    let active = true;
+    setReady(false); setMessages([]); setError("");
+    getDoc(doc(CHAT_CONVERSATIONS_COLLECTION, conversationId)).then(async (snapshot) => {
+      if (!snapshot.exists()) {
+        try { await setDoc(doc(CHAT_CONVERSATIONS_COLLECTION, conversationId), { participants, createdAt: Date.now() }); }
+        catch (writeError) {
+          const racedSnapshot = await getDoc(doc(CHAT_CONVERSATIONS_COLLECTION, conversationId));
+          if (!racedSnapshot.exists()) throw writeError;
+        }
+      }
+      if (!active) return;
+      setReady(true);
+    }).catch(() => { if (active) setError("Chat is available only after both players are accepted friends. Check the published Firestore rules."); });
+    const stop = onSnapshot(query(CHAT_MESSAGES_COLLECTION(conversationId), orderBy("createdAt", "desc"), limit(100)), (snapshot) => {
+      if (active) setMessages(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).reverse());
+    }, () => { if (active) setError("Couldn't load this chat."); });
+    return () => { active = false; stop(); };
+  }, [conversationId, currentUser.uid, friend.uid]);
+  const send = async (event) => {
+    event.preventDefault();
+    const clean = text.trim().slice(0, 1000);
+    if (!ready || !clean) return;
+    try { await addDoc(CHAT_MESSAGES_COLLECTION(conversationId), { senderId: currentUser.uid, text: clean, createdAt: Date.now() }); setText(""); setError(""); }
+    catch { setError("Message not sent. Confirm you are still friends and try again."); }
+  };
+  return <section aria-label={`Chat with ${friend.name}`} style={{ position: "fixed", right: 14, bottom: 72, zIndex: 56, width: "min(340px, calc(100vw - 28px))", height: "min(440px, calc(100vh - 110px))", display: "flex", flexDirection: "column", background: "var(--panel-bg)", color: "var(--page-text)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)" }}>
+    <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 12, borderBottom: "1px solid var(--border)" }}><strong>{friend.name}</strong><Button variant="ghost" onClick={onClose}>Close</Button></header>
+    <div aria-live="polite" style={{ flex: 1, overflowY: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>{messages.map((message) => <div key={message.id} style={{ alignSelf: message.senderId === currentUser.uid ? "flex-end" : "flex-start", maxWidth: "85%", padding: "8px 10px", background: message.senderId === currentUser.uid ? "var(--panel-raised)" : "transparent", border: "1px solid var(--border)", whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontSize: 13 }}>{message.text}</div>)}{!messages.length && ready && <span style={{ color: "var(--text-muted)", fontSize: 13, padding: 8 }}>Start the conversation.</span>}</div>
+    {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 12, padding: "0 10px 8px" }}>{error}</div>}
+    <form onSubmit={send} style={{ display: "flex", gap: 6, padding: 10, borderTop: "1px solid var(--border)" }}><TextInput aria-label="Message" value={text} maxLength={1000} onChange={(event) => setText(event.target.value)} placeholder="Write a message" /><Button disabled={!ready || !text.trim()}>Send</Button></form>
+  </section>;
+}
+
+function ReportsInbox({ reports, onStatusChange, bans = [], role, onSetPlayerBan }) {
   return (
     <div style={{ paddingTop: 34 }}>
       <Eyebrow>Owner and support tools · private</Eyebrow>
       <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 18px" }}>Safety reports</h1>
-      {reports.length === 0 ? <EmptyState title="No reports to review" body="New abuse, scam and inappropriate-content reports appear here." /> : <div style={{ display: "grid", gap: 10 }}>{reports.map((report) => <article key={report.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{report.status || "submitted"} · {report.targetType} · {report.reason}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0", fontSize: 22 }}>{report.targetName || "Reported item"}</h2><p style={{ fontSize: 13, color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{report.details || "No extra details provided."}</p><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><Button variant="ghost" onClick={() => onStatusChange(report.id, "reviewing")}>Mark reviewing</Button><Button onClick={() => onStatusChange(report.id, "closed")}>Close report</Button></div></article>)}</div>}
+      {reports.length === 0 ? <EmptyState title="No reports to review" body="New abuse, scam and inappropriate-content reports appear here." /> : <div style={{ display: "grid", gap: 10 }}>{reports.map((report) => { const banned = bans.find((item) => item.id === report.targetId && item.active); return <article key={report.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{report.status || "submitted"} · {report.targetType} · {report.reason}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0", fontSize: 22 }}>{report.targetName || "Reported item"}</h2><p style={{ fontSize: 13, color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{report.details || "No extra details provided."}</p><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><Button variant="ghost" onClick={() => onStatusChange(report.id, "reviewing")}>Mark reviewing</Button><Button onClick={() => onStatusChange(report.id, "closed")}>Report considered</Button>{role === "owner" && report.targetType === "player" && <Button variant={banned ? "ghost" : "danger"} onClick={() => onSetPlayerBan(report, !banned)}>{banned ? "Remove ban" : "Ban player"}</Button>}</div></article>; })}</div>}
     </div>
   );
 }
@@ -1137,7 +1235,7 @@ function SitePopup({ popup, onDismiss }) {
   return (
     <div role="dialog" aria-modal="true" aria-labelledby="site-popup-title" style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,.66)", display: "grid", placeItems: "center", padding: 18 }}>
       <section style={{ width: "min(100%, 520px)", background: "var(--panel-bg)", color: "var(--page-text)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)", padding: 24 }}>
-        <Eyebrow color={popup.type === "disclaimer" ? "var(--danger)" : "var(--accent-secondary)"}>{popup.type === "disclaimer" ? "Safety reminder" : "GrindInfo boost"}</Eyebrow>
+        <Eyebrow color={popup.type === "disclaimer" ? "var(--danger)" : "var(--accent-secondary)"}>{popup.type === "disclaimer" ? "Safety reminder" : "Popup"}</Eyebrow>
         <h2 id="site-popup-title" style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 30, margin: "8px 0" }}>{popup.title}</h2>
         <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.6, color: "var(--text-muted)" }}>{popup.message}</p>
         <Button onClick={onDismiss}>{popup.type === "disclaimer" ? "I understand" : "Let's go"}</Button>
@@ -1146,7 +1244,7 @@ function SitePopup({ popup, onDismiss }) {
   );
 }
 
-function OwnerDashboard({ role, reports, onStatusChange, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [] }) {
+function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerBan, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [] }) {
   const isOwner = role === "owner";
   const [tab, setTab] = useState("overview");
   const [editing, setEditing] = useState(null);
@@ -1166,7 +1264,7 @@ function OwnerDashboard({ role, reports, onStatusChange, popups, onSavePopup, on
       date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
       return date.toISOString().slice(0, 16);
     };
-    setEditing(popup ? { ...popup, startsAt: toLocalInput(popup.startsAt), endsAt: toLocalInput(popup.endsAt) } : { id: "", title: "", message: "", type: "motivation", enabled: true, frequency: "daily", startsAt: "", endsAt: "" });
+    setEditing(popup ? { ...popup, startsAt: toLocalInput(popup.startsAt), endsAt: toLocalInput(popup.endsAt) } : { id: "", title: "", message: "", type: "motivation", enabled: true, frequency: "random", startsAt: "", endsAt: "" });
   };
   const savePopup = async () => {
     const title = String(editing?.title || "").trim();
@@ -1177,7 +1275,7 @@ function OwnerDashboard({ role, reports, onStatusChange, popups, onSavePopup, on
       title: title.slice(0, 100), message: message.slice(0, 1000),
       type: editing.type === "disclaimer" ? "disclaimer" : "motivation",
       enabled: editing.enabled === true,
-      frequency: editing.frequency === "session" ? "session" : "daily",
+      frequency: "random",
       startsAt: editing.startsAt ? new Date(editing.startsAt).getTime() : 0,
       endsAt: editing.endsAt ? new Date(editing.endsAt).getTime() : 0,
       updatedAt: Date.now(),
@@ -1205,26 +1303,26 @@ function OwnerDashboard({ role, reports, onStatusChange, popups, onSavePopup, on
         </div>
         <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Use the dashboard tabs to review safety reports{isOwner ? ", manage site popups, and control support access." : "."}</p>
       </>}
-      {tab === "reports" && <ReportsInbox reports={reports} onStatusChange={onStatusChange} />}
+      {tab === "reports" && <ReportsInbox reports={reports} onStatusChange={onStatusChange} bans={bans} role={role} onSetPlayerBan={onSetPlayerBan} />}
       {tab === "archive requests" && <ArchiveSubmissionInbox submissions={archiveSubmissions} onDecision={onArchiveDecision} />}
       {tab === "blog to archive" && <BlogArchivePromoter posts={blogPosts} onPromote={onPromoteBlog} />}
       {tab === "activity log" && isOwner && <StaffActivityLog actions={auditLog} />}
       {tab === "blogs" && <section><p style={{ color: "var(--text-muted)", fontSize: 13 }}>Preview submitted and published community posts.</p>{blogPosts.length === 0 ? <EmptyState title="No blog posts yet" body="Community submissions will appear here for preview." /> : <div style={{ display: "grid", gap: 10 }}>{[...blogPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 30).map((post) => <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status} · by {post.authorName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{post.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{post.content}</p>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onBlogReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onBlogReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div>}</section>}
       {tab === "popups" && isOwner && <section>
-        <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Create plain-text safety reminders and motivation messages. Changes appear on GrindInfo without editing the website code.</p>
+        <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Create plain-text safety reminders or general popups. General popups appear at random intervals of 15 to 30 minutes while someone is actively browsing.</p>
         <Button onClick={() => openEditor()}>Add popup</Button>
         {editing && <div style={{ display: "grid", gap: 10, maxWidth: 620, padding: 16, marginTop: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
           <Field label="Title"><TextInput value={editing.title} maxLength={100} onChange={(e) => setEditing({ ...editing, title: e.target.value })} /></Field>
           <Field label="Message"><textarea value={editing.message} maxLength={1000} rows={4} onChange={(e) => setEditing({ ...editing, message: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} /></Field>
-          <Field label="Type"><Select value={editing.type} onChange={(e) => setEditing({ ...editing, type: e.target.value })}><option value="motivation">Motivation</option><option value="disclaimer">Safety disclaimer</option></Select></Field>
-          <Field label="Show frequency"><Select value={editing.frequency} onChange={(e) => setEditing({ ...editing, frequency: e.target.value })}><option value="daily">Once per day</option><option value="session">Once per browser session</option></Select></Field>
+          <Field label="Type"><Select value={editing.type} onChange={(e) => setEditing({ ...editing, type: e.target.value })}><option value="motivation">Popup</option><option value="disclaimer">Safety disclaimer</option></Select></Field>
+          <Field label="Show frequency"><Select value="random" disabled><option value="random">Randomly every 15–30 minutes</option></Select></Field>
           <Field label="Start showing (optional)"><TextInput type="datetime-local" value={editing.startsAt || ""} onChange={(e) => setEditing({ ...editing, startsAt: e.target.value })} /></Field>
           <Field label="Stop showing (optional)"><TextInput type="datetime-local" value={editing.endsAt || ""} onChange={(e) => setEditing({ ...editing, endsAt: e.target.value })} /></Field>
           <label style={{ display: "flex", gap: 8, alignItems: "center" }}><input type="checkbox" checked={editing.enabled} onChange={(e) => setEditing({ ...editing, enabled: e.target.checked })} /> Enabled</label>
           {popupError && <div role="alert" style={{ color: "var(--danger)" }}>{popupError}</div>}
           <div style={{ display: "flex", gap: 8 }}><Button onClick={savePopup}>Save popup</Button><Button variant="ghost" onClick={() => setEditing(null)}>Cancel</Button></div>
         </div>}
-        <div style={{ display: "grid", gap: 10, marginTop: 14 }}>{popups.map((popup) => <article key={popup.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{popup.enabled ? "Enabled" : "Disabled"} · {popup.type}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "5px 0" }}>{popup.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{popup.message}</p><div style={{ display: "flex", gap: 8 }}><Button variant="ghost" onClick={() => openEditor(popup)}>Edit</Button><Button variant="danger" onClick={() => onDeletePopup(popup.id)}>Delete</Button></div></article>)}</div>
+        <div style={{ display: "grid", gap: 10, marginTop: 14 }}>{popups.map((popup) => <article key={popup.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{popup.enabled ? "Enabled" : "Disabled"} · {popup.type === "motivation" ? "Popup" : "Safety disclaimer"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "5px 0" }}>{popup.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{popup.message}</p><div style={{ display: "flex", gap: 8 }}><Button variant="ghost" onClick={() => openEditor(popup)}>Edit</Button><Button variant="danger" onClick={() => onDeletePopup(popup.id)}>Delete</Button></div></article>)}</div>
       </section>}
       {tab === "support access" && isOwner && <section style={{ maxWidth: 680 }}>
         <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Support can review reports. Add only trusted people. For now, copy their Firebase Authentication UID from Firebase Console → Authentication → Users.</p>
@@ -1356,20 +1454,24 @@ export default function App() {
   const [selectedId, setSelectedId] = useState(() => new URLSearchParams(window.location.search).get("tournament"));
   const [detailTab, setDetailTab] = useState("teams");
   const [showNewTournament, setShowNewTournament] = useState(false);
+  const [joinDisclaimerOpen, setJoinDisclaimerOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);
   const [isModerator, setIsModerator] = useState(false);
   const [siteRole, setSiteRole] = useState(null);
   const [friendRequests, setFriendRequests] = useState([]);
+  const [activeChatFriend, setActiveChatFriend] = useState(null);
   const [archiveEntries, setArchiveEntries] = useState([]);
   const [archiveSubmissions, setArchiveSubmissions] = useState([]);
   const [auditLog, setAuditLog] = useState([]);
   const [blogPosts, setBlogPosts] = useState([]);
   const [privateReports, setPrivateReports] = useState([]);
+  const [siteBans, setSiteBans] = useState([]);
   const [activePopups, setActivePopups] = useState([]);
   const [adminPopups, setAdminPopups] = useState([]);
   const [siteStaff, setSiteStaff] = useState([]);
   const [currentPopup, setCurrentPopup] = useState(null);
   const [popupScanTick, setPopupScanTick] = useState(0);
+  const popupPauseStarted = useRef(null);
 
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -1459,6 +1561,40 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
+    if (!user) return undefined;
+    return onSnapshot(doc(SITE_BANS_COLLECTION, user.uid), (snapshot) => {
+      if (snapshot.exists() && snapshot.data()?.active === true) signOut(auth);
+    }, () => {});
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || !realtimeDb) return undefined;
+    const statusRef = databaseRef(realtimeDb, `status/${user.uid}`);
+    const connectionRef = databaseRef(realtimeDb, ".info/connected");
+    const updatePresence = () => setDatabaseValue(statusRef, {
+      state: document.visibilityState === "visible" ? "online" : "away",
+      lastChanged: serverTimestamp(),
+    }).catch(() => {});
+    const stopConnection = onValue(connectionRef, (snapshot) => {
+      if (snapshot.val() !== true) return;
+      onDisconnect(statusRef).set({ state: "offline", lastChanged: serverTimestamp() }).then(updatePresence).catch(() => {});
+    });
+    document.addEventListener("visibilitychange", updatePresence);
+    return () => {
+      document.removeEventListener("visibilitychange", updatePresence);
+      stopConnection();
+      setDatabaseValue(statusRef, { state: "offline", lastChanged: serverTimestamp() }).catch(() => {});
+    };
+  }, [user]);
+
+  const acceptedFriendUids = [...new Set(friendRequests.filter((item) => item.status === "accepted").map((item) => item.requesterId === user?.uid ? item.recipientId : item.requesterId))];
+  const acceptedFriendKey = acceptedFriendUids.slice().sort().join("|");
+  useEffect(() => {
+    if (!user || !realtimeDb || !acceptedFriendUids.length) return;
+    httpsCallable(getFunctions(), "syncMyFriendPresenceLinks")({ friendUids: acceptedFriendUids }).catch(() => {});
+  }, [user, acceptedFriendKey]);
+
+  useEffect(() => {
     if (!user) { setFriendRequests([]); return undefined; }
     let incoming = [], outgoing = [];
     const publish = () => setFriendRequests([...incoming, ...outgoing.filter((out) => !incoming.some((inbox) => inbox.id === out.id))]);
@@ -1508,6 +1644,11 @@ export default function App() {
     }, () => setPrivateReports([]));
   }, [isModerator, siteRole]);
 
+  useEffect(() => {
+    if (siteRole !== "owner" && siteRole !== "support") { setSiteBans([]); return undefined; }
+    return onSnapshot(SITE_BANS_COLLECTION, (snapshot) => setSiteBans(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))), () => setSiteBans([]));
+  }, [siteRole]);
+
   useEffect(() => onSnapshot(query(SITE_POPUPS_COLLECTION, where("enabled", "==", true)), (snapshot) => {
     setActivePopups(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
   }, () => setActivePopups([])), []);
@@ -1520,31 +1661,49 @@ export default function App() {
   }, [siteRole]);
 
   useEffect(() => {
-    if (showProfileModal) { setCurrentPopup(null); return; }
-    const now = Date.now();
-    const nextBoundary = activePopups
-      .flatMap((popup) => [popup.startsAt, popup.endsAt])
-      .filter((time) => typeof time === "number" && time > now)
-      .sort((a, b) => a - b)[0];
-    const timer = nextBoundary
-      ? window.setTimeout(() => setPopupScanTick((tick) => tick + 1), Math.min(nextBoundary - now + 50, 2147483000))
-      : null;
-    const eligible = activePopups.filter((popup) => {
-      if (popup.enabled !== true || (popup.startsAt && popup.startsAt > now) || (popup.endsAt && popup.endsAt < now)) return false;
-      const version = popup.updatedAt || popup.createdAt || 0;
-      const key = `grindinfo-popup:${popup.id}:${version}`;
-      const seen = popup.frequency === "session" ? sessionStorage.getItem(key) : localStorage.getItem(key);
-      const today = new Date().toISOString().slice(0, 10);
-      return !seen || (popup.frequency !== "session" && seen !== today);
-    });
-    const disclaimers = eligible.filter((popup) => popup.type === "disclaimer");
-    const motivations = eligible.filter((popup) => popup.type === "motivation");
-    const list = disclaimers.length ? disclaimers : motivations;
-    if (!list.length) { setCurrentPopup(null); return () => { if (timer) window.clearTimeout(timer); }; }
-    const selected = list[Math.floor(Math.random() * list.length)];
-    setCurrentPopup(selected);
-    return () => { if (timer) window.clearTimeout(timer); };
-  }, [activePopups, popupScanTick, showProfileModal]);
+    if (!user) return;
+    const nextKey = `grindinfo-popup-next:${user.uid}`;
+    const scheduleNext = () => {
+      const nextAt = Date.now() + (15 + Math.random() * 15) * 60 * 1000;
+      localStorage.setItem(nextKey, String(nextAt));
+      return nextAt;
+    };
+    if (!localStorage.getItem(nextKey)) scheduleNext();
+    let timer;
+    const scan = () => {
+      window.clearTimeout(timer);
+      const paused = document.visibilityState !== "visible" || showProfileModal || showNewTournament || reportTarget || joinDisclaimerOpen || currentPopup;
+      if (paused) {
+        if (popupPauseStarted.current === null) popupPauseStarted.current = Date.now();
+        return;
+      }
+      if (popupPauseStarted.current !== null) {
+        const nextAt = Number(localStorage.getItem(nextKey));
+        if (Number.isFinite(nextAt) && nextAt > 0) localStorage.setItem(nextKey, String(nextAt + (Date.now() - popupPauseStarted.current)));
+        popupPauseStarted.current = null;
+      }
+      const now = Date.now();
+      let nextAt = Number(localStorage.getItem(nextKey));
+      if (!Number.isFinite(nextAt) || nextAt < 1) nextAt = scheduleNext();
+      if (nextAt > now) {
+        timer = window.setTimeout(scan, Math.min(nextAt - now, 2147483000));
+        return;
+      }
+      const candidates = activePopups.filter((popup) => popup.enabled === true && popup.type === "motivation"
+        && (!popup.startsAt || popup.startsAt <= now) && (!popup.endsAt || popup.endsAt >= now));
+      if (!candidates.length) {
+        scheduleNext();
+        timer = window.setTimeout(scan, 15 * 60 * 1000);
+        return;
+      }
+      setCurrentPopup(candidates[Math.floor(Math.random() * candidates.length)]);
+      scheduleNext();
+    };
+    const onVisibility = () => scan();
+    document.addEventListener("visibilitychange", onVisibility);
+    scan();
+    return () => { window.clearTimeout(timer); document.removeEventListener("visibilitychange", onVisibility); };
+  }, [activePopups, user, showProfileModal, showNewTournament, reportTarget, joinDisclaimerOpen, currentPopup, popupScanTick]);
 
   const skipProfile = useCallback(() => {
     if (user) localStorage.setItem(`profilePromptDismissed_${user.uid}`, "1");
@@ -1609,6 +1768,7 @@ export default function App() {
     window.clearTimeout(showToast._t);
     showToast._t = window.setTimeout(() => setToast(""), 2200);
   }, []);
+  const notifyFriendOnline = useCallback((name) => showToast(`${name} is online`), [showToast]);
 
   const saveProfile = useCallback(
     async (fields) => {
@@ -1841,13 +2001,14 @@ export default function App() {
     catch (e) { window.prompt("Copy this tournament link", url.toString()); }
   };
 
-  const requestFriend = async (recipientId) => {
+  const requestFriend = async (recipientId, recipientName = "Player") => {
     if (!user || !recipientId || recipientId === user.uid) return;
     try {
       await setDoc(doc(FRIEND_REQUESTS_COLLECTION, `${user.uid}_${recipientId}`), {
         requesterId: user.uid,
         requesterName: safeProfileName(myProfile?.displayName, user.displayName),
         recipientId,
+        recipientName: safeProfileName(recipientName),
         status: "pending",
         createdAt: Date.now(),
       });
@@ -1860,7 +2021,26 @@ export default function App() {
   };
 
   const requestHostFriend = async (tournament) => {
-    await requestFriend(tournament.adminUserId);
+    await requestFriend(tournament.adminUserId, tournament.adminDisplayName || "Tournament host");
+  };
+
+  const setPlayerBan = async (report, active) => {
+    if (siteRole !== "owner" || report?.targetType !== "player") return;
+    if (active && !window.confirm(`Ban ${report.targetName || "this player"} and disable their GrindInfo account? Review the report details before continuing. You can remove the ban later.`)) return;
+    if (!active && !window.confirm(`Restore GrindInfo account access for ${report.targetName || "this player"}?`)) return;
+    try {
+      await httpsCallable(getFunctions(), "setPlayerBan")({
+        targetUid: report.targetId,
+        active,
+        reportId: report.id,
+        note: `${report.reason}${report.details ? `: ${report.details}` : ""}`.slice(0, 500),
+      });
+      showToast(active ? "Player access disabled" : "Player access restored");
+    } catch (error) {
+      showToast(error?.code === "functions/permission-denied"
+        ? "Only the site owner can ban or unban players."
+        : "Could not change player access. The Firebase ban function must be deployed.");
+    }
   };
 
   const decideFriendRequest = async (requestId, status) => {
@@ -1988,9 +2168,6 @@ export default function App() {
 
   const dismissSitePopup = () => {
     if (!currentPopup) return;
-    const key = `grindinfo-popup:${currentPopup.id}:${currentPopup.updatedAt || currentPopup.createdAt || 0}`;
-    if (currentPopup.frequency === "session") sessionStorage.setItem(key, "seen");
-    else localStorage.setItem(key, new Date().toISOString().slice(0, 10));
     setCurrentPopup(null);
     setPopupScanTick((tick) => tick + 1);
   };
@@ -2052,7 +2229,7 @@ export default function App() {
         @keyframes sl-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
       `}</style>
 
-        <Header saving={saving} user={user} onSignOut={handleSignOut} theme={theme} setTheme={setTheme} onEditProfile={() => setShowProfileModal(true)} onNavigate={setSection} friendRequestCount={friendRequests.filter((request) => request.recipientId === user.uid && request.status === "pending").length} dashboardRole={dashboardRole} />
+        <Header saving={saving} user={user} onSignOut={handleSignOut} theme={theme} setTheme={setTheme} onNavigate={setSection} dashboardRole={dashboardRole} />
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "16px 20px 0" }}>
         <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--border)" }}>
@@ -2086,7 +2263,7 @@ export default function App() {
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "0 20px 80px" }}>
         {section === "players" && (
-          <FindPlayersPage currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid)} onFriendDecision={decideFriendRequest} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} />
+          <FindPlayersPage currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid, player.displayName)} onFriendDecision={decideFriendRequest} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} onEditProfile={() => setShowProfileModal(true)} />
         )}
         {section === "archive" && <HistoricalArchive entries={archiveEntries} isModerator={isSiteStaff || isModerator} user={user} submissions={archiveSubmissions} onSubmitRequest={submitArchiveRequest} onImport={importArchiveEntries} />}
         {section === "blog" && <BlogPage posts={blogPosts} user={user} isModerator={isSiteStaff || isModerator} onSubmit={submitBlogPost} onReview={reviewBlogPost} onEdit={editBlogPost} onDelete={deleteBlogPost} />}
@@ -2095,6 +2272,8 @@ export default function App() {
           role={siteRole || "support"}
           reports={privateReports}
           onStatusChange={updateReportStatus}
+          bans={siteBans}
+          onSetPlayerBan={setPlayerBan}
           popups={adminPopups}
           onSavePopup={saveSitePopup}
           onDeletePopup={deleteSitePopup}
@@ -2137,6 +2316,8 @@ export default function App() {
             currentUserId={user.uid}
             currentUserName={safeProfileName(myProfile?.displayName, user.displayName)}
             registrations={selectedRegistrations}
+            registrationDisclaimer={[...activePopups].filter((popup) => popup.type === "disclaimer" && popup.enabled === true && (!popup.startsAt || popup.startsAt <= Date.now()) && (!popup.endsAt || popup.endsAt >= Date.now())).sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0))[0]}
+            onJoinDisclaimerVisibilityChange={setJoinDisclaimerOpen}
             onSaveResults={(results) => saveTournamentResults(selected.id, results)}
             onCloseTournament={() => closeTournament(selected.id)}
             onBack={() => { setView("list"); setSelectedId(null); const url = new URL(window.location.href); url.searchParams.delete("tournament"); window.history.replaceState({}, "", url); }}
@@ -2173,6 +2354,8 @@ export default function App() {
       )}
 
       {reportTarget && <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} onSubmit={submitReport} />}
+      <FriendDock requests={friendRequests} currentUserId={user.uid} onOpenChat={setActiveChatFriend} onOpenRequests={() => setSection("requests")} presenceDb={realtimeDb} onFriendOnline={notifyFriendOnline} />
+      {activeChatFriend && <FriendChat currentUser={user} friend={activeChatFriend} onClose={() => setActiveChatFriend(null)} />}
       <SitePopup popup={currentPopup} onDismiss={dismissSitePopup} />
       <Toast message={toast} />
     </div>
@@ -2186,7 +2369,7 @@ const shellStyle = {
   fontFamily: "'Inter', sans-serif",
 };
 
-function Header({ saving, user, onSignOut, theme, setTheme, onEditProfile, onNavigate, friendRequestCount, dashboardRole }) {
+function Header({ saving, user, onSignOut, theme, setTheme, onNavigate, dashboardRole }) {
   const displayName = user?.displayName || user?.email || "Player";
   const initials = safeProfileName(user?.displayName).slice(0, 1).toUpperCase();
 
@@ -2222,8 +2405,6 @@ function Header({ saving, user, onSignOut, theme, setTheme, onEditProfile, onNav
             </summary>
             <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 60, width: 250, padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)", boxShadow: "var(--panel-shadow)" }}>
               <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>{displayName}</div>
-              <Button variant="ghost" style={{ width: "100%", marginBottom: 8 }} onClick={(event) => { onEditProfile(); event.currentTarget.closest("details")?.removeAttribute("open"); }}>{user?.displayName ? "Edit my profile" : "Create my profile"}</Button>
-              <Button variant="ghost" style={{ width: "100%", marginBottom: 12 }} onClick={(event) => { onNavigate("requests"); event.currentTarget.closest("details")?.removeAttribute("open"); }}>Friend requests{friendRequestCount ? ` (${friendRequestCount})` : ""}</Button>
               {dashboardRole && <Button variant="ghost" style={{ width: "100%", marginBottom: 12 }} onClick={(event) => { onNavigate("dashboard"); event.currentTarget.closest("details")?.removeAttribute("open"); }}>{dashboardRole === "owner" ? "Owner dashboard" : "Support dashboard"}</Button>}
               <Field label="Theme">
                 <Select value={theme} onChange={(event) => setTheme(event.target.value)}>
@@ -2730,7 +2911,7 @@ function TournamentDetail(props) {
         </div>
       </div>
 
-      <RegistrationPanel tournament={tournament} requests={registrations || []} currentUserId={currentUserId} currentUserName={currentUserName} isAdmin={isAdmin} onRequest={onRequestRegistration} onDecision={onRegistrationDecision} />
+      <RegistrationPanel tournament={tournament} requests={registrations || []} currentUserId={currentUserId} currentUserName={currentUserName} isAdmin={isAdmin} onRequest={onRequestRegistration} onDecision={onRegistrationDecision} disclaimer={props.registrationDisclaimer} onDisclaimerVisibilityChange={props.onJoinDisclaimerVisibilityChange} />
       <CoAdminPanel tournament={tournament} isOwner={isOwner} onChange={onCoAdminsChange} />
       <TournamentResults results={tournament.results} isAdmin={isAdmin} onSave={onSaveResults} />
 

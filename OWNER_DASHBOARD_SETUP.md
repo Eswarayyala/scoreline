@@ -5,10 +5,13 @@
 - The owner dashboard and support dashboard open from the signed-in account menu.
 - Owner and support staff can review reports and pending blogs, publish or decline blogs, and edit or delete blog posts. Authors can edit or delete their own posts; edits return to the review queue.
 - Signed-in players can submit historical tournament records for review. Approved submissions become public archive entries. Owner/support can also turn published blogs into structured archive entries.
-- Only the owner can create, edit, enable/disable, schedule, or delete plain-text safety and motivation popups.
+- Only the owner can create, edit, enable/disable, schedule, or delete plain-text safety disclaimers and general popups.
 - Only the owner can grant or remove support access. Support staff cannot change roles, popup settings, or tournament data.
 - All players can submit a report. The report queue is private to accounts with an owner or support role.
-- Popups are read from `sitePopups` and are shown at most once per day or browser session, according to the setting. Safety disclaimers are chosen before motivation messages. Optional start/end times are local browser times.
+- General popups are read from `sitePopups` and appear at random 15–30 minute intervals while a player is active. Safety disclaimers appear before a tournament join request and must be acknowledged before the request is written.
+- Accepted friends can use the protected text chat. Realtime online status needs a Realtime Database instance, matching URL settings, and the associated rules/functions deployment described in [Social feature setup](docs/SOCIAL_FEATURE_SETUP.md).
+- Profile editing is on the Find players page, and friend requests are in the Friends panel. They are no longer repeated in the account menu.
+- Player bans are owner-only and use a server-side Firebase Function. The function disables the Firebase Authentication account, revokes refresh tokens, and creates an owner-only ban record. Publishing the repository changes alone does not deploy the function.
 
 ## One-time owner setup
 
@@ -39,5 +42,9 @@ The pull request updates the repository's `firestore.rules`; merging does not pu
 ## Popup writing guidance
 
 Use short, plain-text messages. The popup form does not accept HTML or scripts. A changed popup gets a new version, so a player who dismissed the previous version can see the updated one. Disable or delete outdated notices from the owner dashboard.
+
+## Ban and unban players
+
+In Owner dashboard → Reports, open a player report and review its reason and details before choosing **Ban player**. This disables that Firebase Authentication account and records the action. Choose **Remove ban** from an open report for the same player to restore account access. Support accounts can review and mark reports, but cannot ban or unban accounts. The callable function must be deployed first; see [Social feature setup](docs/SOCIAL_FEATURE_SETUP.md).
 
 
