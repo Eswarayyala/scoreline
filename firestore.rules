@@ -19,6 +19,36 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/moderators/$(request.auth.uid))
         && get(/databases/$(database)/documents/moderators/$(request.auth.uid)).data.enabled == true;
     }
+    function isSiteOwner() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/siteRoles/$(request.auth.uid))
+        && get(/databases/$(database)/documents/siteRoles/$(request.auth.uid)).data.role == 'owner'
+        && get(/databases/$(database)/documents/siteRoles/$(request.auth.uid)).data.enabled == true;
+    }
+    function isSiteSupport() {
+      return request.auth != null && (
+        (exists(/databases/$(database)/documents/siteRoles/$(request.auth.uid))
+          && get(/databases/$(database)/documents/siteRoles/$(request.auth.uid)).data.role == 'support'
+          && get(/databases/$(database)/documents/siteRoles/$(request.auth.uid)).data.enabled == true)
+      );
+    }
+    function isSiteStaff() {
+      return isSiteOwner() || isSiteSupport();
+    }
+    function validSitePopup(data) {
+      return data.keys().hasOnly(['title', 'message', 'type', 'enabled', 'frequency', 'startsAt', 'endsAt', 'createdAt', 'updatedAt'])
+        && data.keys().hasAll(['title', 'message', 'type', 'enabled', 'frequency', 'startsAt', 'endsAt', 'createdAt', 'updatedAt'])
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 100
+        && data.message is string && data.message.size() > 0 && data.message.size() <= 1000
+        && data.type in ['disclaimer', 'motivation']
+        && data.enabled is bool
+        && data.frequency in ['daily', 'session']
+        && data.startsAt is int && data.startsAt >= 0
+        && data.endsAt is int && data.endsAt >= 0
+        && (data.endsAt == 0 || data.startsAt == 0 || data.endsAt > data.startsAt)
+        && data.createdAt is int
+        && data.updatedAt is int;
+    }
     function validPlayerProfile(data) {
       return data.keys().hasOnly([
                'displayName', 'games', 'region', 'language', 'style',
@@ -209,11 +239,38 @@ service cloud.firestore {
       allow list, create, update, delete: if false;
     }
 
+    match /siteRoles/{userId} {
+      allow get: if request.auth != null && (request.auth.uid == userId || isSiteOwner());
+      allow list: if isSiteOwner();
+      allow create: if isSiteOwner()
+                    && request.resource.data.keys().hasOnly(['role', 'enabled', 'updatedAt'])
+                    && request.resource.data.keys().hasAll(['role', 'enabled', 'updatedAt'])
+                    && request.resource.data.role == 'support'
+                    && request.resource.data.enabled == true
+                    && request.resource.data.updatedAt is int;
+      allow update: if isSiteOwner()
+                    && resource.data.role == 'support'
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'enabled', 'updatedAt'])
+                    && request.resource.data.role == 'support'
+                    && request.resource.data.enabled is bool
+                    && request.resource.data.updatedAt is int;
+      allow delete: if isSiteOwner() && resource.data.role == 'support';
+    }
+
+    match /sitePopups/{popupId} {
+      allow get, list: if isSiteOwner() || resource.data.enabled == true;
+      allow create: if isSiteOwner() && validSitePopup(request.resource.data);
+      allow update: if isSiteOwner()
+                    && validSitePopup(request.resource.data)
+                    && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isSiteOwner();
+    }
+
     match /blogPosts/{postId} {
       allow get, list: if request.auth != null
                        && (resource.data.status == 'published'
                            || resource.data.authorId == request.auth.uid
-                           || isModerator());
+                           || isSiteStaff() || isModerator());
       allow create: if request.auth != null
                     && request.resource.data.keys().hasOnly(['title', 'game', 'content', 'source', 'authorId', 'authorName', 'status', 'createdAt'])
                     && request.resource.data.authorId == request.auth.uid
@@ -232,7 +289,7 @@ service cloud.firestore {
                     && request.resource.data.source.size() <= 500
                     && request.resource.data.status == 'pending'
                     && request.resource.data.createdAt is int;
-      allow update: if isModerator()
+      allow update: if (isSiteStaff() || isModerator())
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy'])
                     && request.resource.data.status in ['published', 'rejected']
                     && request.resource.data.reviewedAt is int
@@ -245,8 +302,8 @@ service cloud.firestore {
                     && validReport(request.resource.data)
                     && reportId == request.auth.uid + '_' + request.resource.data.targetType
                          + '_' + request.resource.data.targetId;
-      allow get, list: if isModerator();
-      allow update: if isModerator()
+      allow get, list: if isSiteStaff();
+      allow update: if isSiteStaff()
                     && request.resource.data.diff(resource.data).affectedKeys()
                          .hasOnly(['status', 'reviewedAt'])
                     && request.resource.data.status in ['reviewing', 'closed']
@@ -326,3 +383,4 @@ service cloud.firestore {
     }
   }
 }
+
