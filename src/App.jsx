@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 41143)
-Total output lines: 3368
-
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   doc,
@@ -1108,6 +1105,33 @@ function BlogArchivePromoter({ posts, onPromote }) {
   </section>;
 }
 
+function ArchiveRequestForm({ user, submissions, onSubmit }) {
+  const [form, setForm] = useState({ tournament: "", game: "", eventDate: "", winner: "", runnerUp: "", mvp: "", source: "" });
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const ownRequests = submissions.filter((item) => item.submitterId === user.uid).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const submit = async () => {
+    if (!form.tournament.trim() || !form.game.trim() || !form.eventDate.trim() || !form.winner.trim()) { setError("Add the event name, game, date, and winner."); return; }
+    if (form.source.trim() && !/^https:\/\//i.test(form.source.trim())) { setError("Source links must start with https://."); return; }
+    try { await onSubmit(form); setForm({ tournament: "", game: "", eventDate: "", winner: "", runnerUp: "", mvp: "", source: "" }); setError(""); setMessage("Archive request sent for review."); }
+    catch { setError("Could not send this request. Please try again."); }
+  };
+  return <section style={{ display: "grid", gap: 8, maxWidth: 680, padding: 16, margin: "16px 0", background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+    <Eyebrow>Suggest an event for the archive</Eyebrow><p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13 }}>Send results for a major, underdog, or lesser-known esports tournament. An owner or support reviewer checks it before it becomes public.</p>
+    <Field label="Tournament"><TextInput maxLength={120} value={form.tournament} onChange={(e) => update("tournament", e.target.value)} /></Field>
+    <Field label="Game"><TextInput maxLength={60} value={form.game} onChange={(e) => update("game", e.target.value)} /></Field>
+    <Field label="Event date"><TextInput maxLength={40} value={form.eventDate} onChange={(e) => update("eventDate", e.target.value)} placeholder="YYYY or YYYY-MM-DD" /></Field>
+    <Field label="Winner"><TextInput maxLength={100} value={form.winner} onChange={(e) => update("winner", e.target.value)} /></Field>
+    <Field label="Runner-up (optional)"><TextInput maxLength={100} value={form.runnerUp} onChange={(e) => update("runnerUp", e.target.value)} /></Field>
+    <Field label="MVP (optional)"><TextInput maxLength={100} value={form.mvp} onChange={(e) => update("mvp", e.target.value)} /></Field>
+    <Field label="Reliable source link (optional)"><TextInput maxLength={500} value={form.source} onChange={(e) => update("source", e.target.value)} placeholder="https://" /></Field>
+    {error && <div role="alert" style={{ color: "var(--danger)" }}>{error}</div>}{message && <div role="status" style={{ color: "var(--success)" }}>{message}</div>}
+    <Button onClick={submit}>Request archive listing</Button>
+    {ownRequests.length > 0 && <div style={{ marginTop: 8 }}><Eyebrow>Your archive requests</Eyebrow>{ownRequests.map((item) => <div key={item.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "8px 0", borderTop: "1px solid var(--border)", fontSize: 13 }}><span>{item.tournament}</span><span>{item.status}</span></div>)}</div>}
+  </section>;
+}
+
 function SitePopup({ popup, onDismiss }) {
   if (!popup) return null;
   return (
@@ -1203,7 +1227,706 @@ function OwnerDashboard({ role, reports, onStatusChange, popups, onSavePopup, on
         <div style={{ display: "grid", gap: 10, marginTop: 14 }}>{popups.map((popup) => <article key={popup.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{popup.enabled ? "Enabled" : "Disabled"} · {popup.type}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "5px 0" }}>{popup.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{popup.message}</p><div style={{ display: "flex", gap: 8 }}><Button variant="ghost" onClick={() => openEditor(popup)}>Edit</Button><Button variant="danger" onClick={() => onDeletePopup(popup.id)}>Delete</Button></div></article>)}</div>
       </section>}
       {tab === "support access" && isOwner && <section style={{ maxWidth: 680 }}>
-        <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Support can review report…11143 tokens truncated…t declined");
+        <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Support can review reports. Add only trusted people. For now, copy their Firebase Authentication UID from Firebase Console → Authentication → Users.</p>
+     
+   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><TextInput aria-label="Support account UID" placeholder="Paste support person's UID" value={staffUid} onChange={(e) => setStaffUid(e.target.value)} /><Button onClick={assignSupport}>Grant support access</Button></div>
+        {staffError && <div role="alert" style={{ color: "var(--danger)", marginTop: 8 }}>{staffError}</div>}
+        <div style={{ display: "grid", gap: 8, marginTop: 16 }}>{staff.filter((item) => item.role === "support" && item.enabled !== false).map((item) => <article key={item.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", padding: 12, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><code>{item.id}</code><Button variant="danger" onClick={() => onSetSupport(item.id, false)}>Remove access</Button></article>)}</div>
+      </section>}
+    </div>
+  );
+}
+
+function HistoricalArchive({ entries, isModerator, user, submissions, onSubmitRequest, onImport }) {
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [preview, setPreview] = useState(null);
+  const parseCsv = (text) => {
+    const rows = []; let row = [], cell = "", quoted = false;
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (char === '"' && quoted && text[i + 1] === '"') { cell += '"'; i++; }
+      else if (char === '"') quoted = !quoted;
+      else if (char === "," && !quoted) { row.push(cell.trim()); cell = ""; }
+      else if ((char === "\n" || char === "\r") && !quoted) { if (cell || row.length) { row.push(cell.trim()); rows.push(row); } row = []; cell = ""; if (char === "\r" && text[i + 1] === "\n") i++; }
+      else cell += char;
+    }
+    if (cell || row.length) { row.push(cell.trim()); rows.push(row); }
+    if (rows.length < 2) throw new Error("The CSV needs a header and at least one event.");
+    const headers = rows.shift().map((header) => header.toLowerCase());
+    const required = ["tournament", "game", "eventdate", "winner"];
+    if (required.some((header) => !headers.includes(header))) throw new Error("Required CSV columns: tournament, game, eventDate, winner.");
+    return rows.filter((cells) => cells.some(Boolean)).map((cells) => Object.fromEntries(headers.map((header, index) => [header, cells[index] || ""]))).slice(0, 200);
+  };
+  return (
+    <div style={{ paddingTop: 34 }}>
+      <Eyebrow>International esports history</Eyebrow>
+      <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 8px" }}>Past results archive</h1>
+      <div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 18 }}>Browse past events, winners, runners-up and MVPs. To add records, select a CSV with columns tournament, game, eventDate, winner, runnerUp, mvp and source.</div>
+      {user && <ArchiveRequestForm user={user} submissions={submissions} onSubmit={onSubmitRequest} />}
+      {isModerator && <Field label="Import CSV (up to 200 rows)">
+        <input type="file" accept=".csv,text/csv" onChange={async (event) => {
+          setError(""); setMessage("");
+          const file = event.target.files?.[0]; if (!file) return;
+          if (file.size > 1024 * 1024) { setError("Choose a CSV smaller than 1 MB."); return; }
+          try {
+            const records = parseCsv(await file.text());
+            const known = new Set(entries.map((entry) => [entry.tournament, entry.game, entry.eventDate].map((part) => String(part || "").toLowerCase()).join("|")));
+            const clean = records.filter((entry) => entry.tournament && entry.game && entry.eventdate && entry.winner).map((entry) => ({
+              tournament: entry.tournament.slice(0, 120), game: entry.game.slice(0, 60), eventDate: entry.eventdate.slice(0, 40),
+              winner: entry.winner.slice(0, 100), runnerUp: (entry.runnerup || "").slice(0, 100), mvp: (entry.mvp || "").slice(0, 100),
+              source: (entry.source || "").trim().slice(0, 500),
+            })).filter((entry) => {
+              if (entry.source && !/^https:\/\//i.test(entry.source)) throw new Error("Source links must start with https://.");
+              const key = [entry.tournament, entry.game, entry.eventDate].map((part) => part.toLowerCase()).join("|");
+              if (known.has(key)) return false;
+              known.add(key);
+              return true;
+            });
+            if (!clean.length) throw new Error("No new complete records found. Check the required columns and duplicates.");
+            setPreview(clean); setMessage("Review the records below, then choose Import to publish them.");
+          } catch (issue) { setError(issue.message || "Could not read this CSV."); }
+          event.target.value = "";
+        }} />
+      </Field>}
+      {error && <div role="alert" style={{ color: "var(--danger)", marginTop: 10, fontSize: 13 }}>{error}</div>}
+      {message && <div role="status" style={{ color: "var(--success)", marginTop: 10, fontSize: 13 }}>{message}</div>}
+      {preview && <section style={{ marginTop: 14, padding: 14, border: "1px solid var(--border-strong)", background: "var(--panel-bg)" }}>
+        <Eyebrow>Import preview · {preview.length} record(s)</Eyebrow>
+        <div style={{ display: "grid", gap: 6, margin: "10px 0 14px", fontSize: 12, color: "var(--text-muted)" }}>
+          {preview.slice(0, 8).map((entry, index) => <div key={index}>{entry.eventDate} · {entry.game} · {entry.tournament} · Winner: {entry.winner}</div>)}
+          {preview.length > 8 && <div>and {preview.length - 8} more…</div>}
+        </div>
+        <div style={{ display: "flex", gap: 8 }}><Button onClick={async () => {
+          setError(""); setMessage("");
+          try { await onImport(preview); setMessage(`Imported ${preview.length} event record(s).`); setPreview(null); }
+          catch (issue) { setError(issue.message || "Could not import these records."); }
+        }}>Import {preview.length} records</Button><Button variant="ghost" onClick={() => { setPreview(null); setMessage(""); }}>Cancel import</Button></div>
+      </section>}
+      <div style={{ display: "grid", gap: 10, marginTop: 20 }}>
+      {entries.length === 0 ? <EmptyState title="Archive is ready for records" body="Add historical international esports results with the moderator CSV import." /> : entries.map((entry) => <article key={entry.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{entry.game} · {entry.eventDate}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0", fontSize: 24 }}>{entry.tournament}</h2><div>🏆 {entry.winner}{entry.runnerUp ? ` · Runner-up: ${entry.runnerUp
+}` : ""}{entry.mvp ? ` · MVP: ${entry.mvp}` : ""}</div>{entry.source && <a href={entry.source} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 8, color: "var(--accent)" }}>Source</a>}</article>)}
+      </div>
+    </div>
+  );
+}
+
+function LoadingScreen({ label }) {
+  return <div role="status" aria-live="polite" style={{ minHeight: "60vh", display: "grid", placeItems: "center", background: "var(--page-bg-solid, #101820)", color: "var(--page-text, #EDF1F4)", fontFamily: "'Inter',sans-serif" }}><div style={{ textAlign: "center" }}><div className="grind-loader" aria-hidden="true"><span>G</span></div><div style={{ marginTop: 16 }}>{label}…</div><style>{`.grind-loader{width:68px;height:68px;margin:auto;border:2px solid var(--border,#314);border-top-color:var(--accent,#08f);border-right-color:var(--accent-secondary,#0dc);border-radius:50%;display:grid;place-items:center;animation:grind-spin 1.2s linear infinite}.grind-loader span{font-family:'Bebas Neue',sans-serif;font-size:30px;animation:grind-spin 1.2s linear infinite reverse}@keyframes grind-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.grind-loader,.grind-loader span{animation:none}}`}</style></div></div>;
+}
+
+function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDelete }) {
+  const [title, setTitle] = useState("");
+  const [game, setGame] = useState("");
+  const [content, setContent] = useState("");
+  const [source, setSource] = useState("");
+  const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState("");
+  const [draft, setDraft] = useState({ title: "", game: "", content: "", source: "" });
+  const visible = posts.filter((post) => post.status === "published" || post.authorId === user.uid || (isModerator && post.status === "pending"));
+  const submit = async () => {
+    if (!title.trim() || !game.trim() || !content.trim()) { setError("Add a title, game, and post text."); return; }
+    if (source.trim() && !/^https:\/\//i.test(source.trim())) { setError("Use a secure https source link."); return; }
+    try { await onSubmit({ title: title.trim(), game: game.trim(), content: content.trim(), source: source.trim() }); setTitle(""); setGame(""); setContent(""); setSource(""); setError(""); }
+    catch { setError("Could not submit this post. Please try again."); }
+  };
+  const startEdit = (post) => { setEditingId(post.id); setDraft({ title: post.title || "", game: post.game || "", content: post.content || "", source: post.source || "" }); setError(""); };
+  const saveEdit = async (post) => {
+    if (!draft.title.trim() || !draft.game.trim() || !draft.content.trim()) { setError("Add a title, game, and post text."); return; }
+    if (draft.source.trim() && !/^https:\/\//i.test(draft.source.trim())) { setError("Use a secure https source link."); return; }
+    try { await onEdit(post, { title: draft.title.trim(), game: draft.game.trim(), content: draft.content.trim(), source: draft.source.trim() }); setEditingId(""); setError(""); }
+    catch { setError("Could not save this post. Please try again."); }
+  };
+  return <div style={{ paddingTop: 32 }}><Eyebrow>Community stories</Eyebrow><h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42 }}>Esports blog</h1><p style={{ color: "var(--text-muted)" }}>Send a tournament recap or esports story to the GrindInfo owner for review before it appears publicly.</p><section style={{ display: "grid", gap: 10, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)", maxWidth: 680 }}><Field label="Post title"><TextInput value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} /></Field><Field label="Game"><TextInput value={game} maxLength={60} onChange={(e) => setGame(e.target.value)} placeholder="e.g. Valorant" /></Field><Field label="Story or tournament update"><textarea value={content} maxLength={6000} onChange={(e) => setContent(e.target.value)} rows={6} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput value={source} maxLength={500} onChange={(e) => setSource(e.target.value)} placeholder="https://" /></Field>{error && <span role="alert" style={{ color: "var(--danger)" }}>{error}</span>}<Button onClick={submit}>Request publication</Button></section><div style={{ display: "grid", gap: 12, marginTop: 20 }}>{visible.map((post) => <article key={post.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}</Eyebrow>{editingId === post.id ? <div style={{ display: "grid", gap: 8, marginTop: 8 }}><Field label="Post title"><TextInput maxLength={120} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /></Field><Field label="Game"><TextInput maxLength={60} value={draft.game} onChange={(e) => setDraft({ ...draft, game: e.target.value })} /></Field><Field label="Story"><textarea maxLength={6000} rows={6} value={draft.content} onChange={(e) => setDraft({ ...draft, content: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput maxLength={500} value={draft.source} onChange={(e) => setDraft({ ...draft, source: e.target.value })} /></Field><div style={{ display: "flex", gap: 8 }}><Button onClick={() => saveEdit(post)}>Save changes</Button><Button variant="ghost" onClick={() => setEditingId("")}>Cancel</Button></div></div> : <><h2 style={{ fontFamily: "'Bebas Neue',sans-serif" }}>{post.title}</h2><div style={{ color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{post.content}</div><div style={{ marginTop: 8, fontSize: 12 }}>By {post.authorName || "Player"}</div>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{isModerator && post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button onClick={() => onReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onReview(post.id, "rejected")}>Decline</Button></div>}{(post.authorId === user.uid || isModerator) && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button variant="ghost" onClick={() => startEdit(post)}>Edit post</Button><Button variant="danger" onClick={() => { if (window.confirm("Delete this blog post? This cannot be undone.")) onDelete(post); }}>Delete post</Button></div>}{post.authorId === user.uid && post.status === "published" && <small style={{ display: "block", marginTop: 8, color: "var(--text-muted)" }}>Saving an edit sends the post back for review.</small>}</>}{error && editingId === post.id && <div role="alert" style={{ color: "var(--danger)", marginTop: 8 }}>{error}</div>}</article>)}</div></div>;
+}
+
+
+
+export default function App() {
+  const [theme, setTheme] = useState(() => localStorage.getItem("grindinfo-theme") || "glacier");
+  const [tournaments, setTournaments] = useState([]);
+  const [selectedTeams, setSelectedTeams] = useState([]);
+  const [selectedMatches, setSelectedMatches] = useState([]);
+  const [selectedStats, setSelectedStats] = useState([]);
+  const [selectedRegistrations, setSelectedRegistrations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState("");
+  const [view, setView] = useState(() => new URLSearchParams(window.location.search).has("tournament") ? "detail" : "list");
+  const [selectedId, setSelectedId] = useState(() => new URLSearchParams(window.location.search).get("tournament"));
+  const [detailTab, setDetailTab] = useState("teams");
+  const [showNewTournament, setShowNewTournament] = useState(false);
+  const [reportTarget, setReportTarget] = useState(null);
+  const [isModerator, setIsModerator] = useState(false);
+  const [siteRole, setSiteRole] = useState(null);
+  const [friendRequests, setFriendRequests] = useState([]);
+  const [archiveEntries, setArchiveEntries] = useState([]);
+  const [archiveSubmissions, setArchiveSubmissions] = useState([]);
+  const [auditLog, setAuditLog] = useState([]);
+  const [blogPosts, setBlogPosts] = useState([]);
+  const [privateReports, setPrivateReports] = useState([]);
+  const [activePopups, setActivePopups] = useState([]);
+  const [adminPopups, setAdminPopups] = useState([]);
+  const [siteStaff, setSiteStaff] = useState([]);
+  const [currentPopup, setCurrentPopup] = useState(null);
+  const [popupScanTick, setPopupScanTick] = useState(0);
+
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setAuthLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  const handleGoogleSignIn = useCallback(async () => {
+    setAuthError("");
+    setAuthBusy(true);
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (e) {
+      setAuthError("Couldn't sign in with Google — try again");
+    } finally {
+      setAuthBusy(false);
+    }
+  }, []);
+
+  const handleEmailAuth = useCallback(async (mode, { name, email, password }) => {
+    setAuthError("");
+    setAuthBusy(true);
+    try {
+      if (mode === "signup") {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        if (name.trim()) {
+          await updateProfile(cred.user, { displayName: name.trim() });
+        }
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+    } catch (e) {
+      const messages = {
+        "auth/email-already-in-use": "That email is already registered — try signing in instead.",
+        "auth/invalid-credential": "Incorrect email or password.",
+        "auth/weak-password": "Password should be at least 6 characters.",
+        "auth/invalid-email": "That email address doesn't look right.",
+      };
+      setAuthError(messages[e.code] || "Something went wrong — try again.");
+    } finally {
+      setAuthBusy(false);
+    }
+  }, []);
+
+  const handleSignOut = useCallback(() => {
+    signOut(auth);
+  }, []);
+
+  // ---- player profiles ----
+  const [section, setSection] = useState("tournaments"); // 'tournaments' | 'players'
+  const [myProfile, setMyProfile] = useState(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setMyProfile(null);
+      return;
+    }
+    const unsub = onSnapshot(playerDocRef(user.uid), (snap) => {
+      const profile = snap.exists() ? snap.data() : null;
+      setMyProfile(profile);
+      const dismissed = localStorage.getItem(`profilePromptDismissed_${user.uid}`);
+      if (!profile && !dismissed) {
+        setShowProfileModal(true);
+      }
+    });
+    return () => unsub();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) { setIsModerator(false); setSiteRole(null); return undefined; }
+    const stopRole = onSnapshot(doc(SITE_ROLES_COLLECTION, user.uid), (snapshot) => {
+      const data = snapshot.exists() ? snapshot.data() : null;
+      setSiteRole(data?.enabled !== false && ["owner", "support"].includes(data?.role) ? data.role : null);
+    }, () => setSiteRole(null));
+    const stopModerator = onSnapshot(doc(db, "moderators", user.uid), (snapshot) => {
+      setIsModerator(snapshot.exists() && snapshot.data().enabled === true);
+    }, () => setIsModerator(false));
+    return () => { stopRole(); stopModerator(); };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) { setFriendRequests([]); return undefined; }
+    let incoming = [], outgoing = [];
+    const publish = () => setFriendRequests([...incoming, ...outgoing.filter((out) => !incoming.some((inbox) => inbox.id === out.id))]);
+    const stopIncoming = onSnapshot(query(FRIEND_REQUESTS_COLLECTION, where("recipientId", "==", user.uid)), (snapshot) => {
+      incoming = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); publish();
+    }, () => { incoming = []; publish(); });
+    const stopOutgoing = onSnapshot(query(FRIEND_REQUESTS_COLLECTION, where("requesterId", "==", user.uid)), (snapshot) => {
+      outgoing = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); publish();
+    }, () => { outgoing = []; publish(); });
+    return () => { stopIncoming(); stopOutgoing(); };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) { setBlogPosts([]); return undefined; }
+    let publicPosts = [], ownPosts = [], pendingPosts = [];
+    const publish = () => setBlogPosts([...new Map([...publicPosts, ...ownPosts, ...pendingPosts].map((post) => [post.id, post])).values()]);
+    const stops = [
+      onSnapshot(query(BLOG_POSTS_COLLECTION, where("status", "==", "published")), (snap) => { publicPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() })); publish(); }, () => { publicPosts = []; publish(); }),
+      onSnapshot(query(BLOG_POSTS_COLLECTION, where("authorId", "==", user.uid)), (snap) => { ownPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() })); publish(); }, () => { ownPosts = []; publish(); }),
+    ];
+    if (isModerator || siteRole === "owner" || siteRole === "support") stops.push(onSnapshot(query(BLOG_POSTS_COLLECTION, where("status", "==", "pending")), (snap) => { pendingPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() })); publish(); }, () => { pendingPosts = []; publish(); }));
+    return () => stops.forEach((stop) => stop());
+  }, [user, isModerator, siteRole]);
+
+  useEffect(() => onSnapshot(ARCHIVE_COLLECTION, (snapshot) => {
+    setArchiveEntries(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
+  }, () => setArchiveEntries([])), []);
+
+  useEffect(() => {
+    if (!user) { setArchiveSubmissions([]); return undefined; }
+    let own = [], staff = [];
+    const publish = () => setArchiveSubmissions([...new Map([...own, ...staff].map((item) => [item.id, item])).values()]);
+    const stops = [onSnapshot(query(ARCHIVE_SUBMISSIONS_COLLECTION, where("submitterId", "==", user.uid)), (snapshot) => { own = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); publish(); }, () => { own = []; publish(); })];
+    if (siteRole === "owner" || siteRole === "support") stops.push(onSnapshot(ARCHIVE_SUBMISSIONS_COLLECTION, (snapshot) => { staff = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); publish(); }, () => { staff = []; publish(); }));
+    return () => stops.forEach((stop) => stop());
+  }, [user, siteRole]);
+
+  useEffect(() => {
+    if (siteRole !== "owner") { setAuditLog([]); return undefined; }
+    return onSnapshot(query(STAFF_ACTIONS_COLLECTION, orderBy("createdAt", "desc"), limit(100)), (snapshot) => setAuditLog(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))), () => setAuditLog([]));
+  }, [siteRole]);
+
+  useEffect(() => {
+    if (siteRole !== "owner" && siteRole !== "support") { setPrivateReports([]); return undefined; }
+    return onSnapshot(REPORTS_COLLECTION, (snapshot) => {
+      setPrivateReports(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
+    }, () => setPrivateReports([]));
+  }, [isModerator, siteRole]);
+
+  useEffect(() => onSnapshot(query(SITE_POPUPS_COLLECTION, where("enabled", "==", true)), (snapshot) => {
+    setActivePopups(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
+  }, () => setActivePopups([])), []);
+
+  useEffect(() => {
+    if (siteRole !== "owner") { setAdminPopups([]); setSiteStaff([]); return undefined; }
+    const stopPopups = onSnapshot(SITE_POPUPS_COLLECTION, (snapshot) => setAdminPopups(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))), () => setAdminPopups([]));
+    const stopStaff = onSnapshot(SITE_ROLES_COLLECTION, (snapshot) => setSiteStaff(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))), () => setSiteStaff([]));
+    return () => { stopPopups(); stopStaff(); };
+  }, [siteRole]);
+
+  useEffect(() => {
+    if (showProfileModal) { setCurrentPopup(null); return; }
+    const now = Date.now();
+    const nextBoundary = activePopups
+      .flatMap((popup) => [popup.startsAt, popup.endsAt])
+      .filter((time) => typeof time === "number" && time > now)
+      .sort((a, b) => a - b)[0];
+    const timer = nextBoundary
+      ? window.setTimeout(() => setPopupScanTick((tick) => tick + 1), Math.min(nextBoundary - now + 50, 2147483000))
+      : null;
+    const eligible = activePopups.filter((popup) => {
+      if (popup.enabled !== true || (popup.startsAt && popup.startsAt > now) || (popup.endsAt && popup.endsAt < now)) return false;
+      const version = popup.updatedAt || popup.createdAt || 0;
+      const key = `grindinfo-popup:${popup.id}:${version}`;
+      const seen = popup.frequency === "session" ? sessionStorage.getItem(key) : localStorage.getItem(key);
+      const today = new Date().toISOString().slice(0, 10);
+      return !seen || (popup.frequency !== "session" && seen !== today);
+    });
+    const disclaimers = eligible.filter((popup) => popup.type === "disclaimer");
+    const motivations = eligible.filter((popup) => popup.type === "motivation");
+    const list = disclaimers.length ? disclaimers : motivations;
+    if (!list.length) { setCurrentPopup(null); return () => { if (timer) window.clearTimeout(timer); }; }
+    const selected = list[Math.floor(Math.random() * list.length)];
+    setCurrentPopup(selected);
+    return () => { if (timer) window.clearTimeout(timer); };
+  }, [activePopups, popupScanTick, showProfileModal]);
+
+  const skipProfile = useCallback(() => {
+    if (user) localStorage.setItem(`profilePromptDismissed_${user.uid}`, "1");
+    setShowProfileModal(false);
+  }, [user]);
+
+  useEffect(() => {
+    localStorage.setItem("grindinfo-theme", theme);
+  }, [theme]);
+
+  useEffect(() => {
+    ensureFonts();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      TOURNAMENTS_COLLECTION,
+      (snap) => {
+        setTournaments(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setLoading(false);
+      },
+      () => setLoading(false)
+    );
+    return () => unsubscribe();
+  }, []);
+
+  // Sub-collections for whichever tournament is currently open
+  useEffect(() => {
+    if (!selectedId) {
+      setSelectedTeams([]);
+      setSelectedMatches([]);
+      setSelectedStats([]);
+      return;
+    }
+    const unsubs = [
+      onSnapshot(teamsCollectionRef(selectedId), (snap) =>
+        setSelectedTeams(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      ),
+      onSnapshot(matchesCollectionRef(selectedId), (snap) =>
+        setSelectedMatches(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      ),
+      onSnapshot(statsCollectionRef(selectedId), (snap) =>
+        setSelectedStats(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      ),
+    ];
+    return () => unsubs.forEach((u) => u());
+  }, [selectedId]);
+
+  useEffect(() => {
+    if (!selectedId || !user) { setSelectedRegistrations([]); return undefined; }
+    const tournament = tournaments.find((item) => item.id === selectedId);
+    const canReview = tournament && (tournament.adminUserId === user.uid || tournament.coAdminUserIds?.includes(user.uid));
+    const requests = registrationsCollectionRef(selectedId);
+    const registrationQuery = canReview ? requests : query(requests, where("playerId", "==", user.uid));
+    return onSnapshot(registrationQuery, (snapshot) => {
+      setSelectedRegistrations(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
+    }, () => setSelectedRegistrations([]));
+  }, [selectedId, user, tournaments]);
+
+  const showToast = useCallback((msg) => {
+    setToast(msg);
+    window.clearTimeout(showToast._t);
+    showToast._t = window.setTimeout(() => setToast(""), 2200);
+  }, []);
+
+  const saveProfile = useCallback(
+    async (fields) => {
+      if (!user) return;
+      try {
+        await setDoc(playerDocRef(user.uid), {
+          ...fields,
+          displayName: safeProfileName(fields.displayName, user.displayName),
+          bio: String(fields.bio || "").slice(0, 200),
+          discoverable: fields.discoverable === true,
+          updatedAt: Date.now(),
+        });
+        showToast("Profile saved");
+      } catch (e) {
+        showToast("Couldn't save profile — try again");
+      }
+      setShowProfileModal(false);
+    },
+    [user, showToast]
+  );
+
+  // ---- mutations (now writing to the tournaments collection + sub-collections) ----
+  const addTournament = async (t) => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      await addDoc(TOURNAMENTS_COLLECTION, {
+        ...t,
+        prizeAmount: Number(t.prizeAmount) || 0,
+        prizeCurrency: t.prizeCurrency || "INR",
+        registrationOpen: true,
+        adminUserId: user.uid,
+        adminDisplayName: safeProfileName(myProfile?.displayName, user.displayName),
+        coAdminUserIds: [],
+        status: t.status || "upcoming",
+        isLegacyImport: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      showToast("Tournament created");
+      setShowNewTournament(false);
+    } catch (e) {
+      showToast("Couldn't create tournament — try again");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveTournamentResults = async (id, results) => {
+    setSaving(true);
+    try {
+      await updateDoc(tournamentDocRef(id), {
+        results, status: "completed", registrationOpen: false, archived: true,
+        archivedAt: Date.now(), updatedAt: Date.now(),
+      });
+      showToast("Tournament results posted");
+    } catch (e) {
+      showToast("Couldn't post tournament results — try again");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteTournament = async (id) => {
+    setSaving(true);
+    try {
+      await Promise.all([
+        ...selectedTeams.map((t) => deleteDoc(doc(teamsCollectionRef(id), t.id))),
+        ...selectedMatches.map((m) => deleteDoc(doc(matchesCollectionRef(id), m.id))),
+        ...selectedStats.map((s) => deleteDoc(doc(statsCollectionRef(id), s.id))),
+        ...selectedRegistrations.map((request) => deleteDoc(doc(registrationsCollectionRef(id), request.id))),
+      ]);
+      await deleteDoc(tournamentDocRef(id));
+      showToast("Tournament deleted");
+      setView("list");
+      setSelectedId(null);
+      const url = new URL(window.location.href); url.searchParams.delete("tournament"); window.history.replaceState({}, "", url);
+    } catch (e) {
+      showToast("Couldn't delete tournament — try again");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addTeam = async (tournamentId, team) => {
+    try {
+      await addDoc(teamsCollectionRef(tournamentId), team);
+      showToast("Team added");
+    } catch (e) {
+      showToast("Couldn't add team — try again");
+    }
+  };
+
+  const deleteTeam = async (tournamentId, teamId) => {
+    try {
+      await deleteDoc(doc(teamsCollectionRef(tournamentId), teamId));
+      showToast("Team removed");
+    } catch (e) {
+      showToast("Couldn't remove team — try again");
+    }
+  };
+
+  const addMatch = async (tournamentId, match) => {
+    try {
+      await addDoc(matchesCollectionRef(tournamentId), match);
+      showToast("Match added");
+    } catch (e) {
+      showToast("Couldn't add match — try again");
+    }
+  };
+
+  const updateMatch = async (tournamentId, matchId, patch) => {
+    try {
+      await updateDoc(doc(matchesCollectionRef(tournamentId), matchId), patch);
+    } catch (e) {
+      showToast("Couldn't update match — try again");
+    }
+  };
+
+  const deleteMatch = async (tournamentId, matchId) => {
+    try {
+      const relatedStats = selectedStats.filter((s) => s.matchId === matchId);
+      await Promise.all(relatedStats.map((s) => deleteDoc(doc(statsCollectionRef(tournamentId), s.id))));
+      await deleteDoc(doc(matchesCollectionRef(tournamentId), matchId));
+      showToast("Match deleted");
+    } catch (e) {
+      showToast("Couldn't delete match — try again");
+    }
+  };
+
+  const addStat = async (tournamentId, stat) => {
+    try {
+      await addDoc(statsCollectionRef(tournamentId), stat);
+      showToast("Stat line added");
+    } catch (e) {
+      showToast("Couldn't add stat — try again");
+    }
+  };
+
+  const deleteStat = async (tournamentId, statId) => {
+    try {
+      await deleteDoc(doc(statsCollectionRef(tournamentId), statId));
+    } catch (e) {
+      showToast("Couldn't delete stat — try again");
+    }
+  };
+
+  const requestRegistration = async (tournamentId, player) => {
+    if (!user) return;
+    try {
+      await setDoc(doc(registrationsCollectionRef(tournamentId), user.uid), {
+        playerId: user.uid, displayName: safeProfileName(player.displayName),
+        status: "pending", requestedAt: Date.now(),
+      });
+      showToast("Join request sent to the tournament host");
+    } catch (e) {
+      showToast(e?.code === "permission-denied"
+        ? "Firebase blocked the join request. The Firestore rules may need to be published."
+        : "Couldn't send the join request. Check whether one is already pending.");
+    }
+  };
+
+  const decideRegistration = async (tournamentId, requestId, status) => {
+    try {
+      await updateDoc(doc(registrationsCollectionRef(tournamentId), requestId), { status, reviewedAt: Date.now(), reviewedBy: user.uid });
+      showToast(status === "approved" ? "Player approved" : "Request declined");
+    } catch (e) {
+      showToast(e?.code === "permission-denied"
+        ? "Firebase blocked this decision. The Firestore rules may need to be published."
+        : "Couldn't update the registration request.");
+    }
+  };
+
+  const closeTournament = async (tournamentId) => {
+    try { await updateDoc(tournamentDocRef(tournamentId), { registrationOpen: false, archived: true, archivedAt: Date.now(), updatedAt: Date.now() }); showToast("Tournament closed and moved to archive"); }
+    catch (e) { showToast("Couldn\u2019t close tournament. Check Firestore rules."); }
+  };
+
+  const submitBlogPost = async (post) => {
+    try { await addDoc(BLOG_POSTS_COLLECTION, { ...post, authorId: user.uid, authorName: safeProfileName(myProfile?.displayName, user.displayName), status: "pending", createdAt: Date.now() }); showToast("Blog request sent for review"); }
+    catch (e) { showToast("Couldn\u2019t submit blog request. Firestore rules may need to be published."); }
+  };
+
+  const appendStaffAction = (batch, action, targetType, targetId, summary) => {
+    if (!user || (!isSiteStaff && !isModerator)) return;
+    batch.set(doc(STAFF_ACTIONS_COLLECTION), {
+      action: String(action).slice(0, 40),
+      targetType: String(targetType).slice(0, 40),
+      targetId: String(targetId).slice(0, 128),
+      targetLabel: String(summary).slice(0, 120),
+      actorUid: user.uid,
+      actorName: safeProfileName(myProfile?.displayName, user.displayName),
+      summary: String(summary).slice(0, 240),
+      createdAt: Date.now(),
+    });
+  };
+
+  const reviewBlogPost = async (postId, status) => {
+    try { const batch = writeBatch(db); batch.update(doc(BLOG_POSTS_COLLECTION, postId), { status, reviewedAt: Date.now(), reviewedBy: user.uid }); appendStaffAction(batch, status === "published" ? "blog_published" : "blog_declined", "blog", postId, `Blog ${status === "published" ? "published" : "declined"}: ${postId}`); await batch.commit(); showToast(status === "published" ? "Blog post published" : "Blog request declined"); }
+    catch (e) { showToast("Couldn\u2019t update blog request"); }
+  };
+
+  const editBlogPost = async (post, fields) => {
+    if (!user || (post.authorId !== user.uid && !isSiteStaff && !isModerator)) throw new Error("You cannot edit this post");
+    const batch = writeBatch(db);
+    batch.update(doc(BLOG_POSTS_COLLECTION, post.id), { ...fields, status: "pending", reviewedAt: 0, reviewedBy: "", updatedAt: Date.now() });
+    appendStaffAction(batch, "blog_edited", "blog", post.id, `Blog returned for review: ${post.title}`);
+    await batch.commit();
+    showToast("Changes saved and sent for review");
+  };
+
+  const deleteBlogPost = async (post) => {
+    if (!user || (post.authorId !== user.uid && !isSiteStaff && !isModerator)) throw new Error("You cannot delete this post");
+    const batch = writeBatch(db);
+    batch.delete(doc(BLOG_POSTS_COLLECTION, post.id));
+    appendStaffAction(batch, "blog_deleted", "blog", post.id, `Blog deleted: ${post.title}`);
+    await batch.commit();
+    showToast("Blog post deleted");
+  };
+
+  const updateCoAdmins = async (tournamentId, ids) => {
+    try { await updateDoc(tournamentDocRef(tournamentId), { coAdminUserIds: ids, updatedAt: Date.now() }); showToast("Co-host access updated"); }
+    catch (e) { showToast("Couldn't update co-host access"); }
+  };
+
+  const shareTournament = async (tournament) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("tournament", tournament.id);
+    try { await navigator.clipboard.writeText(url.toString()); showToast("Tournament link copied"); }
+    catch (e) { window.prompt("Copy this tournament link", url.toString()); }
+  };
+
+  const requestFriend = async (recipientId) => {
+    if (!user || !recipientId || recipientId === user.uid) return;
+    try {
+      await setDoc(doc(FRIEND_REQUESTS_COLLECTION, `${user.uid}_${recipientId}`), {
+        requesterId: user.uid,
+        requesterName: safeProfileName(myProfile?.displayName, user.displayName),
+        recipientId,
+        status: "pending",
+        createdAt: Date.now(),
+      });
+      showToast("Friend request sent");
+    } catch (e) {
+      showToast(e?.code === "permission-denied"
+        ? "Firebase blocked the friend request. The Firestore rules may need to be published."
+        : "Couldn't send the friend request. A request may already exist.");
+    }
+  };
+
+  const requestHostFriend = async (tournament) => {
+    await requestFriend(tournament.adminUserId);
+  };
+
+  const decideFriendRequest = async (requestId, status) => {
+    try {
+      await updateDoc(doc(FRIEND_REQUESTS_COLLECTION, requestId), { status, reviewedAt: Date.now() });
+      showToast(status === "accepted" ? "Friend request accepted" : "Friend request declined");
+    } catch (e) {
+      showToast(e?.code === "permission-denied"
+        ? "Firebase blocked this decision. The Firestore rules may need to be published."
+        : "Couldn't update the friend request.");
+    }
+  };
+
+  const submitReport = async ({ reason, details }) => {
+    if (!reportTarget || !user) return "Sign in again to submit this report.";
+    const reportId = `${user.uid}_${reportTarget.type}_${reportTarget.id}`;
+    try {
+      await setDoc(doc(REPORTS_COLLECTION, reportId), {
+        reporterId: user.uid, targetType: reportTarget.type, targetId: reportTarget.id,
+        targetName: String(reportTarget.name || "").slice(0, 120), reason,
+        details: String(details || "").slice(0, 1000), status: "submitted", createdAt: Date.now(),
+      });
+      setReportTarget(null); showToast("Report sent privately to GrindInfo's safety team"); return "";
+    } catch (e) { return "This report could not be sent. You may already have reported this item."; }
+  };
+
+  const importArchiveEntries = async (records) => {
+    const batch = writeBatch(db);
+    records.forEach((entry) => batch.set(doc(ARCHIVE_COLLECTION), { ...entry, createdAt: Date.now(), createdBy: user.uid }));
+    appendStaffAction(batch, "archive_imported", "archive", "csv-import", `Imported ${records.length} esports archive record(s)`);
+    await batch.commit();
+  };
+
+  const submitArchiveRequest = async (fields) => {
+    const clean = {
+      tournament: String(fields.tournament || "").trim().slice(0, 120),
+      game: String(fields.game || "").trim().slice(0, 60),
+      eventDate: String(fields.eventDate || "").trim().slice(0, 40),
+      winner: String(fields.winner || "").trim().slice(0, 100),
+      runnerUp: String(fields.runnerUp || "").trim().slice(0, 100),
+      mvp: String(fields.mvp || "").trim().slice(0, 100),
+      source: String(fields.source || "").trim().slice(0, 500),
+    };
+    if (clean.source && !/^https:\/\//i.test(clean.source)) throw new Error("Use a secure https source link.");
+    await addDoc(ARCHIVE_SUBMISSIONS_COLLECTION, { ...clean, submitterId: user.uid, submitterName: safeProfileName(myProfile?.displayName, user.displayName), status: "pending", createdAt: Date.now() });
+    showToast("Archive request sent for review");
+  };
+
+  const decideArchiveSubmission = async (requestId, status) => {
+    if (!isSiteStaff || !["approved", "rejected"].includes(status)) return;
+    try {
+      const submission = archiveSubmissions.find((item) => item.id === requestId);
+      if (!submission || submission.status !== "pending") { showToast("This archive request was already reviewed"); return; }
+      const batch = writeBatch(db);
+      const requestRef = doc(ARCHIVE_SUBMISSIONS_COLLECTION, requestId);
+      if (status === "approved") {
+        const entryRef = doc(ARCHIVE_COLLECTION);
+        batch.set(entryRef, { tournament: submission.tournament, game: submission.game, eventDate: submission.eventDate, winner: submission.winner, runnerUp: submission.runnerUp || "", mvp: submission.mvp || "", source: submission.source || "", createdAt: Date.now(), createdBy: user.uid, submissionId: requestId });
+        batch.update(requestRef, { status, reviewedAt: Date.now(), reviewedBy: user.uid, archiveEntryId: entryRef.id });
+        appendStaffAction(batch, "archive_request_approved", "archiveSubmission", requestId, `Archive request approved: ${submission.tournament}`);
+      } else {
+        batch.update(requestRef, { status, reviewedAt: Date.now(), reviewedBy: user.uid });
+        appendStaffAction(batch, "archive_request_rejected", "archiveSubmission", requestId, `Archive request declined: ${submission.tournament}`);
+      }
+      await batch.commit();
+      showToast(status === "approved" ? "Event added to the archive" : "Archive request declined");
     } catch (error) {
       console.error("Could not review archive submission", error);
       showToast("Couldn't review this archive request. Check the published Firebase rules and try again.");
