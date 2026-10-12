@@ -5,6 +5,7 @@ import {
   onSnapshot,
   setDoc,
   getDoc,
+  getDocs,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -37,6 +38,7 @@ const statsCollectionRef = (tid) => collection(db, "tournaments", tid, "stats");
 const registrationsCollectionRef = (tid) => collection(db, "tournaments", tid, "registrations");
 const REPORTS_COLLECTION = collection(db, "reports");
 const FRIEND_REQUESTS_COLLECTION = collection(db, "friendRequests");
+const TOURNAMENT_INVITES_COLLECTION = collection(db, "tournamentInvites");
 const CHAT_CONVERSATIONS_COLLECTION = collection(db, "conversations");
 const CHAT_MESSAGES_COLLECTION = (conversationId) => collection(db, "conversations", conversationId, "messages");
 const ARCHIVE_COLLECTION = collection(db, "esportsArchive");
@@ -405,7 +407,7 @@ function Toast({ message }) {
 
 // ---------- auth screen ----------
 
-function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy }) {
+function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowseAsGuest, onClose, requireChoice }) {
   const [mode, setMode] = useState("signin"); // 'signin' | 'signup'
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -417,27 +419,19 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy }) {
   };
 
   return (
-    <div
-      data-theme="glacier"
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 20,
-        background: "var(--page-bg-solid)",
-        color: "var(--page-text)",
-        fontFamily: "'Inter', sans-serif",
-      }}
-    >
-      <style>{THEME_CSS}</style>
-      <div style={{ width: "100%", maxWidth: 380 }}>
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 34, color: "var(--page-text)", letterSpacing: "0.04em" }}>
-            GRINDINFO
+    <div role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !requireChoice) onClose(); }} style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", justifyContent: "flex-end", alignItems: "flex-start", padding: "82px max(16px, calc((100vw - 980px) / 2)) 16px", background: requireChoice ? "rgba(3, 8, 13, .42)" : "transparent", pointerEvents: requireChoice ? "auto" : "none", fontFamily: "'Inter', sans-serif" }}>
+      <div role="dialog" aria-modal={requireChoice ? "true" : "false"} aria-label="Sign in to GrindInfo" onMouseDown={(event) => event.stopPropagation()} style={{ width: "min(380px, 100%)", maxHeight: "calc(100vh - 100px)", overflowY: "auto", padding: 20, color: "var(--page-text)", background: "var(--panel-bg)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)", pointerEvents: "auto" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
+          <div>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, color: "var(--page-text)", letterSpacing: "0.04em" }}>GRINDINFO</div>
+            <Eyebrow color="var(--accent-secondary)">Sign in for player features</Eyebrow>
           </div>
-          <Eyebrow color="var(--accent-secondary)">Sign in to upload tournament data</Eyebrow>
+          {!requireChoice && <button type="button" aria-label="Close sign in" onClick={onClose} style={{ background: "none", border: 0, color: "var(--text-muted)", fontSize: 22, cursor: "pointer" }}>×</button>}
         </div>
+
+        <div style={{ color: "var(--text-muted)", fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}>Browse tournaments, community blogs, and the esports archive as a guest. Sign in when you want to take part.</div>
+
+        <Button variant="ghost" onClick={onBrowseAsGuest} style={{ width: "100%", marginBottom: 12 }}>Browse as guest</Button>
 
         <button
           onClick={onGoogleSignIn}
@@ -453,13 +447,13 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy }) {
             fontSize: 14,
             cursor: authBusy ? "not-allowed" : "pointer",
             opacity: authBusy ? 0.6 : 1,
-            marginBottom: 16,
+            marginBottom: 8,
           }}
         >
           Continue with Google
         </button>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "12px 0" }}>
           <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
           <span style={{ fontSize: 11, color: "var(--text-dim)", fontFamily: "'JetBrains Mono', monospace" }}>OR</span>
           <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
@@ -492,7 +486,7 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy }) {
           </Button>
         </form>
 
-        <div style={{ textAlign: "center", marginTop: 18, fontSize: 13, color: "var(--text-muted)" }}>
+        <div style={{ textAlign: "center", marginTop: 14, fontSize: 13, color: "var(--text-muted)" }}>
           {mode === "signin" ? (
             <>
               New here?{" "}
@@ -608,6 +602,7 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, margin: "4px 0 6px" }}>
           Set up your player profile
         </div>
+        {initialProfile?.playerTag && <div style={{ color: "var(--accent-secondary)", fontFamily: "'JetBrains Mono', monospace", fontSize: 12, marginTop: 8 }}>Your GrindInfo ID: {displayName}#{initialProfile.playerTag}</div>}
         <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>
           Your profile stays out of player search unless you choose to be discoverable. Use a gaming name and keep personal contact details private.
         </div>
@@ -768,6 +763,7 @@ function PlayerCard({ player, currentUid, friendRequest, onFriendRequest, onFrie
         </span>
         {player.displayName}
       </div>
+      {player.playerTag && <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--accent-secondary)", marginTop: 3 }}>{player.displayName}#{player.playerTag}</div>}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "8px 0" }}>
         {normalizeGameNames(player.games || []).map((g) => (
           <span
@@ -808,16 +804,18 @@ function PlayerCard({ player, currentUid, friendRequest, onFriendRequest, onFrie
     </div>
   );
 }
-function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendRequest, onFriendDecision, onReport, onEditProfile }) {
+function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendRequest, onFriendDecision, onReport }) {
   const [gameFilters, setGameFilters] = useState([]);
   const [regionFilter, setRegionFilter] = useState("");
   const [languageFilter, setLanguageFilter] = useState("");
   const [styleFilter, setStyleFilter] = useState("");
   const [nameFilter, setNameFilter] = useState("");
+  const [playerTagFilter, setPlayerTagFilter] = useState("");
   const [players, setPlayers] = useState([]);
   const [playersLoading, setPlayersLoading] = useState(false);
   const [playersError, setPlayersError] = useState("");
-  const hasFilters = Boolean(gameFilters.length || regionFilter || languageFilter);
+  const normalizedPlayerTag = playerTagFilter.trim().replace(/^.*#/, "");
+  const hasFilters = Boolean(gameFilters.length || regionFilter || languageFilter || normalizedPlayerTag);
   const useMyInterests = () => {
     setGameFilters(normalizeGameNames(myProfile?.games || []));
     setRegionFilter(myProfile?.region || "");
@@ -827,6 +825,22 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
 
   useEffect(() => {
     setPlayersError("");
+    if (normalizedPlayerTag) {
+      if (!/^\d{8}$/.test(normalizedPlayerTag)) {
+        setPlayers([]);
+        setPlayersLoading(false);
+        return undefined;
+      }
+      setPlayersLoading(true);
+      const exactIdQuery = query(PLAYERS_COLLECTION, where("discoverable", "==", true), where("playerTag", "==", normalizedPlayerTag));
+      return onSnapshot(exactIdQuery, (snap) => {
+        setPlayers(snap.docs.map((d) => ({ uid: d.id, ...d.data() })));
+        setPlayersLoading(false);
+      }, () => {
+        setPlayersError("Couldn't search this GrindInfo ID. Check your connection and try again.");
+        setPlayersLoading(false);
+      });
+    }
     if (!hasFilters) {
       setPlayers([]);
       setPlayersLoading(false);
@@ -856,7 +870,7 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
         setPlayersLoading(false);
       }
     );
-  }, [gameFilters, regionFilter, languageFilter, hasFilters]);
+  }, [gameFilters, regionFilter, languageFilter, hasFilters, normalizedPlayerTag]);
 
   const filtered = players.filter((p) => p.uid !== currentUid && (!styleFilter || p.style === styleFilter)
     && (!nameFilter.trim() || (p.displayName || "").toLowerCase().includes(nameFilter.trim().toLowerCase())));
@@ -877,7 +891,6 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
           <Eyebrow>Squad up</Eyebrow>
           <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 44, margin: "4px 0 0" }}>Find players</h1>
         </div>
-        <Button variant="ghost" onClick={onEditProfile}>{myProfile ? "Edit my profile" : "Create my profile"}</Button>
       </div>
 
       <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14, borderLeft: "2px solid var(--accent)", paddingLeft: 12 }}>
@@ -931,7 +944,11 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
           </Select>
         </div>
       </div>
-      <div style={{ maxWidth: 360, margin: "8px 0 16px" }}><Field label="Search names in these matches"><TextInput value={nameFilter} onChange={(event) => setNameFilter(event.target.value)} placeholder="Type a player name" /></Field></div>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "8px 0 16px" }}>
+        <div style={{ maxWidth: 360, flex: "1 1 250px" }}><Field label="Search names in these matches"><TextInput value={nameFilter} onChange={(event) => setNameFilter(event.target.value)} placeholder="Type a player name" /></Field></div>
+        <div style={{ maxWidth: 360, flex: "1 1 250px" }}><Field label="Find by GrindInfo ID"><TextInput value={playerTagFilter} onChange={(event) => setPlayerTagFilter(event.target.value)} placeholder="PlayerName#12345678" /></Field></div>
+      </div>
+      {normalizedPlayerTag && normalizedPlayerTag.length < 8 && <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>Enter the full 8-digit number after # to look up a player.</div>}
       {myProfile && (
         <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
           “Use my interests” fills these filters from your profile. You can change them before searching.
@@ -940,7 +957,7 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
 
       {playersError && <div style={{ fontSize: 13, color: "var(--danger)", marginBottom: 14 }}>{playersError}</div>}
       {!hasFilters ? (
-        <EmptyState title="Choose a search filter" body="Select one or more games, a region, or a language to search profiles that opted in to discovery. Playing style can narrow your matches." />
+        <EmptyState title="Choose a search filter" body="Select games, region, or language to find opted-in players, or enter a full GrindInfo ID. Playing style can narrow your matches." />
       ) : playersLoading ? (
         <div style={{ color: "var(--text-muted)", fontSize: 13, padding: 20 }}>Searching opted-in players…</div>
       ) : filtered.length === 0 ? (
@@ -998,7 +1015,7 @@ function ReportModal({ target, onClose, onSubmit }) {
   );
 }
 
-function RegistrationPanel({ tournament, requests, currentUserId, currentUserName, isAdmin, onRequest, onDecision, disclaimer, onDisclaimerVisibilityChange }) {
+function RegistrationPanel({ tournament, requests, currentUserId, currentUserName, isAdmin, onRequest, onDecision, disclaimer, onDisclaimerVisibilityChange, onSignIn }) {
   const [showJoinDisclaimer, setShowJoinDisclaimer] = useState(false);
   const mine = requests.find((request) => request.playerId === currentUserId);
   const pending = requests.filter((request) => request.status === "pending");
@@ -1007,9 +1024,10 @@ function RegistrationPanel({ tournament, requests, currentUserId, currentUserNam
     <section style={{ marginTop: 20, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
       <Eyebrow>Free registration</Eyebrow>
       <div style={{ fontSize: 13, color: "var(--text-muted)", margin: "8px 0 12px" }}>
-        {mine ? `Your request is ${mine.status}.` : "Request a place. The tournament host or co-host must approve it."}
+        {mine ? `Your request is ${mine.status}.` : currentUserId ? "Request a place. The tournament host or co-host must approve it." : "Sign in to request a place in this tournament."}
       </div>
-      {!isAdmin && !mine && tournament.registrationOpen !== false && !isTournamentArchived(tournament) && <Button onClick={() => { setShowJoinDisclaimer(true); onDisclaimerVisibilityChange(true); }}>Request to join</Button>}
+      {!currentUserId && tournament.registrationOpen !== false && !isTournamentArchived(tournament) && <Button onClick={onSignIn}>Sign in to request a place</Button>}
+      {currentUserId && !isAdmin && !mine && tournament.registrationOpen !== false && !isTournamentArchived(tournament) && <Button onClick={() => { setShowJoinDisclaimer(true); onDisclaimerVisibilityChange(true); }}>Request to join</Button>}
       {!isAdmin && (tournament.registrationOpen === false || isTournamentArchived(tournament)) && <div style={{ color: "var(--text-dim)", fontSize: 12 }}>Registration is closed.</div>}
       {isAdmin && (
         <div style={{ display: "grid", gap: 8 }}>
@@ -1037,19 +1055,29 @@ function RegistrationPanel({ tournament, requests, currentUserId, currentUserNam
   );
 }
 
-function CoAdminPanel({ tournament, isOwner, onChange }) {
-  const [accountId, setAccountId] = useState("");
+function CoAdminPanel({ tournament, isOwner, onChange, onAddByPlayerId }) {
+  const [playerTag, setPlayerTag] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
   if (!isOwner) return null;
   const ids = tournament.coAdminUserIds || [];
+  const tags = tournament.coAdminPlayerTags || {};
+  const addByTag = async () => {
+    setSaving(true); setError("");
+    try { await onAddByPlayerId(playerTag); setPlayerTag(""); }
+    catch (e) { setError(e?.message || "Couldn't add that co-host. Check the GrindInfo ID and try again."); }
+    finally { setSaving(false); }
+  };
   return (
     <section style={{ marginTop: 16, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
       <Eyebrow>Co-host access</Eyebrow>
-      <div style={{ color: "var(--text-muted)", fontSize: 12, margin: "7px 0 10px" }}>Add a trusted player using their Firebase account UID. Co-hosts can manage this tournament; only you can transfer ownership or delete it.</div>
+      <div style={{ color: "var(--text-muted)", fontSize: 12, margin: "7px 0 10px" }}>Enter the player's GrindInfo ID (the number after #). The player must have a profile and be visible in player search. Co-hosts can manage registrations and tournament details; only you can transfer ownership or delete the tournament.</div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <TextInput aria-label="Co-host account UID" value={accountId} onChange={(event) => setAccountId(event.target.value)} placeholder="Paste account UID" />
-        <Button disabled={!accountId.trim() || ids.includes(accountId.trim())} onClick={() => { onChange([...ids, accountId.trim()]); setAccountId(""); }}>Add co-host</Button>
+        <TextInput aria-label="Co-host GrindInfo ID" value={playerTag} onChange={(event) => setPlayerTag(event.target.value)} placeholder="PlayerName#12345678" />
+        <Button disabled={!playerTag.trim() || saving} onClick={addByTag}>{saving ? "Checking…" : "Add co-host"}</Button>
       </div>
-      {ids.map((id) => <div key={id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", padding: "8px 0", marginTop: 8, fontSize: 12 }}>{id}<Button variant="danger" onClick={() => onChange(ids.filter((item) => item !== id))}>Remove</Button></div>)}
+      {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 12, marginTop: 8 }}>{error}</div>}
+      {ids.map((id) => <div key={id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", padding: "8px 0", marginTop: 8, fontSize: 12 }}>{tags[id] ? `GrindInfo #${tags[id]}` : "Existing co-host"}<Button variant="danger" onClick={() => onChange(ids.filter((item) => item !== id), Object.fromEntries(Object.entries(tags).filter(([key]) => key !== id)))}>Remove</Button></div>)}
     </section>
   );
 }
@@ -1114,22 +1142,26 @@ function FriendChat({ currentUser, friend, onClose }) {
   const conversationId = `${participants[0]}_${participants[1]}`;
   useEffect(() => {
     let active = true;
+    let stopMessages = null;
     setReady(false); setMessages([]); setError("");
-    getDoc(doc(CHAT_CONVERSATIONS_COLLECTION, conversationId)).then(async (snapshot) => {
+    const openConversation = async () => {
+      const conversationRef = doc(CHAT_CONVERSATIONS_COLLECTION, conversationId);
+      const snapshot = await getDoc(conversationRef);
       if (!snapshot.exists()) {
-        try { await setDoc(doc(CHAT_CONVERSATIONS_COLLECTION, conversationId), { participants, createdAt: Date.now() }); }
+        try { await setDoc(conversationRef, { participants, createdAt: Date.now() }); }
         catch (writeError) {
-          const racedSnapshot = await getDoc(doc(CHAT_CONVERSATIONS_COLLECTION, conversationId));
+          const racedSnapshot = await getDoc(conversationRef);
           if (!racedSnapshot.exists()) throw writeError;
         }
       }
       if (!active) return;
       setReady(true);
-    }).catch(() => { if (active) setError("Chat is available only after both players are accepted friends. Check the published Firestore rules."); });
-    const stop = onSnapshot(query(CHAT_MESSAGES_COLLECTION(conversationId), orderBy("createdAt", "desc"), limit(100)), (snapshot) => {
-      if (active) setMessages(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).reverse());
-    }, () => { if (active) setError("Couldn't load this chat."); });
-    return () => { active = false; stop(); };
+      stopMessages = onSnapshot(query(CHAT_MESSAGES_COLLECTION(conversationId), orderBy("createdAt", "desc"), limit(100)), (messageSnapshot) => {
+        if (active) setMessages(messageSnapshot.docs.map((item) => ({ id: item.id, ...item.data() })).reverse());
+      }, () => { if (active) setError("Couldn't load messages. Confirm the Firestore rules are published and try reopening chat."); });
+    };
+    openConversation().catch(() => { if (active) setError("Chat is available only after both players are accepted friends. Check the published Firestore rules."); });
+    return () => { active = false; stopMessages?.(); };
   }, [conversationId, currentUser.uid, friend.uid]);
   const send = async (event) => {
     event.preventDefault();
@@ -1264,7 +1296,7 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerB
       date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
       return date.toISOString().slice(0, 16);
     };
-    setEditing(popup ? { ...popup, startsAt: toLocalInput(popup.startsAt), endsAt: toLocalInput(popup.endsAt) } : { id: "", title: "", message: "", type: "motivation", enabled: true, frequency: "random", startsAt: "", endsAt: "" });
+    setEditing(popup ? { ...popup, startsAt: toLocalInput(popup.startsAt), endsAt: toLocalInput(popup.endsAt) } : { id: "", title: "", message: "", type: "motivation", enabled: true, frequency: "random", minimumOnline: 10, startsAt: "", endsAt: "" });
   };
   const savePopup = async () => {
     const title = String(editing?.title || "").trim();
@@ -1275,7 +1307,8 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerB
       title: title.slice(0, 100), message: message.slice(0, 1000),
       type: editing.type === "disclaimer" ? "disclaimer" : "motivation",
       enabled: editing.enabled === true,
-      frequency: "random",
+      frequency: editing.type === "disclaimer" ? "registration" : (editing.frequency || "random"),
+      minimumOnline: editing.frequency === "busy" ? Math.max(2, Math.min(1000000, Number(editing.minimumOnline) || 10)) : 0,
       startsAt: editing.startsAt ? new Date(editing.startsAt).getTime() : 0,
       endsAt: editing.endsAt ? new Date(editing.endsAt).getTime() : 0,
       updatedAt: Date.now(),
@@ -1314,15 +1347,18 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerB
         {editing && <div style={{ display: "grid", gap: 10, maxWidth: 620, padding: 16, marginTop: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
           <Field label="Title"><TextInput value={editing.title} maxLength={100} onChange={(e) => setEditing({ ...editing, title: e.target.value })} /></Field>
           <Field label="Message"><textarea value={editing.message} maxLength={1000} rows={4} onChange={(e) => setEditing({ ...editing, message: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} /></Field>
-          <Field label="Type"><Select value={editing.type} onChange={(e) => setEditing({ ...editing, type: e.target.value })}><option value="motivation">Popup</option><option value="disclaimer">Safety disclaimer</option></Select></Field>
-          <Field label="Show frequency"><Select value="random" disabled><option value="random">Randomly every 15–30 minutes</option></Select></Field>
+          <Field label="Type"><Select value={editing.type} onChange={(e) => { const type = e.target.value; setEditing({ ...editing, type, frequency: type === "disclaimer" ? "registration" : (editing.frequency === "registration" ? "random" : editing.frequency) }); }}><option value="motivation">Popup</option><option value="disclaimer">Safety disclaimer</option></Select></Field>
+          {editing.type === "disclaimer" ? <Field label="Show frequency"><div style={{ padding: 10, border: "1px solid var(--border)", color: "var(--text-muted)", fontSize: 13 }}>Shown automatically before a player sends a tournament registration request.</div></Field> : <>
+            <Field label="Show frequency"><Select value={editing.frequency || "random"} onChange={(e) => setEditing({ ...editing, frequency: e.target.value })}><option value="random">Casual — randomly every 15–30 minutes</option><option value="hourly">Every hour</option><option value="session">Once per visit</option><option value="busy">Only during high traffic</option></Select></Field>
+            {editing.frequency === "busy" && <><Field label="High traffic means at least this many players online"><TextInput type="number" min="2" max="1000000" value={editing.minimumOnline || 10} onChange={(e) => setEditing({ ...editing, minimumOnline: e.target.value })} /></Field><div style={{ color: "var(--text-dim)", fontSize: 11 }}>High-traffic timing needs Realtime Database and the matching Firebase Functions deployed.</div></>}
+          </>}
           <Field label="Start showing (optional)"><TextInput type="datetime-local" value={editing.startsAt || ""} onChange={(e) => setEditing({ ...editing, startsAt: e.target.value })} /></Field>
           <Field label="Stop showing (optional)"><TextInput type="datetime-local" value={editing.endsAt || ""} onChange={(e) => setEditing({ ...editing, endsAt: e.target.value })} /></Field>
           <label style={{ display: "flex", gap: 8, alignItems: "center" }}><input type="checkbox" checked={editing.enabled} onChange={(e) => setEditing({ ...editing, enabled: e.target.checked })} /> Enabled</label>
           {popupError && <div role="alert" style={{ color: "var(--danger)" }}>{popupError}</div>}
           <div style={{ display: "flex", gap: 8 }}><Button onClick={savePopup}>Save popup</Button><Button variant="ghost" onClick={() => setEditing(null)}>Cancel</Button></div>
         </div>}
-        <div style={{ display: "grid", gap: 10, marginTop: 14 }}>{popups.map((popup) => <article key={popup.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{popup.enabled ? "Enabled" : "Disabled"} · {popup.type === "motivation" ? "Popup" : "Safety disclaimer"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "5px 0" }}>{popup.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{popup.message}</p><div style={{ display: "flex", gap: 8 }}><Button variant="ghost" onClick={() => openEditor(popup)}>Edit</Button><Button variant="danger" onClick={() => onDeletePopup(popup.id)}>Delete</Button></div></article>)}</div>
+        <div style={{ display: "grid", gap: 10, marginTop: 14 }}>{popups.map((popup) => <article key={popup.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{popup.enabled ? "Enabled" : "Disabled"} · {popup.type === "motivation" ? "Popup" : "Safety disclaimer"} · {popup.type === "disclaimer" ? "Before registration" : popup.frequency === "hourly" ? "Every hour" : popup.frequency === "session" ? "Once per visit" : popup.frequency === "busy" ? `${popup.minimumOnline || 10}+ online` : "Every 15–30 minutes"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "5px 0" }}>{popup.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{popup.message}</p><div style={{ display: "flex", gap: 8 }}><Button variant="ghost" onClick={() => openEditor(popup)}>Edit</Button><Button variant="danger" onClick={() => onDeletePopup(popup.id)}>Delete</Button></div></article>)}</div>
       </section>}
       {tab === "support access" && isOwner && <section style={{ maxWidth: 680 }}>
         <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Support can review reports. Add only trusted people. For now, copy their Firebase Authentication UID from Firebase Console → Authentication → Users.</p>
@@ -1335,7 +1371,7 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerB
   );
 }
 
-function HistoricalArchive({ entries, isModerator, user, submissions, onSubmitRequest, onImport }) {
+function HistoricalArchive({ entries, isModerator, user, submissions, onSubmitRequest, onImport, onSignIn }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState(null);
@@ -1362,6 +1398,7 @@ function HistoricalArchive({ entries, isModerator, user, submissions, onSubmitRe
       <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 8px" }}>Past results archive</h1>
       <div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 18 }}>Browse past events, winners, runners-up and MVPs. To add records, select a CSV with columns tournament, game, eventDate, winner, runnerUp, mvp and source.</div>
       {user && <ArchiveRequestForm user={user} submissions={submissions} onSubmit={onSubmitRequest} />}
+      {!user && <section style={{ padding: 14, marginBottom: 18, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 9 }}>Sign in to suggest historical tournament records.</div><Button onClick={onSignIn}>Sign in to suggest a record</Button></section>}
       {isModerator && <Field label="Import CSV (up to 200 rows)">
         <input type="file" accept=".csv,text/csv" onChange={async (event) => {
           setError(""); setMessage("");
@@ -1413,7 +1450,7 @@ function LoadingScreen({ label }) {
   return <div role="status" aria-live="polite" style={{ minHeight: "60vh", display: "grid", placeItems: "center", background: "var(--page-bg-solid, #101820)", color: "var(--page-text, #EDF1F4)", fontFamily: "'Inter',sans-serif" }}><div style={{ textAlign: "center" }}><div className="grind-loader" aria-hidden="true"><span>G</span></div><div style={{ marginTop: 16 }}>{label}…</div><style>{`.grind-loader{width:68px;height:68px;margin:auto;border:2px solid var(--border,#314);border-top-color:var(--accent,#08f);border-right-color:var(--accent-secondary,#0dc);border-radius:50%;display:grid;place-items:center;animation:grind-spin 1.2s linear infinite}.grind-loader span{font-family:'Bebas Neue',sans-serif;font-size:30px;animation:grind-spin 1.2s linear infinite reverse}@keyframes grind-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.grind-loader,.grind-loader span{animation:none}}`}</style></div></div>;
 }
 
-function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDelete }) {
+function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDelete, onSignIn }) {
   const [title, setTitle] = useState("");
   const [game, setGame] = useState("");
   const [content, setContent] = useState("");
@@ -1421,7 +1458,7 @@ function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDele
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState("");
   const [draft, setDraft] = useState({ title: "", game: "", content: "", source: "" });
-  const visible = posts.filter((post) => post.status === "published" || post.authorId === user.uid || (isModerator && post.status === "pending"));
+  const visible = posts.filter((post) => post.status === "published" || (user && post.authorId === user.uid) || (isModerator && post.status === "pending"));
   const submit = async () => {
     if (!title.trim() || !game.trim() || !content.trim()) { setError("Add a title, game, and post text."); return; }
     if (source.trim() && !/^https:\/\//i.test(source.trim())) { setError("Use a secure https source link."); return; }
@@ -1435,7 +1472,7 @@ function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDele
     try { await onEdit(post, { title: draft.title.trim(), game: draft.game.trim(), content: draft.content.trim(), source: draft.source.trim() }); setEditingId(""); setError(""); }
     catch { setError("Could not save this post. Please try again."); }
   };
-  return <div style={{ paddingTop: 32 }}><Eyebrow>Community stories</Eyebrow><h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42 }}>Esports blog</h1><p style={{ color: "var(--text-muted)" }}>Send a tournament recap or esports story to the GrindInfo owner for review before it appears publicly.</p><section style={{ display: "grid", gap: 10, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)", maxWidth: 680 }}><Field label="Post title"><TextInput value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} /></Field><Field label="Game"><TextInput value={game} maxLength={60} onChange={(e) => setGame(e.target.value)} placeholder="e.g. Valorant" /></Field><Field label="Story or tournament update"><textarea value={content} maxLength={6000} onChange={(e) => setContent(e.target.value)} rows={6} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput value={source} maxLength={500} onChange={(e) => setSource(e.target.value)} placeholder="https://" /></Field>{error && <span role="alert" style={{ color: "var(--danger)" }}>{error}</span>}<Button onClick={submit}>Request publication</Button></section><div style={{ display: "grid", gap: 12, marginTop: 20 }}>{visible.map((post) => <article key={post.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}</Eyebrow>{editingId === post.id ? <div style={{ display: "grid", gap: 8, marginTop: 8 }}><Field label="Post title"><TextInput maxLength={120} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /></Field><Field label="Game"><TextInput maxLength={60} value={draft.game} onChange={(e) => setDraft({ ...draft, game: e.target.value })} /></Field><Field label="Story"><textarea maxLength={6000} rows={6} value={draft.content} onChange={(e) => setDraft({ ...draft, content: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput maxLength={500} value={draft.source} onChange={(e) => setDraft({ ...draft, source: e.target.value })} /></Field><div style={{ display: "flex", gap: 8 }}><Button onClick={() => saveEdit(post)}>Save changes</Button><Button variant="ghost" onClick={() => setEditingId("")}>Cancel</Button></div></div> : <><h2 style={{ fontFamily: "'Bebas Neue',sans-serif" }}>{post.title}</h2><div style={{ color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{post.content}</div><div style={{ marginTop: 8, fontSize: 12 }}>By {post.authorName || "Player"}</div>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{isModerator && post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button onClick={() => onReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onReview(post.id, "rejected")}>Decline</Button></div>}{(post.authorId === user.uid || isModerator) && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button variant="ghost" onClick={() => startEdit(post)}>Edit post</Button><Button variant="danger" onClick={() => { if (window.confirm("Delete this blog post? This cannot be undone.")) onDelete(post); }}>Delete post</Button></div>}{post.authorId === user.uid && post.status === "published" && <small style={{ display: "block", marginTop: 8, color: "var(--text-muted)" }}>Saving an edit sends the post back for review.</small>}</>}{error && editingId === post.id && <div role="alert" style={{ color: "var(--danger)", marginTop: 8 }}>{error}</div>}</article>)}</div></div>;
+  return <div style={{ paddingTop: 32 }}><Eyebrow>Community stories</Eyebrow><h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42 }}>Esports blog</h1><p style={{ color: "var(--text-muted)" }}>Read community stories, tournament recaps, and esports updates.</p>{user ? <section style={{ display: "grid", gap: 10, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)", maxWidth: 680 }}><p style={{ color: "var(--text-muted)", fontSize: 13, margin: 0 }}>Send a tournament recap or esports story to the GrindInfo owner for review.</p><Field label="Post title"><TextInput value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} /></Field><Field label="Game"><TextInput value={game} maxLength={60} onChange={(e) => setGame(e.target.value)} placeholder="e.g. Valorant" /></Field><Field label="Story or tournament update"><textarea value={content} maxLength={6000} onChange={(e) => setContent(e.target.value)} rows={6} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput value={source} maxLength={500} onChange={(e) => setSource(e.target.value)} placeholder="https://" /></Field>{error && <span role="alert" style={{ color: "var(--danger)" }}>{error}</span>}<Button onClick={submit}>Request publication</Button></section> : <section style={{ maxWidth: 680, padding: 16, marginTop: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 10 }}>Sign in to request that a blog post be published.</div><Button onClick={onSignIn}>Sign in to request a post</Button></section>}<div style={{ display: "grid", gap: 12, marginTop: 20 }}>{visible.map((post) => <article key={post.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}</Eyebrow>{editingId === post.id ? <div style={{ display: "grid", gap: 8, marginTop: 8 }}><Field label="Post title"><TextInput maxLength={120} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /></Field><Field label="Game"><TextInput maxLength={60} value={draft.game} onChange={(e) => setDraft({ ...draft, game: e.target.value })} /></Field><Field label="Story"><textarea maxLength={6000} rows={6} value={draft.content} onChange={(e) => setDraft({ ...draft, content: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput maxLength={500} value={draft.source} onChange={(e) => setDraft({ ...draft, source: e.target.value })} /></Field><div style={{ display: "flex", gap: 8 }}><Button onClick={() => saveEdit(post)}>Save changes</Button><Button variant="ghost" onClick={() => setEditingId("")}>Cancel</Button></div></div> : <><h2 style={{ fontFamily: "'Bebas Neue',sans-serif" }}>{post.title}</h2><div style={{ color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{post.content}</div><div style={{ marginTop: 8, fontSize: 12 }}>By {post.authorName || "Player"}</div>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{isModerator && post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button onClick={() => onReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onReview(post.id, "rejected")}>Decline</Button></div>}{(user && post.authorId === user.uid || isModerator) && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button variant="ghost" onClick={() => startEdit(post)}>Edit post</Button><Button variant="danger" onClick={() => { if (window.confirm("Delete this blog post? This cannot be undone.")) onDelete(post); }}>Delete post</Button></div>}{user && post.authorId === user.uid && post.status === "published" && <small style={{ display: "block", marginTop: 8, color: "var(--text-muted)" }}>Saving an edit sends the post back for review.</small>}</>}{error && editingId === post.id && <div role="alert" style={{ color: "var(--danger)", marginTop: 8 }}>{error}</div>}</article>)}</div></div>;
 }
 
 
@@ -1459,6 +1496,7 @@ export default function App() {
   const [isModerator, setIsModerator] = useState(false);
   const [siteRole, setSiteRole] = useState(null);
   const [friendRequests, setFriendRequests] = useState([]);
+  const [tournamentInvites, setTournamentInvites] = useState([]);
   const [activeChatFriend, setActiveChatFriend] = useState(null);
   const [archiveEntries, setArchiveEntries] = useState([]);
   const [archiveSubmissions, setArchiveSubmissions] = useState([]);
@@ -1471,16 +1509,29 @@ export default function App() {
   const [siteStaff, setSiteStaff] = useState([]);
   const [currentPopup, setCurrentPopup] = useState(null);
   const [popupScanTick, setPopupScanTick] = useState(0);
-  const popupPauseStarted = useRef(null);
+  const [onlinePlayerCount, setOnlinePlayerCount] = useState(null);
 
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [guestMode, setGuestMode] = useState(false);
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
+      const returningGuest = !u && sessionStorage.getItem("grindinfo-guest-mode") === "true";
+      setGuestMode(returningGuest);
+      setAuthDialogOpen(!u && !returningGuest);
+      if (!u) {
+        setSection("tournaments");
+        setView("list");
+        setSelectedId(null);
+        setShowNewTournament(false);
+        setReportTarget(null);
+      }
+      if (u) sessionStorage.removeItem("grindinfo-guest-mode");
       setAuthLoading(false);
     });
     return () => unsub();
@@ -1524,7 +1575,15 @@ export default function App() {
   }, []);
 
   const handleSignOut = useCallback(() => {
+    sessionStorage.removeItem("grindinfo-guest-mode");
     signOut(auth);
+  }, []);
+
+  const browseAsGuest = useCallback(() => {
+    sessionStorage.setItem("grindinfo-guest-mode", "true");
+    setGuestMode(true);
+    setAuthDialogOpen(false);
+    setAuthError("");
   }, []);
 
   // ---- player profiles ----
@@ -1588,6 +1647,11 @@ export default function App() {
   }, [user]);
 
   const acceptedFriendUids = [...new Set(friendRequests.filter((item) => item.status === "accepted").map((item) => item.requesterId === user?.uid ? item.recipientId : item.requesterId))];
+  const acceptedFriends = [...new Map(friendRequests.filter((item) => item.status === "accepted").map((item) => {
+    const outgoing = item.requesterId === user?.uid;
+    const uid = outgoing ? item.recipientId : item.requesterId;
+    return [uid, { uid, name: outgoing ? (item.recipientName || "Player") : (item.requesterName || "Player") }];
+  })).values()];
   const acceptedFriendKey = acceptedFriendUids.slice().sort().join("|");
   useEffect(() => {
     if (!user || !realtimeDb || !acceptedFriendUids.length) return;
@@ -1608,13 +1672,30 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    if (!user) { setBlogPosts([]); return undefined; }
+    if (!user) { setTournamentInvites([]); return undefined; }
+    let incoming = [], outgoing = [];
+    const publish = () => setTournamentInvites([...new Map([...incoming, ...outgoing].map((item) => [item.id, item])).values()]);
+    const stops = [
+      onSnapshot(query(TOURNAMENT_INVITES_COLLECTION, where("inviteeUid", "==", user.uid), where("status", "==", "pending")), (snapshot) => { incoming = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); publish(); }, () => { incoming = []; publish(); }),
+      onSnapshot(query(TOURNAMENT_INVITES_COLLECTION, where("invitedBy", "==", user.uid)), (snapshot) => { outgoing = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); publish(); }, () => { outgoing = []; publish(); }),
+    ];
+    return () => stops.forEach((stop) => stop());
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || !myProfile || myProfile.playerTag) return undefined;
+    let active = true;
+    httpsCallable(getFunctions(), "getOrCreatePlayerTag")().catch(() => {
+      if (active) console.info("GrindInfo ID will be assigned when the latest Functions are deployed.");
+    });
+    return () => { active = false; };
+  }, [user?.uid, Boolean(myProfile), myProfile?.playerTag]);
+
+  useEffect(() => {
     let publicPosts = [], ownPosts = [], pendingPosts = [];
     const publish = () => setBlogPosts([...new Map([...publicPosts, ...ownPosts, ...pendingPosts].map((post) => [post.id, post])).values()]);
-    const stops = [
-      onSnapshot(query(BLOG_POSTS_COLLECTION, where("status", "==", "published")), (snap) => { publicPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() })); publish(); }, () => { publicPosts = []; publish(); }),
-      onSnapshot(query(BLOG_POSTS_COLLECTION, where("authorId", "==", user.uid)), (snap) => { ownPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() })); publish(); }, () => { ownPosts = []; publish(); }),
-    ];
+    const stops = [onSnapshot(query(BLOG_POSTS_COLLECTION, where("status", "==", "published")), (snap) => { publicPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() })); publish(); }, () => { publicPosts = []; publish(); })];
+    if (user) stops.push(onSnapshot(query(BLOG_POSTS_COLLECTION, where("authorId", "==", user.uid)), (snap) => { ownPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() })); publish(); }, () => { ownPosts = []; publish(); }));
     if (isModerator || siteRole === "owner" || siteRole === "support") stops.push(onSnapshot(query(BLOG_POSTS_COLLECTION, where("status", "==", "pending")), (snap) => { pendingPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() })); publish(); }, () => { pendingPosts = []; publish(); }));
     return () => stops.forEach((stop) => stop());
   }, [user, isModerator, siteRole]);
@@ -1638,6 +1719,23 @@ export default function App() {
   }, [siteRole]);
 
   useEffect(() => {
+    const hasBusyPopup = activePopups.some((popup) => popup.enabled === true && popup.type === "motivation" && popup.frequency === "busy");
+    if (!user || !hasBusyPopup) { setOnlinePlayerCount(null); return undefined; }
+    let active = true;
+    const refreshCount = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const result = await httpsCallable(getFunctions(), "getOnlinePlayerCount")();
+        if (active) setOnlinePlayerCount(Number(result.data?.count) || 0);
+      } catch { if (active) setOnlinePlayerCount(null); }
+    };
+    refreshCount();
+    const timer = window.setInterval(refreshCount, 60 * 1000);
+    document.addEventListener("visibilitychange", refreshCount);
+    return () => { active = false; window.clearInterval(timer); document.removeEventListener("visibilitychange", refreshCount); };
+  }, [user, activePopups]);
+
+  useEffect(() => {
     if (siteRole !== "owner" && siteRole !== "support") { setPrivateReports([]); return undefined; }
     return onSnapshot(REPORTS_COLLECTION, (snapshot) => {
       setPrivateReports(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
@@ -1649,9 +1747,12 @@ export default function App() {
     return onSnapshot(SITE_BANS_COLLECTION, (snapshot) => setSiteBans(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))), () => setSiteBans([]));
   }, [siteRole]);
 
-  useEffect(() => onSnapshot(query(SITE_POPUPS_COLLECTION, where("enabled", "==", true)), (snapshot) => {
-    setActivePopups(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
-  }, () => setActivePopups([])), []);
+  useEffect(() => {
+    if (!user) { setActivePopups([]); return undefined; }
+    return onSnapshot(query(SITE_POPUPS_COLLECTION, where("enabled", "==", true)), (snapshot) => {
+      setActivePopups(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
+    }, () => setActivePopups([]));
+  }, [user]);
 
   useEffect(() => {
     if (siteRole !== "owner") { setAdminPopups([]); setSiteStaff([]); return undefined; }
@@ -1662,48 +1763,52 @@ export default function App() {
 
   useEffect(() => {
     if (!user) return;
-    const nextKey = `grindinfo-popup-next:${user.uid}`;
-    const scheduleNext = () => {
-      const nextAt = Date.now() + (15 + Math.random() * 15) * 60 * 1000;
-      localStorage.setItem(nextKey, String(nextAt));
+    const getKeys = (popup) => ({
+      next: `grindinfo-popup-next:${user.uid}:${popup.id}:${popup.frequency || "random"}`,
+      session: `grindinfo-popup-session:${user.uid}:${popup.id}`,
+    });
+    const scheduleNext = (popup, now = Date.now()) => {
+      const { next } = getKeys(popup);
+      const delay = popup.frequency === "hourly" ? 60 * 60 * 1000 : (15 + Math.random() * 15) * 60 * 1000;
+      const nextAt = now + delay;
+      localStorage.setItem(next, String(nextAt));
       return nextAt;
     };
-    if (!localStorage.getItem(nextKey)) scheduleNext();
+    const candidates = activePopups.filter((popup) => popup.enabled === true && popup.type === "motivation");
+    candidates.forEach((popup) => {
+      const { next } = getKeys(popup);
+      if (!localStorage.getItem(next)) scheduleNext(popup);
+    });
     let timer;
     const scan = () => {
       window.clearTimeout(timer);
       const paused = document.visibilityState !== "visible" || showProfileModal || showNewTournament || reportTarget || joinDisclaimerOpen || currentPopup;
-      if (paused) {
-        if (popupPauseStarted.current === null) popupPauseStarted.current = Date.now();
-        return;
-      }
-      if (popupPauseStarted.current !== null) {
-        const nextAt = Number(localStorage.getItem(nextKey));
-        if (Number.isFinite(nextAt) && nextAt > 0) localStorage.setItem(nextKey, String(nextAt + (Date.now() - popupPauseStarted.current)));
-        popupPauseStarted.current = null;
-      }
+      if (paused) return;
       const now = Date.now();
-      let nextAt = Number(localStorage.getItem(nextKey));
-      if (!Number.isFinite(nextAt) || nextAt < 1) nextAt = scheduleNext();
-      if (nextAt > now) {
-        timer = window.setTimeout(scan, Math.min(nextAt - now, 2147483000));
+      const activeCandidates = candidates.filter((popup) => (!popup.startsAt || popup.startsAt <= now) && (!popup.endsAt || popup.endsAt >= now));
+      const eligible = activeCandidates.filter((popup) => {
+        if (popup.frequency === "busy" && onlinePlayerCount < Math.max(2, Number(popup.minimumOnline) || 10)) return false;
+        const { next, session } = getKeys(popup);
+        if (popup.frequency === "session" && sessionStorage.getItem(session)) return false;
+        const nextAt = Number(localStorage.getItem(next));
+        return Number.isFinite(nextAt) && nextAt <= now;
+      });
+      if (eligible.length) {
+        const popup = eligible[Math.floor(Math.random() * eligible.length)];
+        const { session } = getKeys(popup);
+        if (popup.frequency === "session") sessionStorage.setItem(session, "shown");
+        else scheduleNext(popup, now);
+        setCurrentPopup(popup);
         return;
       }
-      const candidates = activePopups.filter((popup) => popup.enabled === true && popup.type === "motivation"
-        && (!popup.startsAt || popup.startsAt <= now) && (!popup.endsAt || popup.endsAt >= now));
-      if (!candidates.length) {
-        scheduleNext();
-        timer = window.setTimeout(scan, 15 * 60 * 1000);
-        return;
-      }
-      setCurrentPopup(candidates[Math.floor(Math.random() * candidates.length)]);
-      scheduleNext();
+      const upcoming = activeCandidates.map((popup) => Number(localStorage.getItem(getKeys(popup).next))).filter((at) => Number.isFinite(at) && at > now);
+      timer = window.setTimeout(scan, Math.min(upcoming.length ? Math.min(...upcoming) - now : 60 * 1000, 2147483000));
     };
     const onVisibility = () => scan();
     document.addEventListener("visibilitychange", onVisibility);
     scan();
     return () => { window.clearTimeout(timer); document.removeEventListener("visibilitychange", onVisibility); };
-  }, [activePopups, user, showProfileModal, showNewTournament, reportTarget, joinDisclaimerOpen, currentPopup, popupScanTick]);
+  }, [activePopups, onlinePlayerCount, user, showProfileModal, showNewTournament, reportTarget, joinDisclaimerOpen, currentPopup, popupScanTick]);
 
   const skipProfile = useCallback(() => {
     if (user) localStorage.setItem(`profilePromptDismissed_${user.uid}`, "1");
@@ -1780,7 +1885,7 @@ export default function App() {
           bio: String(fields.bio || "").slice(0, 200),
           discoverable: fields.discoverable === true,
           updatedAt: Date.now(),
-        });
+        }, { merge: true });
         showToast("Profile saved");
       } catch (e) {
         showToast("Couldn't save profile — try again");
@@ -1803,6 +1908,7 @@ export default function App() {
         adminUserId: user.uid,
         adminDisplayName: safeProfileName(myProfile?.displayName, user.displayName),
         coAdminUserIds: [],
+        coAdminPlayerTags: {},
         status: t.status || "upcoming",
         isLegacyImport: false,
         createdAt: Date.now(),
@@ -1989,9 +2095,51 @@ export default function App() {
     showToast("Blog post deleted");
   };
 
-  const updateCoAdmins = async (tournamentId, ids) => {
-    try { await updateDoc(tournamentDocRef(tournamentId), { coAdminUserIds: ids, updatedAt: Date.now() }); showToast("Co-host access updated"); }
+  const updateCoAdmins = async (tournamentId, ids, tags) => {
+    try { await updateDoc(tournamentDocRef(tournamentId), { coAdminUserIds: ids, coAdminPlayerTags: tags || selected?.coAdminPlayerTags || {}, updatedAt: Date.now() }); showToast("Co-host access updated"); }
     catch (e) { showToast("Couldn't update co-host access"); }
+  };
+
+  const addCoAdminByPlayerTag = async (tournament, input) => {
+    const playerTag = String(input || "").trim().split("#").pop();
+    if (!/^\d{8}$/.test(playerTag)) throw new Error("Enter the 8-digit number from the player's GrindInfo ID.");
+    const results = await getDocs(query(PLAYERS_COLLECTION, where("playerTag", "==", playerTag), where("discoverable", "==", true)));
+    const target = results.docs[0];
+    if (!target) throw new Error("No visible player has that GrindInfo ID. Ask them to enable player discovery.");
+    if (target.id === user.uid) throw new Error("You are already the tournament host.");
+    const ids = tournament.coAdminUserIds || [];
+    if (ids.includes(target.id)) throw new Error("That player is already a co-host.");
+    const tags = { ...(tournament.coAdminPlayerTags || {}), [target.id]: playerTag };
+    await updateDoc(tournamentDocRef(tournament.id), { coAdminUserIds: [...ids, target.id], coAdminPlayerTags: tags, updatedAt: Date.now() });
+    showToast(`Co-host #${playerTag} added`);
+  };
+
+  const inviteFriendToTournament = async (tournament, friend) => {
+    if (!user || !friend?.uid || !tournament?.id) return;
+    const inviteRef = doc(TOURNAMENT_INVITES_COLLECTION, `${tournament.id}_${friend.uid}`);
+    try {
+      await setDoc(inviteRef, {
+        tournamentId: tournament.id,
+        tournamentName: String(tournament.name || "Tournament").slice(0, 120),
+        game: String(tournament.game || "").slice(0, 60),
+        invitedBy: user.uid,
+        inviterName: safeProfileName(myProfile?.displayName, user.displayName),
+        inviteeUid: friend.uid,
+        inviteeName: safeProfileName(friend.name),
+        status: "pending",
+        createdAt: Date.now(),
+      });
+      showToast(`Invitation sent to ${safeProfileName(friend.name)}`);
+    } catch (error) {
+      showToast(error?.code === "permission-denied" ? "Invite blocked. Confirm the latest Firestore rules are published and you are friends." : "An invite is already waiting or could not be sent.");
+    }
+  };
+
+  const decideTournamentInvite = async (inviteId, status) => {
+    try {
+      await updateDoc(doc(TOURNAMENT_INVITES_COLLECTION, inviteId), { status, respondedAt: Date.now() });
+      showToast(status === "accepted" ? "Invite accepted. Open the tournament and send your join request." : "Invite declined");
+    } catch { showToast("Couldn't update the tournament invite. Check that the Firestore rules are published."); }
   };
 
   const shareTournament = async (tournament) => {
@@ -2192,19 +2340,6 @@ export default function App() {
     );
   }
 
-  if (!user) {
-    return (
-      <div style={shellStyle}>
-        <AuthScreen
-          onGoogleSignIn={handleGoogleSignIn}
-          onEmailAuth={handleEmailAuth}
-          authError={authError}
-          authBusy={authBusy}
-        />
-      </div>
-    );
-  }
-
   if (loading) {
     return (
       <div style={shellStyle}>
@@ -2229,16 +2364,20 @@ export default function App() {
         @keyframes sl-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
       `}</style>
 
-        <Header saving={saving} user={user} onSignOut={handleSignOut} theme={theme} setTheme={setTheme} onNavigate={setSection} dashboardRole={dashboardRole} />
+        <Header saving={saving} user={user} guestMode={guestMode} onSignInClick={() => setAuthDialogOpen((open) => !open)} onSignOut={handleSignOut} theme={theme} setTheme={setTheme} onNavigate={setSection} onEditProfile={() => setShowProfileModal(true)} dashboardRole={dashboardRole} />
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "16px 20px 0" }}>
         <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--border)" }}>
-          {[
+          {(user ? [
             { id: "tournaments", label: "Tournaments" },
             { id: "players", label: "Find players" },
             { id: "archive", label: "Esports archive" },
             { id: "blog", label: "Community blog" },
-    ].map((s) => (
+          ] : [
+            { id: "tournaments", label: "Tournaments" },
+            { id: "archive", label: "Esports archive" },
+            { id: "blog", label: "Community blog" },
+          ]).map((s) => (
             <button
               key={s.id}
               onClick={() => setSection(s.id)}
@@ -2262,13 +2401,13 @@ export default function App() {
       </div>
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "0 20px 80px" }}>
-        {section === "players" && (
-          <FindPlayersPage currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid, player.displayName)} onFriendDecision={decideFriendRequest} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} onEditProfile={() => setShowProfileModal(true)} />
+        {user && section === "players" && (
+          <FindPlayersPage currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid, player.displayName)} onFriendDecision={decideFriendRequest} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} />
         )}
-        {section === "archive" && <HistoricalArchive entries={archiveEntries} isModerator={isSiteStaff || isModerator} user={user} submissions={archiveSubmissions} onSubmitRequest={submitArchiveRequest} onImport={importArchiveEntries} />}
-        {section === "blog" && <BlogPage posts={blogPosts} user={user} isModerator={isSiteStaff || isModerator} onSubmit={submitBlogPost} onReview={reviewBlogPost} onEdit={editBlogPost} onDelete={deleteBlogPost} />}
-        {section === "requests" && <FriendRequestCenter requests={friendRequests} currentUserId={user.uid} onDecision={decideFriendRequest} />}
-        {section === "dashboard" && isSiteStaff && <OwnerDashboard
+        {section === "archive" && <HistoricalArchive entries={archiveEntries} isModerator={isSiteStaff || isModerator} user={user} submissions={archiveSubmissions} onSubmitRequest={submitArchiveRequest} onImport={importArchiveEntries} onSignIn={() => setAuthDialogOpen(true)} />}
+        {section === "blog" && <BlogPage posts={blogPosts} user={user} isModerator={isSiteStaff || isModerator} onSubmit={submitBlogPost} onReview={reviewBlogPost} onEdit={editBlogPost} onDelete={deleteBlogPost} onSignIn={() => setAuthDialogOpen(true)} />}
+        {user && section === "requests" && <FriendRequestCenter requests={friendRequests} currentUserId={user.uid} onDecision={decideFriendRequest} />}
+        {user && section === "dashboard" && isSiteStaff && <OwnerDashboard
           role={siteRole || "support"}
           reports={privateReports}
           onStatusChange={updateReportStatus}
@@ -2291,15 +2430,18 @@ export default function App() {
         {section === "tournaments" && view === "list" && (
           <TournamentList
             tournaments={tournaments}
-            currentUserId={user.uid}
-            currentUserName={safeProfileName(myProfile?.displayName, user.displayName)}
+            currentUserId={user?.uid || null}
+            currentUserName={safeProfileName(myProfile?.displayName, user?.displayName)}
+            pendingInvites={user ? tournamentInvites.filter((item) => item.inviteeUid === user.uid && item.status === "pending") : []}
+            onInviteDecision={decideTournamentInvite}
             onOpen={(id) => {
               setSelectedId(id);
               setView("detail");
               const url = new URL(window.location.href); url.searchParams.set("tournament", id); window.history.replaceState({}, "", url);
               setDetailTab("teams");
             }}
-            onNew={() => setShowNewTournament(true)}
+            onNew={() => user ? setShowNewTournament(true) : setAuthDialogOpen(true)}
+            onSignIn={() => setAuthDialogOpen(true)}
           />
         )}
 
@@ -2313,9 +2455,13 @@ export default function App() {
             setTab={setDetailTab}
             isAdmin={isAdmin}
             isOwner={isOwner}
-            currentUserId={user.uid}
-            currentUserName={safeProfileName(myProfile?.displayName, user.displayName)}
+            currentUserId={user?.uid || null}
+            currentUserName={safeProfileName(myProfile?.displayName, user?.displayName)}
             registrations={selectedRegistrations}
+            friends={acceptedFriends}
+            tournamentInvites={tournamentInvites}
+            onInviteFriend={inviteFriendToTournament}
+            onAddCoAdmin={addCoAdminByPlayerTag}
             registrationDisclaimer={[...activePopups].filter((popup) => popup.type === "disclaimer" && popup.enabled === true && (!popup.startsAt || popup.startsAt <= Date.now()) && (!popup.endsAt || popup.endsAt >= Date.now())).sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0))[0]}
             onJoinDisclaimerVisibilityChange={setJoinDisclaimerOpen}
             onSaveResults={(results) => saveTournamentResults(selected.id, results)}
@@ -2324,8 +2470,9 @@ export default function App() {
             onShare={() => shareTournament(selected)}
             onRequestFriend={() => requestHostFriend(selected)}
             onRequestRegistration={(player) => requestRegistration(selected.id, player)}
+            onSignIn={() => setAuthDialogOpen(true)}
             onRegistrationDecision={(requestId, status) => decideRegistration(selected.id, requestId, status)}
-            onCoAdminsChange={(ids) => updateCoAdmins(selected.id, ids)}
+            onCoAdminsChange={(ids, tags) => updateCoAdmins(selected.id, ids, tags)}
             onReport={() => setReportTarget({ type: "tournament", id: selected.id, name: selected.name })}
             onDelete={() => deleteTournament(selected.id)}
             onAddTeam={(team) => addTeam(selected.id, team)}
@@ -2339,7 +2486,7 @@ export default function App() {
         )}
       </div>
 
-      {showNewTournament && (
+      {user && showNewTournament && (
         <NewTournamentModal onClose={() => setShowNewTournament(false)} onCreate={addTournament} />
       )}
 
@@ -2353,9 +2500,10 @@ export default function App() {
         />
       )}
 
-      {reportTarget && <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} onSubmit={submitReport} />}
-      <FriendDock requests={friendRequests} currentUserId={user.uid} onOpenChat={setActiveChatFriend} onOpenRequests={() => setSection("requests")} presenceDb={realtimeDb} onFriendOnline={notifyFriendOnline} />
-      {activeChatFriend && <FriendChat currentUser={user} friend={activeChatFriend} onClose={() => setActiveChatFriend(null)} />}
+      {user && reportTarget && <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} onSubmit={submitReport} />}
+      {user && <FriendDock requests={friendRequests} currentUserId={user.uid} onOpenChat={setActiveChatFriend} onOpenRequests={() => setSection("requests")} presenceDb={realtimeDb} onFriendOnline={notifyFriendOnline} />}
+      {user && activeChatFriend && <FriendChat currentUser={user} friend={activeChatFriend} onClose={() => setActiveChatFriend(null)} />}
+      {!user && authDialogOpen && <AuthScreen onGoogleSignIn={handleGoogleSignIn} onEmailAuth={handleEmailAuth} authError={authError} authBusy={authBusy} onBrowseAsGuest={browseAsGuest} onClose={() => setAuthDialogOpen(false)} requireChoice={!guestMode} />}
       <SitePopup popup={currentPopup} onDismiss={dismissSitePopup} />
       <Toast message={toast} />
     </div>
@@ -2369,7 +2517,7 @@ const shellStyle = {
   fontFamily: "'Inter', sans-serif",
 };
 
-function Header({ saving, user, onSignOut, theme, setTheme, onNavigate, dashboardRole }) {
+function Header({ saving, user, guestMode, onSignInClick, onSignOut, theme, setTheme, onNavigate, onEditProfile, dashboardRole }) {
   const displayName = user?.displayName || user?.email || "Player";
   const initials = safeProfileName(user?.displayName).slice(0, 1).toUpperCase();
 
@@ -2388,7 +2536,10 @@ function Header({ saving, user, onSignOut, theme, setTheme, onNavigate, dashboar
           <span aria-live="polite" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: saving ? "var(--accent)" : "var(--text-muted)", minWidth: 70, textAlign: "right" }}>
             {saving ? "SAVING…" : "SAVED"}
           </span>
-          <details style={{ position: "relative" }}>
+          {!user ? <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {guestMode && <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--text-muted)" }}>GUEST</span>}
+            <Button variant="ghost" onClick={onSignInClick}>Sign in / join</Button>
+          </div> : <details style={{ position: "relative" }}>
             <summary
               aria-label="Account menu"
               style={{ listStyle: "none", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "var(--page-text)", border: "1px solid var(--border)", background: "var(--panel-bg)", padding: "6px 9px", fontFamily: "'Inter', sans-serif", fontSize: 12 }}
@@ -2405,6 +2556,7 @@ function Header({ saving, user, onSignOut, theme, setTheme, onNavigate, dashboar
             </summary>
             <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 60, width: 250, padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)", boxShadow: "var(--panel-shadow)" }}>
               <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>{displayName}</div>
+              <Button variant="ghost" style={{ width: "100%", marginBottom: 12 }} onClick={(event) => { onEditProfile(); event.currentTarget.closest("details")?.removeAttribute("open"); }}>Edit my profile</Button>
               {dashboardRole && <Button variant="ghost" style={{ width: "100%", marginBottom: 12 }} onClick={(event) => { onNavigate("dashboard"); event.currentTarget.closest("details")?.removeAttribute("open"); }}>{dashboardRole === "owner" ? "Owner dashboard" : "Support dashboard"}</Button>}
               <Field label="Theme">
                 <Select value={theme} onChange={(event) => setTheme(event.target.value)}>
@@ -2416,13 +2568,13 @@ function Header({ saving, user, onSignOut, theme, setTheme, onNavigate, dashboar
                 Sign out
               </Button>
             </div>
-          </details>
+          </details>}
         </div>
       </div>
     </div>
   );
 }
-function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, onNew }) {
+function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, onNew, onSignIn, pendingInvites = [], onInviteDecision }) {
   const [showArchived, setShowArchived] = useState(false);
   const visibleTournaments = tournaments.filter((t) => isTournamentArchived(t) === showArchived);
   return (
@@ -2450,15 +2602,16 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
             Tournaments
           </h1>
         </div>
-        <Button onClick={onNew}>+ New tournament</Button>
+        {currentUserId && <Button onClick={onNew}>+ New tournament</Button>}
       </div>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}><Button variant={showArchived ? "ghost" : "primary"} onClick={() => setShowArchived(false)}>Active</Button><Button variant={showArchived ? "primary" : "ghost"} onClick={() => setShowArchived(true)}>Archive</Button></div>
+      {!showArchived && pendingInvites.length > 0 && <section style={{ display: "grid", gap: 8, marginBottom: 18 }}><Eyebrow>Tournament invites</Eyebrow>{pendingInvites.map((invite) => <article key={invite.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, padding: 12, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><span>{invite.inviterName || "A friend"} invited you to <strong>{invite.tournamentName}</strong> · {invite.game}</span><span style={{ display: "flex", gap: 6 }}><Button onClick={() => onOpen(invite.tournamentId)}>View tournament</Button><Button variant="ghost" onClick={() => onInviteDecision(invite.id, "accepted")}>Accept</Button><Button variant="danger" onClick={() => onInviteDecision(invite.id, "declined")}>Decline</Button></span></article>)}</section>}
       {visibleTournaments.length === 0 ? (
         <EmptyState
           title={showArchived ? "No archived tournaments" : "No active tournaments"}
-          body={showArchived ? "Completed or older tournaments will appear here with their results." : "Create your first tournament to start tracking teams, matches, and player stats."}
-          actionLabel="+ New tournament"
+          body={showArchived ? "Completed or older tournaments will appear here with their results." : currentUserId ? "Create your first tournament to start tracking teams, matches, and player stats." : "Public tournaments and their details will appear here."}
+          actionLabel={currentUserId ? "+ New tournament" : undefined}
           onAction={onNew}
         />
       ) : (
@@ -2782,6 +2935,21 @@ function TournamentResults({ results, isAdmin, onSave }) {
   );
 }
 
+function TournamentInvitePanel({ tournament, friends, invites, onInvite }) {
+  const [friendUid, setFriendUid] = useState("");
+  const selectedFriend = friends.find((friend) => friend.uid === friendUid);
+  const existing = invites.find((invite) => invite.tournamentId === tournament.id && invite.inviteeUid === friendUid);
+  if (tournament.registrationOpen === false || isTournamentArchived(tournament)) return <section style={{ marginTop: 16, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>Invite a friend</Eyebrow><div style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 7 }}>Invites are closed for this tournament.</div></section>;
+  return <section style={{ marginTop: 16, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+    <Eyebrow>Invite a friend</Eyebrow>
+    <div style={{ color: "var(--text-muted)", fontSize: 12, margin: "7px 0 10px" }}>Invite an accepted friend to view this tournament. They will still need to send a join request, with the safety disclaimer shown first.</div>
+    {friends.length === 0 ? <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Add a friend first, then you can invite them here.</div> : <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <Select aria-label="Choose friend to invite" value={friendUid} onChange={(event) => setFriendUid(event.target.value)}><option value="">Choose a friend</option>{friends.map((friend) => <option key={friend.uid} value={friend.uid}>{friend.name}{friend.playerTag ? ` · #${friend.playerTag}` : ""}</option>)}</Select>
+      <Button disabled={!selectedFriend || existing?.status === "pending" || existing?.status === "accepted"} onClick={() => selectedFriend && onInvite(selectedFriend)}>{existing?.status === "pending" ? "Invite pending" : existing?.status === "accepted" ? "Invite accepted" : existing?.status === "declined" ? "Send invite again" : "Send tournament invite"}</Button>
+    </div>}
+  </section>;
+}
+
 function TournamentDetail(props) {
   const {
     tournament,
@@ -2795,12 +2963,17 @@ function TournamentDetail(props) {
     currentUserId,
     currentUserName,
     registrations,
+    friends = [],
+    tournamentInvites = [],
+    onInviteFriend,
+    onAddCoAdmin,
     onSaveResults,
     onBack,
     onShare,
     onRequestFriend,
     onRequestRegistration,
     onRegistrationDecision,
+    onSignIn,
     onCoAdminsChange,
     onReport,
     onDelete,
@@ -2889,15 +3062,15 @@ function TournamentDetail(props) {
                 padding: "4px 10px",
               }}
             >
-              ADMIN · You manage this tournament
+              {isOwner ? "HOST · You manage this tournament" : "CO-HOST · You manage this tournament"}
             </div>
           )}
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {isAdmin && !isTournamentArchived(tournament) && <Button variant="ghost" onClick={onCloseTournament}>Close tournament</Button>}
-          <Button variant="ghost" onClick={onShare}>Share tournament</Button>
-          <Button variant="danger" onClick={onReport}>Report tournament</Button>
-          {!isOwner && <Button variant="ghost" onClick={onRequestFriend}>Request host as friend</Button>}
+          {currentUserId && <Button variant="ghost" onClick={onShare}>Share tournament</Button>}
+          {currentUserId ? <Button variant="danger" onClick={onReport}>Report tournament</Button> : <Button variant="ghost" onClick={onSignIn}>Sign in to report</Button>}
+          {currentUserId && !isOwner && <Button variant="ghost" onClick={onRequestFriend}>Request host as friend</Button>}
         {isOwner && (
           <Button
             variant="danger"
@@ -2911,8 +3084,9 @@ function TournamentDetail(props) {
         </div>
       </div>
 
-      <RegistrationPanel tournament={tournament} requests={registrations || []} currentUserId={currentUserId} currentUserName={currentUserName} isAdmin={isAdmin} onRequest={onRequestRegistration} onDecision={onRegistrationDecision} disclaimer={props.registrationDisclaimer} onDisclaimerVisibilityChange={props.onJoinDisclaimerVisibilityChange} />
-      <CoAdminPanel tournament={tournament} isOwner={isOwner} onChange={onCoAdminsChange} />
+      <RegistrationPanel tournament={tournament} requests={registrations || []} currentUserId={currentUserId} currentUserName={currentUserName} isAdmin={isAdmin} onRequest={onRequestRegistration} onDecision={onRegistrationDecision} disclaimer={props.registrationDisclaimer} onDisclaimerVisibilityChange={props.onJoinDisclaimerVisibilityChange} onSignIn={onSignIn} />
+      {currentUserId && <TournamentInvitePanel tournament={tournament} friends={friends} invites={tournamentInvites} onInvite={(friend) => onInviteFriend(tournament, friend)} />}
+      <CoAdminPanel tournament={tournament} isOwner={isOwner} onChange={(ids, tags) => onCoAdminsChange(ids, tags)} onAddByPlayerId={(playerTag) => onAddCoAdmin(tournament, playerTag)} />
       <TournamentResults results={tournament.results} isAdmin={isAdmin} onSave={onSaveResults} />
 
       <div style={{ display: "flex", gap: 4, marginTop: 28, borderBottom: "1px solid var(--border)", flexWrap: "wrap" }}>
