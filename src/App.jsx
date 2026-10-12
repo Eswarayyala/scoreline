@@ -2217,7 +2217,7 @@ export default function App() {
   };
 
   const removeFriend = async (friend) => {
-    if (!user) return;
+    if (!user || !window.confirm(`Remove ${friend.name} from your friends?`)) return;
     const relation = friendRequests.find((item) => item.status === "accepted" && [item.requesterId, item.recipientId].includes(user.uid) && [item.requesterId, item.recipientId].includes(friend.uid));
     if (!relation) return;
     try { await updateDoc(doc(FRIEND_REQUESTS_COLLECTION, relation.id), { status: "removed", reviewedAt: Date.now() }); showToast(`${friend.name} removed from friends`); }
