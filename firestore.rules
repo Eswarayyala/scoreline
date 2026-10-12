@@ -96,6 +96,97 @@ service cloud.firestore {
              && data.createdAt is int;
     }
 
+    function validBlogPost(data) {
+      return data.keys().hasOnly([
+               'title', 'game', 'content', 'source', 'authorId', 'authorName',
+               'status', 'createdAt', 'updatedAt', 'reviewedAt', 'reviewedBy'
+             ])
+             && data.keys().hasAll([
+               'title', 'game', 'content', 'source', 'authorId', 'authorName',
+               'status', 'createdAt'
+             ])
+             && data.title is string && data.title.size() > 0 && data.title.size() <= 120
+             && data.game is string && data.game.size() > 0 && data.game.size() <= 60
+             && data.content is string && data.content.size() > 0 && data.content.size() <= 6000
+             && data.source is string && data.source.size() <= 500
+             && (data.source.size() == 0 || data.source.matches('^https://.*'))
+             && data.authorId is string && data.authorId.size() > 0 && data.authorId.size() <= 128
+             && data.authorName is string && data.authorName.size() <= 40
+             && data.status in ['pending', 'published', 'rejected']
+             && data.createdAt is int
+             && (!data.keys().hasAny(['updatedAt']) || data.updatedAt is int)
+             && (!data.keys().hasAny(['reviewedAt']) || data.reviewedAt is int)
+             && (!data.keys().hasAny(['reviewedBy']) || data.reviewedBy is string);
+    }
+
+    function validArchiveSubmission(data) {
+      return data.keys().hasOnly([
+               'tournament', 'game', 'eventDate', 'winner', 'runnerUp', 'mvp',
+               'source', 'submitterId', 'submitterName', 'status', 'createdAt',
+               'reviewedAt', 'reviewedBy', 'archiveEntryId'
+             ])
+             && data.keys().hasAll([
+               'tournament', 'game', 'eventDate', 'winner', 'runnerUp', 'mvp',
+               'source', 'submitterId', 'submitterName', 'status', 'createdAt'
+             ])
+             && data.tournament is string && data.tournament.size() > 0 && data.tournament.size() <= 120
+             && data.game is string && data.game.size() > 0 && data.game.size() <= 60
+             && data.eventDate is string && data.eventDate.size() > 0 && data.eventDate.size() <= 40
+             && data.winner is string && data.winner.size() > 0 && data.winner.size() <= 100
+             && data.runnerUp is string && data.runnerUp.size() <= 100
+             && data.mvp is string && data.mvp.size() <= 100
+             && data.source is string && data.source.size() <= 500
+             && (data.source.size() == 0 || data.source.matches('^https://.*'))
+             && data.submitterId is string && data.submitterId.size() > 0 && data.submitterId.size() <= 128
+             && data.submitterName is string && data.submitterName.size() <= 40
+             && data.status in ['pending', 'approved', 'rejected']
+             && data.createdAt is int
+             && (!data.keys().hasAny(['reviewedAt']) || data.reviewedAt is int)
+             && (!data.keys().hasAny(['reviewedBy']) || data.reviewedBy is string)
+             && (!data.keys().hasAny(['archiveEntryId']) || (data.archiveEntryId is string && data.archiveEntryId.size() <= 128));
+    }
+
+    function validArchiveEntry(data) {
+      return data.keys().hasOnly([
+               'tournament', 'game', 'eventDate', 'winner', 'runnerUp', 'mvp',
+               'source', 'createdAt', 'createdBy', 'submissionId', 'blogPostId'
+             ])
+             && data.keys().hasAll([
+               'tournament', 'game', 'eventDate', 'winner', 'runnerUp', 'mvp',
+               'source', 'createdAt', 'createdBy'
+             ])
+             && data.tournament is string && data.tournament.size() > 0 && data.tournament.size() <= 120
+             && data.game is string && data.game.size() > 0 && data.game.size() <= 60
+             && data.eventDate is string && data.eventDate.size() > 0 && data.eventDate.size() <= 40
+             && data.winner is string && data.winner.size() > 0 && data.winner.size() <= 100
+             && data.runnerUp is string && data.runnerUp.size() <= 100
+             && data.mvp is string && data.mvp.size() <= 100
+             && data.source is string && data.source.size() <= 500
+             && (data.source.size() == 0 || data.source.matches('^https://.*'))
+             && data.createdAt is int
+             && data.createdBy == request.auth.uid
+             && (!data.keys().hasAny(['submissionId']) || (data.submissionId is string && data.submissionId.size() <= 128))
+             && (!data.keys().hasAny(['blogPostId']) || (data.blogPostId is string && data.blogPostId.size() <= 128));
+    }
+
+    function validStaffAction(data) {
+      return data.keys().hasOnly(['action', 'targetType', 'targetId', 'targetLabel', 'actorUid', 'actorName', 'summary', 'createdAt'])
+             && data.keys().hasAll(['action', 'targetType', 'targetId', 'targetLabel', 'actorUid', 'actorName', 'summary', 'createdAt'])
+             && data.action in [
+               'blog_published', 'blog_declined', 'blog_edited', 'blog_deleted',
+               'archive_imported', 'archive_request_approved', 'archive_request_rejected',
+               'blog_added_to_archive', 'report_reviewed', 'popup_saved', 'popup_deleted',
+               'support_granted', 'support_revoked'
+             ]
+             && data.targetType in ['blog', 'archive', 'archiveSubmission', 'archiveEntry', 'report', 'popup', 'support']
+             && data.targetId is string && data.targetId.size() > 0 && data.targetId.size() <= 128
+             && data.targetLabel is string && data.targetLabel.size() <= 120
+             && data.actorUid == request.auth.uid
+             && data.actorName is string && data.actorName.size() <= 40
+             && data.summary is string && data.summary.size() > 0 && data.summary.size() <= 240
+             && data.createdAt is int;
+    }
+
     function validTournament(data, strictKeys) {
       return (!strictKeys || data.keys().hasOnly([
                'name', 'game', 'format', 'startDate', 'endDate', 'artwork',
@@ -272,29 +363,63 @@ service cloud.firestore {
                            || resource.data.authorId == request.auth.uid
                            || isSiteStaff() || isModerator());
       allow create: if request.auth != null
-                    && request.resource.data.keys().hasOnly(['title', 'game', 'content', 'source', 'authorId', 'authorName', 'status', 'createdAt'])
                     && request.resource.data.authorId == request.auth.uid
-                    && request.resource.data.authorName is string
-                    && request.resource.data.authorName.size() <= 40
-                    && request.resource.data.title is string
-                    && request.resource.data.title.size() > 0
-                    && request.resource.data.title.size() <= 120
-                    && request.resource.data.game is string
-                    && request.resource.data.game.size() > 0
-                    && request.resource.data.game.size() <= 60
-                    && request.resource.data.content is string
-                    && request.resource.data.content.size() > 0
-                    && request.resource.data.content.size() <= 6000
-                    && request.resource.data.source is string
-                    && request.resource.data.source.size() <= 500
                     && request.resource.data.status == 'pending'
-                    && request.resource.data.createdAt is int;
-      allow update: if (isSiteStaff() || isModerator())
-                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy'])
-                    && request.resource.data.status in ['published', 'rejected']
+                    && validBlogPost(request.resource.data);
+      allow update: if request.auth != null
+                    && validBlogPost(request.resource.data)
+                    && request.resource.data.authorId == resource.data.authorId
+                    && request.resource.data.authorName == resource.data.authorName
+                    && request.resource.data.createdAt == resource.data.createdAt
+                    && (
+                      (request.auth.uid == resource.data.authorId
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                            'title', 'game', 'content', 'source', 'status', 'updatedAt', 'reviewedAt', 'reviewedBy'
+                          ])
+                       && request.resource.data.status == 'pending')
+                      ||
+                      ((isSiteStaff() || isModerator())
+                       && request.resource.data.status == 'pending'
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                            'title', 'game', 'content', 'source', 'status', 'updatedAt', 'reviewedAt', 'reviewedBy'
+                          ]))
+                      ||
+                      ((isSiteStaff() || isModerator())
+                       && request.resource.data.status in ['published', 'rejected']
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy'])
+                       && request.resource.data.reviewedAt is int
+                       && request.resource.data.reviewedBy == request.auth.uid)
+                    );
+      allow delete: if request.auth != null
+                    && (resource.data.authorId == request.auth.uid || isSiteStaff() || isModerator());
+    }
+
+    match /archiveSubmissions/{submissionId} {
+      allow get, list: if isSiteStaff()
+                       || (request.auth != null && resource.data.submitterId == request.auth.uid);
+      allow create: if request.auth != null
+                    && request.resource.data.submitterId == request.auth.uid
+                    && request.resource.data.status == 'pending'
+                    && validArchiveSubmission(request.resource.data);
+      allow update: if isSiteStaff()
+                    && resource.data.status == 'pending'
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy', 'archiveEntryId'])
+                    && validArchiveSubmission(request.resource.data)
+                    && request.resource.data.status in ['approved', 'rejected']
+                    && request.resource.data.reviewedBy == request.auth.uid
                     && request.resource.data.reviewedAt is int
-                    && request.resource.data.reviewedBy == request.auth.uid;
+                    && (request.resource.data.status == 'rejected'
+                        || (request.resource.data.archiveEntryId is string
+                            && getAfter(/databases/$(database)/documents/esportsArchive/$(request.resource.data.archiveEntryId)).data.submissionId == submissionId));
       allow delete: if false;
+    }
+
+    match /staffActions/{actionId} {
+      allow get, list: if isSiteOwner();
+      allow create: if request.auth != null
+                    && (isSiteStaff() || isModerator())
+                    && validStaffAction(request.resource.data);
+      allow update, delete: if false;
     }
 
     match /reports/{reportId} {
@@ -335,27 +460,8 @@ service cloud.firestore {
 
     match /esportsArchive/{entryId} {
       allow read: if true;
-      allow create: if isModerator()
-                    && request.resource.data.keys().hasOnly([
-                         'tournament', 'game', 'eventDate', 'winner', 'runnerUp',
-                         'mvp', 'source', 'createdAt', 'createdBy'
-                       ])
-                    && request.resource.data.tournament is string
-                    && request.resource.data.tournament.size() <= 120
-                    && request.resource.data.game is string
-                    && request.resource.data.game.size() <= 60
-                    && request.resource.data.eventDate is string
-                    && request.resource.data.eventDate.size() <= 40
-                    && request.resource.data.winner is string
-                    && request.resource.data.winner.size() <= 100
-                    && request.resource.data.runnerUp is string
-                    && request.resource.data.runnerUp.size() <= 100
-                    && request.resource.data.mvp is string
-                    && request.resource.data.mvp.size() <= 100
-                    && request.resource.data.source is string
-                    && request.resource.data.source.size() <= 500
-                    && request.resource.data.createdAt is int
-                    && request.resource.data.createdBy == request.auth.uid;
+      allow create: if (isSiteStaff() || isModerator())
+                    && validArchiveEntry(request.resource.data);
       allow update, delete: if isModerator();
     }
 
