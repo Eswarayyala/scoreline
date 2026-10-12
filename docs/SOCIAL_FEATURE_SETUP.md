@@ -4,6 +4,9 @@ This update keeps friend chat and account-ban records protected by Firestore rul
 
 ## What works after the website and Firestore rules update
 
+- Visitors can browse tournament listings/details, published community blogs, and the esports archive without signing in. The first visit shows a compact sign-in choice; choosing **Browse as guest** opens the site, and the **Sign in / join** button in the header reopens the floating login panel at any time. Guest mode lasts for the current browser tab session.
+- Guest users cannot create tournaments, request tournament registration, send friend requests or messages, report players/tournaments, request blog publication, or submit archive records. Those controls either remain hidden or open the sign-in panel. Firestore rules independently reject guest writes and keep player/friend/report/submission records private.
+- Firestore rules grant access per document, not per field. Tournament documents currently include host/co-host Firebase UIDs and blog documents include `authorId`; these fields are technically visible to guests when their containing public document is read. The app does not display them, but fully hiding them requires moving those IDs into separate private documents.
 - A tournament safety disclaimer appears before a join request is written. Cancel leaves the registration unchanged. The owner can set the wording in the dashboard's Safety disclaimer popup; a default safety message is used if no enabled disclaimer exists.
 - Owner-created general popups appear randomly every 15 to 30 minutes while the tab is visible. They pause while another dialog is open or the tab is hidden. Existing popup documents remain readable.
 - Accepted friends appear in the floating Friends list and can send private text messages. Only the two accepted friends can read the conversation or send messages; message edits and deletes are disabled.
@@ -33,10 +36,10 @@ The same Functions deployment assigns player numbers, tracks the aggregate onlin
 
 ## Manual edits later
 
+- Change guest navigation and the sign-in panel placement in `src/App.jsx` near `AuthScreen`, `Header`, and the section navigation; update which public collections guests can read in `firestore.rules` under `tournaments`, `blogPosts`, and `esportsArchive`.
 - Edit the default join warning in `src/App.jsx` inside `RegistrationPanel`.
 - Edit popup interval options and timing in `src/App.jsx` inside `OwnerDashboard` and the popup scheduler effect. The currently available choices are 15–30 minutes, hourly, once per visit, and a high-traffic online-count threshold.
 - Profile editing is in the **account menu**. Friend requests are linked from the floating Friends panel.
 - Change active popup wording and dates in **Owner dashboard → Popups**.
 - Change how bans are checked or audited in `functions/index.js`; never move owner verification into client-only code.
 - Change Realtime Database presence access in `database.rules.json` and its trusted friend-link sync in `functions/index.js`.
-
