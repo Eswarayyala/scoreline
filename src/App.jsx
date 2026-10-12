@@ -1095,13 +1095,14 @@ function FriendRequestCenter({ requests, currentUserId, onDecision }) {
   );
 }
 
-function FriendDock({ requests, currentUserId, onOpenChat, onOpenRequests, presenceDb, onFriendOnline }) {
+function FriendDock({ requests, currentUserId, onOpenChat, onOpenRequests, presenceDb, onFriendOnline, blockedUsers = [], onRemoveFriend, onBlockFriend, onUnblockFriend }) {
   const [expanded, setExpanded] = useState(false);
   const [presence, setPresence] = useState({});
+  const blockedIds = new Set(blockedUsers.map((item) => item.blockerUid === currentUserId ? item.blockedUid : item.blockerUid));
   const friends = requests.filter((item) => item.status === "accepted").map((item) => ({
     uid: item.requesterId === currentUserId ? item.recipientId : item.requesterId,
     name: item.requesterId === currentUserId ? (item.recipientName || "Player") : (item.requesterName || "Player"),
-  })).filter((item, index, all) => all.findIndex((candidate) => candidate.uid === item.uid) === index);
+  })).filter((item, index, all) => !blockedIds.has(item.uid) && all.findIndex((candidate) => candidate.uid === item.uid) === index);
   const friendKey = friends.map((item) => item.uid).sort().join("|");
   useEffect(() => {
     setPresence({});
@@ -1121,13 +1122,15 @@ function FriendDock({ requests, currentUserId, onOpenChat, onOpenRequests, prese
     });
     return () => { active = false; stops.forEach((stop) => stop()); };
   }, [presenceDb, currentUserId, friendKey, onFriendOnline]);
-  return <aside style={{ position: "fixed", right: 14, bottom: 14, zIndex: 55, width: expanded ? "min(300px, calc(100vw - 28px))" : "auto", background: "var(--panel-bg)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)" }}>
-    <button type="button" onClick={() => setExpanded((open) => !open)} aria-expanded={expanded} style={{ width: "100%", padding: "12px 14px", border: 0, background: "transparent", color: "var(--page-text)", textAlign: "left", cursor: "pointer", fontWeight: 700 }}>
-      Friends <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>({friends.length})</span> <span style={{ float: "right" }}>{expanded ? "−" : "+"}</span>
-    </button>
-    {expanded && <div style={{ maxHeight: 320, overflowY: "auto", borderTop: "1px solid var(--border)", padding: 8 }}>
+  return <aside style={{ position: "fixed", right: 14, bottom: 14, zIndex: 55, width: expanded ? "min(330px, calc(100vw - 28px))" : "auto", background: "var(--panel-bg)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)" }}>
+    <button type="button" onClick={() => setExpanded((open) => !open)} aria-expanded={expanded} style={{ width: "100%", padding: "12px 14px", border: 0, background: "transparent", color: "var(--page-text)", textAlign: "left", cursor: "pointer", fontWeight: 700 }}>Friends <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>({friends.length})</span> <span style={{ float: "right" }}>{expanded ? "−" : "+"}</span></button>
+    {expanded && <div style={{ maxHeight: 380, overflowY: "auto", borderTop: "1px solid var(--border)", padding: 8 }}>
       <button type="button" onClick={() => { onOpenRequests(); setExpanded(false); }} style={{ width: "100%", textAlign: "left", border: 0, borderBottom: "1px solid var(--border)", padding: 11, background: "transparent", color: "var(--accent-secondary)", cursor: "pointer" }}>Friend requests{requests.filter((item) => item.recipientId === currentUserId && item.status === "pending").length ? ` (${requests.filter((item) => item.recipientId === currentUserId && item.status === "pending").length})` : ""}</button>
-      {friends.length === 0 ? <div style={{ padding: 12, color: "var(--text-muted)", fontSize: 13 }}>Accepted friends will appear here.</div> : friends.map((friend) => <button type="button" key={friend.uid} onClick={() => onOpenChat(friend)} style={{ width: "100%", display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", border: 0, borderBottom: "1px solid var(--border)", padding: 11, background: "transparent", color: "var(--page-text)", textAlign: "left", cursor: "pointer" }}><span style={{ display: "flex", alignItems: "center", gap: 8 }}><span aria-label={presence[friend.uid] || "offline"} title={presence[friend.uid] || (presenceDb ? "offline" : "Online status needs setup")} style={{ width: 8, height: 8, borderRadius: "50%", background: presence[friend.uid] === "online" ? "var(--success)" : "var(--text-dim)" }} />{friend.name}</span><span style={{ color: "var(--accent-secondary)", fontSize: 11 }}>Chat</span></button>)}
+      {friends.length === 0 ? <div style={{ padding: 12, color: "var(--text-muted)", fontSize: 13 }}>Accepted friends will appear here.</div> : friends.map((friend) => <div key={friend.uid} style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><span style={{ display: "flex", alignItems: "center", gap: 8 }}><span aria-label={presence[friend.uid] || "offline"} title={presence[friend.uid] || (presenceDb ? "offline" : "Online status needs Realtime Database setup")} style={{ width: 8, height: 8, borderRadius: "50%", background: presence[friend.uid] === "online" ? "var(--success)" : "var(--text-dim)" }} />{friend.name}</span><button type="button" onClick={() => onOpenChat(friend)} style={{ border: 0, background: "transparent", color: "var(--accent-secondary)", cursor: "pointer" }}>Chat</button></div>
+        <div style={{ display: "flex", gap: 8, marginTop: 7 }}><button type="button" onClick={() => onRemoveFriend(friend)} style={{ border: 0, background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 11 }}>Remove friend</button><button type="button" onClick={() => onBlockFriend(friend)} style={{ border: 0, background: "transparent", color: "var(--danger)", cursor: "pointer", fontSize: 11 }}>Block</button></div>
+      </div>)}
+      {blockedUsers.filter((item) => item.blockerUid === currentUserId).length > 0 && <section style={{ borderTop: "1px solid var(--border)", marginTop: 8, paddingTop: 8 }}><div style={{ padding: "4px 8px", color: "var(--text-muted)", fontSize: 11 }}>Blocked players</div>{blockedUsers.filter((item) => item.blockerUid === currentUserId).map((item) => <div key={item.id} style={{ padding: "6px 8px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 12 }}>{item.blockedName || "Player"}<button type="button" onClick={() => onUnblockFriend(item)} style={{ border: 0, background: "transparent", color: "var(--accent-secondary)", cursor: "pointer" }}>Unblock</button></div>)}</section>}
       {!presenceDb && <div style={{ padding: "8px 10px", color: "var(--text-dim)", fontSize: 11 }}>Live online status needs Realtime Database setup.</div>}
     </div>}
   </aside>;
@@ -1496,6 +1499,7 @@ export default function App() {
   const [isModerator, setIsModerator] = useState(false);
   const [siteRole, setSiteRole] = useState(null);
   const [friendRequests, setFriendRequests] = useState([]);
+  const [blockedUsers, setBlockedUsers] = useState([]);
   const [tournamentInvites, setTournamentInvites] = useState([]);
   const [activeChatFriend, setActiveChatFriend] = useState(null);
   const [archiveEntries, setArchiveEntries] = useState([]);
@@ -1646,12 +1650,13 @@ export default function App() {
     };
   }, [user]);
 
-  const acceptedFriendUids = [...new Set(friendRequests.filter((item) => item.status === "accepted").map((item) => item.requesterId === user?.uid ? item.recipientId : item.requesterId))];
+  const blockedIds = new Set(blockedUsers.map((item) => item.blockerUid === user?.uid ? item.blockedUid : item.blockerUid));
+  const acceptedFriendUids = [...new Set(friendRequests.filter((item) => item.status === "accepted").map((item) => item.requesterId === user?.uid ? item.recipientId : item.requesterId).filter((uid) => !blockedIds.has(uid)))];
   const acceptedFriends = [...new Map(friendRequests.filter((item) => item.status === "accepted").map((item) => {
     const outgoing = item.requesterId === user?.uid;
     const uid = outgoing ? item.recipientId : item.requesterId;
     return [uid, { uid, name: outgoing ? (item.recipientName || "Player") : (item.requesterName || "Player") }];
-  })).values()];
+  }).filter(([uid]) => !blockedIds.has(uid))).values()];
   const acceptedFriendKey = acceptedFriendUids.slice().sort().join("|");
   useEffect(() => {
     if (!user || !realtimeDb || !acceptedFriendUids.length) return;
@@ -1669,6 +1674,15 @@ export default function App() {
       outgoing = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); publish();
     }, () => { outgoing = []; publish(); });
     return () => { stopIncoming(); stopOutgoing(); };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) { setBlockedUsers([]); return undefined; }
+    let blocking = [], blockedBy = [];
+    const publish = () => setBlockedUsers([...new Map([...blocking, ...blockedBy].map((item) => [item.id, item])).values()]);
+    const stopBlocking = onSnapshot(query(collection(db, "userBlocks"), where("blockerUid", "==", user.uid)), (snapshot) => { blocking = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); publish(); }, () => { blocking = []; publish(); });
+    const stopBlockedBy = onSnapshot(query(collection(db, "userBlocks"), where("blockedUid", "==", user.uid)), (snapshot) => { blockedBy = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); publish(); }, () => { blockedBy = []; publish(); });
+    return () => { stopBlocking(); stopBlockedBy(); };
   }, [user]);
 
   useEffect(() => {
@@ -2202,6 +2216,30 @@ export default function App() {
     }
   };
 
+  const removeFriend = async (friend) => {
+    if (!user) return;
+    const relation = friendRequests.find((item) => item.status === "accepted" && [item.requesterId, item.recipientId].includes(user.uid) && [item.requesterId, item.recipientId].includes(friend.uid));
+    if (!relation) return;
+    try { await updateDoc(doc(FRIEND_REQUESTS_COLLECTION, relation.id), { status: "removed", reviewedAt: Date.now() }); showToast(`${friend.name} removed from friends`); }
+    catch { showToast("Couldn't remove this friend. Check that the latest Firestore rules are published."); }
+  };
+
+  const blockFriend = async (friend) => {
+    if (!user || !friend?.uid || !window.confirm(`Block ${friend.name}? They will be removed from your friends, and friend requests, chat messages, and tournament invites between you will be stopped. Existing chat history is kept private.`)) return;
+    const relation = friendRequests.find((item) => item.status === "accepted" && [item.requesterId, item.recipientId].includes(user.uid) && [item.requesterId, item.recipientId].includes(friend.uid));
+    const batch = writeBatch(db);
+    batch.set(doc(db, "userBlocks", `${user.uid}_${friend.uid}`), { blockerUid: user.uid, blockedUid: friend.uid, blockedName: String(friend.name || "Player").slice(0, 40), createdAt: Date.now() });
+    if (relation) batch.update(doc(FRIEND_REQUESTS_COLLECTION, relation.id), { status: "removed", reviewedAt: Date.now() });
+    try { await batch.commit(); setActiveChatFriend((active) => active?.uid === friend.uid ? null : active); showToast(`${friend.name} blocked`); }
+    catch { showToast("Couldn't block this player. Check that the latest Firestore rules are published."); }
+  };
+
+  const unblockFriend = async (block) => {
+    if (!user || block?.blockerUid !== user.uid) return;
+    try { await deleteDoc(doc(db, "userBlocks", block.id)); showToast(`${block.blockedName || "Player"} unblocked`); }
+    catch { showToast("Couldn't unblock this player."); }
+  };
+
   const submitReport = async ({ reason, details }) => {
     if (!reportTarget || !user) return "Sign in again to submit this report.";
     const reportId = `${user.uid}_${reportTarget.type}_${reportTarget.id}`;
@@ -2501,7 +2539,7 @@ export default function App() {
       )}
 
       {user && reportTarget && <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} onSubmit={submitReport} />}
-      {user && <FriendDock requests={friendRequests} currentUserId={user.uid} onOpenChat={setActiveChatFriend} onOpenRequests={() => setSection("requests")} presenceDb={realtimeDb} onFriendOnline={notifyFriendOnline} />}
+      {user && <FriendDock requests={friendRequests} currentUserId={user.uid} onOpenChat={setActiveChatFriend} onOpenRequests={() => setSection("requests")} presenceDb={realtimeDb} onFriendOnline={notifyFriendOnline} blockedUsers={blockedUsers} onRemoveFriend={removeFriend} onBlockFriend={blockFriend} onUnblockFriend={unblockFriend} />}
       {user && activeChatFriend && <FriendChat currentUser={user} friend={activeChatFriend} onClose={() => setActiveChatFriend(null)} />}
       {!user && authDialogOpen && <AuthScreen onGoogleSignIn={handleGoogleSignIn} onEmailAuth={handleEmailAuth} authError={authError} authBusy={authBusy} onBrowseAsGuest={browseAsGuest} onClose={() => setAuthDialogOpen(false)} requireChoice={!guestMode} />}
       <SitePopup popup={currentPopup} onDismiss={dismissSitePopup} />
