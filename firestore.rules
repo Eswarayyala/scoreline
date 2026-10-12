@@ -122,7 +122,8 @@ service cloud.firestore {
     function validArchiveSubmission(data) {
       return data.keys().hasOnly([
                'tournament', 'game', 'eventDate', 'winner', 'runnerUp', 'mvp',
-               'source', 'submitterId', 'submitterName', 'status', 'createdAt',
+              
+ 'source', 'submitterId', 'submitterName', 'status', 'createdAt',
                'reviewedAt', 'reviewedBy', 'archiveEntryId'
              ])
              && data.keys().hasAll([
@@ -208,7 +209,8 @@ service cloud.firestore {
              && (!data.keys().hasAny(['createdAt']) || data.createdAt is int)
              && (!data.keys().hasAny(['updatedAt']) || data.updatedAt is int)
              && (!data.keys().hasAny(['archived']) || data.archived is bool)
-             && (!data.keys().hasAny(['archivedAt']) || data.archivedAt is int)
+           
+  && (!data.keys().hasAny(['archivedAt']) || data.archivedAt is int)
              && (!data.keys().hasAny(['prizeAmount'])
                  || ((data.prizeAmount is int || data.prizeAmount is float)
                      && data.prizeAmount >= 0 && data.prizeAmount <= 100000000))
@@ -304,7 +306,8 @@ service cloud.firestore {
                     || (request.auth != null && request.auth.uid == resource.data.playerId);
         allow create: if request.auth != null
                       && exists(/databases/$(database)/documents/tournaments/$(tid))
-                      && (!parent(tid).keys().hasAny(['registrationOpen'])
+                      && (!parent(tid).keys().hasAny(['
+registrationOpen'])
                           || parent(tid).registrationOpen == true)
                       && (!parent(tid).keys().hasAny(['archived']) || parent(tid).archived != true)
                       && parent(tid).status != 'completed'
@@ -404,7 +407,8 @@ service cloud.firestore {
       allow update: if isSiteStaff()
                     && resource.data.status == 'pending'
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy', 'archiveEntryId'])
-                    && validArchiveSubmission(request.resource.data)
+                    && validArchiveSubmission(request.
+resource.data)
                     && request.resource.data.status in ['approved', 'rejected']
                     && request.resource.data.reviewedBy == request.auth.uid
                     && request.resource.data.reviewedAt is int
@@ -481,7 +485,9 @@ service cloud.firestore {
 
     match /scoreline/shared-data {
       allow read: if true;
-      allow write: if request.auth != null;
+      // No current app feature uses this legacy document. Keep it read-only
+      // until a specific, validated write schema is introduced.
+      allow write: if false;
     }
 
     match /{document=**} {
