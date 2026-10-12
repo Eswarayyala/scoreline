@@ -515,6 +515,7 @@ service cloud.firestore {
         && request.resource.data.blockedUid != request.auth.uid
         && request.resource.data.blockedUid.size() <= 128
         && blockId == request.auth.uid + '_' + request.resource.data.blockedUid
+        && isAcceptedFriend(request.auth.uid, request.resource.data.blockedUid)
         && request.resource.data.blockedName is string
         && request.resource.data.blockedName.size() <= 40
         && request.resource.data.createdAt is int;
