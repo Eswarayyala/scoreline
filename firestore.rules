@@ -489,10 +489,9 @@ service cloud.firestore {
     }
 
     match /scoreline/shared-data {
-      allow read: if true;
-      // No current app feature uses this legacy document. Keep it read-only
-      // until a specific, validated write schema is introduced.
-      allow write: if false;
+      // No current app feature uses this legacy document; deny client access
+      // until a specific, validated schema is introduced.
+      allow read, write: if false;
     }
 
     match /{document=**} {
