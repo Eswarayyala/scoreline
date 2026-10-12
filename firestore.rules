@@ -44,6 +44,9 @@ service cloud.firestore {
     function isActiveSiteUser() {
       return request.auth != null && !isSiteBanned();
     }
+    function canBrowsePublicData() {
+      return request.auth == null || !isSiteBanned();
+    }
     function isAcceptedFriend(firstUid, secondUid) {
       return request.auth != null && firstUid != secondUid
         && ((exists(/databases/$(database)/documents/friendRequests/$(firstUid + '_' + secondUid))
@@ -280,7 +283,7 @@ service cloud.firestore {
     }
 
     match /tournaments/{tid} {
-      allow read: if isActiveSiteUser();
+      allow read: if canBrowsePublicData();
 
       allow create: if isActiveSiteUser()
                     && request.resource.data.adminUserId == request.auth.uid
@@ -300,13 +303,13 @@ service cloud.firestore {
       allow delete: if isOwner(resource.data);
 
       match /teams/{id} {
-        allow read: if isActiveSiteUser();
+        allow read: if canBrowsePublicData();
         allow create: if isAdmin(parent(tid)) && validTeam(request.resource.data);
         allow update: if isAdmin(parent(tid)) && validTeam(request.resource.data);
         allow delete: if isAdmin(parent(tid));
       }
       match /matches/{id} {
-        allow read: if isActiveSiteUser();
+        allow read: if canBrowsePublicData();
         allow create: if isAdmin(parent(tid)) && validMatch(request.resource.data);
         allow update: if isAdmin(parent(tid))
                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scoreA', 'scoreB', 'status'])
@@ -318,7 +321,7 @@ service cloud.firestore {
         allow delete: if isAdmin(parent(tid));
       }
       match /stats/{id} {
-        allow read: if isActiveSiteUser();
+        allow read: if canBrowsePublicData();
         allow create: if isAdmin(parent(tid)) && validStat(request.resource.data);
         allow update: if isAdmin(parent(tid)) && validStat(request.resource.data);
         allow delete: if isAdmin(parent(tid));
@@ -376,7 +379,7 @@ service cloud.firestore {
 
 
     match /sitePopups/{popupId} {
-      allow get, list: if !isSiteBanned() && (isSiteOwner() || resource.data.enabled == true);
+      allow get, list: if isActiveSiteUser() && (isSiteOwner() || resource.data.enabled == true);
       allow create: if isSiteOwner() && validSitePopup(request.resource.data);
       allow update: if isSiteOwner()
                     && validSitePopup(request.resource.data)
@@ -385,10 +388,10 @@ service cloud.firestore {
     }
 
     match /blogPosts/{postId} {
-      allow get, list: if isActiveSiteUser()
-                       && (resource.data.status == 'published'
-                           || resource.data.authorId == request.auth.uid
-                           || isSiteStaff() || isModerator());
+      allow get, list: if (canBrowsePublicData() && resource.data.status == 'published')
+                       || (isActiveSiteUser()
+                           && (resource.data.authorId == request.auth.uid
+                               || isSiteStaff() || isModerator()));
       allow create: if isActiveSiteUser()
                     && request.resource.data.authorId == request.auth.uid
                     && request.resource.data.status == 'pending'
@@ -576,7 +579,7 @@ service cloud.firestore {
     }
 
     match /esportsArchive/{entryId} {
-      allow read: if isActiveSiteUser();
+      allow read: if canBrowsePublicData();
       allow create: if (isSiteStaff() || isModerator())
                     && validArchiveEntry(request.resource.data);
       allow update, delete: if isModerator();
@@ -614,5 +617,4 @@ service cloud.firestore {
     }
   }
 }
-
 
