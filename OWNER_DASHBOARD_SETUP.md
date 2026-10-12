@@ -3,7 +3,8 @@
 ## What the dashboard controls
 
 - The owner dashboard and support dashboard open from the signed-in account menu.
-- Owner and support staff can view and update player/tournament safety reports, preview blog submissions, and publish or decline pending posts.
+- Owner and support staff can review reports and pending blogs, publish or decline blogs, and edit or delete blog posts. Authors can edit or delete their own posts; edits return to the review queue.
+- Signed-in players can submit historical tournament records for review. Approved submissions become public archive entries. Owner/support can also turn published blogs into structured archive entries.
 - Only the owner can create, edit, enable/disable, schedule, or delete plain-text safety and motivation popups.
 - Only the owner can grant or remove support access. Support staff cannot change roles, popup settings, or tournament data.
 - All players can submit a report. The report queue is private to accounts with an owner or support role.
@@ -27,13 +28,13 @@ Never let a player create or edit `siteRoles` records from the public app. The F
 
 ## Adding support staff
 
-After the owner document and updated rules are published, use Owner dashboard → Support access. Paste the trusted person's Firebase Authentication UID. Support users must already have a GrindInfo account. Removing access disables that UID's support role; it does not delete their account or content. Support can review reports and pending blog posts.
+After the owner document and updated rules are published, use Owner dashboard → Support access. Paste the trusted person's Firebase Authentication UID. Support users must already have a GrindInfo account. Removing access disables that UID's support role; it does not delete their account or content. Support can review reports and pending blogs, manage blog posts, and review archive submissions. Support cannot manage popups or grant roles.
 
 For role changes to take effect, the person's app should be refreshed. Existing entries in the older `moderators` collection continue to control the older blog/archive moderator tools; that legacy role does not grant access to the new report inbox.
 
 ## Publishing the rules
 
-The pull request updates the repository's `firestore.rules`; merging does not publish these rules to Firebase. After review and merge, paste the complete current `firestore.rules` into Firebase Console → Firestore Database → Rules and publish it. The new dashboard features will not work until the matching rules are active and the owner document exists.
+The pull request updates the repository's `firestore.rules`; merging does not publish these rules to Firebase. After review and merge, paste the complete current `firestore.rules` into Firebase Console → Firestore Database → Rules and publish it. The new dashboard features will not work until the matching rules are active and the owner document exists. Content edits, archive approvals, and staff actions use atomic Firestore batches. The owner-only activity view is an application activity log: staff documents are append-only through these rules, but client-written records are not tamper-proof forensic evidence.
 
 ## Popup writing guidance
 

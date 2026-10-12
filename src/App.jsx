@@ -10,6 +10,8 @@ import {
   writeBatch,
   query,
   where,
+  orderBy,
+  limit,
 } from "firebase/firestore";
 import {
   onAuthStateChanged,
@@ -36,6 +38,8 @@ const ARCHIVE_COLLECTION = collection(db, "esportsArchive");
 const BLOG_POSTS_COLLECTION = collection(db, "blogPosts");
 const SITE_POPUPS_COLLECTION = collection(db, "sitePopups");
 const SITE_ROLES_COLLECTION = collection(db, "siteRoles");
+const ARCHIVE_SUBMISSIONS_COLLECTION = collection(db, "archiveSubmissions");
+const STAFF_ACTIONS_COLLECTION = collection(db, "staffActions");
 const PRIZE_PRESETS = [0, 500, 1000, 2500, 5000, 10000];
 const REPORT_REASONS = ["Abuse or harassment", "Scam or fraud", "Inappropriate content", "Other"];
 
@@ -1054,6 +1058,80 @@ function ReportsInbox({ reports, onStatusChange }) {
   );
 }
 
+function ArchiveSubmissionInbox({ submissions, onDecision }) {
+  const pending = submissions.filter((item) => item.status === "pending");
+  return <section>
+    <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Review community-submitted historical event records before adding them to the public archive.</p>
+    {pending.length === 0 ? <EmptyState title="No archive requests waiting" body="New event submissions will appear here for review." /> : <div style={{ display: "grid", gap: 10 }}>{pending.map((item) => <article key={item.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{item.game} · {item.eventDate} · by {item.submitterName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{item.tournament}</h2><p style={{ margin: "6px 0" }}>Winner: {item.winner}{item.runnerUp ? ` · Runner-up: ${item.runnerUp}` : ""}{item.mvp ? ` · MVP: ${item.mvp}` : ""}</p>{item.source && <a href={item.source} target="_blank" rel="noopener noreferrer">Source</a>}<div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onDecision(item.id, "approved")}>Approve to archive</Button><Button variant="danger" onClick={() => onDecision(item.id, "rejected")}>Decline</Button></div></article>)}</div>}
+  </section>;
+}
+
+function StaffActivityLog({ actions }) {
+  const ordered = [...actions].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 100);
+  return <section>
+    <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Recent owner and support actions. This log is visible to the owner only.</p>
+    {ordered.length === 0 ? <EmptyState title="No staff actions recorded yet" body="Report, blog, archive, popup, and support-access decisions will appear here." /> : <div style={{ display: "grid", gap: 8 }}>{ordered.map((item) => <article key={item.id} style={{ padding: 12, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{new Date(item.createdAt || 0).toLocaleString()} · {item.actorName || "Staff"}</Eyebrow><div style={{ marginTop: 5 }}>{item.summary}</div></article>)}</div>}
+  </section>;
+}
+
+function BlogArchivePromoter({ posts, onPromote }) {
+  const candidates = posts.filter((post) => post.status === "published");
+  const [postId, setPostId] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [winner, setWinner] = useState("");
+  const [runnerUp, setRunnerUp] = useState("");
+  const [mvp, setMvp] = useState("");
+  const [source, setSource] = useState("");
+  const [error, setError] = useState("");
+  const selected = candidates.find((post) => post.id === postId);
+  const choosePost = (id) => {
+    const post = candidates.find((item) => item.id === id);
+    setPostId(id); setEventDate(""); setWinner(""); setRunnerUp(""); setMvp(""); setSource(post?.source || ""); setError("");
+  };
+  return <section style={{ maxWidth: 680 }}>
+    <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Turn a published blog into a separate structured archive record. Add the event date and winner before saving.</p>
+    {candidates.length === 0 ? <EmptyState title="No published blogs to add" body="Publish a blog first, then you can create an archive record from it." /> : <>
+      <Field label="Published blog"><Select value={postId} onChange={(event) => choosePost(event.target.value)}><option value="">Choose a post…</option>{candidates.map((post) => <option key={post.id} value={post.id}>{post.title} · {post.game}</option>)}</Select></Field>
+      {selected && <div style={{ display: "grid", gap: 8, marginTop: 10, padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+        <Field label="Event date"><TextInput maxLength={40} value={eventDate} onChange={(event) => setEventDate(event.target.value)} placeholder="YYYY or YYYY-MM-DD" /></Field>
+        <Field label="Winner"><TextInput maxLength={100} value={winner} onChange={(event) => setWinner(event.target.value)} /></Field>
+        <Field label="Runner-up (optional)"><TextInput maxLength={100} value={runnerUp} onChange={(event) => setRunnerUp(event.target.value)} /></Field>
+        <Field label="MVP (optional)"><TextInput maxLength={100} value={mvp} onChange={(event) => setMvp(event.target.value)} /></Field>
+        <Field label="Source link (optional)"><TextInput maxLength={500} value={source} onChange={(event) => setSource(event.target.value)} /></Field>
+        {error && <div role="alert" style={{ color: "var(--danger)" }}>{error}</div>}
+        <Button onClick={async () => { if (!eventDate.trim() || !winner.trim()) { setError("Add the event date and winner."); return; } try { await onPromote(selected, { eventDate, winner, runnerUp, mvp, source }); choosePost(""); } catch { setError("Could not add this record to the archive."); } }}>Add event to archive</Button>
+      </div>}
+    </>}
+  </section>;
+}
+
+function ArchiveRequestForm({ user, submissions, onSubmit }) {
+  const [form, setForm] = useState({ tournament: "", game: "", eventDate: "", winner: "", runnerUp: "", mvp: "", source: "" });
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const ownRequests = submissions.filter((item) => item.submitterId === user.uid).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const submit = async () => {
+    if (!form.tournament.trim() || !form.game.trim() || !form.eventDate.trim() || !form.winner.trim()) { setError("Add the event name, game, date, and winner."); return; }
+    if (form.source.trim() && !/^https:\/\//i.test(form.source.trim())) { setError("Source links must start with https://."); return; }
+    try { await onSubmit(form); setForm({ tournament: "", game: "", eventDate: "", winner: "", runnerUp: "", mvp: "", source: "" }); setError(""); setMessage("Archive request sent for review."); }
+    catch { setError("Could not send this request. Please try again."); }
+  };
+  return <section style={{ display: "grid", gap: 8, maxWidth: 680, padding: 16, margin: "16px 0", background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+    <Eyebrow>Suggest an event for the archive</Eyebrow><p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13 }}>Send results for a major, underdog, or lesser-known esports tournament. An owner or support reviewer checks it before it becomes public.</p>
+    <Field label="Tournament"><TextInput maxLength={120} value={form.tournament} onChange={(e) => update("tournament", e.target.value)} /></Field>
+    <Field label="Game"><TextInput maxLength={60} value={form.game} onChange={(e) => update("game", e.target.value)} /></Field>
+    <Field label="Event date"><TextInput maxLength={40} value={form.eventDate} onChange={(e) => update("eventDate", e.target.value)} placeholder="YYYY or YYYY-MM-DD" /></Field>
+    <Field label="Winner"><TextInput maxLength={100} value={form.winner} onChange={(e) => update("winner", e.target.value)} /></Field>
+    <Field label="Runner-up (optional)"><TextInput maxLength={100} value={form.runnerUp} onChange={(e) => update("runnerUp", e.target.value)} /></Field>
+    <Field label="MVP (optional)"><TextInput maxLength={100} value={form.mvp} onChange={(e) => update("mvp", e.target.value)} /></Field>
+    <Field label="Reliable source link (optional)"><TextInput maxLength={500} value={form.source} onChange={(e) => update("source", e.target.value)} placeholder="https://" /></Field>
+    {error && <div role="alert" style={{ color: "var(--danger)" }}>{error}</div>}{message && <div role="status" style={{ color: "var(--success)" }}>{message}</div>}
+    <Button onClick={submit}>Request archive listing</Button>
+    {ownRequests.length > 0 && <div style={{ marginTop: 8 }}><Eyebrow>Your archive requests</Eyebrow>{ownRequests.map((item) => <div key={item.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "8px 0", borderTop: "1px solid var(--border)", fontSize: 13 }}><span>{item.tournament}</span><span>{item.status}</span></div>)}</div>}
+  </section>;
+}
+
 function SitePopup({ popup, onDismiss }) {
   if (!popup) return null;
   return (
@@ -1068,16 +1146,16 @@ function SitePopup({ popup, onDismiss }) {
   );
 }
 
-function OwnerDashboard({ role, reports, onStatusChange, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview }) {
+function OwnerDashboard({ role, reports, onStatusChange, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [] }) {
   const isOwner = role === "owner";
   const [tab, setTab] = useState("overview");
   const [editing, setEditing] = useState(null);
   const [staffUid, setStaffUid] = useState("");
   const [popupError, setPopupError] = useState("");
   const [staffError, setStaffError] = useState("");
-
   const activeReports = reports.filter((item) => item.status !== "closed").length;
   const pendingBlogs = blogPosts.filter((post) => post.status === "pending").length;
+  const pendingArchiveRequests = archiveSubmissions.filter((item) => item.status === "pending").length;
   const activeTournaments = tournaments.filter((item) => !isTournamentArchived(item)).length;
   const openEditor = (popup = null) => {
     setPopupError("");
@@ -1119,15 +1197,18 @@ function OwnerDashboard({ role, reports, onStatusChange, popups, onSavePopup, on
       <Eyebrow>{isOwner ? "Owner controls · protected" : "Support workspace · restricted"}</Eyebrow>
       <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 18px" }}>{isOwner ? "Owner dashboard" : "Support dashboard"}</h1>
       <div role="tablist" aria-label="Dashboard sections" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-        {["overview", "reports", "blogs", ...(isOwner ? ["popups", "support access"] : [])].map((name) => <Button key={name} variant={tab === name ? "primary" : "ghost"} onClick={() => setTab(name)}>{name[0].toUpperCase() + name.slice(1)}</Button>)}
+        {["overview", "reports", "blogs", "archive requests", "blog to archive", ...(isOwner ? ["activity log", "popups", "support access"] : [])].map((name) => <Button key={name} variant={tab === name ? "primary" : "ghost"} onClick={() => setTab(name)}>{name[0].toUpperCase() + name.slice(1)}</Button>)}
       </div>
       {tab === "overview" && <>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 18 }}>
-          {[["Open reports", activeReports], ["Pending blogs", pendingBlogs], ["Active tournaments", activeTournaments], ["Archive records", archiveEntries.length]].map(([label, value]) => <article key={label} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{label}</Eyebrow><strong style={{ display: "block", fontSize: 25, marginTop: 8 }}>{value}</strong></article>)}
+          {[["Open reports", activeReports], ["Pending blogs", pendingBlogs], ["Archive requests", pendingArchiveRequests], ["Active tournaments", activeTournaments], ["Archive records", archiveEntries.length]].map(([label, value]) => <article key={label} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{label}</Eyebrow><strong style={{ display: "block", fontSize: 25, marginTop: 8 }}>{value}</strong></article>)}
         </div>
         <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Use the dashboard tabs to review safety reports{isOwner ? ", manage site popups, and control support access." : "."}</p>
       </>}
       {tab === "reports" && <ReportsInbox reports={reports} onStatusChange={onStatusChange} />}
+      {tab === "archive requests" && <ArchiveSubmissionInbox submissions={archiveSubmissions} onDecision={onArchiveDecision} />}
+      {tab === "blog to archive" && <BlogArchivePromoter posts={blogPosts} onPromote={onPromoteBlog} />}
+      {tab === "activity log" && isOwner && <StaffActivityLog actions={auditLog} />}
       {tab === "blogs" && <section><p style={{ color: "var(--text-muted)", fontSize: 13 }}>Preview submitted and published community posts.</p>{blogPosts.length === 0 ? <EmptyState title="No blog posts yet" body="Community submissions will appear here for preview." /> : <div style={{ display: "grid", gap: 10 }}>{[...blogPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 30).map((post) => <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status} · by {post.authorName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{post.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{post.content}</p>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onBlogReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onBlogReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div>}</section>}
       {tab === "popups" && isOwner && <section>
         <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Create plain-text safety reminders and motivation messages. Changes appear on GrindInfo without editing the website code.</p>
@@ -1147,7 +1228,8 @@ function OwnerDashboard({ role, reports, onStatusChange, popups, onSavePopup, on
       </section>}
       {tab === "support access" && isOwner && <section style={{ maxWidth: 680 }}>
         <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Support can review reports. Add only trusted people. For now, copy their Firebase Authentication UID from Firebase Console → Authentication → Users.</p>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><TextInput aria-label="Support account UID" placeholder="Paste support person's UID" value={staffUid} onChange={(e) => setStaffUid(e.target.value)} /><Button onClick={assignSupport}>Grant support access</Button></div>
+     
+   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><TextInput aria-label="Support account UID" placeholder="Paste support person's UID" value={staffUid} onChange={(e) => setStaffUid(e.target.value)} /><Button onClick={assignSupport}>Grant support access</Button></div>
         {staffError && <div role="alert" style={{ color: "var(--danger)", marginTop: 8 }}>{staffError}</div>}
         <div style={{ display: "grid", gap: 8, marginTop: 16 }}>{staff.filter((item) => item.role === "support" && item.enabled !== false).map((item) => <article key={item.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", padding: 12, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><code>{item.id}</code><Button variant="danger" onClick={() => onSetSupport(item.id, false)}>Remove access</Button></article>)}</div>
       </section>}
@@ -1155,7 +1237,7 @@ function OwnerDashboard({ role, reports, onStatusChange, popups, onSavePopup, on
   );
 }
 
-function HistoricalArchive({ entries, isModerator, onImport }) {
+function HistoricalArchive({ entries, isModerator, user, submissions, onSubmitRequest, onImport }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState(null);
@@ -1181,6 +1263,7 @@ function HistoricalArchive({ entries, isModerator, onImport }) {
       <Eyebrow>International esports history</Eyebrow>
       <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 8px" }}>Past results archive</h1>
       <div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 18 }}>Browse past events, winners, runners-up and MVPs. To add records, select a CSV with columns tournament, game, eventDate, winner, runnerUp, mvp and source.</div>
+      {user && <ArchiveRequestForm user={user} submissions={submissions} onSubmit={onSubmitRequest} />}
       {isModerator && <Field label="Import CSV (up to 200 rows)">
         <input type="file" accept=".csv,text/csv" onChange={async (event) => {
           setError(""); setMessage("");
@@ -1221,7 +1304,8 @@ function HistoricalArchive({ entries, isModerator, onImport }) {
         }}>Import {preview.length} records</Button><Button variant="ghost" onClick={() => { setPreview(null); setMessage(""); }}>Cancel import</Button></div>
       </section>}
       <div style={{ display: "grid", gap: 10, marginTop: 20 }}>
-      {entries.length === 0 ? <EmptyState title="Archive is ready for records" body="Add historical international esports results with the moderator CSV import." /> : entries.map((entry) => <article key={entry.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{entry.game} · {entry.eventDate}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0", fontSize: 24 }}>{entry.tournament}</h2><div>🏆 {entry.winner}{entry.runnerUp ? ` · Runner-up: ${entry.runnerUp}` : ""}{entry.mvp ? ` · MVP: ${entry.mvp}` : ""}</div>{entry.source && <a href={entry.source} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 8, color: "var(--accent)" }}>Source</a>}</article>)}
+      {entries.length === 0 ? <EmptyState title="Archive is ready for records" body="Add historical international esports results with the moderator CSV import." /> : entries.map((entry) => <article key={entry.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{entry.game} · {entry.eventDate}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0", fontSize: 24 }}>{entry.tournament}</h2><div>🏆 {entry.winner}{entry.runnerUp ? ` · Runner-up: ${entry.runnerUp
+}` : ""}{entry.mvp ? ` · MVP: ${entry.mvp}` : ""}</div>{entry.source && <a href={entry.source} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 8, color: "var(--accent)" }}>Source</a>}</article>)}
       </div>
     </div>
   );
@@ -1231,14 +1315,32 @@ function LoadingScreen({ label }) {
   return <div role="status" aria-live="polite" style={{ minHeight: "60vh", display: "grid", placeItems: "center", background: "var(--page-bg-solid, #101820)", color: "var(--page-text, #EDF1F4)", fontFamily: "'Inter',sans-serif" }}><div style={{ textAlign: "center" }}><div className="grind-loader" aria-hidden="true"><span>G</span></div><div style={{ marginTop: 16 }}>{label}…</div><style>{`.grind-loader{width:68px;height:68px;margin:auto;border:2px solid var(--border,#314);border-top-color:var(--accent,#08f);border-right-color:var(--accent-secondary,#0dc);border-radius:50%;display:grid;place-items:center;animation:grind-spin 1.2s linear infinite}.grind-loader span{font-family:'Bebas Neue',sans-serif;font-size:30px;animation:grind-spin 1.2s linear infinite reverse}@keyframes grind-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.grind-loader,.grind-loader span{animation:none}}`}</style></div></div>;
 }
 
-function BlogPage({ posts, user, isModerator, onSubmit, onReview }) {
-  const [title, setTitle] = useState(""); const [game, setGame] = useState(""); const [content, setContent] = useState(""); const [source, setSource] = useState(""); const [error, setError] = useState("");
-  const submit = async () => { if (!title.trim() || !game.trim() || !content.trim()) { setError("Add a title, game, and post text."); return; } await onSubmit({ title: title.trim(), game: game.trim(), content: content.trim(), source: source.trim() }); setTitle(""); setGame(""); setContent(""); setSource(""); setError(""); };
+function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDelete }) {
+  const [title, setTitle] = useState("");
+  const [game, setGame] = useState("");
+  const [content, setContent] = useState("");
+  const [source, setSource] = useState("");
+  const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState("");
+  const [draft, setDraft] = useState({ title: "", game: "", content: "", source: "" });
   const visible = posts.filter((post) => post.status === "published" || post.authorId === user.uid || (isModerator && post.status === "pending"));
-  return <div style={{ paddingTop: 32 }}><Eyebrow>Community stories</Eyebrow><h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42 }}>Esports blog</h1><p style={{ color: "var(--text-muted)" }}>Send a tournament recap or esports story to the GrindInfo owner for review before it appears publicly.</p><section style={{ display: "grid", gap: 10, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)", maxWidth: 680 }}><Field label="Post title"><TextInput value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} /></Field><Field label="Game"><TextInput value={game} maxLength={60} onChange={(e) => setGame(e.target.value)} placeholder="e.g. Valorant" /></Field><Field label="Story or tournament update"><textarea value={content} maxLength={6000} onChange={(e) => setContent(e.target.value)} rows={6} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput value={source} maxLength={500} onChange={(e) => setSource(e.target.value)} placeholder="https://" /></Field>{error && <span style={{ color: "var(--danger)" }}>{error}</span>}<Button onClick={submit}>Request publication</Button></section><div style={{ display: "grid", gap: 12, marginTop: 20 }}>{visible.map((post) => <article key={post.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue',sans-serif" }}>{post.title}</h2><div style={{ color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{post.content}</div><div style={{ marginTop: 8, fontSize: 12 }}>By {post.authorName || "Player"}</div>{post.source && <a href={post.source} target="_blank" rel="noreferrer">Source</a>}{isModerator && post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button onClick={() => onReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div></div>;
+  const submit = async () => {
+    if (!title.trim() || !game.trim() || !content.trim()) { setError("Add a title, game, and post text."); return; }
+    if (source.trim() && !/^https:\/\//i.test(source.trim())) { setError("Use a secure https source link."); return; }
+    try { await onSubmit({ title: title.trim(), game: game.trim(), content: content.trim(), source: source.trim() }); setTitle(""); setGame(""); setContent(""); setSource(""); setError(""); }
+    catch { setError("Could not submit this post. Please try again."); }
+  };
+  const startEdit = (post) => { setEditingId(post.id); setDraft({ title: post.title || "", game: post.game || "", content: post.content || "", source: post.source || "" }); setError(""); };
+  const saveEdit = async (post) => {
+    if (!draft.title.trim() || !draft.game.trim() || !draft.content.trim()) { setError("Add a title, game, and post text."); return; }
+    if (draft.source.trim() && !/^https:\/\//i.test(draft.source.trim())) { setError("Use a secure https source link."); return; }
+    try { await onEdit(post, { title: draft.title.trim(), game: draft.game.trim(), content: draft.content.trim(), source: draft.source.trim() }); setEditingId(""); setError(""); }
+    catch { setError("Could not save this post. Please try again."); }
+  };
+  return <div style={{ paddingTop: 32 }}><Eyebrow>Community stories</Eyebrow><h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42 }}>Esports blog</h1><p style={{ color: "var(--text-muted)" }}>Send a tournament recap or esports story to the GrindInfo owner for review before it appears publicly.</p><section style={{ display: "grid", gap: 10, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)", maxWidth: 680 }}><Field label="Post title"><TextInput value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} /></Field><Field label="Game"><TextInput value={game} maxLength={60} onChange={(e) => setGame(e.target.value)} placeholder="e.g. Valorant" /></Field><Field label="Story or tournament update"><textarea value={content} maxLength={6000} onChange={(e) => setContent(e.target.value)} rows={6} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput value={source} maxLength={500} onChange={(e) => setSource(e.target.value)} placeholder="https://" /></Field>{error && <span role="alert" style={{ color: "var(--danger)" }}>{error}</span>}<Button onClick={submit}>Request publication</Button></section><div style={{ display: "grid", gap: 12, marginTop: 20 }}>{visible.map((post) => <article key={post.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}</Eyebrow>{editingId === post.id ? <div style={{ display: "grid", gap: 8, marginTop: 8 }}><Field label="Post title"><TextInput maxLength={120} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /></Field><Field label="Game"><TextInput maxLength={60} value={draft.game} onChange={(e) => setDraft({ ...draft, game: e.target.value })} /></Field><Field label="Story"><textarea maxLength={6000} rows={6} value={draft.content} onChange={(e) => setDraft({ ...draft, content: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput maxLength={500} value={draft.source} onChange={(e) => setDraft({ ...draft, source: e.target.value })} /></Field><div style={{ display: "flex", gap: 8 }}><Button onClick={() => saveEdit(post)}>Save changes</Button><Button variant="ghost" onClick={() => setEditingId("")}>Cancel</Button></div></div> : <><h2 style={{ fontFamily: "'Bebas Neue',sans-serif" }}>{post.title}</h2><div style={{ color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{post.content}</div><div style={{ marginTop: 8, fontSize: 12 }}>By {post.authorName || "Player"}</div>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{isModerator && post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button onClick={() => onReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onReview(post.id, "rejected")}>Decline</Button></div>}{(post.authorId === user.uid || isModerator) && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button variant="ghost" onClick={() => startEdit(post)}>Edit post</Button><Button variant="danger" onClick={() => { if (window.confirm("Delete this blog post? This cannot be undone.")) onDelete(post); }}>Delete post</Button></div>}{post.authorId === user.uid && post.status === "published" && <small style={{ display: "block", marginTop: 8, color: "var(--text-muted)" }}>Saving an edit sends the post back for review.</small>}</>}{error && editingId === post.id && <div role="alert" style={{ color: "var(--danger)", marginTop: 8 }}>{error}</div>}</article>)}</div></div>;
 }
 
-// ---------- app ----------
+
 
 export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem("grindinfo-theme") || "glacier");
@@ -1259,6 +1361,8 @@ export default function App() {
   const [siteRole, setSiteRole] = useState(null);
   const [friendRequests, setFriendRequests] = useState([]);
   const [archiveEntries, setArchiveEntries] = useState([]);
+  const [archiveSubmissions, setArchiveSubmissions] = useState([]);
+  const [auditLog, setAuditLog] = useState([]);
   const [blogPosts, setBlogPosts] = useState([]);
   const [privateReports, setPrivateReports] = useState([]);
   const [activePopups, setActivePopups] = useState([]);
@@ -1382,6 +1486,20 @@ export default function App() {
   useEffect(() => onSnapshot(ARCHIVE_COLLECTION, (snapshot) => {
     setArchiveEntries(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
   }, () => setArchiveEntries([])), []);
+
+  useEffect(() => {
+    if (!user) { setArchiveSubmissions([]); return undefined; }
+    let own = [], staff = [];
+    const publish = () => setArchiveSubmissions([...new Map([...own, ...staff].map((item) => [item.id, item])).values()]);
+    const stops = [onSnapshot(query(ARCHIVE_SUBMISSIONS_COLLECTION, where("submitterId", "==", user.uid)), (snapshot) => { own = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); publish(); }, () => { own = []; publish(); })];
+    if (siteRole === "owner" || siteRole === "support") stops.push(onSnapshot(ARCHIVE_SUBMISSIONS_COLLECTION, (snapshot) => { staff = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })); publish(); }, () => { staff = []; publish(); }));
+    return () => stops.forEach((stop) => stop());
+  }, [user, siteRole]);
+
+  useEffect(() => {
+    if (siteRole !== "owner") { setAuditLog([]); return undefined; }
+    return onSnapshot(query(STAFF_ACTIONS_COLLECTION, orderBy("createdAt", "desc"), limit(100)), (snapshot) => setAuditLog(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))), () => setAuditLog([]));
+  }, [siteRole]);
 
   useEffect(() => {
     if (siteRole !== "owner" && siteRole !== "support") { setPrivateReports([]); return undefined; }
@@ -1674,9 +1792,41 @@ export default function App() {
     catch (e) { showToast("Couldn\u2019t submit blog request. Firestore rules may need to be published."); }
   };
 
+  const appendStaffAction = (batch, action, targetType, targetId, summary) => {
+    if (!user || (!isSiteStaff && !isModerator)) return;
+    batch.set(doc(STAFF_ACTIONS_COLLECTION), {
+      action: String(action).slice(0, 40),
+      targetType: String(targetType).slice(0, 40),
+      targetId: String(targetId).slice(0, 128),
+      targetLabel: String(summary).slice(0, 120),
+      actorUid: user.uid,
+      actorName: safeProfileName(myProfile?.displayName, user.displayName),
+      summary: String(summary).slice(0, 240),
+      createdAt: Date.now(),
+    });
+  };
+
   const reviewBlogPost = async (postId, status) => {
-    try { await updateDoc(doc(BLOG_POSTS_COLLECTION, postId), { status, reviewedAt: Date.now(), reviewedBy: user.uid }); showToast(status === "published" ? "Blog post published" : "Blog request declined"); }
+    try { const batch = writeBatch(db); batch.update(doc(BLOG_POSTS_COLLECTION, postId), { status, reviewedAt: Date.now(), reviewedBy: user.uid }); appendStaffAction(batch, status === "published" ? "blog_published" : "blog_declined", "blog", postId, `Blog ${status === "published" ? "published" : "declined"}: ${postId}`); await batch.commit(); showToast(status === "published" ? "Blog post published" : "Blog request declined"); }
     catch (e) { showToast("Couldn\u2019t update blog request"); }
+  };
+
+  const editBlogPost = async (post, fields) => {
+    if (!user || (post.authorId !== user.uid && !isSiteStaff && !isModerator)) throw new Error("You cannot edit this post");
+    const batch = writeBatch(db);
+    batch.update(doc(BLOG_POSTS_COLLECTION, post.id), { ...fields, status: "pending", reviewedAt: 0, reviewedBy: "", updatedAt: Date.now() });
+    appendStaffAction(batch, "blog_edited", "blog", post.id, `Blog returned for review: ${post.title}`);
+    await batch.commit();
+    showToast("Changes saved and sent for review");
+  };
+
+  const deleteBlogPost = async (post) => {
+    if (!user || (post.authorId !== user.uid && !isSiteStaff && !isModerator)) throw new Error("You cannot delete this post");
+    const batch = writeBatch(db);
+    batch.delete(doc(BLOG_POSTS_COLLECTION, post.id));
+    appendStaffAction(batch, "blog_deleted", "blog", post.id, `Blog deleted: ${post.title}`);
+    await batch.commit();
+    showToast("Blog post deleted");
   };
 
   const updateCoAdmins = async (tournamentId, ids) => {
@@ -1740,33 +1890,99 @@ export default function App() {
   const importArchiveEntries = async (records) => {
     const batch = writeBatch(db);
     records.forEach((entry) => batch.set(doc(ARCHIVE_COLLECTION), { ...entry, createdAt: Date.now(), createdBy: user.uid }));
+    appendStaffAction(batch, "archive_imported", "archive", "csv-import", `Imported ${records.length} esports archive record(s)`);
     await batch.commit();
   };
 
+  const submitArchiveRequest = async (fields) => {
+    const clean = {
+      tournament: String(fields.tournament || "").trim().slice(0, 120),
+      game: String(fields.game || "").trim().slice(0, 60),
+      eventDate: String(fields.eventDate || "").trim().slice(0, 40),
+      winner: String(fields.winner || "").trim().slice(0, 100),
+      runnerUp: String(fields.runnerUp || "").trim().slice(0, 100),
+      mvp: String(fields.mvp || "").trim().slice(0, 100),
+      source: String(fields.source || "").trim().slice(0, 500),
+    };
+    if (clean.source && !/^https:\/\//i.test(clean.source)) throw new Error("Use a secure https source link.");
+    await addDoc(ARCHIVE_SUBMISSIONS_COLLECTION, { ...clean, submitterId: user.uid, submitterName: safeProfileName(myProfile?.displayName, user.displayName), status: "pending", createdAt: Date.now() });
+    showToast("Archive request sent for review");
+  };
+
+  const decideArchiveSubmission = async (requestId, status) => {
+    if (!isSiteStaff || !["approved", "rejected"].includes(status)) return;
+    try {
+      const submission = archiveSubmissions.find((item) => item.id === requestId);
+      if (!submission || submission.status !== "pending") { showToast("This archive request was already reviewed"); return; }
+      const batch = writeBatch(db);
+      const requestRef = doc(ARCHIVE_SUBMISSIONS_COLLECTION, requestId);
+      if (status === "approved") {
+        const entryRef = doc(ARCHIVE_COLLECTION);
+        batch.set(entryRef, { tournament: submission.tournament, game: submission.game, eventDate: submission.eventDate, winner: submission.winner, runnerUp: submission.runnerUp || "", mvp: submission.mvp || "", source: submission.source || "", createdAt: Date.now(), createdBy: user.uid, submissionId: requestId });
+        batch.update(requestRef, { status, reviewedAt: Date.now(), reviewedBy: user.uid, archiveEntryId: entryRef.id });
+        appendStaffAction(batch, "archive_request_approved", "archiveSubmission", requestId, `Archive request approved: ${submission.tournament}`);
+      } else {
+        batch.update(requestRef, { status, reviewedAt: Date.now(), reviewedBy: user.uid });
+        appendStaffAction(batch, "archive_request_rejected", "archiveSubmission", requestId, `Archive request declined: ${submission.tournament}`);
+      }
+      await batch.commit();
+      showToast(status === "approved" ? "Event added to the archive" : "Archive request declined");
+    } catch (error) {
+      console.error("Could not review archive submission", error);
+      showToast("Couldn't review this archive request. Check the published Firebase rules and try again.");
+    }
+  };
+
+  const promoteBlogToArchive = async (post, fields) => {
+    if (!isSiteStaff || post.status !== "published") throw new Error("Only staff can promote published posts");
+    const source = String(fields.source || "").trim().slice(0, 500);
+    if (source && !/^https:\/\//i.test(source)) throw new Error("Use a secure https source link.");
+    const batch = writeBatch(db);
+    const archiveRef = doc(ARCHIVE_COLLECTION);
+    batch.set(archiveRef, {
+      tournament: String(post.title || "").trim().slice(0, 120),
+      game: String(post.game || "").trim().slice(0, 60),
+      eventDate: String(fields.eventDate || "").trim().slice(0, 40),
+      winner: String(fields.winner || "").trim().slice(0, 100),
+      runnerUp: String(fields.runnerUp || "").trim().slice(0, 100),
+      mvp: String(fields.mvp || "").trim().slice(0, 100),
+      source, createdAt: Date.now(), createdBy: user.uid, blogPostId: post.id,
+    });
+    appendStaffAction(batch, "blog_added_to_archive", "archiveEntry", archiveRef.id, `Blog added to archive: ${post.title}`);
+    await batch.commit();
+    showToast("Structured event added to the archive");
+  };
+
   const updateReportStatus = async (reportId, status) => {
-    try { await updateDoc(doc(REPORTS_COLLECTION, reportId), { status, reviewedAt: Date.now() }); }
+    try { const batch = writeBatch(db); batch.update(doc(REPORTS_COLLECTION, reportId), { status, reviewedAt: Date.now() }); appendStaffAction(batch, "report_reviewed", "report", reportId, `Safety report marked ${status}`); await batch.commit(); }
     catch (e) { showToast("Couldn't update report status"); }
   };
 
   const saveSitePopup = async (popupId, fields) => {
     if (siteRole !== "owner") throw new Error("Owner access required");
     const ref = popupId ? doc(SITE_POPUPS_COLLECTION, popupId) : doc(SITE_POPUPS_COLLECTION);
-    if (popupId) await updateDoc(ref, fields);
-    else await setDoc(ref, { ...fields, createdAt: Date.now() });
+    const batch = writeBatch(db);
+    if (popupId) batch.update(ref, fields);
+    else batch.set(ref, { ...fields, createdAt: Date.now() });
+    appendStaffAction(batch, "popup_saved", "popup", popupId || ref.id, `${popupId ? "Popup updated" : "Popup created"}: ${fields.title}`);
+    await batch.commit();
     showToast("Popup saved");
   };
 
   const deleteSitePopup = async (popupId) => {
     if (siteRole !== "owner") return;
-    try { await deleteDoc(doc(SITE_POPUPS_COLLECTION, popupId)); showToast("Popup deleted"); }
+    try { const batch = writeBatch(db); batch.delete(doc(SITE_POPUPS_COLLECTION, popupId)); appendStaffAction(batch, "popup_deleted", "popup", popupId, `Popup deleted: ${popupId}`); await batch.commit(); showToast("Popup deleted"); }
     catch { showToast("Couldn't delete popup"); }
   };
 
   const setSupportAccess = async (targetUid, enabled) => {
     if (siteRole !== "owner" || targetUid === user?.uid) throw new Error("Owner access required");
     const ref = doc(SITE_ROLES_COLLECTION, targetUid);
-    if (enabled) await setDoc(ref, { role: "support", enabled: true, updatedAt: Date.now() });
-    else await updateDoc(ref, { enabled: false, updatedAt: Date.now() });
+    const batch = writeBatch(db);
+    if (enabled) batch.set(ref, { role: "support", enabled: true, updatedAt: Date.now() });
+    else batch.update(ref, { enabled: false, updatedAt: Date.now() });
+    appendStaffAction(batch, enabled ? "support_granted" : "support_revoked", "support", targetUid, `${enabled ? "Support access granted" : "Support access removed"} for ${targetUid}`);
+    await batch.commit();
     showToast(enabled ? "Support access granted" : "Support access removed");
   };
 
@@ -1872,8 +2088,8 @@ export default function App() {
         {section === "players" && (
           <FindPlayersPage currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid)} onFriendDecision={decideFriendRequest} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} />
         )}
-        {section === "archive" && <HistoricalArchive entries={archiveEntries} isModerator={isModerator} onImport={importArchiveEntries} />}
-        {section === "blog" && <BlogPage posts={blogPosts} user={user} isModerator={isSiteStaff || isModerator} onSubmit={submitBlogPost} onReview={reviewBlogPost} />}
+        {section === "archive" && <HistoricalArchive entries={archiveEntries} isModerator={isSiteStaff || isModerator} user={user} submissions={archiveSubmissions} onSubmitRequest={submitArchiveRequest} onImport={importArchiveEntries} />}
+        {section === "blog" && <BlogPage posts={blogPosts} user={user} isModerator={isSiteStaff || isModerator} onSubmit={submitBlogPost} onReview={reviewBlogPost} onEdit={editBlogPost} onDelete={deleteBlogPost} />}
         {section === "requests" && <FriendRequestCenter requests={friendRequests} currentUserId={user.uid} onDecision={decideFriendRequest} />}
         {section === "dashboard" && isSiteStaff && <OwnerDashboard
           role={siteRole || "support"}
@@ -1888,6 +2104,10 @@ export default function App() {
           archiveEntries={archiveEntries}
           blogPosts={blogPosts}
           onBlogReview={reviewBlogPost}
+          onPromoteBlog={promoteBlogToArchive}
+          archiveSubmissions={archiveSubmissions}
+          onArchiveDecision={decideArchiveSubmission}
+          auditLog={auditLog}
         />}
         {section === "tournaments" && view === "list" && (
           <TournamentList
