@@ -47,8 +47,12 @@ service cloud.firestore {
     function canBrowsePublicData() {
       return request.auth == null || !isSiteBanned();
     }
+    function isBlocked(firstUid, secondUid) {
+      return exists(/databases/$(database)/documents/userBlocks/$(firstUid + '_' + secondUid))
+        || exists(/databases/$(database)/documents/userBlocks/$(secondUid + '_' + firstUid));
+    }
     function isAcceptedFriend(firstUid, secondUid) {
-      return request.auth != null && firstUid != secondUid
+      return request.auth != null && firstUid != secondUid && !isBlocked(firstUid, secondUid)
         && ((exists(/databases/$(database)/documents/friendRequests/$(firstUid + '_' + secondUid))
              && get(/databases/$(database)/documents/friendRequests/$(firstUid + '_' + secondUid)).data.status == 'accepted')
             || (exists(/databases/$(database)/documents/friendRequests/$(secondUid + '_' + firstUid))
@@ -482,13 +486,40 @@ service cloud.firestore {
                     && (!request.resource.data.keys().hasAny(['recipientName']) || (request.resource.data.recipientName is string && request.resource.data.recipientName.size() <= 40))
 
                     && request.resource.data.status == 'pending'
+                    && !isBlocked(request.auth.uid, request.resource.data.recipientId)
                     && request.resource.data.createdAt is int;
       allow update: if isActiveSiteUser()
-                    && resource.data.recipientId == request.auth.uid
-                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt'])
-                    && request.resource.data.status in ['accepted', 'declined']
-                    && request.resource.data.reviewedAt is int;
+                    && (
+                      (resource.data.recipientId == request.auth.uid
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt'])
+                       && request.resource.data.status in ['accepted', 'declined']
+                       && request.resource.data.reviewedAt is int
+                       && (request.resource.data.status != 'accepted' || !isBlocked(resource.data.requesterId, resource.data.recipientId)))
+                      || (resource.data.status == 'accepted'
+                          && request.auth.uid in [resource.data.requesterId, resource.data.recipientId]
+                          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt'])
+                          && request.resource.data.status == 'removed'
+                          && request.resource.data.reviewedAt is int)
+                    );
       allow delete: if false;
+    }
+
+    match /userBlocks/{blockId} {
+      allow get, list: if isActiveSiteUser()
+        && request.auth.uid in [resource.data.blockerUid, resource.data.blockedUid];
+      allow create: if isActiveSiteUser()
+        && request.resource.data.keys().hasOnly(['blockerUid', 'blockedUid', 'blockedName', 'createdAt'])
+        && request.resource.data.keys().hasAll(['blockerUid', 'blockedUid', 'blockedName', 'createdAt'])
+        && request.resource.data.blockerUid == request.auth.uid
+        && request.resource.data.blockedUid is string
+        && request.resource.data.blockedUid != request.auth.uid
+        && request.resource.data.blockedUid.size() <= 128
+        && blockId == request.auth.uid + '_' + request.resource.data.blockedUid
+        && request.resource.data.blockedName is string
+        && request.resource.data.blockedName.size() <= 40
+        && request.resource.data.createdAt is int;
+      allow update: if false;
+      allow delete: if isActiveSiteUser() && resource.data.blockerUid == request.auth.uid;
     }
 
     match /tournamentInvites/{inviteId} {
@@ -545,8 +576,9 @@ service cloud.firestore {
       }
       allow get: if isActiveSiteUser()
         && (!exists(/databases/$(database)/documents/conversations/$(conversationId))
-            || request.auth.uid in resource.data.participants);
-      allow list: if isActiveSiteUser() && request.auth.uid in resource.data.participants;
+            || (request.auth.uid in resource.data.participants && isAcceptedFriend(resource.data.participants[0], resource.data.participants[1])));
+      allow list: if isActiveSiteUser() && request.auth.uid in resource.data.participants
+        && isAcceptedFriend(resource.data.participants[0], resource.data.participants[1]);
       allow create: if isActiveSiteUser() && validConversation(request.resource.data);
       allow update, delete: if false;
 
@@ -556,7 +588,8 @@ service cloud.firestore {
         }
         allow get, list: if isActiveSiteUser()
           && exists(/databases/$(database)/documents/conversations/$(conversationId))
-          && request.auth.uid in parentConversation().participants;
+          && request.auth.uid in parentConversation().participants
+          && isAcceptedFriend(parentConversation().participants[0], parentConversation().participants[1]);
         allow create: if isActiveSiteUser()
           && exists(/databases/$(database)/documents/conversations/$(conversationId))
           && request.auth.uid in parentConversation().participants
