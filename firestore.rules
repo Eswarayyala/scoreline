@@ -48,6 +48,7 @@ service cloud.firestore {
         && (data.endsAt == 0 || data.startsAt == 0 || data.endsAt > data.startsAt)
         && data.createdAt is int
         && data.updatedAt is int;
+
     }
     function validPlayerProfile(data) {
       return data.keys().hasOnly([
@@ -98,6 +99,7 @@ service cloud.firestore {
 
     function validBlogPost(data) {
       return data.keys().hasOnly([
+
                'title', 'game', 'content', 'source', 'authorId', 'authorName',
                'status', 'createdAt', 'updatedAt', 'reviewedAt', 'reviewedBy'
              ])
@@ -122,8 +124,7 @@ service cloud.firestore {
     function validArchiveSubmission(data) {
       return data.keys().hasOnly([
                'tournament', 'game', 'eventDate', 'winner', 'runnerUp', 'mvp',
-              
- 'source', 'submitterId', 'submitterName', 'status', 'createdAt',
+               'source', 'submitterId', 'submitterName', 'status', 'createdAt',
                'reviewedAt', 'reviewedBy', 'archiveEntryId'
              ])
              && data.keys().hasAll([
@@ -149,6 +150,7 @@ service cloud.firestore {
 
     function validArchiveEntry(data) {
       return data.keys().hasOnly([
+
                'tournament', 'game', 'eventDate', 'winner', 'runnerUp', 'mvp',
                'source', 'createdAt', 'createdBy', 'submissionId', 'blogPostId'
              ])
@@ -199,6 +201,7 @@ service cloud.firestore {
              && data.game is string && data.game.size() <= 60
              && data.format is string && data.format.size() <= 60
              && data.adminUserId is string
+
              && (!data.keys().hasAny(['startDate']) || (data.startDate is string && data.startDate.size() <= 40))
              && (!data.keys().hasAny(['endDate']) || (data.endDate is string && data.endDate.size() <= 40))
              && (!data.keys().hasAny(['artwork']) || (data.artwork is string && data.artwork.size() <= 16))
@@ -209,8 +212,7 @@ service cloud.firestore {
              && (!data.keys().hasAny(['createdAt']) || data.createdAt is int)
              && (!data.keys().hasAny(['updatedAt']) || data.updatedAt is int)
              && (!data.keys().hasAny(['archived']) || data.archived is bool)
-           
-  && (!data.keys().hasAny(['archivedAt']) || data.archivedAt is int)
+             && (!data.keys().hasAny(['archivedAt']) || data.archivedAt is int)
              && (!data.keys().hasAny(['prizeAmount'])
                  || ((data.prizeAmount is int || data.prizeAmount is float)
                      && data.prizeAmount >= 0 && data.prizeAmount <= 100000000))
@@ -250,6 +252,7 @@ service cloud.firestore {
              && data.keys().hasAll(['player', 'teamId', 'matchId', 'kills', 'deaths', 'assists', 'score'])
              && data.player is string && data.player.size() > 0 && data.player.size() <= 100
              && (data.teamId == null || (data.teamId is string && data.teamId.size() <= 128))
+
              && (data.matchId == null || (data.matchId is string && data.matchId.size() <= 128))
              && (data.kills is int || data.kills is float) && data.kills >= 0 && data.kills <= 1000000
              && (data.deaths is int || data.deaths is float) && data.deaths >= 0 && data.deaths <= 1000000
@@ -301,13 +304,13 @@ service cloud.firestore {
         allow delete: if isAdmin(parent(tid));
       }
 
+
       match /registrations/{playerId} {
         allow read: if isAdmin(parent(tid))
                     || (request.auth != null && request.auth.uid == resource.data.playerId);
         allow create: if request.auth != null
                       && exists(/databases/$(database)/documents/tournaments/$(tid))
-                      && (!parent(tid).keys().hasAny(['
-registrationOpen'])
+                      && (!parent(tid).keys().hasAny(['registrationOpen'])
                           || parent(tid).registrationOpen == true)
                       && (!parent(tid).keys().hasAny(['archived']) || parent(tid).archived != true)
                       && parent(tid).status != 'completed'
@@ -350,6 +353,7 @@ registrationOpen'])
                     && request.resource.data.updatedAt is int;
       allow delete: if isSiteOwner() && resource.data.role == 'support';
     }
+
 
     match /sitePopups/{popupId} {
       allow get, list: if isSiteOwner() || resource.data.enabled == true;
@@ -401,14 +405,14 @@ registrationOpen'])
       allow get, list: if isSiteStaff()
                        || (request.auth != null && resource.data.submitterId == request.auth.uid);
       allow create: if request.auth != null
+
                     && request.resource.data.submitterId == request.auth.uid
                     && request.resource.data.status == 'pending'
                     && validArchiveSubmission(request.resource.data);
       allow update: if isSiteStaff()
                     && resource.data.status == 'pending'
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy', 'archiveEntryId'])
-                    && validArchiveSubmission(request.
-resource.data)
+                    && validArchiveSubmission(request.resource.data)
                     && request.resource.data.status in ['approved', 'rejected']
                     && request.resource.data.reviewedBy == request.auth.uid
                     && request.resource.data.reviewedAt is int
@@ -452,6 +456,7 @@ resource.data)
                     && requestId == request.auth.uid + '_' + request.resource.data.recipientId
                     && request.resource.data.requesterName is string
                     && request.resource.data.requesterName.size() <= 40
+
                     && request.resource.data.status == 'pending'
                     && request.resource.data.createdAt is int;
       allow update: if request.auth != null
