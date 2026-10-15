@@ -1,4 +1,24 @@
 {
+  "auth": {
+    "providers": {
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "GrindInfo",
+        "supportEmail": "eswarayyala1424@gmail.com",
+        "authorizedRedirectUris": [
+          "https://grindinfo.xyz",
+          "https://www.grindinfo.xyz",
+          "https://www.grindinfo.xyz/__/auth/handler",
+          "https://grindinfo.xyz/__/auth/handler",
+          "http://localhost",
+          "http://localhost:5173",
+          "http://localhost:5174",
+          "http://localhost:5173/__/auth/handler",
+          "http://localhost:5174/__/auth/handler"
+        ]
+      }
+    }
+  },
   "functions": {
     "source": "functions",
     "runtime": "nodejs22"

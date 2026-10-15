@@ -17,13 +17,12 @@ import {
 } from "firebase/firestore";
 import {
   onAuthStateChanged,
-  signInWithPopup,
   signOut,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,
 } from "firebase/auth";
-import { db, auth, googleProvider, realtimeDb } from "./firebase";
+import { db, auth, realtimeDb, signInWithGoogle } from "./firebase";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { onValue, ref as databaseRef, onDisconnect, serverTimestamp, set as setDatabaseValue } from "firebase/database";
 
@@ -1674,7 +1673,7 @@ export default function App() {
     setAuthError("");
     setAuthBusy(true);
     try {
-      await signInWithPopup(auth, googleProvider);
+      await signInWithGoogle();
     } catch (e) {
       const messages = {
         "auth/unauthorized-domain": "This site isn't allowed for Google sign-in yet.",

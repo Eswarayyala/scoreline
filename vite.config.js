@@ -6,8 +6,16 @@ const authPopupHeaders = {
   "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
 };
 
+const authProxy = {
+  "/__/auth": {
+    target: "https://scoreliner.firebaseapp.com",
+    changeOrigin: true,
+    secure: true,
+  },
+};
+
 export default defineConfig({
   plugins: [react()],
-  server: { headers: authPopupHeaders },
-  preview: { headers: authPopupHeaders },
+  server: { headers: authPopupHeaders, proxy: authProxy },
+  preview: { headers: authPopupHeaders, proxy: authProxy },
 })
