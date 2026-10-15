@@ -22,11 +22,12 @@ import {
   signInWithEmailAndPassword,
   updateProfile,
 } from "firebase/auth";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import { db, auth, realtimeDb, signInWithGoogle, completeGoogleSignInReturn } from "./firebase";
 import PlatformHome from "./components/layout/PlatformHome";
+import PublicNav from "./components/layout/PublicNav";
+import TournamentOpsRail from "./components/layout/TournamentOpsRail";
 import VaultDetailPage from "./components/vault/VaultDetailPage";
-import OwnerCommandPanel from "./components/owner/OwnerCommandPanel";
 import CircuitCmsDesk from "./components/cms/CircuitCmsDesk";
 import { useCircuitCms } from "./hooks/useCircuitCms";
 import { getFunctions, httpsCallable } from "firebase/functions";
@@ -1230,7 +1231,7 @@ function FriendRequestCenter({ requests, currentUserId, onDecision }) {
   );
 }
 
-function FriendDock({ requests, currentUserId, onOpenChat, onOpenRequests, presenceDb, onFriendOnline, blockedUsers = [], onRemoveFriend, onBlockFriend, onUnblockFriend }) {
+function FriendDock({ requests, currentUserId, onOpenChat, onOpenRequests, presenceDb, onFriendOnline, blockedUsers = [], onRemoveFriend, onBlockFriend, onUnblockFriend, placement = "dock" }) {
   const [expanded, setExpanded] = useState(false);
   const [presence, setPresence] = useState({});
   const blockedIds = new Set(blockedUsers.map((item) => item.blockerUid === currentUserId ? item.blockedUid : item.blockerUid));
@@ -1257,9 +1258,7 @@ function FriendDock({ requests, currentUserId, onOpenChat, onOpenRequests, prese
     });
     return () => { active = false; stops.forEach((stop) => stop()); };
   }, [presenceDb, currentUserId, friendKey, onFriendOnline]);
-  return <aside style={{ position: "fixed", right: 14, bottom: 14, zIndex: 55, width: expanded ? "min(330px, calc(100vw - 28px))" : "auto", background: "var(--panel-bg)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)" }}>
-    <button type="button" onClick={() => setExpanded((open) => !open)} aria-expanded={expanded} style={{ width: "100%", padding: "12px 14px", border: 0, background: "transparent", color: "var(--page-text)", textAlign: "left", cursor: "pointer", fontWeight: 700 }}>Friends <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>({friends.length})</span> <span style={{ float: "right" }}>{expanded ? "−" : "+"}</span></button>
-    {expanded && <div style={{ maxHeight: 380, overflowY: "auto", borderTop: "1px solid var(--border)", padding: 8 }}>
+  const list = <div style={{ maxHeight: 320, overflowY: "auto", padding: placement === "header" ? 0 : 8 }}>
       <button type="button" onClick={() => { onOpenRequests(); setExpanded(false); }} style={{ width: "100%", textAlign: "left", border: 0, borderBottom: "1px solid var(--border)", padding: 11, background: "transparent", color: "var(--accent-secondary)", cursor: "pointer" }}>Friend requests{requests.filter((item) => item.recipientId === currentUserId && item.status === "pending").length ? ` (${requests.filter((item) => item.recipientId === currentUserId && item.status === "pending").length})` : ""}</button>
       {friends.length === 0 ? <div style={{ padding: 12, color: "var(--text-muted)", fontSize: 13 }}>Accepted friends will appear here.</div> : friends.map((friend) => <div key={friend.uid} style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><span style={{ display: "flex", alignItems: "center", gap: 8 }}><span aria-label={presence[friend.uid] || "offline"} title={presence[friend.uid] || (presenceDb ? "offline" : "Online status needs Realtime Database setup")} style={{ width: 8, height: 8, borderRadius: "50%", background: presence[friend.uid] === "online" ? "var(--success)" : "var(--text-dim)" }} />{friend.name}</span><button type="button" onClick={() => onOpenChat(friend)} style={{ border: 0, background: "transparent", color: "var(--accent-secondary)", cursor: "pointer" }}>Chat</button></div>
@@ -1267,7 +1266,16 @@ function FriendDock({ requests, currentUserId, onOpenChat, onOpenRequests, prese
       </div>)}
       {blockedUsers.filter((item) => item.blockerUid === currentUserId).length > 0 && <section style={{ borderTop: "1px solid var(--border)", marginTop: 8, paddingTop: 8 }}><div style={{ padding: "4px 8px", color: "var(--text-muted)", fontSize: 11 }}>Blocked players</div>{blockedUsers.filter((item) => item.blockerUid === currentUserId).map((item) => <div key={item.id} style={{ padding: "6px 8px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 12 }}>{item.blockedName || "Player"}<button type="button" onClick={() => onUnblockFriend(item)} style={{ border: 0, background: "transparent", color: "var(--accent-secondary)", cursor: "pointer" }}>Unblock</button></div>)}</section>}
       {!presenceDb && <div style={{ padding: "8px 10px", color: "var(--text-dim)", fontSize: 11 }}>Live online status needs Realtime Database setup.</div>}
-    </div>}
+    </div>;
+  if (placement === "header") {
+    return <div style={{ borderTop: "1px solid var(--border)", marginTop: 10, paddingTop: 10 }}>
+      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 8 }}>Friends ({friends.length})</div>
+      {list}
+    </div>;
+  }
+  return <aside style={{ position: "fixed", right: 14, bottom: 14, zIndex: 55, width: expanded ? "min(330px, calc(100vw - 28px))" : "auto", background: "var(--panel-bg)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)" }}>
+    <button type="button" onClick={() => setExpanded((open) => !open)} aria-expanded={expanded} style={{ width: "100%", padding: "12px 14px", border: 0, background: "transparent", color: "var(--page-text)", textAlign: "left", cursor: "pointer", fontWeight: 700 }}>Friends <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>({friends.length})</span> <span style={{ float: "right" }}>{expanded ? "−" : "+"}</span></button>
+    {expanded && list}
   </aside>;
 }
 
@@ -1695,13 +1703,14 @@ function LoadingScreen({ label }) {
   return <div role="status" aria-live="polite" style={{ minHeight: "60vh", display: "grid", placeItems: "center", background: "var(--page-bg-solid, #101820)", color: "var(--page-text, #EDF1F4)", fontFamily: "'Inter',sans-serif" }}><div style={{ textAlign: "center" }}><div className="grind-loader" aria-hidden="true"><span>G</span></div><div style={{ marginTop: 16 }}>{label}…</div><style>{`.grind-loader{width:68px;height:68px;margin:auto;border:2px solid var(--border,#314);border-top-color:var(--accent,#08f);border-right-color:var(--accent-secondary,#0dc);border-radius:50%;display:grid;place-items:center;animation:grind-spin 1.2s linear infinite}.grind-loader span{font-family:'Bebas Neue',sans-serif;font-size:30px;animation:grind-spin 1.2s linear infinite reverse}@keyframes grind-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.grind-loader,.grind-loader span{animation:none}}`}</style></div></div>;
 }
 
-function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDelete, onSignIn, embedded = false }) {
+function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDelete, onSignIn, embedded = false, manageInDrawer = false }) {
   const [title, setTitle] = useState("");
   const [game, setGame] = useState("");
   const [content, setContent] = useState("");
   const [source, setSource] = useState("");
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState("");
+  const [manageOpen, setManageOpen] = useState(false);
   const [draft, setDraft] = useState({ title: "", game: "", content: "", source: "" });
   const visible = posts.filter((post) => post.status === "published" || (user && post.authorId === user.uid) || (isModerator && post.status === "pending"));
   const submit = async () => {
@@ -1717,7 +1726,8 @@ function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDele
     try { await onEdit(post, { title: draft.title.trim(), game: draft.game.trim(), content: draft.content.trim(), source: draft.source.trim() }); setEditingId(""); setError(""); }
     catch { setError("Could not save this post. Please try again."); }
   };
-  return <div style={{ paddingTop: embedded ? 16 : 32 }}>{!embedded && <><Eyebrow>Community stories</Eyebrow><h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42 }}>Esports blog</h1><p style={{ color: "var(--text-muted)" }}>Read community stories, tournament recaps, and esports updates.</p></>}{embedded && <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, margin: "0 0 12px" }}>Community blog</h2>}{user ? <section style={{ display: "grid", gap: 10, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)", maxWidth: 680 }}><p style={{ color: "var(--text-muted)", fontSize: 13, margin: 0 }}>Send a tournament recap or esports story to the GrindInfo owner for review.</p><Field label="Post title"><TextInput value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} /></Field><Field label="Game"><TextInput value={game} maxLength={60} onChange={(e) => setGame(e.target.value)} placeholder="e.g. Valorant" /></Field><Field label="Story or tournament update"><textarea value={content} maxLength={6000} onChange={(e) => setContent(e.target.value)} rows={6} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput value={source} maxLength={500} onChange={(e) => setSource(e.target.value)} placeholder="https://" /></Field>{error && <span role="alert" style={{ color: "var(--danger)" }}>{error}</span>}<Button onClick={submit}>Request publication</Button></section> : <section style={{ maxWidth: 680, padding: 16, marginTop: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 10 }}>Sign in to request that a blog post be published.</div><Button onClick={onSignIn}>Sign in to request a post</Button></section>}<div style={{ display: "grid", gap: 12, marginTop: 20 }}>{visible.map((post) => <article key={post.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}</Eyebrow>{editingId === post.id ? <div style={{ display: "grid", gap: 8, marginTop: 8 }}><Field label="Post title"><TextInput maxLength={120} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /></Field><Field label="Game"><TextInput maxLength={60} value={draft.game} onChange={(e) => setDraft({ ...draft, game: e.target.value })} /></Field><Field label="Story"><textarea maxLength={6000} rows={6} value={draft.content} onChange={(e) => setDraft({ ...draft, content: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput maxLength={500} value={draft.source} onChange={(e) => setDraft({ ...draft, source: e.target.value })} /></Field><div style={{ display: "flex", gap: 8 }}><Button onClick={() => saveEdit(post)}>Save changes</Button><Button variant="ghost" onClick={() => setEditingId("")}>Cancel</Button></div></div> : <><h2 style={{ fontFamily: "'Bebas Neue',sans-serif" }}>{post.title}</h2><div style={{ color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{post.content}</div><div style={{ marginTop: 8, fontSize: 12 }}>By {post.authorName || "Player"}</div>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{isModerator && post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button onClick={() => onReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onReview(post.id, "rejected")}>Decline</Button></div>}{(user && post.authorId === user.uid || isModerator) && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button variant="ghost" onClick={() => startEdit(post)}>Edit post</Button><Button variant="danger" onClick={() => { if (window.confirm("Delete this blog post? This cannot be undone.")) onDelete(post); }}>Delete post</Button></div>}{user && post.authorId === user.uid && post.status === "published" && <small style={{ display: "block", marginTop: 8, color: "var(--text-muted)" }}>Saving an edit sends the post back for review.</small>}</>}{error && editingId === post.id && <div role="alert" style={{ color: "var(--danger)", marginTop: 8 }}>{error}</div>}</article>)}</div></div>;
+  const compose = user ? <section style={{ display: "grid", gap: 10, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)", maxWidth: 680 }}><p style={{ color: "var(--text-muted)", fontSize: 13, margin: 0 }}>Send a tournament recap or esports story to the GrindInfo owner for review.</p><Field label="Post title"><TextInput value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} /></Field><Field label="Game"><TextInput value={game} maxLength={60} onChange={(e) => setGame(e.target.value)} placeholder="e.g. Valorant" /></Field><Field label="Story or tournament update"><textarea value={content} maxLength={6000} onChange={(e) => setContent(e.target.value)} rows={6} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput value={source} maxLength={500} onChange={(e) => setSource(e.target.value)} placeholder="https://" /></Field>{error && !editingId && <span role="alert" style={{ color: "var(--danger)" }}>{error}</span>}<Button onClick={submit}>Request publication</Button></section> : <section style={{ maxWidth: 680, padding: 16, marginTop: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 10 }}>Sign in to request that a blog post be published.</div><Button onClick={onSignIn}>Sign in to request a post</Button></section>;
+  return <div style={{ paddingTop: embedded ? 16 : 32, paddingBottom: manageInDrawer ? 88 : 0 }}>{!embedded && <><Eyebrow>Community stories</Eyebrow><h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42 }}>Esports blog</h1><p style={{ color: "var(--text-muted)" }}>Read community stories, tournament recaps, and esports updates.</p></>}{embedded && <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, margin: "0 0 12px" }}>Community blog</h2>}{!manageInDrawer && compose}<div style={{ display: "grid", gap: 12, marginTop: 20 }}>{visible.map((post) => <article key={post.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}</Eyebrow>{editingId === post.id ? <div style={{ display: "grid", gap: 8, marginTop: 8 }}><Field label="Post title"><TextInput maxLength={120} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /></Field><Field label="Game"><TextInput maxLength={60} value={draft.game} onChange={(e) => setDraft({ ...draft, game: e.target.value })} /></Field><Field label="Story"><textarea maxLength={6000} rows={6} value={draft.content} onChange={(e) => setDraft({ ...draft, content: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput maxLength={500} value={draft.source} onChange={(e) => setDraft({ ...draft, source: e.target.value })} /></Field><div style={{ display: "flex", gap: 8 }}><Button onClick={() => saveEdit(post)}>Save changes</Button><Button variant="ghost" onClick={() => setEditingId("")}>Cancel</Button></div></div> : <><h2 style={{ fontFamily: "'Bebas Neue',sans-serif" }}>{post.title}</h2><div style={{ color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{post.content}</div><div style={{ marginTop: 8, fontSize: 12 }}>By {post.authorName || "Player"}</div>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{isModerator && post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button onClick={() => onReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onReview(post.id, "rejected")}>Decline</Button></div>}{(user && post.authorId === user.uid || isModerator) && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button variant="ghost" onClick={() => startEdit(post)}>Edit post</Button><Button variant="danger" onClick={() => { if (window.confirm("Delete this blog post? This cannot be undone.")) onDelete(post); }}>Delete post</Button></div>}{user && post.authorId === user.uid && post.status === "published" && <small style={{ display: "block", marginTop: 8, color: "var(--text-muted)" }}>Saving an edit sends the post back for review.</small>}</>}{error && editingId === post.id && <div role="alert" style={{ color: "var(--danger)", marginTop: 8 }}>{error}</div>}</article>)}</div>{manageInDrawer && <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#17110f]/95 backdrop-blur-md"><button type="button" onClick={() => setManageOpen((open) => !open)} className="flex w-full items-center justify-between px-5 py-3 font-mono text-[11px] uppercase tracking-[0.22em] text-amber-300"><span>Manage Posts</span><span aria-hidden="true">{manageOpen ? "−" : "+"}</span></button>{manageOpen && <div className="max-h-[48vh] overflow-y-auto border-t border-white/10 px-5 py-4">{compose}</div>}</div>}</div>;
 }
 
 
@@ -1733,14 +1743,15 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
-  const [view, setView] = useState(() => new URLSearchParams(window.location.search).has("tournament") ? "detail" : "list");
-  const [selectedId, setSelectedId] = useState(() => new URLSearchParams(window.location.search).get("tournament"));
+  const [view, setView] = useState(() => /^\/tournaments\/[^/]+/.test(window.location.pathname) || new URLSearchParams(window.location.search).has("tournament") ? "detail" : "list");
+  const [selectedId, setSelectedId] = useState(() => window.location.pathname.match(/^\/tournaments\/([^/]+)/)?.[1] || new URLSearchParams(window.location.search).get("tournament"));
   const [detailTab, setDetailTab] = useState("teams");
   const [showNewTournament, setShowNewTournament] = useState(false);
   const [joinDisclaimerOpen, setJoinDisclaimerOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);
   const [isModerator, setIsModerator] = useState(false);
   const [siteRole, setSiteRole] = useState(null);
+  const [siteRoleResolved, setSiteRoleResolved] = useState(!auth.currentUser);
   const [friendRequests, setFriendRequests] = useState([]);
   const [blockedUsers, setBlockedUsers] = useState([]);
   const [tournamentInvites, setTournamentInvites] = useState([]);
@@ -1785,9 +1796,7 @@ export default function App() {
         setGuestMode(returningGuest);
         setAuthDialogOpen(!u && !returningGuest);
         if (!u) {
-          setSection("home");
           setView("list");
-          setSelectedId(null);
           setShowNewTournament(false);
           setReportTarget(null);
         }
@@ -1845,10 +1854,9 @@ export default function App() {
   }, []);
 
   // ---- player profiles ----
-  const [section, setSection] = useState(() => new URLSearchParams(window.location.search).has("tournament") ? "tournaments" : "home");
-  const [ownerPanelOpen, setOwnerPanelOpen] = useState(false);
-  const [deskAnchor, setDeskAnchor] = useState("home");
   const [dashTabHint, setDashTabHint] = useState("overview");
+  const [showFriendRequests, setShowFriendRequests] = useState(false);
+  const [showArchivedTournaments, setShowArchivedTournaments] = useState(false);
   const circuitCms = useCircuitCms();
   const [myProfile, setMyProfile] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -1870,11 +1878,13 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    if (!user) { setIsModerator(false); setSiteRole(null); return undefined; }
+    if (!user) { setIsModerator(false); setSiteRole(null); setSiteRoleResolved(true); return undefined; }
+    setSiteRoleResolved(false);
     const stopRole = onSnapshot(doc(SITE_ROLES_COLLECTION, user.uid), (snapshot) => {
       const data = snapshot.exists() ? snapshot.data() : null;
       setSiteRole(data?.enabled !== false && ["owner", "support"].includes(data?.role) ? data.role : null);
-    }, () => setSiteRole(null));
+      setSiteRoleResolved(true);
+    }, () => { setSiteRole(null); setSiteRoleResolved(true); });
     const stopModerator = onSnapshot(doc(db, "moderators", user.uid), (snapshot) => {
       setIsModerator(snapshot.exists() && snapshot.data().enabled === true);
     }, () => setIsModerator(false));
@@ -2220,9 +2230,7 @@ export default function App() {
       ]);
       await deleteDoc(tournamentDocRef(id));
       showToast("Tournament deleted");
-      setView("list");
-      setSelectedId(null);
-      const url = new URL(window.location.href); url.searchParams.delete("tournament"); window.history.replaceState({}, "", url);
+      navigate("/tournaments");
     } catch (e) {
       showToast("Couldn't delete tournament — try again");
     } finally {
@@ -2414,10 +2422,9 @@ export default function App() {
   };
 
   const shareTournament = async (tournament) => {
-    const url = new URL(window.location.href);
-    url.searchParams.set("tournament", tournament.id);
-    try { await navigator.clipboard.writeText(url.toString()); showToast("Tournament link copied"); }
-    catch (e) { window.prompt("Copy this tournament link", url.toString()); }
+    const url = `${window.location.origin}/tournaments/${tournament.id}`;
+    try { await navigator.clipboard.writeText(url); showToast("Tournament link copied"); }
+    catch (e) { window.prompt("Copy this tournament link", url); }
   };
 
   const requestFriend = async (recipientId, recipientName = "Player") => {
@@ -2622,34 +2629,29 @@ export default function App() {
   const dashboardRole = isSiteStaff ? siteRole : null;
 
   useEffect(() => {
-    if (!isSiteStaff && section === "dashboard") setSection("home");
-  }, [isSiteStaff, section]);
+    const legacyId = new URLSearchParams(location.search).get("tournament");
+    if (legacyId && !location.pathname.startsWith("/tournaments/")) {
+      navigate(`/tournaments/${legacyId}`, { replace: true });
+    }
+  }, [location.search, location.pathname, navigate]);
 
-  const goSection = (id) => {
-    const target = id === "archive" ? "home" : id;
-    if (location.pathname.startsWith("/vault")) navigate("/");
-    if (target === "home") {
-      setSection("home");
-      setView("list");
-      setDeskAnchor("home");
-      window.scrollTo({ top: 0, behavior: "smooth" });
+  useEffect(() => {
+    const tournamentMatch = location.pathname.match(/^\/tournaments\/([^/]+)/);
+    if (tournamentMatch) {
+      setSelectedId(tournamentMatch[1]);
+      setView("detail");
       return;
     }
-    if (target === "tournaments" || target === "players" || target === "blog") {
-      if (target === "tournaments") {
-        setSelectedId(null);
-        const url = new URL(window.location.href);
-        url.searchParams.delete("tournament");
-        window.history.replaceState({}, "", url);
-      }
-      setSection("home");
+    if (location.pathname === "/tournaments") {
+      setSelectedId(null);
       setView("list");
-      setDeskAnchor(target);
-      window.setTimeout(() => document.getElementById(`section-${target}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
-      return;
     }
-    setSection(target);
-  };
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (authLoading || !location.pathname.startsWith("/admin")) return;
+    if (!user || (siteRoleResolved && !isSiteStaff)) navigate("/", { replace: true });
+  }, [authLoading, isSiteStaff, location.pathname, navigate, siteRoleResolved, user]);
 
   const needsAuthChoice = !user && !guestMode;
 
@@ -2687,186 +2689,161 @@ export default function App() {
         @keyframes sl-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
       `}</style>
 
-        {!needsAuthChoice && (
-          <>
-        <Header saving={saving} user={user} guestMode={guestMode} onSignInClick={() => setAuthDialogOpen((open) => !open)} onSignOut={handleSignOut} onNavigate={(id) => { if (id === "dashboard" && dashboardRole) { setOwnerPanelOpen(true); return; } goSection(id); }} onOpenOwnerPanel={() => setOwnerPanelOpen(true)} onEditProfile={() => setShowProfileModal(true)} dashboardRole={dashboardRole} />
-
-      <div style={{ maxWidth: 980, margin: "0 auto", padding: "16px 20px 0" }}>
-        <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--border)" }}>
-          {[
-            { id: "home", label: "The Vault" },
-            { id: "tournaments", label: "Tournaments" },
-            { id: "players", label: "Find players" },
-            { id: "blog", label: "Community blog" },
-          ].map((s) => {
-            const tabOn = location.pathname.startsWith("/vault")
-              ? s.id === "home"
-              : section === "tournaments" && view === "detail"
-                ? s.id === "tournaments"
-                : section === "home"
-                  ? deskAnchor === s.id
-                  : section === s.id;
-            return (
-            <button
-              key={s.id}
-              onClick={() => goSection(s.id)}
-              style={{
-                background: "none",
-                border: "none",
-                borderBottom: tabOn ? "2px solid var(--accent-secondary)" : "2px solid transparent",
-                color: tabOn ? "var(--page-text)" : "var(--text-muted)",
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 12,
-                letterSpacing: "0.05em",
-                textTransform: "uppercase",
-                padding: "10px 14px",
-                cursor: "pointer",
-              }}
-            >
-              {s.label}
-            </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div style={{ maxWidth: section === "home" || location.pathname.startsWith("/vault") ? 1152 : 980, margin: "0 auto", padding: "0 20px 80px" }}>
-        {location.pathname.startsWith("/vault/") ? (
-          <VaultDetailPage slides={circuitCms.vaultSlides} slug={location.pathname.replace(/^\/vault\//, "").split("/")[0]} liveEntries={archiveEntries} />
-        ) : (
-            <>
-        {section === "home" && view === "list" && (
-          <PlatformHome slides={circuitCms.vaultSlides} onOpenVaultSlide={(slug) => navigate(`/vault/${slug}`)}>
-            <HistoricalArchive embedded entries={archiveEntries} isModerator={isSiteStaff || isModerator} user={user} submissions={archiveSubmissions} onSubmitRequest={submitArchiveRequest} onImport={importArchiveEntries} onSignIn={() => setAuthDialogOpen(true)} />
-            <section id="section-tournaments" style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
-              <TournamentList
-                embedded
-                tournaments={tournaments}
-                currentUserId={user?.uid || null}
-                currentUserName={safeProfileName(myProfile?.displayName, user?.displayName)}
-                pendingInvites={user ? tournamentInvites.filter((item) => item.inviteeUid === user.uid && item.status === "pending") : []}
-                onInviteDecision={decideTournamentInvite}
-                onOpen={(id) => {
-                  setDeskAnchor("tournaments");
-                  setSection("tournaments");
-                  setSelectedId(id);
-                  setView("detail");
-                  const url = new URL(window.location.href); url.searchParams.set("tournament", id); window.history.replaceState({}, "", url);
-                  setDetailTab("teams");
-                }}
-                onNew={() => user ? setShowNewTournament(true) : setAuthDialogOpen(true)}
-                onSignIn={() => setAuthDialogOpen(true)}
-              />
-            </section>
-            <section id="section-players" style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
-              {user ? (
-                <FindPlayersPage embedded currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid, player.displayName)} onFriendDecision={decideFriendRequest} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} onEditProfile={() => setShowProfileModal(true)} />
-              ) : (
-                <div style={{ padding: "18px 0" }}>
-                  <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, margin: "0 0 10px" }}>Find players</h2>
-                  <p style={{ color: "var(--text-muted)", fontSize: 13, margin: "0 0 12px" }}>Sign in to search similar players and send a connect request.</p>
-                  <Button onClick={() => setAuthDialogOpen(true)}>Sign in to find players</Button>
+        {!needsAuthChoice && location.pathname.startsWith("/admin") && (
+          user && !siteRoleResolved ? (
+            <div className="px-5 py-16 text-center text-stone-400"><LoadingScreen label="Opening staff portal" /></div>
+          ) : dashboardRole ? (
+            <div>
+              <header className="border-b border-white/10">
+                <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4">
+                  <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-amber-300">Staff portal</span>
+                  <Link to="/" className="font-mono text-xs uppercase tracking-wider text-stone-400 hover:text-white">Leave portal</Link>
                 </div>
-              )}
-            </section>
-            <section id="section-blog" style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
-              <BlogPage embedded posts={blogPosts} user={user} isModerator={isSiteStaff || isModerator} onSubmit={submitBlogPost} onReview={reviewBlogPost} onEdit={editBlogPost} onDelete={deleteBlogPost} onSignIn={() => setAuthDialogOpen(true)} />
-            </section>
-          </PlatformHome>
-        )}
-        {user && section === "requests" && <FriendRequestCenter requests={friendRequests} currentUserId={user.uid} onDecision={decideFriendRequest} />}
-        {user && section === "dashboard" && isSiteStaff && <OwnerDashboard
-          key={dashTabHint}
-          initialTab={dashTabHint}
-          circuitRecords={circuitCms.records}
-          onSaveCircuit={circuitCms.upsert}
-          onDeleteCircuit={circuitCms.remove}
-          role={siteRole || "support"}
-          reports={privateReports}
-          onStatusChange={updateReportStatus}
-          bans={siteBans}
-          onSetPlayerBan={setPlayerBan}
-          popups={adminPopups}
-          onSavePopup={saveSitePopup}
-          onDeletePopup={deleteSitePopup}
-          staff={siteStaff}
-          onSetSupport={setSupportAccess}
-          tournaments={tournaments}
-          archiveEntries={archiveEntries}
-          blogPosts={blogPosts}
-          onBlogReview={reviewBlogPost}
-          onPromoteBlog={promoteBlogToArchive}
-          archiveSubmissions={archiveSubmissions}
-          onArchiveDecision={decideArchiveSubmission}
-          auditLog={auditLog}
-          onOpenTournament={(id) => {
-            setSection("tournaments");
-            setSelectedId(id);
-            setView("detail");
-            const url = new URL(window.location.href); url.searchParams.set("tournament", id); window.history.replaceState({}, "", url);
-            setDetailTab("teams");
-          }}
-        />}
-        {section === "tournaments" && view === "list" && (
-          <TournamentList
-            tournaments={tournaments}
-            currentUserId={user?.uid || null}
-            currentUserName={safeProfileName(myProfile?.displayName, user?.displayName)}
-            pendingInvites={user ? tournamentInvites.filter((item) => item.inviteeUid === user.uid && item.status === "pending") : []}
-            onInviteDecision={decideTournamentInvite}
-            onOpen={(id) => {
-              setSelectedId(id);
-              setView("detail");
-              const url = new URL(window.location.href); url.searchParams.set("tournament", id); window.history.replaceState({}, "", url);
-              setDetailTab("teams");
-            }}
-            onNew={() => user ? setShowNewTournament(true) : setAuthDialogOpen(true)}
-            onSignIn={() => setAuthDialogOpen(true)}
-          />
+              </header>
+              <div className="mx-auto max-w-5xl px-5 pb-24">
+                <OwnerDashboard
+                  key={dashTabHint}
+                  initialTab={dashTabHint}
+                  circuitRecords={circuitCms.records}
+                  onSaveCircuit={circuitCms.upsert}
+                  onDeleteCircuit={circuitCms.remove}
+                  role={siteRole || "support"}
+                  reports={privateReports}
+                  onStatusChange={updateReportStatus}
+                  bans={siteBans}
+                  onSetPlayerBan={setPlayerBan}
+                  popups={adminPopups}
+                  onSavePopup={saveSitePopup}
+                  onDeletePopup={deleteSitePopup}
+                  staff={siteStaff}
+                  onSetSupport={setSupportAccess}
+                  tournaments={tournaments}
+                  archiveEntries={archiveEntries}
+                  blogPosts={blogPosts}
+                  onBlogReview={reviewBlogPost}
+                  onPromoteBlog={promoteBlogToArchive}
+                  archiveSubmissions={archiveSubmissions}
+                  onArchiveDecision={decideArchiveSubmission}
+                  auditLog={auditLog}
+                  onOpenTournament={(id) => { setDetailTab("teams"); navigate(`/tournaments/${id}`); }}
+                />
+              </div>
+            </div>
+          ) : <Navigate to="/" replace />
         )}
 
-        {section === "tournaments" && view === "detail" && selected && (
-          <TournamentDetail
-            tournament={selected}
-            teams={selectedTeams}
-            matches={selectedMatches}
-            stats={selectedStats}
-            tab={detailTab}
-            setTab={setDetailTab}
-            isAdmin={isAdmin}
-            isOwner={isOwner}
-            currentUserId={user?.uid || null}
-            currentUserName={safeProfileName(myProfile?.displayName, user?.displayName)}
-            registrations={selectedRegistrations}
-            friends={acceptedFriends}
-            tournamentInvites={tournamentInvites}
-            onInviteFriend={inviteFriendToTournament}
-            onAddCoAdmin={addCoAdminByPlayerTag}
-            registrationDisclaimer={[...activePopups].filter((popup) => popup.type === "disclaimer" && popup.enabled === true && (!popup.startsAt || popup.startsAt <= Date.now()) && (!popup.endsAt || popup.endsAt >= Date.now())).sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0))[0]}
-            onJoinDisclaimerVisibilityChange={setJoinDisclaimerOpen}
-            onSaveResults={(results) => saveTournamentResults(selected.id, results)}
-            onCloseTournament={() => closeTournament(selected.id)}
-            onBack={() => { setView("list"); setSelectedId(null); setSection("home"); setDeskAnchor("tournaments"); const url = new URL(window.location.href); url.searchParams.delete("tournament"); window.history.replaceState({}, "", url); window.setTimeout(() => document.getElementById("section-tournaments")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60); }}
-            onShare={() => shareTournament(selected)}
-            onRequestFriend={() => requestHostFriend(selected)}
-            onRequestRegistration={(player) => requestRegistration(selected.id, player)}
-            onSignIn={() => setAuthDialogOpen(true)}
-            onRegistrationDecision={(requestId, status) => decideRegistration(selected.id, requestId, status)}
-            onCoAdminsChange={(ids, tags) => updateCoAdmins(selected.id, ids, tags)}
-            onReport={() => setReportTarget({ type: "tournament", id: selected.id, name: selected.name })}
-            onDelete={() => deleteTournament(selected.id)}
-            onAddTeam={(team) => addTeam(selected.id, team)}
-            onDeleteTeam={(teamId) => deleteTeam(selected.id, teamId)}
-            onAddMatch={(m) => addMatch(selected.id, m)}
-            onUpdateMatch={(matchId, patch) => updateMatch(selected.id, matchId, patch)}
-            onDeleteMatch={(matchId) => deleteMatch(selected.id, matchId)}
-            onAddStat={(s) => addStat(selected.id, s)}
-            onDeleteStat={(statId) => deleteStat(selected.id, statId)}
-          />
-        )}
-            </>
-        )}
-      </div>
+        {!needsAuthChoice && !location.pathname.startsWith("/admin") && (
+          <>
+            <Header
+              saving={saving}
+              user={user}
+              guestMode={guestMode}
+              onSignInClick={() => setAuthDialogOpen((open) => !open)}
+              onSignOut={handleSignOut}
+              onEditProfile={() => setShowProfileModal(true)}
+              dashboardRole={dashboardRole}
+              friendsPanel={user ? (
+                <FriendDock
+                  placement="header"
+                  requests={friendRequests}
+                  currentUserId={user.uid}
+                  onOpenChat={(friend) => { setActiveChatFriend(friend); }}
+                  onOpenRequests={() => setShowFriendRequests(true)}
+                  presenceDb={realtimeDb}
+                  onFriendOnline={notifyFriendOnline}
+                  blockedUsers={blockedUsers}
+                  onRemoveFriend={removeFriend}
+                  onBlockFriend={blockFriend}
+                  onUnblockFriend={unblockFriend}
+                />
+              ) : null}
+            />
+            <PublicNav />
+            <div className={`mx-auto px-5 pb-24 ${location.pathname === "/" || location.pathname.startsWith("/vault") ? "max-w-6xl" : "max-w-5xl"}`}>
+              <Routes>
+                <Route path="/" element={(
+                  <PlatformHome slides={circuitCms.vaultSlides}>
+                    <HistoricalArchive embedded entries={archiveEntries} isModerator={isSiteStaff || isModerator} user={user} submissions={archiveSubmissions} onSubmitRequest={submitArchiveRequest} onImport={importArchiveEntries} onSignIn={() => setAuthDialogOpen(true)} />
+                  </PlatformHome>
+                )} />
+                <Route path="/vault/:slug" element={<VaultDetailPage slides={circuitCms.vaultSlides} slug={location.pathname.replace(/^\/vault\//, "").split("/")[0]} liveEntries={archiveEntries} />} />
+                <Route path="/tournaments" element={(
+                  <>
+                    <TournamentOpsRail
+                      signedIn={!!user}
+                      onNew={() => user ? setShowNewTournament(true) : setAuthDialogOpen(true)}
+                      onSignIn={() => setAuthDialogOpen(true)}
+                      onShowActive={() => setShowArchivedTournaments(false)}
+                      onShowArchive={() => setShowArchivedTournaments(true)}
+                      showingArchive={showArchivedTournaments}
+                    />
+                    <TournamentList
+                      hideCreate
+                      archivedView={showArchivedTournaments}
+                      onArchivedView={setShowArchivedTournaments}
+                      tournaments={tournaments}
+                      currentUserId={user?.uid || null}
+                      currentUserName={safeProfileName(myProfile?.displayName, user?.displayName)}
+                      pendingInvites={user ? tournamentInvites.filter((item) => item.inviteeUid === user.uid && item.status === "pending") : []}
+                      onInviteDecision={decideTournamentInvite}
+                      onOpen={(id) => { setDetailTab("teams"); navigate(`/tournaments/${id}`); }}
+                      onNew={() => user ? setShowNewTournament(true) : setAuthDialogOpen(true)}
+                      onSignIn={() => setAuthDialogOpen(true)}
+                    />
+                  </>
+                )} />
+                <Route path="/tournaments/:id" element={selected ? (
+                  <TournamentDetail
+                    tournament={selected}
+                    teams={selectedTeams}
+                    matches={selectedMatches}
+                    stats={selectedStats}
+                    tab={detailTab}
+                    setTab={setDetailTab}
+                    isAdmin={isAdmin}
+                    isOwner={isOwner}
+                    currentUserId={user?.uid || null}
+                    currentUserName={safeProfileName(myProfile?.displayName, user?.displayName)}
+                    registrations={selectedRegistrations}
+                    friends={acceptedFriends}
+                    tournamentInvites={tournamentInvites}
+                    onInviteFriend={inviteFriendToTournament}
+                    onAddCoAdmin={addCoAdminByPlayerTag}
+                    registrationDisclaimer={[...activePopups].filter((popup) => popup.type === "disclaimer" && popup.enabled === true && (!popup.startsAt || popup.startsAt <= Date.now()) && (!popup.endsAt || popup.endsAt >= Date.now())).sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0))[0]}
+                    onJoinDisclaimerVisibilityChange={setJoinDisclaimerOpen}
+                    onSaveResults={(results) => saveTournamentResults(selected.id, results)}
+                    onCloseTournament={() => closeTournament(selected.id)}
+                    onBack={() => navigate("/tournaments")}
+                    onShare={() => shareTournament(selected)}
+                    onRequestFriend={() => requestHostFriend(selected)}
+                    onRequestRegistration={(player) => requestRegistration(selected.id, player)}
+                    onSignIn={() => setAuthDialogOpen(true)}
+                    onRegistrationDecision={(requestId, status) => decideRegistration(selected.id, requestId, status)}
+                    onCoAdminsChange={(ids, tags) => updateCoAdmins(selected.id, ids, tags)}
+                    onReport={() => setReportTarget({ type: "tournament", id: selected.id, name: selected.name })}
+                    onDelete={() => deleteTournament(selected.id)}
+                    onAddTeam={(team) => addTeam(selected.id, team)}
+                    onDeleteTeam={(teamId) => deleteTeam(selected.id, teamId)}
+                    onAddMatch={(m) => addMatch(selected.id, m)}
+                    onUpdateMatch={(matchId, patch) => updateMatch(selected.id, matchId, patch)}
+                    onDeleteMatch={(matchId) => deleteMatch(selected.id, matchId)}
+                    onAddStat={(s) => addStat(selected.id, s)}
+                    onDeleteStat={(statId) => deleteStat(selected.id, statId)}
+                  />
+                ) : <EmptyState title="Tournament not found" body="This event is missing or was removed." actionLabel="Back to tournaments" onAction={() => navigate("/tournaments")} />} />
+                <Route path="/find-players" element={user ? (
+                  <FindPlayersPage currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid, player.displayName)} onFriendDecision={decideFriendRequest} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} onEditProfile={() => setShowProfileModal(true)} />
+                ) : (
+                  <div className="pt-8">
+                    <h1 className="m-0 font-['Bebas_Neue',sans-serif] text-5xl">Find players</h1>
+                    <p className="mb-4 mt-2 text-sm text-stone-400">Sign in to search similar players and send a connect request.</p>
+                    <Button onClick={() => setAuthDialogOpen(true)}>Sign in to find players</Button>
+                  </div>
+                )} />
+                <Route path="/blog" element={<BlogPage manageInDrawer posts={blogPosts} user={user} isModerator={isSiteStaff || isModerator} onSubmit={submitBlogPost} onReview={reviewBlogPost} onEdit={editBlogPost} onDelete={deleteBlogPost} onSignIn={() => setAuthDialogOpen(true)} />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </div>
           </>
         )}
 
@@ -2885,21 +2862,16 @@ export default function App() {
       )}
 
       {user && reportTarget && <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} onSubmit={submitReport} />}
-      {user && <FriendDock requests={friendRequests} currentUserId={user.uid} onOpenChat={setActiveChatFriend} onOpenRequests={() => setSection("requests")} presenceDb={realtimeDb} onFriendOnline={notifyFriendOnline} blockedUsers={blockedUsers} onRemoveFriend={removeFriend} onBlockFriend={blockFriend} onUnblockFriend={unblockFriend} />}
+      {user && showFriendRequests && (
+        <div className="fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4">
+          <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto border border-white/10 bg-[#17110f] p-4">
+            <div className="mb-3 flex justify-end"><Button variant="ghost" onClick={() => setShowFriendRequests(false)}>Close</Button></div>
+            <FriendRequestCenter requests={friendRequests} currentUserId={user.uid} onDecision={decideFriendRequest} />
+          </div>
+        </div>
+      )}
       {user && activeChatFriend && <FriendChat currentUser={user} friend={activeChatFriend} onClose={() => setActiveChatFriend(null)} />}
       {!user && authDialogOpen && <AuthScreen onGoogleSignIn={handleGoogleSignIn} onEmailAuth={handleEmailAuth} authError={authError} authBusy={authBusy} onBrowseAsGuest={browseAsGuest} onClose={() => setAuthDialogOpen(false)} requireChoice={!guestMode} />}
-      <OwnerCommandPanel
-        open={ownerPanelOpen && !!dashboardRole}
-        role={dashboardRole || "support"}
-        onClose={() => setOwnerPanelOpen(false)}
-        onSelect={(id) => {
-          setOwnerPanelOpen(false);
-          if (id === "vault") { setDashTabHint("vault"); goSection("dashboard"); }
-          else if (id === "tournaments") { setDashTabHint("tournaments"); goSection("dashboard"); }
-          else if (id === "players") { setDashTabHint("reports"); goSection("dashboard"); }
-          else if (id === "blogs") { setDashTabHint("blogs"); goSection("dashboard"); }
-        }}
-      />
       <SitePopup popup={currentPopup} onDismiss={dismissSitePopup} />
       <Toast message={toast} />
     </div>
@@ -2913,26 +2885,25 @@ const shellStyle = {
   fontFamily: "'Inter', sans-serif",
 };
 
-function Header({ saving, user, guestMode, onSignInClick, onSignOut, onNavigate, onOpenOwnerPanel, onEditProfile, dashboardRole }) {
+function Header({ saving, user, guestMode, onSignInClick, onSignOut, onEditProfile, dashboardRole, friendsPanel = null }) {
   const displayName = user?.displayName || user?.email || "Player";
   const initials = safeProfileName(user?.displayName).slice(0, 1).toUpperCase();
 
   return (
     <div style={{ borderBottom: "1px solid var(--border)" }}>
-      <div style={{ maxWidth: 980, margin: "0 auto", padding: "20px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <div style={{ maxWidth: 1152, margin: "0 auto", padding: "20px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+        <Link to="/" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", textDecoration: "none", color: "inherit" }}>
           <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, letterSpacing: "0.04em", color: "var(--page-text)" }}>
             GRINDINFO
           </span>
           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--accent-secondary)", letterSpacing: "0.1em" }}>
             TOURNAMENT OPS
           </span>
-        </div>
+        </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <span aria-live="polite" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: saving ? "var(--accent)" : "var(--text-muted)", minWidth: 70, textAlign: "right" }}>
             {saving ? "SAVING…" : "SAVED"}
           </span>
-          {dashboardRole && onOpenOwnerPanel && <Button variant="ghost" onClick={onOpenOwnerPanel}>Command</Button>}
           {!user ? <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {guestMode && <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--text-muted)" }}>GUEST</span>}
             <Button variant="ghost" onClick={onSignInClick}>Sign in / join</Button>
@@ -2951,10 +2922,11 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onNavigate,
               <span style={{ maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</span>
               <span aria-hidden="true" style={{ color: "var(--text-muted)" }}>⌄</span>
             </summary>
-            <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 60, width: 250, padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)", boxShadow: "var(--panel-shadow)" }}>
+            <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 60, width: 280, padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)", boxShadow: "var(--panel-shadow)" }}>
               <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>{displayName}</div>
               <Button variant="ghost" style={{ width: "100%", marginBottom: 12 }} onClick={(event) => { onEditProfile(); event.currentTarget.closest("details")?.removeAttribute("open"); }}>Edit my profile</Button>
-              {dashboardRole && <Button variant="ghost" style={{ width: "100%", marginBottom: 12 }} onClick={(event) => { onNavigate("dashboard"); event.currentTarget.closest("details")?.removeAttribute("open"); }}>{dashboardRole === "owner" ? "Owner dashboard" : "Support dashboard"}</Button>}
+              {dashboardRole && <Link to="/admin/portal" style={{ display: "block", width: "100%", marginBottom: 12, textDecoration: "none" }}><Button variant="ghost" style={{ width: "100%" }}>{dashboardRole === "owner" ? "Owner dashboard" : "Support dashboard"}</Button></Link>}
+              {friendsPanel}
               <Button variant="ghost" style={{ width: "100%", marginTop: 14 }} onClick={onSignOut}>
                 Sign out
               </Button>
@@ -2965,8 +2937,10 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onNavigate,
     </div>
   );
 }
-function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, onNew, onSignIn, pendingInvites = [], onInviteDecision, embedded = false }) {
-  const [showArchived, setShowArchived] = useState(false);
+function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, onNew, onSignIn, pendingInvites = [], onInviteDecision, embedded = false, hideCreate = false, archivedView, onArchivedView }) {
+  const [localArchived, setLocalArchived] = useState(false);
+  const showArchived = archivedView ?? localArchived;
+  const setShowArchived = onArchivedView ?? setLocalArchived;
   const visibleTournaments = tournaments.filter((t) => isTournamentArchived(t) === showArchived);
   return (
     <div>
@@ -2993,17 +2967,17 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
             Tournaments
           </h1>
         </div>
-        {currentUserId && <Button onClick={onNew}>+ New tournament</Button>}
+        {currentUserId && !hideCreate && <Button onClick={onNew}>+ New tournament</Button>}
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}><Button variant={showArchived ? "ghost" : "primary"} onClick={() => setShowArchived(false)}>Active</Button><Button variant={showArchived ? "primary" : "ghost"} onClick={() => setShowArchived(true)}>Archive</Button></div>
+      {!hideCreate && <div style={{ display: "flex", gap: 8, marginBottom: 14 }}><Button variant={showArchived ? "ghost" : "primary"} onClick={() => setShowArchived(false)}>Active</Button><Button variant={showArchived ? "primary" : "ghost"} onClick={() => setShowArchived(true)}>Archive</Button></div>}
       {!showArchived && pendingInvites.length > 0 && <section style={{ display: "grid", gap: 8, marginBottom: 18 }}><Eyebrow>Tournament invites</Eyebrow>{pendingInvites.map((invite) => <article key={invite.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, padding: 12, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><span>{invite.inviterName || "A friend"} invited you to <strong>{invite.tournamentName}</strong> · {invite.game}</span><span style={{ display: "flex", gap: 6 }}><Button onClick={() => onOpen(invite.tournamentId)}>View tournament</Button><Button variant="ghost" onClick={() => onInviteDecision(invite.id, "accepted")}>Accept</Button><Button variant="danger" onClick={() => onInviteDecision(invite.id, "declined")}>Decline</Button></span></article>)}</section>}
       {visibleTournaments.length === 0 ? (
         <EmptyState
           title={showArchived ? "No archived tournaments" : "No active tournaments"}
           body={showArchived ? "Completed or older tournaments will appear here with their results." : currentUserId ? "Create your first tournament to start tracking teams, matches, and player stats." : "Public tournaments and their details will appear here."}
-          actionLabel={currentUserId ? "+ New tournament" : undefined}
-          onAction={onNew}
+          actionLabel={!hideCreate && currentUserId ? "+ New tournament" : undefined}
+          onAction={!hideCreate ? onNew : undefined}
         />
       ) : (
         <div
@@ -3015,8 +2989,9 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
         >
           {visibleTournaments.map((t, i) => {
             return (
-              <button
+              <Link
                 key={t.id}
+                to={`/tournaments/${t.id}`}
                 className="sl-card"
                 onClick={() => onOpen(t.id)}
                 style={{
@@ -3026,6 +3001,8 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
                   padding: "18px 18px 16px",
                   cursor: "pointer",
                   color: "inherit",
+                  textDecoration: "none",
+                  display: "block",
                   animationDelay: `${i * 30}ms`,
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--accent-secondary)")}
@@ -3079,7 +3056,7 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
                 <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-dim)" }}>
                   {fmtDate(t.startDate)} {t.endDate ? `– ${fmtDate(t.endDate)}` : ""}
                 </div>
-              </button>
+              </Link>
             );
           })}
         </div>

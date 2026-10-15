@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { VAULT_SLIDES } from "../../data/platformShowcase";
@@ -15,7 +16,7 @@ const navBtn = {
   placeItems: "center",
 };
 
-export default function VaultCarousel({ slides = VAULT_SLIDES, onOpenSlide }) {
+export default function VaultCarousel({ slides = VAULT_SLIDES }) {
   const reduce = useReducedMotion();
   const trackRef = useRef(null);
   const [active, setActive] = useState(0);
@@ -47,20 +48,14 @@ export default function VaultCarousel({ slides = VAULT_SLIDES, onOpenSlide }) {
         style={{ display: "flex", gap: 14, overflowX: "auto", padding: "6px 2px 14px", scrollbarWidth: "none" }}
       >
         {items.map((slide, index) => (
-          <motion.button
+          <motion.div
             key={slide.slug}
             data-slide={index}
-            type="button"
-            onClick={() => onOpenSlide(slide.slug)}
             onFocus={() => setActive(index)}
             style={{
               flex: "0 0 260px",
               width: 260,
               textAlign: "left",
-              background: "none",
-              border: "none",
-              padding: 0,
-              cursor: "pointer",
               color: "inherit",
             }}
             initial={{ y: 10, opacity: 0 }}
@@ -69,6 +64,7 @@ export default function VaultCarousel({ slides = VAULT_SLIDES, onOpenSlide }) {
             whileHover={reduce ? undefined : { y: -14, scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
+            <Link to={`/vault/${slide.slug}`} style={{ display: "block", color: "inherit", textDecoration: "none" }}>
             <div style={{ overflow: "hidden", borderRadius: 16, border: "1px solid var(--border)", background: "var(--panel-bg)", boxShadow: "var(--panel-shadow)" }}>
               <div style={{ position: "relative", height: 132 }}>
                 <img src={slide.poster} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
@@ -81,7 +77,8 @@ export default function VaultCarousel({ slides = VAULT_SLIDES, onOpenSlide }) {
                 <h3 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, margin: "4px 0 0", lineHeight: 1.1 }}>{slide.title}</h3>
               </div>
             </div>
-          </motion.button>
+            </Link>
+          </motion.div>
         ))}
       </div>
     </section>
