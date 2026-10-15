@@ -22,7 +22,11 @@ import {
   signInWithEmailAndPassword,
   updateProfile,
 } from "firebase/auth";
+import { useNavigate, useLocation } from "react-router-dom";
 import { db, auth, realtimeDb, signInWithGoogle, completeGoogleSignInReturn } from "./firebase";
+import PlatformHome from "./components/layout/PlatformHome";
+import VaultDetailPage from "./components/vault/VaultDetailPage";
+import OwnerCommandPanel from "./components/owner/OwnerCommandPanel";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { onValue, ref as databaseRef, onDisconnect, serverTimestamp, set as setDatabaseValue } from "firebase/database";
 
@@ -473,7 +477,7 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowse
           {!requireChoice && <button type="button" aria-label="Close sign in" onClick={onClose} style={{ background: "none", border: 0, color: "var(--text-muted)", fontSize: 22, cursor: "pointer" }}>×</button>}
         </div>
 
-        <div style={{ color: "var(--text-muted)", fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}>Browse tournaments, community blogs, and the esports archive as a guest. Sign in when you want to take part.</div>
+        <div style={{ color: "var(--text-muted)", fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}>Browse tournaments, The Vault, and community blogs as a guest. Sign in when you want to take part.</div>
 
         <Button variant="ghost" onClick={onBrowseAsGuest} style={{ width: "100%", marginBottom: 12 }}>Browse as guest</Button>
 
@@ -1323,16 +1327,66 @@ function ReportsInbox({ reports, onStatusChange, bans = [], role, onSetPlayerBan
 function ArchiveSubmissionInbox({ submissions, onDecision }) {
   const pending = submissions.filter((item) => item.status === "pending");
   return <section>
-    <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Review community-submitted historical event records before adding them to the public archive.</p>
-    {pending.length === 0 ? <EmptyState title="No archive requests waiting" body="New event submissions will appear here for review." /> : <div style={{ display: "grid", gap: 10 }}>{pending.map((item) => <article key={item.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{item.game} · {item.eventDate} · by {item.submitterName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{item.tournament}</h2><p style={{ margin: "6px 0" }}>Winner: {item.winner}{item.runnerUp ? ` · Runner-up: ${item.runnerUp}` : ""}{item.mvp ? ` · MVP: ${item.mvp}` : ""}</p>{item.source && <a href={item.source} target="_blank" rel="noopener noreferrer">Source</a>}<div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onDecision(item.id, "approved")}>Approve to archive</Button><Button variant="danger" onClick={() => onDecision(item.id, "rejected")}>Decline</Button></div></article>)}</div>}
+    <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Review community-submitted event records before they go public in The Vault.</p>
+    {pending.length === 0 ? <EmptyState title="No Vault requests waiting" body="New event submissions will appear here for review." /> : <div style={{ display: "grid", gap: 10 }}>{pending.map((item) => <article key={item.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{item.game} · {item.eventDate} · by {item.submitterName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{item.tournament}</h2><p style={{ margin: "6px 0" }}>Winner: {item.winner}{item.runnerUp ? ` · Runner-up: ${item.runnerUp}` : ""}{item.mvp ? ` · MVP: ${item.mvp}` : ""}</p>{item.source && <a href={item.source} target="_blank" rel="noopener noreferrer">Source</a>}<div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onDecision(item.id, "approved")}>Approve for The Vault</Button><Button variant="danger" onClick={() => onDecision(item.id, "rejected")}>Decline</Button></div></article>)}</div>}
   </section>;
+}
+
+function TournamentMonitor({ tournaments, onOpen }) {
+  const ordered = [...tournaments].sort((a, b) => String(b.startDate || "").localeCompare(String(a.startDate || "")));
+  return (
+    <section>
+      <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Watch every live and closed tournament from this desk. Open one to inspect brackets, registrations, and host details.</p>
+      {ordered.length === 0 ? <EmptyState title="No tournaments yet" body="New events will appear here as soon as they are created." /> : (
+        <div style={{ display: "grid", gap: 10 }}>
+          {ordered.map((item) => {
+            const archived = isTournamentArchived(item);
+            return (
+              <article key={item.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)", display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                <div>
+                  <Eyebrow>{archived ? "Closed" : "Active"} · {item.game || "Game TBD"}</Eyebrow>
+                  <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0 4px", fontSize: 24 }}>{item.name || "Untitled tournament"}</h2>
+                  <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{fmtDate(item.startDate)} – {fmtDate(item.endDate)} · Hosted by {item.adminDisplayName || "Tournament host"}{item.registrationOpen !== false ? " · Registration open" : ""}</div>
+                </div>
+                {onOpen && <Button variant="ghost" onClick={() => onOpen(item.id)}>Open</Button>}
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function VaultMonitor({ entries, submissions, blogPosts, onDecision, onPromote }) {
+  const ordered = [...entries].sort((a, b) => String(b.eventDate || "").localeCompare(String(a.eventDate || "")));
+  return (
+    <section style={{ display: "grid", gap: 22 }}>
+      <ArchiveSubmissionInbox submissions={submissions} onDecision={onDecision} />
+      <BlogArchivePromoter posts={blogPosts} onPromote={onPromote} />
+      <div>
+        <Eyebrow>Published in The Vault · {entries.length}</Eyebrow>
+        {ordered.length === 0 ? <EmptyState title="The Vault is empty" body="Approve a request, promote a blog, or paste records on The Vault page." /> : (
+          <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+            {ordered.map((entry) => (
+              <article key={entry.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+                <Eyebrow>{entry.game} · {entry.eventDate}</Eyebrow>
+                <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "4px 0", fontSize: 22 }}>{entry.tournament}</h2>
+                <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Winner: {entry.winner}{entry.runnerUp ? ` · Runner-up: ${entry.runnerUp}` : ""}{entry.mvp ? ` · MVP: ${entry.mvp}` : ""}</div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
 }
 
 function StaffActivityLog({ actions }) {
   const ordered = [...actions].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 100);
   return <section>
     <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Recent owner and support actions. This log is visible to the owner only.</p>
-    {ordered.length === 0 ? <EmptyState title="No staff actions recorded yet" body="Report, blog, archive, popup, and support-access decisions will appear here." /> : <div style={{ display: "grid", gap: 8 }}>{ordered.map((item) => <article key={item.id} style={{ padding: 12, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{new Date(item.createdAt || 0).toLocaleString()} · {item.actorName || "Staff"}</Eyebrow><div style={{ marginTop: 5 }}>{item.summary}</div></article>)}</div>}
+    {ordered.length === 0 ? <EmptyState title="No staff actions recorded yet" body="Report, blog, Vault, popup, and support-access decisions will appear here." /> : <div style={{ display: "grid", gap: 8 }}>{ordered.map((item) => <article key={item.id} style={{ padding: 12, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{new Date(item.createdAt || 0).toLocaleString()} · {item.actorName || "Staff"}</Eyebrow><div style={{ marginTop: 5 }}>{item.summary}</div></article>)}</div>}
   </section>;
 }
 
@@ -1351,8 +1405,8 @@ function BlogArchivePromoter({ posts, onPromote }) {
     setPostId(id); setEventDate(""); setWinner(""); setRunnerUp(""); setMvp(""); setSource(post?.source || ""); setError("");
   };
   return <section style={{ maxWidth: 680 }}>
-    <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Turn a published blog into a separate structured archive record. Add the event date and winner before saving.</p>
-    {candidates.length === 0 ? <EmptyState title="No published blogs to add" body="Publish a blog first, then you can create an archive record from it." /> : <>
+    <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Turn a published blog into a structured Vault record. Add the event date and winner before saving.</p>
+    {candidates.length === 0 ? <EmptyState title="No published blogs to add" body="Publish a blog first, then you can create a Vault record from it." /> : <>
       <Field label="Published blog"><Select value={postId} onChange={(event) => choosePost(event.target.value)}><option value="">Choose a post…</option>{candidates.map((post) => <option key={post.id} value={post.id}>{post.title} · {post.game}</option>)}</Select></Field>
       {selected && <div style={{ display: "grid", gap: 8, marginTop: 10, padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
         <Field label="Event date"><TextInput maxLength={40} value={eventDate} onChange={(event) => setEventDate(event.target.value)} placeholder="YYYY or YYYY-MM-DD" /></Field>
@@ -1361,7 +1415,7 @@ function BlogArchivePromoter({ posts, onPromote }) {
         <Field label="MVP (optional)"><TextInput maxLength={100} value={mvp} onChange={(event) => setMvp(event.target.value)} /></Field>
         <Field label="Source link (optional)"><TextInput maxLength={500} value={source} onChange={(event) => setSource(event.target.value)} /></Field>
         {error && <div role="alert" style={{ color: "var(--danger)" }}>{error}</div>}
-        <Button onClick={async () => { if (!eventDate.trim() || !winner.trim()) { setError("Add the event date and winner."); return; } try { await onPromote(selected, { eventDate, winner, runnerUp, mvp, source }); choosePost(""); } catch { setError("Could not add this record to the archive."); } }}>Add event to archive</Button>
+        <Button onClick={async () => { if (!eventDate.trim() || !winner.trim()) { setError("Add the event date and winner."); return; } try { await onPromote(selected, { eventDate, winner, runnerUp, mvp, source }); choosePost(""); } catch { setError("Could not add this record to The Vault."); } }}>Add event to The Vault</Button>
       </div>}
     </>}
   </section>;
@@ -1376,11 +1430,11 @@ function ArchiveRequestForm({ user, submissions, onSubmit }) {
   const submit = async () => {
     if (!form.tournament.trim() || !form.game.trim() || !form.eventDate.trim() || !form.winner.trim()) { setError("Add the event name, game, date, and winner."); return; }
     if (form.source.trim() && !/^https:\/\//i.test(form.source.trim())) { setError("Source links must start with https://."); return; }
-    try { await onSubmit(form); setForm({ tournament: "", game: "", eventDate: "", winner: "", runnerUp: "", mvp: "", source: "" }); setError(""); setMessage("Archive request sent for review."); }
+    try { await onSubmit(form); setForm({ tournament: "", game: "", eventDate: "", winner: "", runnerUp: "", mvp: "", source: "" }); setError(""); setMessage("Vault request sent for review."); }
     catch { setError("Could not send this request. Please try again."); }
   };
   return <section style={{ display: "grid", gap: 8, maxWidth: 680, padding: 16, margin: "16px 0", background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
-    <Eyebrow>Suggest an event for the archive</Eyebrow><p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13 }}>Send results for a major, underdog, or lesser-known esports tournament. An owner or support reviewer checks it before it becomes public.</p>
+    <Eyebrow>Suggest an event for The Vault</Eyebrow><p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13 }}>Send results for a major, underdog, or lesser-known esports tournament. An owner or support reviewer checks it before it becomes public.</p>
     <Field label="Tournament"><TextInput maxLength={120} value={form.tournament} onChange={(e) => update("tournament", e.target.value)} /></Field>
     <Field label="Game"><TextInput maxLength={60} value={form.game} onChange={(e) => update("game", e.target.value)} /></Field>
     <Field label="Event date"><TextInput maxLength={40} value={form.eventDate} onChange={(e) => update("eventDate", e.target.value)} placeholder="YYYY or YYYY-MM-DD" /></Field>
@@ -1389,8 +1443,8 @@ function ArchiveRequestForm({ user, submissions, onSubmit }) {
     <Field label="MVP (optional)"><TextInput maxLength={100} value={form.mvp} onChange={(e) => update("mvp", e.target.value)} /></Field>
     <Field label="Reliable source link (optional)"><TextInput maxLength={500} value={form.source} onChange={(e) => update("source", e.target.value)} placeholder="https://" /></Field>
     {error && <div role="alert" style={{ color: "var(--danger)" }}>{error}</div>}{message && <div role="status" style={{ color: "var(--success)" }}>{message}</div>}
-    <Button onClick={submit}>Request archive listing</Button>
-    {ownRequests.length > 0 && <div style={{ marginTop: 8 }}><Eyebrow>Your archive requests</Eyebrow>{ownRequests.map((item) => <div key={item.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "8px 0", borderTop: "1px solid var(--border)", fontSize: 13 }}><span>{item.tournament}</span><span>{item.status}</span></div>)}</div>}
+    <Button onClick={submit}>Request Vault listing</Button>
+    {ownRequests.length > 0 && <div style={{ marginTop: 8 }}><Eyebrow>Your Vault requests</Eyebrow>{ownRequests.map((item) => <div key={item.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "8px 0", borderTop: "1px solid var(--border)", fontSize: 13 }}><span>{item.tournament}</span><span>{item.status}</span></div>)}</div>}
   </section>;
 }
 
@@ -1408,7 +1462,7 @@ function SitePopup({ popup, onDismiss }) {
   );
 }
 
-function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerBan, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [] }) {
+function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerBan, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament }) {
   const isOwner = role === "owner";
   const [tab, setTab] = useState("overview");
   const [editing, setEditing] = useState(null);
@@ -1460,19 +1514,19 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerB
       <Eyebrow>{isOwner ? "Owner controls · protected" : "Support workspace · restricted"}</Eyebrow>
       <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 18px" }}>{isOwner ? "Owner dashboard" : "Support dashboard"}</h1>
       <div role="tablist" aria-label="Dashboard sections" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-        {["overview", "reports", "blogs", "archive requests", "blog to archive", ...(isOwner ? ["activity log", "popups", "support access"] : [])].map((name) => <Button key={name} variant={tab === name ? "primary" : "ghost"} onClick={() => setTab(name)}>{name[0].toUpperCase() + name.slice(1)}</Button>)}
+        {["overview", "tournaments", "vault", "blogs", "reports", ...(isOwner ? ["activity log", "popups", "support access"] : [])].map((name) => <Button key={name} variant={tab === name ? "primary" : "ghost"} onClick={() => setTab(name)}>{name === "vault" ? "The Vault" : name[0].toUpperCase() + name.slice(1)}</Button>)}
       </div>
       {tab === "overview" && <>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 18 }}>
-          {[["Open reports", activeReports], ["Pending blogs", pendingBlogs], ["Archive requests", pendingArchiveRequests], ["Active tournaments", activeTournaments], ["Archive records", archiveEntries.length]].map(([label, value]) => <article key={label} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{label}</Eyebrow><strong style={{ display: "block", fontSize: 25, marginTop: 8 }}>{value}</strong></article>)}
+          {[["Open reports", activeReports, "reports"], ["Pending blogs", pendingBlogs, "blogs"], ["Vault requests", pendingArchiveRequests, "vault"], ["Active tournaments", activeTournaments, "tournaments"], ["Vault records", archiveEntries.length, "vault"]].map(([label, value, next]) => <button key={label} type="button" onClick={() => setTab(next)} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)", textAlign: "left", cursor: "pointer", color: "inherit" }}><Eyebrow>{label}</Eyebrow><strong style={{ display: "block", fontSize: 25, marginTop: 8 }}>{value}</strong></button>)}
         </div>
-        <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Use the dashboard tabs to review safety reports{isOwner ? ", manage site popups, and control support access." : "."}</p>
+        <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Monitor tournaments, The Vault, and the community blog from the tabs above{isOwner ? ". Owner-only tools for popups and support access stay in this desk." : "."}</p>
       </>}
       {tab === "reports" && <ReportsInbox reports={reports} onStatusChange={onStatusChange} bans={bans} role={role} onSetPlayerBan={onSetPlayerBan} />}
-      {tab === "archive requests" && <ArchiveSubmissionInbox submissions={archiveSubmissions} onDecision={onArchiveDecision} />}
-      {tab === "blog to archive" && <BlogArchivePromoter posts={blogPosts} onPromote={onPromoteBlog} />}
+      {tab === "tournaments" && <TournamentMonitor tournaments={tournaments} onOpen={onOpenTournament} />}
+      {tab === "vault" && <VaultMonitor entries={archiveEntries} submissions={archiveSubmissions} blogPosts={blogPosts} onDecision={onArchiveDecision} onPromote={onPromoteBlog} />}
       {tab === "activity log" && isOwner && <StaffActivityLog actions={auditLog} />}
-      {tab === "blogs" && <section><p style={{ color: "var(--text-muted)", fontSize: 13 }}>Preview submitted and published community posts.</p>{blogPosts.length === 0 ? <EmptyState title="No blog posts yet" body="Community submissions will appear here for preview." /> : <div style={{ display: "grid", gap: 10 }}>{[...blogPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 30).map((post) => <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status} · by {post.authorName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{post.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{post.content}</p>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onBlogReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onBlogReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div>}</section>}
+      {tab === "blogs" && <section><p style={{ color: "var(--text-muted)", fontSize: 13 }}>Watch every community blog from this desk. Publish or decline pending posts, then promote a published story into The Vault from the Vault tab.</p><div style={{ display: "flex", gap: 16, margin: "0 0 14px", fontSize: 13, color: "var(--text-muted)" }}><span>Pending {pendingBlogs}</span><span>Published {blogPosts.filter((post) => post.status === "published").length}</span><span>Total {blogPosts.length}</span></div>{blogPosts.length === 0 ? <EmptyState title="No blog posts yet" body="Community submissions will appear here for preview." /> : <div style={{ display: "grid", gap: 10 }}>{[...blogPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 30).map((post) => <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status} · by {post.authorName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{post.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{post.content}</p>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onBlogReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onBlogReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div>}</section>}
       {tab === "popups" && isOwner && <section>
         <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Create plain-text safety reminders or general popups. General popups appear at random intervals of 15 to 30 minutes while someone is actively browsing.</p>
         <Button onClick={() => openEditor()}>Add popup</Button>
@@ -1503,10 +1557,59 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerB
   );
 }
 
+function normalizeVaultRecords(records, existingEntries) {
+  const known = new Set(existingEntries.map((entry) => [entry.tournament, entry.game, entry.eventDate].map((part) => String(part || "").toLowerCase()).join("|")));
+  const clean = records.filter((entry) => entry.tournament && entry.game && (entry.eventdate || entry.eventDate) && entry.winner).map((entry) => ({
+    tournament: String(entry.tournament).slice(0, 120),
+    game: String(entry.game).slice(0, 60),
+    eventDate: String(entry.eventdate || entry.eventDate || "").slice(0, 40),
+    winner: String(entry.winner).slice(0, 100),
+    runnerUp: String(entry.runnerup || entry.runnerUp || "").slice(0, 100),
+    mvp: String(entry.mvp || "").slice(0, 100),
+    source: String(entry.source || "").trim().slice(0, 500),
+  })).filter((entry) => {
+    if (entry.source && !/^https:\/\//i.test(entry.source)) throw new Error("Source links must start with https://.");
+    const key = [entry.tournament, entry.game, entry.eventDate].map((part) => part.toLowerCase()).join("|");
+    if (known.has(key)) return false;
+    known.add(key);
+    return true;
+  });
+  if (!clean.length) throw new Error("No new complete records found. Check required fields and duplicates.");
+  return clean.slice(0, 200);
+}
+
+function parseVaultText(text) {
+  const lines = String(text || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) throw new Error("Paste at least one event.");
+  const splitLine = (line) => {
+    if (line.includes("|")) return line.split("|").map((cell) => cell.trim());
+    if (line.includes("\t")) return line.split("\t").map((cell) => cell.trim());
+    return line.split(",").map((cell) => cell.trim());
+  };
+  let rows = lines.map(splitLine);
+  const header = rows[0].map((cell) => cell.toLowerCase().replace(/[\s_-]/g, ""));
+  const required = ["tournament", "game", "eventdate", "winner"];
+  if (required.every((key) => header.includes(key))) {
+    rows = rows.slice(1);
+    return rows.filter((cells) => cells.some(Boolean)).map((cells) => Object.fromEntries(header.map((key, index) => [key, cells[index] || ""])));
+  }
+  return rows.filter((cells) => cells.some(Boolean)).map((cells) => ({
+    tournament: cells[0] || "",
+    game: cells[1] || "",
+    eventdate: cells[2] || "",
+    winner: cells[3] || "",
+    runnerup: cells[4] || "",
+    mvp: cells[5] || "",
+    source: cells[6] || "",
+  }));
+}
+
 function HistoricalArchive({ entries, isModerator, user, submissions, onSubmitRequest, onImport, onSignIn }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState(null);
+  const [staffForm, setStaffForm] = useState({ tournament: "", game: "", eventDate: "", winner: "", runnerUp: "", mvp: "", source: "" });
+  const [paste, setPaste] = useState("");
   const parseCsv = (text) => {
     const rows = []; let row = [], cell = "", quoted = false;
     for (let i = 0; i < text.length; i++) {
@@ -1519,43 +1622,50 @@ function HistoricalArchive({ entries, isModerator, user, submissions, onSubmitRe
     }
     if (cell || row.length) { row.push(cell.trim()); rows.push(row); }
     if (rows.length < 2) throw new Error("The CSV needs a header and at least one event.");
-    const headers = rows.shift().map((header) => header.toLowerCase());
+    const headers = rows.shift().map((header) => header.toLowerCase().replace(/[\s_-]/g, ""));
     const required = ["tournament", "game", "eventdate", "winner"];
     if (required.some((header) => !headers.includes(header))) throw new Error("Required CSV columns: tournament, game, eventDate, winner.");
     return rows.filter((cells) => cells.some(Boolean)).map((cells) => Object.fromEntries(headers.map((header, index) => [header, cells[index] || ""]))).slice(0, 200);
   };
+  const stageRecords = (records) => {
+    const clean = normalizeVaultRecords(records, entries);
+    setPreview(clean);
+    setMessage("Review the records below, then publish them to The Vault.");
+  };
+  const updateStaff = (key, value) => setStaffForm((current) => ({ ...current, [key]: value }));
   return (
     <div style={{ paddingTop: 34 }}>
-      <Eyebrow>International esports history</Eyebrow>
-      <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 8px" }}>Past results archive</h1>
-      <div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 18 }}>Browse past events, winners, runners-up and MVPs. To add records, select a CSV with columns tournament, game, eventDate, winner, runnerUp, mvp and source.</div>
+      <Eyebrow>Past esports results</Eyebrow>
+      <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 8px" }}>The Vault</h1>
+      <div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 18 }}>Winners, runners-up, and MVPs from majors and underdog events — a public record of what already happened.</div>
       {user && <ArchiveRequestForm user={user} submissions={submissions} onSubmit={onSubmitRequest} />}
-      {!user && <section style={{ padding: 14, marginBottom: 18, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 9 }}>Sign in to suggest historical tournament records.</div><Button onClick={onSignIn}>Sign in to suggest a record</Button></section>}
-      {isModerator && <Field label="Import CSV (up to 200 rows)">
-        <input type="file" accept=".csv,text/csv" onChange={async (event) => {
-          setError(""); setMessage("");
-          const file = event.target.files?.[0]; if (!file) return;
-          if (file.size > 1024 * 1024) { setError("Choose a CSV smaller than 1 MB."); return; }
-          try {
-            const records = parseCsv(await file.text());
-            const known = new Set(entries.map((entry) => [entry.tournament, entry.game, entry.eventDate].map((part) => String(part || "").toLowerCase()).join("|")));
-            const clean = records.filter((entry) => entry.tournament && entry.game && entry.eventdate && entry.winner).map((entry) => ({
-              tournament: entry.tournament.slice(0, 120), game: entry.game.slice(0, 60), eventDate: entry.eventdate.slice(0, 40),
-              winner: entry.winner.slice(0, 100), runnerUp: (entry.runnerup || "").slice(0, 100), mvp: (entry.mvp || "").slice(0, 100),
-              source: (entry.source || "").trim().slice(0, 500),
-            })).filter((entry) => {
-              if (entry.source && !/^https:\/\//i.test(entry.source)) throw new Error("Source links must start with https://.");
-              const key = [entry.tournament, entry.game, entry.eventDate].map((part) => part.toLowerCase()).join("|");
-              if (known.has(key)) return false;
-              known.add(key);
-              return true;
-            });
-            if (!clean.length) throw new Error("No new complete records found. Check the required columns and duplicates.");
-            setPreview(clean); setMessage("Review the records below, then choose Import to publish them.");
-          } catch (issue) { setError(issue.message || "Could not read this CSV."); }
-          event.target.value = "";
-        }} />
-      </Field>}
+      {!user && <section style={{ padding: 14, marginBottom: 18, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 9 }}>Sign in to suggest a result for The Vault.</div><Button onClick={onSignIn}>Sign in to suggest a record</Button></section>}
+      {isModerator && <section style={{ display: "grid", gap: 10, maxWidth: 680, padding: 16, margin: "0 0 16px", background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+        <Eyebrow>Staff desk · fill The Vault</Eyebrow>
+        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13 }}>Type one event, or paste a list. One event per line: tournament, game, date, winner, runner-up, MVP, source — separated by commas, tabs, or |.</p>
+        <Field label="Tournament"><TextInput maxLength={120} value={staffForm.tournament} onChange={(event) => updateStaff("tournament", event.target.value)} /></Field>
+        <Field label="Game"><TextInput maxLength={60} value={staffForm.game} onChange={(event) => updateStaff("game", event.target.value)} /></Field>
+        <Field label="Event date"><TextInput maxLength={40} value={staffForm.eventDate} onChange={(event) => updateStaff("eventDate", event.target.value)} placeholder="YYYY or YYYY-MM-DD" /></Field>
+        <Field label="Winner"><TextInput maxLength={100} value={staffForm.winner} onChange={(event) => updateStaff("winner", event.target.value)} /></Field>
+        <Field label="Runner-up (optional)"><TextInput maxLength={100} value={staffForm.runnerUp} onChange={(event) => updateStaff("runnerUp", event.target.value)} /></Field>
+        <Field label="MVP (optional)"><TextInput maxLength={100} value={staffForm.mvp} onChange={(event) => updateStaff("mvp", event.target.value)} /></Field>
+        <Field label="Source link (optional)"><TextInput maxLength={500} value={staffForm.source} onChange={(event) => updateStaff("source", event.target.value)} placeholder="https://" /></Field>
+        <Button onClick={() => { setError(""); setMessage(""); try { stageRecords([{ tournament: staffForm.tournament, game: staffForm.game, eventdate: staffForm.eventDate, winner: staffForm.winner, runnerup: staffForm.runnerUp, mvp: staffForm.mvp, source: staffForm.source }]); setStaffForm({ tournament: "", game: "", eventDate: "", winner: "", runnerUp: "", mvp: "", source: "" }); } catch (issue) { setError(issue.message || "Could not stage this event."); } }}>Stage this event</Button>
+        <Field label="Paste a list of events">
+          <textarea value={paste} onChange={(event) => setPaste(event.target.value)} rows={6} placeholder={"IEM Katowice|CS2|2024-02-11|Team Spirit|FaZe|donk|https://example.com"} style={{ ...inputStyle, resize: "vertical", minHeight: 120 }} />
+        </Field>
+        <Button variant="ghost" onClick={() => { setError(""); setMessage(""); try { stageRecords(parseVaultText(paste)); setPaste(""); } catch (issue) { setError(issue.message || "Could not read that list."); } }}>Stage pasted events</Button>
+        <Field label="Or import a CSV (up to 200 rows)">
+          <input type="file" accept=".csv,text/csv" onChange={async (event) => {
+            setError(""); setMessage("");
+            const file = event.target.files?.[0]; if (!file) return;
+            if (file.size > 1024 * 1024) { setError("Choose a CSV smaller than 1 MB."); return; }
+            try { stageRecords(parseCsv(await file.text())); }
+            catch (issue) { setError(issue.message || "Could not read this CSV."); }
+            event.target.value = "";
+          }} />
+        </Field>
+      </section>}
       {error && <div role="alert" style={{ color: "var(--danger)", marginTop: 10, fontSize: 13 }}>{error}</div>}
       {message && <div role="status" style={{ color: "var(--success)", marginTop: 10, fontSize: 13 }}>{message}</div>}
       {preview && <section style={{ marginTop: 14, padding: 14, border: "1px solid var(--border-strong)", background: "var(--panel-bg)" }}>
@@ -1566,13 +1676,12 @@ function HistoricalArchive({ entries, isModerator, user, submissions, onSubmitRe
         </div>
         <div style={{ display: "flex", gap: 8 }}><Button onClick={async () => {
           setError(""); setMessage("");
-          try { await onImport(preview); setMessage(`Imported ${preview.length} event record(s).`); setPreview(null); }
+          try { await onImport(preview); setMessage(`Published ${preview.length} event(s) to The Vault.`); setPreview(null); }
           catch (issue) { setError(issue.message || "Could not import these records."); }
-        }}>Import {preview.length} records</Button><Button variant="ghost" onClick={() => { setPreview(null); setMessage(""); }}>Cancel import</Button></div>
+        }}>Publish {preview.length} to The Vault</Button><Button variant="ghost" onClick={() => { setPreview(null); setMessage(""); }}>Cancel</Button></div>
       </section>}
       <div style={{ display: "grid", gap: 10, marginTop: 20 }}>
-      {entries.length === 0 ? <EmptyState title="Archive is ready for records" body="Add historical international esports results with the moderator CSV import." /> : entries.map((entry) => <article key={entry.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{entry.game} · {entry.eventDate}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0", fontSize: 24 }}>{entry.tournament}</h2><div>🏆 {entry.winner}{entry.runnerUp ? ` · Runner-up: ${entry.runnerUp
-}` : ""}{entry.mvp ? ` · MVP: ${entry.mvp}` : ""}</div>{entry.source && <a href={entry.source} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 8, color: "var(--accent)" }}>Source</a>}</article>)}
+      {entries.length === 0 ? <EmptyState title="The Vault is waiting for results" body="Staff can type or paste events here. Players can suggest a listing for review." /> : entries.map((entry) => <article key={entry.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{entry.game} · {entry.eventDate}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0", fontSize: 24 }}>{entry.tournament}</h2><div>🏆 {entry.winner}{entry.runnerUp ? ` · Runner-up: ${entry.runnerUp}` : ""}{entry.mvp ? ` · MVP: ${entry.mvp}` : ""}</div>{entry.source && <a href={entry.source} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 8, color: "var(--accent)" }}>Source</a>}</article>)}
       </div>
     </div>
   );
@@ -1610,6 +1719,8 @@ function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDele
 
 
 export default function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [tournaments, setTournaments] = useState([]);
   const [selectedTeams, setSelectedTeams] = useState([]);
   const [selectedMatches, setSelectedMatches] = useState([]);
@@ -1670,7 +1781,7 @@ export default function App() {
         setGuestMode(returningGuest);
         setAuthDialogOpen(!u && !returningGuest);
         if (!u) {
-          setSection("tournaments");
+          setSection("home");
           setView("list");
           setSelectedId(null);
           setShowNewTournament(false);
@@ -1730,7 +1841,8 @@ export default function App() {
   }, []);
 
   // ---- player profiles ----
-  const [section, setSection] = useState("tournaments"); // 'tournaments' | 'players'
+  const [section, setSection] = useState(() => new URLSearchParams(window.location.search).has("tournament") ? "tournaments" : "home");
+  const [ownerPanelOpen, setOwnerPanelOpen] = useState(false);
   const [myProfile, setMyProfile] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
@@ -2394,7 +2506,7 @@ export default function App() {
   const importArchiveEntries = async (records) => {
     const batch = writeBatch(db);
     records.forEach((entry) => batch.set(doc(ARCHIVE_COLLECTION), { ...entry, createdAt: Date.now(), createdBy: user.uid }));
-    appendStaffAction(batch, "archive_imported", "archive", "csv-import", `Imported ${records.length} esports archive record(s)`);
+    appendStaffAction(batch, "archive_imported", "archive", "csv-import", `Imported ${records.length} Vault record(s)`);
     await batch.commit();
   };
 
@@ -2410,30 +2522,30 @@ export default function App() {
     };
     if (clean.source && !/^https:\/\//i.test(clean.source)) throw new Error("Use a secure https source link.");
     await addDoc(ARCHIVE_SUBMISSIONS_COLLECTION, { ...clean, submitterId: user.uid, submitterName: safeProfileName(myProfile?.displayName, user.displayName), status: "pending", createdAt: Date.now() });
-    showToast("Archive request sent for review");
+    showToast("Vault request sent for review");
   };
 
   const decideArchiveSubmission = async (requestId, status) => {
     if (!isSiteStaff || !["approved", "rejected"].includes(status)) return;
     try {
       const submission = archiveSubmissions.find((item) => item.id === requestId);
-      if (!submission || submission.status !== "pending") { showToast("This archive request was already reviewed"); return; }
+      if (!submission || submission.status !== "pending") { showToast("This Vault request was already reviewed"); return; }
       const batch = writeBatch(db);
       const requestRef = doc(ARCHIVE_SUBMISSIONS_COLLECTION, requestId);
       if (status === "approved") {
         const entryRef = doc(ARCHIVE_COLLECTION);
         batch.set(entryRef, { tournament: submission.tournament, game: submission.game, eventDate: submission.eventDate, winner: submission.winner, runnerUp: submission.runnerUp || "", mvp: submission.mvp || "", source: submission.source || "", createdAt: Date.now(), createdBy: user.uid, submissionId: requestId });
         batch.update(requestRef, { status, reviewedAt: Date.now(), reviewedBy: user.uid, archiveEntryId: entryRef.id });
-        appendStaffAction(batch, "archive_request_approved", "archiveSubmission", requestId, `Archive request approved: ${submission.tournament}`);
+        appendStaffAction(batch, "archive_request_approved", "archiveSubmission", requestId, `Vault request approved: ${submission.tournament}`);
       } else {
         batch.update(requestRef, { status, reviewedAt: Date.now(), reviewedBy: user.uid });
-        appendStaffAction(batch, "archive_request_rejected", "archiveSubmission", requestId, `Archive request declined: ${submission.tournament}`);
+        appendStaffAction(batch, "archive_request_rejected", "archiveSubmission", requestId, `Vault request declined: ${submission.tournament}`);
       }
       await batch.commit();
-      showToast(status === "approved" ? "Event added to the archive" : "Archive request declined");
+      showToast(status === "approved" ? "Event added to The Vault" : "Vault request declined");
     } catch (error) {
       console.error("Could not review archive submission", error);
-      showToast("Couldn't review this archive request. Check the published Firebase rules and try again.");
+      showToast("Couldn't review this Vault request. Check the published Firebase rules and try again.");
     }
   };
 
@@ -2452,9 +2564,9 @@ export default function App() {
       mvp: String(fields.mvp || "").trim().slice(0, 100),
       source, createdAt: Date.now(), createdBy: user.uid, blogPostId: post.id,
     });
-    appendStaffAction(batch, "blog_added_to_archive", "archiveEntry", archiveRef.id, `Blog added to archive: ${post.title}`);
+    appendStaffAction(batch, "blog_added_to_archive", "archiveEntry", archiveRef.id, `Blog added to The Vault: ${post.title}`);
     await batch.commit();
-    showToast("Structured event added to the archive");
+    showToast("Structured event added to The Vault");
   };
 
   const updateReportStatus = async (reportId, status) => {
@@ -2503,8 +2615,13 @@ export default function App() {
   const dashboardRole = isSiteStaff ? siteRole : null;
 
   useEffect(() => {
-    if (!isSiteStaff && section === "dashboard") setSection("tournaments");
+    if (!isSiteStaff && section === "dashboard") setSection("home");
   }, [isSiteStaff, section]);
+
+  const goSection = (id) => {
+    setSection(id);
+    if (location.pathname.startsWith("/vault")) navigate("/");
+  };
 
   const needsAuthChoice = !user && !guestMode;
 
@@ -2544,28 +2661,30 @@ export default function App() {
 
         {!needsAuthChoice && (
           <>
-        <Header saving={saving} user={user} guestMode={guestMode} onSignInClick={() => setAuthDialogOpen((open) => !open)} onSignOut={handleSignOut} onNavigate={setSection} onEditProfile={() => setShowProfileModal(true)} dashboardRole={dashboardRole} />
+        <Header saving={saving} user={user} guestMode={guestMode} onSignInClick={() => setAuthDialogOpen((open) => !open)} onSignOut={handleSignOut} onNavigate={(id) => { if (id === "dashboard" && dashboardRole === "owner") { setOwnerPanelOpen(true); return; } goSection(id); }} onOpenOwnerPanel={() => setOwnerPanelOpen(true)} onEditProfile={() => setShowProfileModal(true)} dashboardRole={dashboardRole} />
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "16px 20px 0" }}>
         <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--border)" }}>
           {(user ? [
+            { id: "home", label: "Desk" },
             { id: "tournaments", label: "Tournaments" },
             { id: "players", label: "Find players" },
-            { id: "archive", label: "Esports archive" },
+            { id: "archive", label: "The Vault" },
             { id: "blog", label: "Community blog" },
           ] : [
+            { id: "home", label: "Desk" },
             { id: "tournaments", label: "Tournaments" },
-            { id: "archive", label: "Esports archive" },
+            { id: "archive", label: "The Vault" },
             { id: "blog", label: "Community blog" },
           ]).map((s) => (
             <button
               key={s.id}
-              onClick={() => setSection(s.id)}
+              onClick={() => goSection(s.id)}
               style={{
                 background: "none",
                 border: "none",
-                borderBottom: section === s.id ? "2px solid var(--accent-secondary)" : "2px solid transparent",
-                color: section === s.id ? "var(--page-text)" : "var(--text-muted)",
+                borderBottom: (location.pathname.startsWith("/vault") ? s.id === "archive" : section === s.id) ? "2px solid var(--accent-secondary)" : "2px solid transparent",
+                color: (location.pathname.startsWith("/vault") ? s.id === "archive" : section === s.id) ? "var(--page-text)" : "var(--text-muted)",
                 fontFamily: "'JetBrains Mono', monospace",
                 fontSize: 12,
                 letterSpacing: "0.05em",
@@ -2580,7 +2699,29 @@ export default function App() {
         </div>
       </div>
 
-      <div style={{ maxWidth: 980, margin: "0 auto", padding: "0 20px 80px" }}>
+      <div style={{ maxWidth: section === "home" || location.pathname.startsWith("/vault") ? 1152 : 980, margin: "0 auto", padding: "0 20px 80px" }}>
+        {location.pathname.startsWith("/vault/") ? (
+          <VaultDetailPage slug={location.pathname.replace(/^\/vault\//, "").split("/")[0]} liveEntries={archiveEntries} />
+        ) : (
+            <>
+        {section === "home" && view === "list" && (
+          <PlatformHome
+            tournaments={tournaments}
+            blogPosts={blogPosts}
+            onOpenVaultSlide={(slug) => navigate(`/vault/${slug}`)}
+            onOpenTournament={(id) => {
+              goSection("tournaments");
+              setSelectedId(id);
+              setView("detail");
+              const url = new URL(window.location.href); url.searchParams.set("tournament", id); window.history.replaceState({}, "", url);
+              setDetailTab("teams");
+            }}
+            onOpenTournaments={() => goSection("tournaments")}
+            onOpenPlayers={() => (user ? goSection("players") : setAuthDialogOpen(true))}
+            onOpenBlog={() => goSection("blog")}
+            onConnectPlayer={() => (user ? goSection("players") : setAuthDialogOpen(true))}
+          />
+        )}
         {user && section === "players" && (
           <FindPlayersPage currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid, player.displayName)} onFriendDecision={decideFriendRequest} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} onEditProfile={() => setShowProfileModal(true)} />
         )}
@@ -2606,6 +2747,13 @@ export default function App() {
           archiveSubmissions={archiveSubmissions}
           onArchiveDecision={decideArchiveSubmission}
           auditLog={auditLog}
+          onOpenTournament={(id) => {
+            setSection("tournaments");
+            setSelectedId(id);
+            setView("detail");
+            const url = new URL(window.location.href); url.searchParams.set("tournament", id); window.history.replaceState({}, "", url);
+            setDetailTab("teams");
+          }}
         />}
         {section === "tournaments" && view === "list" && (
           <TournamentList
@@ -2664,6 +2812,8 @@ export default function App() {
             onDeleteStat={(statId) => deleteStat(selected.id, statId)}
           />
         )}
+            </>
+        )}
       </div>
           </>
         )}
@@ -2686,6 +2836,18 @@ export default function App() {
       {user && <FriendDock requests={friendRequests} currentUserId={user.uid} onOpenChat={setActiveChatFriend} onOpenRequests={() => setSection("requests")} presenceDb={realtimeDb} onFriendOnline={notifyFriendOnline} blockedUsers={blockedUsers} onRemoveFriend={removeFriend} onBlockFriend={blockFriend} onUnblockFriend={unblockFriend} />}
       {user && activeChatFriend && <FriendChat currentUser={user} friend={activeChatFriend} onClose={() => setActiveChatFriend(null)} />}
       {!user && authDialogOpen && <AuthScreen onGoogleSignIn={handleGoogleSignIn} onEmailAuth={handleEmailAuth} authError={authError} authBusy={authBusy} onBrowseAsGuest={browseAsGuest} onClose={() => setAuthDialogOpen(false)} requireChoice={!guestMode} />}
+      <OwnerCommandPanel
+        open={ownerPanelOpen && dashboardRole === "owner"}
+        role="owner"
+        onClose={() => setOwnerPanelOpen(false)}
+        onSelect={(id) => {
+          setOwnerPanelOpen(false);
+          if (id === "vault") goSection("archive");
+          else if (id === "tournaments") goSection("tournaments");
+          else if (id === "players") goSection("dashboard");
+          else if (id === "blogs") goSection("blog");
+        }}
+      />
       <SitePopup popup={currentPopup} onDismiss={dismissSitePopup} />
       <Toast message={toast} />
     </div>
@@ -2699,7 +2861,7 @@ const shellStyle = {
   fontFamily: "'Inter', sans-serif",
 };
 
-function Header({ saving, user, guestMode, onSignInClick, onSignOut, onNavigate, onEditProfile, dashboardRole }) {
+function Header({ saving, user, guestMode, onSignInClick, onSignOut, onNavigate, onOpenOwnerPanel, onEditProfile, dashboardRole }) {
   const displayName = user?.displayName || user?.email || "Player";
   const initials = safeProfileName(user?.displayName).slice(0, 1).toUpperCase();
 
@@ -2718,6 +2880,7 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onNavigate,
           <span aria-live="polite" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: saving ? "var(--accent)" : "var(--text-muted)", minWidth: 70, textAlign: "right" }}>
             {saving ? "SAVING…" : "SAVED"}
           </span>
+          {dashboardRole === "owner" && onOpenOwnerPanel && <Button variant="ghost" onClick={onOpenOwnerPanel}>Command</Button>}
           {!user ? <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {guestMode && <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--text-muted)" }}>GUEST</span>}
             <Button variant="ghost" onClick={onSignInClick}>Sign in / join</Button>

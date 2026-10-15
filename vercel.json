@@ -3,6 +3,10 @@
     {
       "source": "/__/auth/:path*",
       "destination": "https://scoreliner.firebaseapp.com/__/auth/:path*"
+    },
+    {
+      "source": "/((?!__/auth).*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
