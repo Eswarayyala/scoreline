@@ -30,7 +30,7 @@ export default function OwnerCommandPanel({ open, onClose, onSelect, role = "own
             <div className="mb-5 flex items-start justify-between gap-3">
               <div>
                 <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-neon">{role} command</p>
-                <h2 id="owner-command-title" className="font-display text-4xl text-white">Owner dashboard</h2>
+                <h2 id="owner-command-title" className="font-display text-4xl text-white">{role === "support" ? "Support dashboard" : "Owner dashboard"}</h2>
               </div>
               <button type="button" aria-label="Close owner panel" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-full border border-white/15 text-white hover:border-neon hover:text-neon">
                 <X size={16} />

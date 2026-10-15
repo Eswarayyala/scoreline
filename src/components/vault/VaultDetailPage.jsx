@@ -4,8 +4,8 @@ import { motion } from "framer-motion";
 import { ArrowLeft, ExternalLink, Trophy } from "lucide-react";
 import { VAULT_SLIDES } from "../../data/platformShowcase";
 
-export default function VaultDetailPage({ liveEntries = [], slug }) {
-  const slide = VAULT_SLIDES.find((item) => item.slug === slug);
+export default function VaultDetailPage({ liveEntries = [], slug, slides = VAULT_SLIDES }) {
+  const slide = slides.find((item) => item.slug === slug) || VAULT_SLIDES.find((item) => item.slug === slug);
   const related = useMemo(
     () => liveEntries.filter((entry) => String(entry.game || "").toLowerCase() === String(slide?.game || "").toLowerCase()).slice(0, 6),
     [liveEntries, slide],
@@ -39,7 +39,36 @@ export default function VaultDetailPage({ liveEntries = [], slug }) {
         <div className="grid gap-8 p-6 md:grid-cols-[1.4fr_0.8fr] md:p-8">
           <div>
             <p className="text-base leading-7 text-slate-200">{slide.summary}</p>
-            <p className="mt-4 text-sm text-slate-400">This window is the public face of The Vault. Live results you publish from staff tools appear beside it when the game matches.</p>
+            {slide.eventStatus === "completed" && (
+              <dl className="mt-5 grid gap-2 text-sm text-slate-300">
+                {slide.winners && <div>Winners · {slide.winners}</div>}
+                {slide.runnerUps && <div>Runner-ups · {slide.runnerUps}</div>}
+                {slide.secondRunnerUps && <div>Second runner-ups · {slide.secondRunnerUps}</div>}
+                {slide.mvp && <div>MVP · {slide.mvp}</div>}
+                {slide.bestIgl && <div>Best IGL · {slide.bestIgl}</div>}
+                {slide.fanFavourite && <div>Fan favourite · {slide.fanFavourite}</div>}
+                {slide.bestClutches && <div>Best clutches · {slide.bestClutches}</div>}
+              </dl>
+            )}
+            {slide.eventStatus === "live" && (
+              <div className="mt-5 space-y-3 text-sm text-slate-300">
+                <p>Stage · {slide.activeStage}</p>
+                {slide.liveEmbedUrl && <a className="text-neon" href={slide.liveEmbedUrl} target="_blank" rel="noreferrer">Open live telecast</a>}
+                {!!slide.pointsTable?.length && (
+                  <table className="w-full text-left text-xs">
+                    <thead><tr className="text-slate-500"><th>Group</th><th>Team</th><th>Pts</th><th>W</th></tr></thead>
+                    <tbody>{slide.pointsTable.map((row, i) => <tr key={i}><td>{row.group}</td><td>{row.team}</td><td>{row.points}</td><td>{row.wins}</td></tr>)}</tbody>
+                  </table>
+                )}
+              </div>
+            )}
+            {slide.eventStatus === "upcoming" && (
+              <div className="mt-5 space-y-1 text-sm text-slate-300">
+                <p>{slide.seasonTitle}</p>
+                <p>{slide.startAt} → {slide.endAt}</p>
+                {slide.registrationUrl && <a className="text-neon" href={slide.registrationUrl} target="_blank" rel="noreferrer">Register</a>}
+              </div>
+            )}
           </div>
           <aside className="rounded-2xl border border-white/10 bg-white/5 p-4">
             <p className="mb-3 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-volt">

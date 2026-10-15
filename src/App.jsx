@@ -27,6 +27,8 @@ import { db, auth, realtimeDb, signInWithGoogle, completeGoogleSignInReturn } fr
 import PlatformHome from "./components/layout/PlatformHome";
 import VaultDetailPage from "./components/vault/VaultDetailPage";
 import OwnerCommandPanel from "./components/owner/OwnerCommandPanel";
+import CircuitCmsDesk from "./components/cms/CircuitCmsDesk";
+import { useCircuitCms } from "./hooks/useCircuitCms";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { onValue, ref as databaseRef, onDisconnect, serverTimestamp, set as setDatabaseValue } from "firebase/database";
 
@@ -1462,9 +1464,9 @@ function SitePopup({ popup, onDismiss }) {
   );
 }
 
-function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerBan, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament }) {
+function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerBan, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], onSaveCircuit, onDeleteCircuit }) {
   const isOwner = role === "owner";
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useState(initialTab);
   const [editing, setEditing] = useState(null);
   const [staffUid, setStaffUid] = useState("");
   const [popupError, setPopupError] = useState("");
@@ -1523,8 +1525,8 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerB
         <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Monitor tournaments, The Vault, and the community blog from the tabs above{isOwner ? ". Owner-only tools for popups and support access stay in this desk." : "."}</p>
       </>}
       {tab === "reports" && <ReportsInbox reports={reports} onStatusChange={onStatusChange} bans={bans} role={role} onSetPlayerBan={onSetPlayerBan} />}
-      {tab === "tournaments" && <TournamentMonitor tournaments={tournaments} onOpen={onOpenTournament} />}
-      {tab === "vault" && <VaultMonitor entries={archiveEntries} submissions={archiveSubmissions} blogPosts={blogPosts} onDecision={onArchiveDecision} onPromote={onPromoteBlog} />}
+      {tab === "tournaments" && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="tournament" records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} /><TournamentMonitor tournaments={tournaments} onOpen={onOpenTournament} /></div>}
+      {tab === "vault" && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="vault" records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} /><VaultMonitor entries={archiveEntries} submissions={archiveSubmissions} blogPosts={blogPosts} onDecision={onArchiveDecision} onPromote={onPromoteBlog} /></div>}
       {tab === "activity log" && isOwner && <StaffActivityLog actions={auditLog} />}
       {tab === "blogs" && <section><p style={{ color: "var(--text-muted)", fontSize: 13 }}>Watch every community blog from this desk. Publish or decline pending posts, then promote a published story into The Vault from the Vault tab.</p><div style={{ display: "flex", gap: 16, margin: "0 0 14px", fontSize: 13, color: "var(--text-muted)" }}><span>Pending {pendingBlogs}</span><span>Published {blogPosts.filter((post) => post.status === "published").length}</span><span>Total {blogPosts.length}</span></div>{blogPosts.length === 0 ? <EmptyState title="No blog posts yet" body="Community submissions will appear here for preview." /> : <div style={{ display: "grid", gap: 10 }}>{[...blogPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 30).map((post) => <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status} · by {post.authorName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{post.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{post.content}</p>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onBlogReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onBlogReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div>}</section>}
       {tab === "popups" && isOwner && <section>
@@ -1846,6 +1848,8 @@ export default function App() {
   const [section, setSection] = useState(() => new URLSearchParams(window.location.search).has("tournament") ? "tournaments" : "home");
   const [ownerPanelOpen, setOwnerPanelOpen] = useState(false);
   const [deskAnchor, setDeskAnchor] = useState("home");
+  const [dashTabHint, setDashTabHint] = useState("overview");
+  const circuitCms = useCircuitCms();
   const [myProfile, setMyProfile] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
@@ -2685,7 +2689,7 @@ export default function App() {
 
         {!needsAuthChoice && (
           <>
-        <Header saving={saving} user={user} guestMode={guestMode} onSignInClick={() => setAuthDialogOpen((open) => !open)} onSignOut={handleSignOut} onNavigate={(id) => { if (id === "dashboard" && dashboardRole === "owner") { setOwnerPanelOpen(true); return; } goSection(id); }} onOpenOwnerPanel={() => setOwnerPanelOpen(true)} onEditProfile={() => setShowProfileModal(true)} dashboardRole={dashboardRole} />
+        <Header saving={saving} user={user} guestMode={guestMode} onSignInClick={() => setAuthDialogOpen((open) => !open)} onSignOut={handleSignOut} onNavigate={(id) => { if (id === "dashboard" && dashboardRole) { setOwnerPanelOpen(true); return; } goSection(id); }} onOpenOwnerPanel={() => setOwnerPanelOpen(true)} onEditProfile={() => setShowProfileModal(true)} dashboardRole={dashboardRole} />
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "16px 20px 0" }}>
         <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--border)" }}>
@@ -2728,11 +2732,11 @@ export default function App() {
 
       <div style={{ maxWidth: section === "home" || location.pathname.startsWith("/vault") ? 1152 : 980, margin: "0 auto", padding: "0 20px 80px" }}>
         {location.pathname.startsWith("/vault/") ? (
-          <VaultDetailPage slug={location.pathname.replace(/^\/vault\//, "").split("/")[0]} liveEntries={archiveEntries} />
+          <VaultDetailPage slides={circuitCms.vaultSlides} slug={location.pathname.replace(/^\/vault\//, "").split("/")[0]} liveEntries={archiveEntries} />
         ) : (
             <>
         {section === "home" && view === "list" && (
-          <PlatformHome onOpenVaultSlide={(slug) => navigate(`/vault/${slug}`)}>
+          <PlatformHome slides={circuitCms.vaultSlides} onOpenVaultSlide={(slug) => navigate(`/vault/${slug}`)}>
             <HistoricalArchive embedded entries={archiveEntries} isModerator={isSiteStaff || isModerator} user={user} submissions={archiveSubmissions} onSubmitRequest={submitArchiveRequest} onImport={importArchiveEntries} onSignIn={() => setAuthDialogOpen(true)} />
             <section id="section-tournaments" style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
               <TournamentList
@@ -2772,6 +2776,11 @@ export default function App() {
         )}
         {user && section === "requests" && <FriendRequestCenter requests={friendRequests} currentUserId={user.uid} onDecision={decideFriendRequest} />}
         {user && section === "dashboard" && isSiteStaff && <OwnerDashboard
+          key={dashTabHint}
+          initialTab={dashTabHint}
+          circuitRecords={circuitCms.records}
+          onSaveCircuit={circuitCms.upsert}
+          onDeleteCircuit={circuitCms.remove}
           role={siteRole || "support"}
           reports={privateReports}
           onStatusChange={updateReportStatus}
@@ -2880,15 +2889,15 @@ export default function App() {
       {user && activeChatFriend && <FriendChat currentUser={user} friend={activeChatFriend} onClose={() => setActiveChatFriend(null)} />}
       {!user && authDialogOpen && <AuthScreen onGoogleSignIn={handleGoogleSignIn} onEmailAuth={handleEmailAuth} authError={authError} authBusy={authBusy} onBrowseAsGuest={browseAsGuest} onClose={() => setAuthDialogOpen(false)} requireChoice={!guestMode} />}
       <OwnerCommandPanel
-        open={ownerPanelOpen && dashboardRole === "owner"}
-        role="owner"
+        open={ownerPanelOpen && !!dashboardRole}
+        role={dashboardRole || "support"}
         onClose={() => setOwnerPanelOpen(false)}
         onSelect={(id) => {
           setOwnerPanelOpen(false);
-          if (id === "vault") goSection("home");
-          else if (id === "tournaments") goSection("tournaments");
-          else if (id === "players") goSection("dashboard");
-          else if (id === "blogs") goSection("blog");
+          if (id === "vault") { setDashTabHint("vault"); goSection("dashboard"); }
+          else if (id === "tournaments") { setDashTabHint("tournaments"); goSection("dashboard"); }
+          else if (id === "players") { setDashTabHint("reports"); goSection("dashboard"); }
+          else if (id === "blogs") { setDashTabHint("blogs"); goSection("dashboard"); }
         }}
       />
       <SitePopup popup={currentPopup} onDismiss={dismissSitePopup} />
@@ -2923,7 +2932,7 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onNavigate,
           <span aria-live="polite" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: saving ? "var(--accent)" : "var(--text-muted)", minWidth: 70, textAlign: "right" }}>
             {saving ? "SAVING…" : "SAVED"}
           </span>
-          {dashboardRole === "owner" && onOpenOwnerPanel && <Button variant="ghost" onClick={onOpenOwnerPanel}>Command</Button>}
+          {dashboardRole && onOpenOwnerPanel && <Button variant="ghost" onClick={onOpenOwnerPanel}>Command</Button>}
           {!user ? <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {guestMode && <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--text-muted)" }}>GUEST</span>}
             <Button variant="ghost" onClick={onSignInClick}>Sign in / join</Button>
