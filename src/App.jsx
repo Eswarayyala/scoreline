@@ -64,6 +64,36 @@ const REPORT_REASONS = ["Abuse or harassment", "Scam or fraud", "Inappropriate c
 
 const FONT_LINK_ID = "scoreline-fonts";
 
+function useWindowLocation() {
+  const [loc, setLoc] = useState(() => ({
+    pathname: window.location.pathname,
+    search: window.location.search,
+    hash: window.location.hash,
+    state: null,
+    key: "window",
+  }));
+  useEffect(() => {
+    const read = () => setLoc({
+      pathname: window.location.pathname,
+      search: window.location.search,
+      hash: window.location.hash,
+      state: window.history.state,
+      key: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+    });
+    window.addEventListener("popstate", read);
+    const pushState = window.history.pushState.bind(window.history);
+    const replaceState = window.history.replaceState.bind(window.history);
+    window.history.pushState = (...args) => { pushState(...args); read(); };
+    window.history.replaceState = (...args) => { replaceState(...args); read(); };
+    return () => {
+      window.removeEventListener("popstate", read);
+      window.history.pushState = pushState;
+      window.history.replaceState = replaceState;
+    };
+  }, []);
+  return loc;
+}
+
 function ensureFonts() {
   if (typeof document === "undefined") return;
   if (document.getElementById(FONT_LINK_ID)) return;
@@ -1767,6 +1797,8 @@ function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDele
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
+  const windowLocation = useWindowLocation();
+  const routePath = windowLocation.pathname || location.pathname;
   const [tournaments, setTournaments] = useState([]);
   const [selectedTeams, setSelectedTeams] = useState([]);
   const [selectedMatches, setSelectedMatches] = useState([]);
@@ -1888,6 +1920,7 @@ export default function App() {
   // ---- player profiles ----
   const [dashTabHint, setDashTabHint] = useState("overview");
   const [showFriendRequests, setShowFriendRequests] = useState(false);
+  const [mutedFriendIds, setMutedFriendIds] = useState([]);
   const [showArchivedTournaments, setShowArchivedTournaments] = useState(false);
   const circuitCms = useCircuitCms();
   const liveEsportsBanners = useEsportsMedia();
@@ -2190,6 +2223,20 @@ export default function App() {
     showToast._t = window.setTimeout(() => setToast(""), 2200);
   }, []);
   const notifyFriendOnline = useCallback((name) => showToast(`${name} is online`), [showToast]);
+  useEffect(() => {
+    if (!user) { setMutedFriendIds([]); return; }
+    try { setMutedFriendIds(JSON.parse(localStorage.getItem(`grindinfo-muted-chats:${user.uid}`) || "[]")); }
+    catch { setMutedFriendIds([]); }
+  }, [user]);
+  const mutedFriendSet = useMemo(() => new Set(mutedFriendIds), [mutedFriendIds]);
+  const toggleMuteFriend = useCallback((friendUid) => {
+    if (!friendUid) return;
+    setMutedFriendIds((current) => {
+      const next = current.includes(friendUid) ? current.filter((id) => id !== friendUid) : [...current, friendUid];
+      if (user) localStorage.setItem(`grindinfo-muted-chats:${user.uid}`, JSON.stringify(next));
+      return next;
+    });
+  }, [user]);
 
   const saveProfile = useCallback(
     async (fields) => {
@@ -2666,29 +2713,29 @@ export default function App() {
   const dashboardRole = isSiteStaff ? siteRole : null;
 
   useEffect(() => {
-    const legacyId = new URLSearchParams(location.search).get("tournament");
-    if (legacyId && !location.pathname.startsWith("/tournaments/")) {
+    const legacyId = new URLSearchParams(windowLocation.search || location.search).get("tournament");
+    if (legacyId && !routePath.startsWith("/tournaments/")) {
       navigate(`/tournaments/${legacyId}`, { replace: true });
     }
-  }, [location.search, location.pathname, navigate]);
+  }, [windowLocation.search, location.search, routePath, navigate]);
 
   useEffect(() => {
-    const tournamentMatch = location.pathname.match(/^\/tournaments\/([^/]+)/);
+    const tournamentMatch = routePath.match(/^\/tournaments\/([^/]+)/);
     if (tournamentMatch) {
       setSelectedId(tournamentMatch[1]);
       setView("detail");
       return;
     }
-    if (location.pathname === "/tournaments") {
+    if (routePath === "/tournaments") {
       setSelectedId(null);
       setView("list");
     }
-  }, [location.pathname]);
+  }, [routePath]);
 
   useEffect(() => {
-    if (authLoading || !location.pathname.startsWith("/admin")) return;
+    if (authLoading || !routePath.startsWith("/admin")) return;
     if (!user || (siteRoleResolved && !isSiteStaff)) navigate("/", { replace: true });
-  }, [authLoading, isSiteStaff, location.pathname, navigate, siteRoleResolved, user]);
+  }, [authLoading, isSiteStaff, routePath, navigate, siteRoleResolved, user]);
 
   const needsAuthChoice = !user && !guestMode;
 
@@ -2697,16 +2744,6 @@ export default function App() {
       <div style={shellStyle} data-theme="solar-flare">
         <div style={{ color: "var(--text-muted)", fontFamily: "'Inter', sans-serif", padding: 40, textAlign: "center" }}>
           <LoadingScreen label="Loading GrindInfo" />
-        </div>
-      </div>
-    );
-  }
-
-  if (loading && !needsAuthChoice) {
-    return (
-      <div style={shellStyle} data-theme="solar-flare">
-        <div style={{ color: "var(--text-muted)", fontFamily: "'Inter', sans-serif", padding: 40, textAlign: "center" }}>
-          <LoadingScreen label="Loading tournaments" />
         </div>
       </div>
     );
@@ -2726,7 +2763,7 @@ export default function App() {
         @keyframes sl-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
       `}</style>
 
-        {!needsAuthChoice && location.pathname.startsWith("/admin") && (
+        {!needsAuthChoice && routePath.startsWith("/admin") && (
           user && !siteRoleResolved ? (
             <div className="px-5 py-16 text-center text-stone-400"><LoadingScreen label="Opening staff portal" /></div>
           ) : dashboardRole ? (
@@ -2770,7 +2807,7 @@ export default function App() {
           ) : <Navigate to="/" replace />
         )}
 
-        {!needsAuthChoice && !location.pathname.startsWith("/admin") && (
+        {!needsAuthChoice && !routePath.startsWith("/admin") && (
           <>
             <Header
               saving={saving}
@@ -2793,12 +2830,14 @@ export default function App() {
                   onRemoveFriend={removeFriend}
                   onBlockFriend={blockFriend}
                   onUnblockFriend={unblockFriend}
+                  mutedIds={mutedFriendSet}
+                  onToggleMute={toggleMuteFriend}
                 />
               ) : null}
             />
-            <PublicNav />
-            <div className={`mx-auto px-5 pb-24 ${location.pathname === "/" || location.pathname.startsWith("/vault") ? "max-w-6xl" : "max-w-5xl"}`}>
-              <Routes>
+            <PublicNav pathname={routePath} />
+            <div className={`mx-auto px-5 pb-24 ${routePath === "/" || routePath.startsWith("/vault") ? "max-w-6xl" : "max-w-5xl"}`}>
+              <Routes location={windowLocation}>
                 <Route path="/" element={(
                   <PlatformHome slides={vaultSlides}>
                     <HubSections />
@@ -2809,7 +2848,7 @@ export default function App() {
                     <HistoricalArchive embedded entries={archiveEntries} user={user} submissions={archiveSubmissions} onSubmitRequest={submitArchiveRequest} onSignIn={() => setAuthDialogOpen(true)} />
                   </VaultLibraryPage>
                 )} />
-                <Route path="/vault/:slug" element={<VaultDetailPage slides={vaultSlides} slug={location.pathname.replace(/^\/vault\//, "").split("/")[0]} liveEntries={archiveEntries} />} />
+                <Route path="/vault/:slug" element={<VaultDetailPage slides={vaultSlides} slug={routePath.replace(/^\/vault\//, "").split("/")[0]} liveEntries={archiveEntries} />} />
                 <Route path="/tournaments" element={(
                   <>
                     <TournamentOpsRail
@@ -2884,7 +2923,18 @@ export default function App() {
                   </div>
                 )} />
                 <Route path="/blog" element={<BlogPage manageInDrawer posts={blogPosts} user={user} isModerator={isSiteStaff || isModerator} onSubmit={submitBlogPost} onReview={reviewBlogPost} onEdit={editBlogPost} onDelete={deleteBlogPost} onSignIn={() => setAuthDialogOpen(true)} />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route path="*" element={
+                  <div className="pt-10">
+                    <h1 className="m-0 font-['Bebas_Neue',sans-serif] text-5xl">Page not found</h1>
+                    <p className="mt-2 text-sm text-stone-400">That link is not a GrindInfo page.</p>
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <Link to="/" className="font-mono text-xs uppercase tracking-wider text-amber-300">Home</Link>
+                      <Link to="/find-players" className="font-mono text-xs uppercase tracking-wider text-amber-300">Find players</Link>
+                      <Link to="/tournaments" className="font-mono text-xs uppercase tracking-wider text-amber-300">Tournaments</Link>
+                      <Link to="/blog" className="font-mono text-xs uppercase tracking-wider text-amber-300">Community blog</Link>
+                    </div>
+                  </div>
+                } />
               </Routes>
             </div>
           </>
@@ -2913,7 +2963,7 @@ export default function App() {
           </div>
         </div>
       )}
-      {user && activeChatFriend && <FriendChat currentUser={user} friend={activeChatFriend} onClose={() => setActiveChatFriend(null)} />}
+      {user && activeChatFriend && <FriendChat currentUser={user} friend={activeChatFriend} onClose={() => setActiveChatFriend(null)} muted={mutedFriendSet.has(activeChatFriend.uid)} onToggleMute={toggleMuteFriend} onBlock={(friend) => { blockFriend(friend); setActiveChatFriend(null); }} />}
       {!user && authDialogOpen && <AuthScreen onGoogleSignIn={handleGoogleSignIn} onEmailAuth={handleEmailAuth} authError={authError} authBusy={authBusy} onBrowseAsGuest={browseAsGuest} onClose={() => setAuthDialogOpen(false)} requireChoice={!guestMode} />}
       <SitePopup popup={currentPopup} onDismiss={dismissSitePopup} />
       <Toast message={toast} />
@@ -2950,37 +3000,49 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onEditProfi
           {!user ? <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {guestMode && <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--text-muted)" }}>GUEST</span>}
             <Button variant="ghost" onClick={onSignInClick}>Sign in / join</Button>
-          </div> : <details style={{ position: "relative" }}>
-            <summary
-              aria-label="Account menu"
-              style={{ listStyle: "none", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "var(--page-text)", border: "1px solid var(--border)", background: "var(--panel-bg)", padding: "6px 9px", fontFamily: "'Inter', sans-serif", fontSize: 12 }}
-            >
-              {user?.photoURL ? (
-                <img src={avatarForGamer({ photoURL: user.photoURL, displayName })} alt="" className="aspect-square h-[30px] w-[30px] rounded-full object-cover" />
-              ) : (
-                <span aria-hidden="true" style={{ width: 30, height: 30, borderRadius: "50%", display: "grid", placeItems: "center", background: "var(--accent)", color: "var(--accent-contrast)", fontWeight: 700 }}>
-                  {initials}
-                </span>
-              )}
-              <span style={{ maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</span>
-              <span aria-hidden="true" style={{ color: "var(--text-muted)" }}>⌄</span>
-            </summary>
-            <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 60, width: 280 }}>
-              <div style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)", boxShadow: "var(--panel-shadow)" }}>
-                <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>{displayName}</div>
-                <Button variant="ghost" style={{ width: "100%", marginBottom: 12 }} onClick={(event) => { onEditProfile(); event.currentTarget.closest("details")?.removeAttribute("open"); }}>Edit my profile</Button>
-                {dashboardRole && <Link to="/admin/portal" style={{ display: "block", width: "100%", marginBottom: 12, textDecoration: "none" }}><Button variant="ghost" style={{ width: "100%" }}>{dashboardRole === "owner" ? "Owner dashboard" : "Support dashboard"}</Button></Link>}
-                <Button variant="ghost" style={{ width: "100%" }} onClick={onSignOut}>
-                  Sign out
-                </Button>
-              </div>
-              {friendsPanel && (
-                <div style={{ marginTop: 8, padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)", boxShadow: "var(--panel-shadow)" }}>
-                  {friendsPanel}
+          </div> : (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {friendsPanel ? (
+                <details style={{ position: "relative" }}>
+                  <summary
+                    aria-label="Friends"
+                    style={{ listStyle: "none", cursor: "pointer", color: "var(--page-text)", border: "1px solid var(--border)", background: "var(--panel-bg)", padding: "8px 12px", fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase" }}
+                  >
+                    Friends
+                  </summary>
+                  <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 65, width: 300, maxHeight: "70vh", overflow: "auto", background: "var(--panel-bg)", border: "1px solid var(--border)", boxShadow: "var(--panel-shadow)", padding: 8 }}>
+                    {friendsPanel}
+                  </div>
+                </details>
+              ) : null}
+              <details style={{ position: "relative" }}>
+                <summary
+                  aria-label="Account menu"
+                  style={{ listStyle: "none", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "var(--page-text)", border: "1px solid var(--border)", background: "var(--panel-bg)", padding: "6px 9px", fontFamily: "'Inter', sans-serif", fontSize: 12 }}
+                >
+                  {user?.photoURL ? (
+                    <img src={avatarForGamer({ photoURL: user.photoURL, displayName })} alt="" className="aspect-square h-[30px] w-[30px] rounded-full object-cover" />
+                  ) : (
+                    <span aria-hidden="true" style={{ width: 30, height: 30, borderRadius: "50%", display: "grid", placeItems: "center", background: "var(--accent)", color: "var(--accent-contrast)", fontWeight: 700 }}>
+                      {initials}
+                    </span>
+                  )}
+                  <span style={{ maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</span>
+                  <span aria-hidden="true" style={{ color: "var(--text-muted)" }}>⌄</span>
+                </summary>
+                <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 60, width: 280 }}>
+                  <div style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)", boxShadow: "var(--panel-shadow)" }}>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>{displayName}</div>
+                    <Button variant="ghost" style={{ width: "100%", marginBottom: 12 }} onClick={(event) => { onEditProfile(); event.currentTarget.closest("details")?.removeAttribute("open"); }}>Edit my profile</Button>
+                    {dashboardRole && <Link to="/admin/portal" style={{ display: "block", width: "100%", marginBottom: 12, textDecoration: "none" }}><Button variant="ghost" style={{ width: "100%" }}>{dashboardRole === "owner" ? "Owner dashboard" : "Support dashboard"}</Button></Link>}
+                    <Button variant="ghost" style={{ width: "100%" }} onClick={onSignOut}>
+                      Sign out
+                    </Button>
+                  </div>
                 </div>
-              )}
+              </details>
             </div>
-          </details>}
+          )}
         </div>
       </div>
     </div>
