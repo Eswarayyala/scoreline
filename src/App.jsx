@@ -22,7 +22,7 @@ import {
   signInWithEmailAndPassword,
   updateProfile,
 } from "firebase/auth";
-import { db, auth, realtimeDb, signInWithGoogle } from "./firebase";
+import { db, auth, realtimeDb, signInWithGoogle, completeGoogleSignInReturn } from "./firebase";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { onValue, ref as databaseRef, onDisconnect, serverTimestamp, set as setDatabaseValue } from "firebase/database";
 
@@ -1651,42 +1651,45 @@ export default function App() {
   const [authBusy, setAuthBusy] = useState(false);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      const returningGuest = !u && sessionStorage.getItem("grindinfo-guest-mode") === "true";
-      setGuestMode(returningGuest);
-      setAuthDialogOpen(!u && !returningGuest);
-      if (!u) {
-        setSection("tournaments");
-        setView("list");
-        setSelectedId(null);
-        setShowNewTournament(false);
-        setReportTarget(null);
+    let unsub = () => {};
+    let cancelled = false;
+    (async () => {
+      try {
+        await completeGoogleSignInReturn();
+      } catch (e) {
+        if (!cancelled) {
+          setAuthError(e.code === "auth/unauthorized-domain"
+            ? "This site isn't allowed for Google sign-in yet."
+            : "Couldn't finish Google sign-in — try email instead.");
+        }
       }
-      if (u) sessionStorage.removeItem("grindinfo-guest-mode");
-      setAuthLoading(false);
-    });
-    return () => unsub();
+      if (cancelled) return;
+      unsub = onAuthStateChanged(auth, (u) => {
+        setUser(u);
+        const returningGuest = !u && sessionStorage.getItem("grindinfo-guest-mode") === "true";
+        setGuestMode(returningGuest);
+        setAuthDialogOpen(!u && !returningGuest);
+        if (!u) {
+          setSection("tournaments");
+          setView("list");
+          setSelectedId(null);
+          setShowNewTournament(false);
+          setReportTarget(null);
+        }
+        if (u) sessionStorage.removeItem("grindinfo-guest-mode");
+        setAuthLoading(false);
+      });
+    })();
+    return () => {
+      cancelled = true;
+      unsub();
+    };
   }, []);
 
-  const handleGoogleSignIn = useCallback(async () => {
+  const handleGoogleSignIn = useCallback(() => {
     setAuthError("");
     setAuthBusy(true);
-    try {
-      await signInWithGoogle();
-    } catch (e) {
-      const messages = {
-        "auth/unauthorized-domain": "This site isn't allowed for Google sign-in yet.",
-        "auth/operation-not-allowed": "Google sign-in isn't enabled on this Firebase project.",
-        "auth/popup-blocked": "Your browser blocked the Google window. Allow popups for this site, or use email.",
-        "auth/popup-closed-by-user": "Google sign-in was closed before it finished.",
-        "auth/cancelled-popup-request": "Google sign-in was cancelled. Try once more.",
-        "auth/account-exists-with-different-credential": "That Google email already has an account. Sign in with email.",
-      };
-      setAuthError(messages[e.code] || "Couldn't finish Google sign-in — try email instead.");
-    } finally {
-      setAuthBusy(false);
-    }
+    signInWithGoogle();
   }, []);
 
   const handleEmailAuth = useCallback(async (mode, { name, email, password }) => {
