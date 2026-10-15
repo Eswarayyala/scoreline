@@ -32,7 +32,9 @@ export default function VaultCarousel({ slides = VAULT_SLIDES }) {
   return (
     <section style={{ marginBottom: 8 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
-        <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 40, margin: 0, letterSpacing: "0.02em" }}>The Vault</h1>
+        <Link to="/vault" style={{ color: "inherit", textDecoration: "none" }}>
+          <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 40, margin: 0, letterSpacing: "0.02em" }}>The Vault</h1>
+        </Link>
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
           <button type="button" aria-label="Previous Vault slide" onClick={() => scrollTo(active - 1)} style={navBtn}>
             <ChevronLeft size={18} />
@@ -66,8 +68,8 @@ export default function VaultCarousel({ slides = VAULT_SLIDES }) {
           >
             <Link to={`/vault/${slide.slug}`} style={{ display: "block", color: "inherit", textDecoration: "none" }}>
             <div style={{ overflow: "hidden", borderRadius: 16, border: "1px solid var(--border)", background: "var(--panel-bg)", boxShadow: "var(--panel-shadow)" }}>
-              <div style={{ position: "relative", height: 132 }}>
-                <img src={slide.poster} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              <div className="relative aspect-video overflow-hidden">
+                <img src={slide.poster} alt="" className="h-full w-full object-cover" />
                 <span style={{ position: "absolute", left: 10, top: 10, fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--accent-secondary)", background: "rgba(23,17,15,0.78)", border: "1px solid var(--border)", borderRadius: 999, padding: "3px 8px" }}>
                   {slide.kicker}
                 </span>

@@ -25,9 +25,12 @@ import {
 import { Link, Navigate, Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import { db, auth, realtimeDb, signInWithGoogle, completeGoogleSignInReturn } from "./firebase";
 import PlatformHome from "./components/layout/PlatformHome";
+import HubSections from "./components/layout/HubSections";
 import PublicNav from "./components/layout/PublicNav";
 import TournamentOpsRail from "./components/layout/TournamentOpsRail";
 import VaultDetailPage from "./components/vault/VaultDetailPage";
+import VaultLibraryPage from "./components/vault/VaultLibraryPage";
+import { avatarForGamer, bannerForGame, flyerForEvent } from "./data/platformShowcase";
 import CircuitCmsDesk from "./components/cms/CircuitCmsDesk";
 import { useCircuitCms } from "./hooks/useCircuitCms";
 import { getFunctions, httpsCallable } from "firebase/functions";
@@ -304,20 +307,10 @@ function GameIcon({ game, size = 30 }) {
   return (
     <span
       aria-hidden="true"
-      style={{
-        width: size,
-        height: size,
-        display: "inline-grid",
-        placeItems: "center",
-        flexShrink: 0,
-        borderRadius: 8,
-        background: "var(--panel-raised)",
-        border: "1px solid var(--border)",
-        fontSize: Math.round(size * 0.56),
-        lineHeight: 1,
-      }}
+      className="inline-grid shrink-0 overflow-hidden rounded-md border border-white/10"
+      style={{ width: size, height: size }}
     >
-      {GAME_ICONS[game] || "🎮"}
+      <img src={bannerForGame(game)} alt="" className="aspect-square h-full w-full object-cover" />
     </span>
   );
 }
@@ -835,8 +828,8 @@ function PlayerCard({ player, currentUid, friendRequest, onFriendRequest, onFrie
   return (
     <div className="sl-card" style={{ background: "var(--panel-bg)", border: "1px solid var(--border)", padding: "16px 18px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: "0.02em" }}>
-        <span aria-hidden="true" style={{ width: 38, height: 38, borderRadius: "50%", display: "grid", placeItems: "center", background: "var(--panel-raised)", border: "1px solid var(--border)", fontSize: 20 }}>
-          {player.avatar || "🎮"}
+        <span aria-hidden="true" className="inline-grid h-12 w-12 shrink-0 overflow-hidden rounded-full border border-white/10">
+          <img src={avatarForGamer(player)} alt="" className="aspect-square h-full w-full object-cover" />
         </span>
         {player.displayName}
       </div>
@@ -1261,14 +1254,14 @@ function FriendDock({ requests, currentUserId, onOpenChat, onOpenRequests, prese
   const list = <div style={{ maxHeight: 320, overflowY: "auto", padding: placement === "header" ? 0 : 8 }}>
       <button type="button" onClick={() => { onOpenRequests(); setExpanded(false); }} style={{ width: "100%", textAlign: "left", border: 0, borderBottom: "1px solid var(--border)", padding: 11, background: "transparent", color: "var(--accent-secondary)", cursor: "pointer" }}>Friend requests{requests.filter((item) => item.recipientId === currentUserId && item.status === "pending").length ? ` (${requests.filter((item) => item.recipientId === currentUserId && item.status === "pending").length})` : ""}</button>
       {friends.length === 0 ? <div style={{ padding: 12, color: "var(--text-muted)", fontSize: 13 }}>Accepted friends will appear here.</div> : friends.map((friend) => <div key={friend.uid} style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><span style={{ display: "flex", alignItems: "center", gap: 8 }}><span aria-label={presence[friend.uid] || "offline"} title={presence[friend.uid] || (presenceDb ? "offline" : "Online status needs Realtime Database setup")} style={{ width: 8, height: 8, borderRadius: "50%", background: presence[friend.uid] === "online" ? "var(--success)" : "var(--text-dim)" }} />{friend.name}</span><button type="button" onClick={() => onOpenChat(friend)} style={{ border: 0, background: "transparent", color: "var(--accent-secondary)", cursor: "pointer" }}>Chat</button></div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><span style={{ display: "flex", alignItems: "center", gap: 8 }}><img src={avatarForGamer({ displayName: friend.name, uid: friend.uid })} alt="" className="aspect-square h-7 w-7 rounded-full object-cover" /><span aria-label={presence[friend.uid] || "offline"} title={presence[friend.uid] || (presenceDb ? "offline" : "Online status needs Realtime Database setup")} style={{ width: 8, height: 8, borderRadius: "50%", background: presence[friend.uid] === "online" ? "var(--success)" : "var(--text-dim)" }} />{friend.name}</span><button type="button" onClick={() => onOpenChat(friend)} style={{ border: 0, background: "transparent", color: "var(--accent-secondary)", cursor: "pointer" }}>Chat</button></div>
         <div style={{ display: "flex", gap: 8, marginTop: 7 }}><button type="button" onClick={() => onRemoveFriend(friend)} style={{ border: 0, background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 11 }}>Remove friend</button><button type="button" onClick={() => onBlockFriend(friend)} style={{ border: 0, background: "transparent", color: "var(--danger)", cursor: "pointer", fontSize: 11 }}>Block</button></div>
       </div>)}
       {blockedUsers.filter((item) => item.blockerUid === currentUserId).length > 0 && <section style={{ borderTop: "1px solid var(--border)", marginTop: 8, paddingTop: 8 }}><div style={{ padding: "4px 8px", color: "var(--text-muted)", fontSize: 11 }}>Blocked players</div>{blockedUsers.filter((item) => item.blockerUid === currentUserId).map((item) => <div key={item.id} style={{ padding: "6px 8px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 12 }}>{item.blockedName || "Player"}<button type="button" onClick={() => onUnblockFriend(item)} style={{ border: 0, background: "transparent", color: "var(--accent-secondary)", cursor: "pointer" }}>Unblock</button></div>)}</section>}
       {!presenceDb && <div style={{ padding: "8px 10px", color: "var(--text-dim)", fontSize: 11 }}>Live online status needs Realtime Database setup.</div>}
     </div>;
   if (placement === "header") {
-    return <div style={{ borderTop: "1px solid var(--border)", marginTop: 10, paddingTop: 10 }}>
+    return <div>
       <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 8 }}>Friends ({friends.length})</div>
       {list}
     </div>;
@@ -1376,7 +1369,7 @@ function VaultMonitor({ entries, submissions, blogPosts, onDecision, onPromote }
       <BlogArchivePromoter posts={blogPosts} onPromote={onPromote} />
       <div>
         <Eyebrow>Published in The Vault · {entries.length}</Eyebrow>
-        {ordered.length === 0 ? <EmptyState title="The Vault is empty" body="Approve a request, promote a blog, or paste records on The Vault page." /> : (
+        {ordered.length === 0 ? <EmptyState title="The Vault is empty" body="Approve a request, promote a blog, or paste records from this staff portal." /> : (
           <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
             {ordered.map((entry) => (
               <article key={entry.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
@@ -1431,31 +1424,40 @@ function BlogArchivePromoter({ posts, onPromote }) {
   </section>;
 }
 
-function ArchiveRequestForm({ user, submissions, onSubmit }) {
-  const [form, setForm] = useState({ tournament: "", game: "", eventDate: "", winner: "", runnerUp: "", mvp: "", source: "" });
+function ArchiveRequestForm({ user, submissions = [], onSubmit, onSignIn }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ tournament: "", game: "", eventDate: "", winner: "", source: "" });
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const ownRequests = submissions.filter((item) => item.submitterId === user.uid).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const ownRequests = user ? submissions.filter((item) => item.submitterId === user.uid).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 4) : [];
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
   const submit = async () => {
-    if (!form.tournament.trim() || !form.game.trim() || !form.eventDate.trim() || !form.winner.trim()) { setError("Add the event name, game, date, and winner."); return; }
+    if (!form.tournament.trim() || !form.game.trim() || !form.eventDate.trim() || !form.winner.trim()) { setError("Add event, game, date, and winner."); return; }
     if (form.source.trim() && !/^https:\/\//i.test(form.source.trim())) { setError("Source links must start with https://."); return; }
-    try { await onSubmit(form); setForm({ tournament: "", game: "", eventDate: "", winner: "", runnerUp: "", mvp: "", source: "" }); setError(""); setMessage("Vault request sent for review."); }
-    catch { setError("Could not send this request. Please try again."); }
+    try { await onSubmit(form); setForm({ tournament: "", game: "", eventDate: "", winner: "", source: "" }); setError(""); setMessage("Sent for review."); }
+    catch { setError("Could not send this request."); }
   };
-  return <section style={{ display: "grid", gap: 8, maxWidth: 680, padding: 16, margin: "16px 0", background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
-    <Eyebrow>Suggest an event for The Vault</Eyebrow><p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13 }}>Send results for a major, underdog, or lesser-known esports tournament. An owner or support reviewer checks it before it becomes public.</p>
-    <Field label="Tournament"><TextInput maxLength={120} value={form.tournament} onChange={(e) => update("tournament", e.target.value)} /></Field>
-    <Field label="Game"><TextInput maxLength={60} value={form.game} onChange={(e) => update("game", e.target.value)} /></Field>
-    <Field label="Event date"><TextInput maxLength={40} value={form.eventDate} onChange={(e) => update("eventDate", e.target.value)} placeholder="YYYY or YYYY-MM-DD" /></Field>
-    <Field label="Winner"><TextInput maxLength={100} value={form.winner} onChange={(e) => update("winner", e.target.value)} /></Field>
-    <Field label="Runner-up (optional)"><TextInput maxLength={100} value={form.runnerUp} onChange={(e) => update("runnerUp", e.target.value)} /></Field>
-    <Field label="MVP (optional)"><TextInput maxLength={100} value={form.mvp} onChange={(e) => update("mvp", e.target.value)} /></Field>
-    <Field label="Reliable source link (optional)"><TextInput maxLength={500} value={form.source} onChange={(e) => update("source", e.target.value)} placeholder="https://" /></Field>
-    {error && <div role="alert" style={{ color: "var(--danger)" }}>{error}</div>}{message && <div role="status" style={{ color: "var(--success)" }}>{message}</div>}
-    <Button onClick={submit}>Request Vault listing</Button>
-    {ownRequests.length > 0 && <div style={{ marginTop: 8 }}><Eyebrow>Your Vault requests</Eyebrow>{ownRequests.map((item) => <div key={item.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "8px 0", borderTop: "1px solid var(--border)", fontSize: 13 }}><span>{item.tournament}</span><span>{item.status}</span></div>)}</div>}
-  </section>;
+  return (
+    <div className="relative mb-4 flex justify-end">
+      <button type="button" aria-label="Suggest event to Vault" onClick={() => { if (!user) { onSignIn?.(); return; } setOpen((value) => !value); }} className="grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-black/40 font-mono text-lg text-amber-300 hover:border-amber-400">+</button>
+      {open && user && (
+        <div className="absolute right-0 top-11 z-20 w-[min(100vw-2rem,20rem)] border border-white/10 bg-[#17110f] p-3 shadow-xl">
+          <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-stone-400">Suggest event</p>
+          <div className="grid gap-2">
+            <TextInput maxLength={120} value={form.tournament} onChange={(e) => update("tournament", e.target.value)} placeholder="Tournament" />
+            <TextInput maxLength={60} value={form.game} onChange={(e) => update("game", e.target.value)} placeholder="Game" />
+            <TextInput maxLength={40} value={form.eventDate} onChange={(e) => update("eventDate", e.target.value)} placeholder="Date" />
+            <TextInput maxLength={100} value={form.winner} onChange={(e) => update("winner", e.target.value)} placeholder="Winner" />
+            <TextInput maxLength={500} value={form.source} onChange={(e) => update("source", e.target.value)} placeholder="https:// source" />
+            {error && <div role="alert" className="text-xs text-red-400">{error}</div>}
+            {message && <div role="status" className="text-xs text-emerald-400">{message}</div>}
+            <Button onClick={submit}>Send</Button>
+          </div>
+          {ownRequests.length > 0 && <div className="mt-2 border-t border-white/10 pt-2 text-[11px] text-stone-400">{ownRequests.map((item) => <div key={item.id} className="flex justify-between gap-2 py-1"><span>{item.tournament}</span><span>{item.status}</span></div>)}</div>}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function SitePopup({ popup, onDismiss }) {
@@ -1472,7 +1474,7 @@ function SitePopup({ popup, onDismiss }) {
   );
 }
 
-function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerBan, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], onSaveCircuit, onDeleteCircuit }) {
+function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerBan, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], onSaveCircuit, onDeleteCircuit, onImportArchive }) {
   const isOwner = role === "owner";
   const [tab, setTab] = useState(initialTab);
   const [editing, setEditing] = useState(null);
@@ -1534,7 +1536,7 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerB
       </>}
       {tab === "reports" && <ReportsInbox reports={reports} onStatusChange={onStatusChange} bans={bans} role={role} onSetPlayerBan={onSetPlayerBan} />}
       {tab === "tournaments" && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="tournament" records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} /><TournamentMonitor tournaments={tournaments} onOpen={onOpenTournament} /></div>}
-      {tab === "vault" && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="vault" records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} /><VaultMonitor entries={archiveEntries} submissions={archiveSubmissions} blogPosts={blogPosts} onDecision={onArchiveDecision} onPromote={onPromoteBlog} /></div>}
+      {tab === "vault" && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="vault" records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} /><StaffVaultFill entries={archiveEntries} onImport={onImportArchive} /><VaultMonitor entries={archiveEntries} submissions={archiveSubmissions} blogPosts={blogPosts} onDecision={onArchiveDecision} onPromote={onPromoteBlog} /></div>}
       {tab === "activity log" && isOwner && <StaffActivityLog actions={auditLog} />}
       {tab === "blogs" && <section><p style={{ color: "var(--text-muted)", fontSize: 13 }}>Watch every community blog from this desk. Publish or decline pending posts, then promote a published story into The Vault from the Vault tab.</p><div style={{ display: "flex", gap: 16, margin: "0 0 14px", fontSize: 13, color: "var(--text-muted)" }}><span>Pending {pendingBlogs}</span><span>Published {blogPosts.filter((post) => post.status === "published").length}</span><span>Total {blogPosts.length}</span></div>{blogPosts.length === 0 ? <EmptyState title="No blog posts yet" body="Community submissions will appear here for preview." /> : <div style={{ display: "grid", gap: 10 }}>{[...blogPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 30).map((post) => <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status} · by {post.authorName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{post.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{post.content}</p>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onBlogReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onBlogReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div>}</section>}
       {tab === "popups" && isOwner && <section>
@@ -1614,86 +1616,103 @@ function parseVaultText(text) {
   }));
 }
 
-function HistoricalArchive({ entries, isModerator, user, submissions, onSubmitRequest, onImport, onSignIn, embedded = false }) {
+function parseVaultCsv(text) {
+  const rows = []; let row = [], cell = "", quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === '"' && quoted && text[i + 1] === '"') { cell += '"'; i++; }
+    else if (char === '"') quoted = !quoted;
+    else if (char === "," && !quoted) { row.push(cell.trim()); cell = ""; }
+    else if ((char === "\n" || char === "\r") && !quoted) { if (cell || row.length) { row.push(cell.trim()); rows.push(row); } row = []; cell = ""; if (char === "\r" && text[i + 1] === "\n") i++; }
+    else cell += char;
+  }
+  if (cell || row.length) { row.push(cell.trim()); rows.push(row); }
+  if (rows.length < 2) throw new Error("The CSV needs a header and at least one event.");
+  const headers = rows.shift().map((header) => header.toLowerCase().replace(/[\s_-]/g, ""));
+  const required = ["tournament", "game", "eventdate", "winner"];
+  if (required.some((header) => !headers.includes(header))) throw new Error("Required CSV columns: tournament, game, eventDate, winner.");
+  return rows.filter((cells) => cells.some(Boolean)).map((cells) => Object.fromEntries(headers.map((header, index) => [header, cells[index] || ""]))).slice(0, 200);
+}
+
+function StaffVaultFill({ entries = [], onImport }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState(null);
   const [staffForm, setStaffForm] = useState({ tournament: "", game: "", eventDate: "", winner: "", runnerUp: "", mvp: "", source: "" });
   const [paste, setPaste] = useState("");
-  const parseCsv = (text) => {
-    const rows = []; let row = [], cell = "", quoted = false;
-    for (let i = 0; i < text.length; i++) {
-      const char = text[i];
-      if (char === '"' && quoted && text[i + 1] === '"') { cell += '"'; i++; }
-      else if (char === '"') quoted = !quoted;
-      else if (char === "," && !quoted) { row.push(cell.trim()); cell = ""; }
-      else if ((char === "\n" || char === "\r") && !quoted) { if (cell || row.length) { row.push(cell.trim()); rows.push(row); } row = []; cell = ""; if (char === "\r" && text[i + 1] === "\n") i++; }
-      else cell += char;
-    }
-    if (cell || row.length) { row.push(cell.trim()); rows.push(row); }
-    if (rows.length < 2) throw new Error("The CSV needs a header and at least one event.");
-    const headers = rows.shift().map((header) => header.toLowerCase().replace(/[\s_-]/g, ""));
-    const required = ["tournament", "game", "eventdate", "winner"];
-    if (required.some((header) => !headers.includes(header))) throw new Error("Required CSV columns: tournament, game, eventDate, winner.");
-    return rows.filter((cells) => cells.some(Boolean)).map((cells) => Object.fromEntries(headers.map((header, index) => [header, cells[index] || ""]))).slice(0, 200);
-  };
   const stageRecords = (records) => {
     const clean = normalizeVaultRecords(records, entries);
     setPreview(clean);
     setMessage("Review the records below, then publish them to The Vault.");
   };
   const updateStaff = (key, value) => setStaffForm((current) => ({ ...current, [key]: value }));
+  if (!onImport) return null;
   return (
-    <div style={{ paddingTop: embedded ? 8 : 34 }}>
-      {!embedded && <>
-      <Eyebrow>Past esports results</Eyebrow>
-      <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 8px" }}>The Vault</h1>
-      <div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 18 }}>Winners, runners-up, and MVPs from majors and underdog events — a public record of what already happened.</div>
-      </>}
-      {user && <ArchiveRequestForm user={user} submissions={submissions} onSubmit={onSubmitRequest} />}
-      {!user && <section style={{ padding: 14, marginBottom: 18, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 9 }}>Sign in to suggest a result for The Vault.</div><Button onClick={onSignIn}>Sign in to suggest a record</Button></section>}
-      {isModerator && <section style={{ display: "grid", gap: 10, maxWidth: 680, padding: 16, margin: "0 0 16px", background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
-        <Eyebrow>Staff desk · fill The Vault</Eyebrow>
-        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13 }}>Type one event, or paste a list. One event per line: tournament, game, date, winner, runner-up, MVP, source — separated by commas, tabs, or |.</p>
-        <Field label="Tournament"><TextInput maxLength={120} value={staffForm.tournament} onChange={(event) => updateStaff("tournament", event.target.value)} /></Field>
-        <Field label="Game"><TextInput maxLength={60} value={staffForm.game} onChange={(event) => updateStaff("game", event.target.value)} /></Field>
-        <Field label="Event date"><TextInput maxLength={40} value={staffForm.eventDate} onChange={(event) => updateStaff("eventDate", event.target.value)} placeholder="YYYY or YYYY-MM-DD" /></Field>
-        <Field label="Winner"><TextInput maxLength={100} value={staffForm.winner} onChange={(event) => updateStaff("winner", event.target.value)} /></Field>
-        <Field label="Runner-up (optional)"><TextInput maxLength={100} value={staffForm.runnerUp} onChange={(event) => updateStaff("runnerUp", event.target.value)} /></Field>
-        <Field label="MVP (optional)"><TextInput maxLength={100} value={staffForm.mvp} onChange={(event) => updateStaff("mvp", event.target.value)} /></Field>
-        <Field label="Source link (optional)"><TextInput maxLength={500} value={staffForm.source} onChange={(event) => updateStaff("source", event.target.value)} placeholder="https://" /></Field>
-        <Button onClick={() => { setError(""); setMessage(""); try { stageRecords([{ tournament: staffForm.tournament, game: staffForm.game, eventdate: staffForm.eventDate, winner: staffForm.winner, runnerup: staffForm.runnerUp, mvp: staffForm.mvp, source: staffForm.source }]); setStaffForm({ tournament: "", game: "", eventDate: "", winner: "", runnerUp: "", mvp: "", source: "" }); } catch (issue) { setError(issue.message || "Could not stage this event."); } }}>Stage this event</Button>
-        <Field label="Paste a list of events">
-          <textarea value={paste} onChange={(event) => setPaste(event.target.value)} rows={6} placeholder={"IEM Katowice|CS2|2024-02-11|Team Spirit|FaZe|donk|https://example.com"} style={{ ...inputStyle, resize: "vertical", minHeight: 120 }} />
-        </Field>
-        <Button variant="ghost" onClick={() => { setError(""); setMessage(""); try { stageRecords(parseVaultText(paste)); setPaste(""); } catch (issue) { setError(issue.message || "Could not read that list."); } }}>Stage pasted events</Button>
-        <Field label="Or import a CSV (up to 200 rows)">
-          <input type="file" accept=".csv,text/csv" onChange={async (event) => {
-            setError(""); setMessage("");
-            const file = event.target.files?.[0]; if (!file) return;
-            if (file.size > 1024 * 1024) { setError("Choose a CSV smaller than 1 MB."); return; }
-            try { stageRecords(parseCsv(await file.text())); }
-            catch (issue) { setError(issue.message || "Could not read this CSV."); }
-            event.target.value = "";
-          }} />
-        </Field>
-      </section>}
-      {error && <div role="alert" style={{ color: "var(--danger)", marginTop: 10, fontSize: 13 }}>{error}</div>}
-      {message && <div role="status" style={{ color: "var(--success)", marginTop: 10, fontSize: 13 }}>{message}</div>}
-      {preview && <section style={{ marginTop: 14, padding: 14, border: "1px solid var(--border-strong)", background: "var(--panel-bg)" }}>
+    <section style={{ display: "grid", gap: 10, maxWidth: 680, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+      <Eyebrow>Staff desk · fill The Vault</Eyebrow>
+      <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13 }}>Type one event, or paste a list. Isolated to the staff portal.</p>
+      <Field label="Tournament"><TextInput maxLength={120} value={staffForm.tournament} onChange={(event) => updateStaff("tournament", event.target.value)} /></Field>
+      <Field label="Game"><TextInput maxLength={60} value={staffForm.game} onChange={(event) => updateStaff("game", event.target.value)} /></Field>
+      <Field label="Event date"><TextInput maxLength={40} value={staffForm.eventDate} onChange={(event) => updateStaff("eventDate", event.target.value)} placeholder="YYYY or YYYY-MM-DD" /></Field>
+      <Field label="Winner"><TextInput maxLength={100} value={staffForm.winner} onChange={(event) => updateStaff("winner", event.target.value)} /></Field>
+      <Field label="Runner-up (optional)"><TextInput maxLength={100} value={staffForm.runnerUp} onChange={(event) => updateStaff("runnerUp", event.target.value)} /></Field>
+      <Field label="MVP (optional)"><TextInput maxLength={100} value={staffForm.mvp} onChange={(event) => updateStaff("mvp", event.target.value)} /></Field>
+      <Field label="Source link (optional)"><TextInput maxLength={500} value={staffForm.source} onChange={(event) => updateStaff("source", event.target.value)} placeholder="https://" /></Field>
+      <Button onClick={() => { setError(""); setMessage(""); try { stageRecords([{ tournament: staffForm.tournament, game: staffForm.game, eventdate: staffForm.eventDate, winner: staffForm.winner, runnerup: staffForm.runnerUp, mvp: staffForm.mvp, source: staffForm.source }]); setStaffForm({ tournament: "", game: "", eventDate: "", winner: "", runnerUp: "", mvp: "", source: "" }); } catch (issue) { setError(issue.message || "Could not stage this event."); } }}>Stage this event</Button>
+      <Field label="Paste a list of events">
+        <textarea value={paste} onChange={(event) => setPaste(event.target.value)} rows={6} placeholder={"IEM Katowice|CS2|2024-02-11|Team Spirit|FaZe|donk|https://example.com"} style={{ ...inputStyle, resize: "vertical", minHeight: 120 }} />
+      </Field>
+      <Button variant="ghost" onClick={() => { setError(""); setMessage(""); try { stageRecords(parseVaultText(paste)); setPaste(""); } catch (issue) { setError(issue.message || "Could not read that list."); } }}>Stage pasted events</Button>
+      <Field label="Or import a CSV (up to 200 rows)">
+        <input type="file" accept=".csv,text/csv" onChange={async (event) => {
+          setError(""); setMessage("");
+          const file = event.target.files?.[0]; if (!file) return;
+          if (file.size > 1024 * 1024) { setError("Choose a CSV smaller than 1 MB."); return; }
+          try { stageRecords(parseVaultCsv(await file.text())); }
+          catch (issue) { setError(issue.message || "Could not read this CSV."); }
+          event.target.value = "";
+        }} />
+      </Field>
+      {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 13 }}>{error}</div>}
+      {message && <div role="status" style={{ color: "var(--success)", fontSize: 13 }}>{message}</div>}
+      {preview && <div>
         <Eyebrow>Import preview · {preview.length} record(s)</Eyebrow>
         <div style={{ display: "grid", gap: 6, margin: "10px 0 14px", fontSize: 12, color: "var(--text-muted)" }}>
           {preview.slice(0, 8).map((entry, index) => <div key={index}>{entry.eventDate} · {entry.game} · {entry.tournament} · Winner: {entry.winner}</div>)}
-          {preview.length > 8 && <div>and {preview.length - 8} more…</div>}
         </div>
         <div style={{ display: "flex", gap: 8 }}><Button onClick={async () => {
-          setError(""); setMessage("");
           try { await onImport(preview); setMessage(`Published ${preview.length} event(s) to The Vault.`); setPreview(null); }
           catch (issue) { setError(issue.message || "Could not import these records."); }
         }}>Publish {preview.length} to The Vault</Button><Button variant="ghost" onClick={() => { setPreview(null); setMessage(""); }}>Cancel</Button></div>
-      </section>}
-      <div style={{ display: "grid", gap: 10, marginTop: 20 }}>
-      {entries.length === 0 ? <EmptyState title="The Vault is waiting for results" body="Staff can type or paste events here. Players can suggest a listing for review." /> : entries.map((entry) => <article key={entry.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{entry.game} · {entry.eventDate}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0", fontSize: 24 }}>{entry.tournament}</h2><div>🏆 {entry.winner}{entry.runnerUp ? ` · Runner-up: ${entry.runnerUp}` : ""}{entry.mvp ? ` · MVP: ${entry.mvp}` : ""}</div>{entry.source && <a href={entry.source} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 8, color: "var(--accent)" }}>Source</a>}</article>)}
+      </div>}
+    </section>
+  );
+}
+
+function HistoricalArchive({ entries, user, submissions, onSubmitRequest, onSignIn, embedded = false }) {
+  return (
+    <div className={embedded ? "pt-2" : "pt-6"}>
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <div>
+          <Eyebrow>Past esports results</Eyebrow>
+          <h2 className="m-0 font-['Bebas_Neue',sans-serif] text-3xl tracking-wide">Historical archive</h2>
+        </div>
+        <ArchiveRequestForm user={user} submissions={submissions} onSubmit={onSubmitRequest} onSignIn={onSignIn} />
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {entries.length === 0 ? <EmptyState title="The Vault is waiting for results" body="Suggest an event with the + control. Staff publish records from the isolated portal." /> : entries.map((entry) => (
+          <article key={entry.id} className="overflow-hidden border border-white/10 bg-black/20">
+            <div className="aspect-video overflow-hidden">
+              <img src={flyerForEvent(entry)} alt="" className="h-full w-full object-cover" />
+            </div>
+            <div className="p-4">
+              <Eyebrow>{entry.game} · {entry.eventDate}</Eyebrow>
+              <h3 className="my-1 font-['Bebas_Neue',sans-serif] text-2xl">{entry.tournament}</h3>
+              <div className="text-sm text-stone-300">Winner {entry.winner}{entry.runnerUp ? ` · Runner-up ${entry.runnerUp}` : ""}{entry.mvp ? ` · MVP ${entry.mvp}` : ""}</div>
+              {entry.source && <a href={entry.source} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sm text-amber-300">Source</a>}
+            </div>
+          </article>
+        ))}
       </div>
     </div>
   );
@@ -2726,6 +2745,7 @@ export default function App() {
                   onArchiveDecision={decideArchiveSubmission}
                   auditLog={auditLog}
                   onOpenTournament={(id) => { setDetailTab("teams"); navigate(`/tournaments/${id}`); }}
+                  onImportArchive={importArchiveEntries}
                 />
               </div>
             </div>
@@ -2763,8 +2783,13 @@ export default function App() {
               <Routes>
                 <Route path="/" element={(
                   <PlatformHome slides={circuitCms.vaultSlides}>
-                    <HistoricalArchive embedded entries={archiveEntries} isModerator={isSiteStaff || isModerator} user={user} submissions={archiveSubmissions} onSubmitRequest={submitArchiveRequest} onImport={importArchiveEntries} onSignIn={() => setAuthDialogOpen(true)} />
+                    <HubSections />
                   </PlatformHome>
+                )} />
+                <Route path="/vault" element={(
+                  <VaultLibraryPage slides={circuitCms.vaultSlides}>
+                    <HistoricalArchive embedded entries={archiveEntries} user={user} submissions={archiveSubmissions} onSubmitRequest={submitArchiveRequest} onSignIn={() => setAuthDialogOpen(true)} />
+                  </VaultLibraryPage>
                 )} />
                 <Route path="/vault/:slug" element={<VaultDetailPage slides={circuitCms.vaultSlides} slug={location.pathname.replace(/^\/vault\//, "").split("/")[0]} liveEntries={archiveEntries} />} />
                 <Route path="/tournaments" element={(
@@ -2913,7 +2938,7 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onEditProfi
               style={{ listStyle: "none", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "var(--page-text)", border: "1px solid var(--border)", background: "var(--panel-bg)", padding: "6px 9px", fontFamily: "'Inter', sans-serif", fontSize: 12 }}
             >
               {user?.photoURL ? (
-                <img src={user.photoURL} alt="" style={{ width: 30, height: 30, objectFit: "cover", borderRadius: "50%" }} />
+                <img src={avatarForGamer({ photoURL: user.photoURL, displayName })} alt="" className="aspect-square h-[30px] w-[30px] rounded-full object-cover" />
               ) : (
                 <span aria-hidden="true" style={{ width: 30, height: 30, borderRadius: "50%", display: "grid", placeItems: "center", background: "var(--accent)", color: "var(--accent-contrast)", fontWeight: 700 }}>
                   {initials}
@@ -2922,14 +2947,20 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onEditProfi
               <span style={{ maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</span>
               <span aria-hidden="true" style={{ color: "var(--text-muted)" }}>⌄</span>
             </summary>
-            <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 60, width: 280, padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)", boxShadow: "var(--panel-shadow)" }}>
-              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>{displayName}</div>
-              <Button variant="ghost" style={{ width: "100%", marginBottom: 12 }} onClick={(event) => { onEditProfile(); event.currentTarget.closest("details")?.removeAttribute("open"); }}>Edit my profile</Button>
-              {dashboardRole && <Link to="/admin/portal" style={{ display: "block", width: "100%", marginBottom: 12, textDecoration: "none" }}><Button variant="ghost" style={{ width: "100%" }}>{dashboardRole === "owner" ? "Owner dashboard" : "Support dashboard"}</Button></Link>}
-              {friendsPanel}
-              <Button variant="ghost" style={{ width: "100%", marginTop: 14 }} onClick={onSignOut}>
-                Sign out
-              </Button>
+            <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 60, width: 280 }}>
+              <div style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)", boxShadow: "var(--panel-shadow)" }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>{displayName}</div>
+                <Button variant="ghost" style={{ width: "100%", marginBottom: 12 }} onClick={(event) => { onEditProfile(); event.currentTarget.closest("details")?.removeAttribute("open"); }}>Edit my profile</Button>
+                {dashboardRole && <Link to="/admin/portal" style={{ display: "block", width: "100%", marginBottom: 12, textDecoration: "none" }}><Button variant="ghost" style={{ width: "100%" }}>{dashboardRole === "owner" ? "Owner dashboard" : "Support dashboard"}</Button></Link>}
+                <Button variant="ghost" style={{ width: "100%" }} onClick={onSignOut}>
+                  Sign out
+                </Button>
+              </div>
+              {friendsPanel && (
+                <div style={{ marginTop: 8, padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)", boxShadow: "var(--panel-shadow)" }}>
+                  {friendsPanel}
+                </div>
+              )}
             </div>
           </details>}
         </div>
@@ -3013,23 +3044,12 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
                 <Eyebrow color="var(--text-dim)">
                   Hosted by {t.adminDisplayName || (t.adminUserId === currentUserId ? currentUserName : "Tournament host")}
                 </Eyebrow>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 0" }}>
+                <div className="aspect-video my-3 overflow-hidden border border-white/10">
+                  <img src={flyerForEvent(t)} alt="" className="h-full w-full object-cover" />
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 8px" }}>
                   <GameIcon game={t.game} size={32} />
                   <Eyebrow color="var(--text-muted)">{t.game || "Game TBD"}</Eyebrow>
-                </div>
-                <div
-                  aria-hidden="true"
-                  style={{
-                    display: "grid",
-                    placeItems: "center",
-                    height: 104,
-                    margin: "-2px -2px 14px",
-                    border: "1px solid var(--border)",
-                    background: "linear-gradient(135deg, var(--panel-raised), var(--panel-bg))",
-                    fontSize: 48,
-                  }}
-                >
-                  {t.artwork || "🏆"}
                 </div>
                 <div
                   style={{
@@ -3389,21 +3409,8 @@ function TournamentDetail(props) {
           <Eyebrow color="var(--text-dim)">
             Hosted by {tournament.adminDisplayName || (tournament.adminUserId === currentUserId ? currentUserName : "Tournament host")}
           </Eyebrow>
-          <div
-            aria-hidden="true"
-            style={{
-              width: 88,
-              height: 88,
-              display: "grid",
-              placeItems: "center",
-              marginBottom: 12,
-              border: "1px solid var(--border)",
-              borderRadius: 12,
-              background: "linear-gradient(135deg, var(--panel-raised), var(--panel-bg))",
-              fontSize: 48,
-            }}
-          >
-            {tournament.artwork || "🏆"}
+          <div className="mb-3 aspect-video max-w-sm overflow-hidden rounded-xl border border-white/10">
+            <img src={flyerForEvent(tournament)} alt="" className="h-full w-full object-cover" />
           </div>
           <Eyebrow color="var(--text-muted)">
             {tournament.game} · {tournament.format}

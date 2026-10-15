@@ -11,10 +11,42 @@ export const GAME_BANNERS = {
   "Call of Duty": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1600&q=80",
 };
 
+export const GAME_AVATARS = {
+  Valorant: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=256&h=256&q=80",
+  CS2: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=256&h=256&q=80",
+  "Apex Legends": "https://images.unsplash.com/photo-1633332755192-727a05c4013d?auto=format&fit=crop&w=256&h=256&q=80",
+  "League of Legends": "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=256&h=256&q=80",
+  "Dota 2": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&h=256&q=80",
+  "Mobile Legends: Bang Bang": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&h=256&q=80",
+  BGMI: "https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=256&h=256&q=80",
+  "PUBG Mobile": "https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=256&h=256&q=80",
+  Fortnite: "https://images.unsplash.com/photo-1511367461989-f85a21fdaefd?auto=format&fit=crop&w=256&h=256&q=80",
+  "Call of Duty": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=256&h=256&q=80",
+};
+
 const fallbackBanner = "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1600&q=80";
+const fallbackAvatar = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=256&h=256&q=80";
+
+function isHttpUrl(value) {
+  return typeof value === "string" && /^https?:\/\//i.test(value.trim());
+}
 
 export function bannerForGame(game) {
   return GAME_BANNERS[game] || fallbackBanner;
+}
+
+export function avatarForGamer(player = {}) {
+  if (isHttpUrl(player.photoURL)) return player.photoURL;
+  if (isHttpUrl(player.avatar)) return player.avatar;
+  const games = Array.isArray(player.games) ? player.games : [player.game];
+  const game = games.find((name) => GAME_AVATARS[name]);
+  return (game && GAME_AVATARS[game]) || fallbackAvatar;
+}
+
+export function flyerForEvent(item = {}) {
+  const url = [item.flyer, item.poster, item.banner, item.cover, item.artwork].find(isHttpUrl);
+  if (url) return url;
+  return bannerForGame(item.game);
 }
 
 export const VAULT_SLIDES = [
