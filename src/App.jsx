@@ -1224,15 +1224,18 @@ function FriendRequestCenter({ requests, currentUserId, onDecision }) {
   );
 }
 
-function FriendDock({ requests, currentUserId, onOpenChat, onOpenRequests, presenceDb, onFriendOnline, blockedUsers = [], onRemoveFriend, onBlockFriend, onUnblockFriend, placement = "dock" }) {
+function FriendDock({ requests, currentUserId, onOpenChat, onOpenRequests, presenceDb, onFriendOnline, blockedUsers = [], onRemoveFriend, onBlockFriend, onUnblockFriend, mutedIds = new Set(), onToggleMute, placement = "dock" }) {
   const [expanded, setExpanded] = useState(false);
+  const [blockedOpen, setBlockedOpen] = useState(false);
   const [presence, setPresence] = useState({});
   const blockedIds = new Set(blockedUsers.map((item) => item.blockerUid === currentUserId ? item.blockedUid : item.blockerUid));
   const friends = requests.filter((item) => item.status === "accepted").map((item) => ({
     uid: item.requesterId === currentUserId ? item.recipientId : item.requesterId,
     name: item.requesterId === currentUserId ? (item.recipientName || "Player") : (item.requesterName || "Player"),
   })).filter((item, index, all) => !blockedIds.has(item.uid) && all.findIndex((candidate) => candidate.uid === item.uid) === index);
+  const myBlocks = blockedUsers.filter((item) => item.blockerUid === currentUserId);
   const friendKey = friends.map((item) => item.uid).sort().join("|");
+  const mutedKey = [...mutedIds].sort().join("|");
   useEffect(() => {
     setPresence({});
     if (!presenceDb || !friends.length) { setPresence({}); return undefined; }
@@ -1244,35 +1247,36 @@ function FriendDock({ requests, currentUserId, onOpenChat, onOpenRequests, prese
         if (!active) return;
         const online = snapshot.val()?.state === "online";
         setPresence((current) => ({ ...current, [friend.uid]: online ? "online" : (snapshot.val()?.state === "away" ? "away" : "offline") }));
-        if (initialized && online && !previousOnline) onFriendOnline(friend.name);
+        if (initialized && online && !previousOnline && !mutedIds.has(friend.uid)) onFriendOnline(friend.name);
         previousOnline = online;
         initialized = true;
       }, () => setPresence((current) => ({ ...current, [friend.uid]: "offline" })));
     });
     return () => { active = false; stops.forEach((stop) => stop()); };
-  }, [presenceDb, currentUserId, friendKey, onFriendOnline]);
+  }, [presenceDb, currentUserId, friendKey, onFriendOnline, mutedIds]);
   const list = <div style={{ maxHeight: 320, overflowY: "auto", padding: placement === "header" ? 0 : 8 }}>
       <button type="button" onClick={() => { onOpenRequests(); setExpanded(false); }} style={{ width: "100%", textAlign: "left", border: 0, borderBottom: "1px solid var(--border)", padding: 11, background: "transparent", color: "var(--accent-secondary)", cursor: "pointer" }}>Friend requests{requests.filter((item) => item.recipientId === currentUserId && item.status === "pending").length ? ` (${requests.filter((item) => item.recipientId === currentUserId && item.status === "pending").length})` : ""}</button>
       {friends.length === 0 ? <div style={{ padding: 12, color: "var(--text-muted)", fontSize: 13 }}>Accepted friends will appear here.</div> : friends.map((friend) => <div key={friend.uid} style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><span style={{ display: "flex", alignItems: "center", gap: 8 }}><img src={avatarForGamer({ displayName: friend.name, uid: friend.uid })} alt="" className="aspect-square h-7 w-7 rounded-full object-cover" /><span aria-label={presence[friend.uid] || "offline"} title={presence[friend.uid] || (presenceDb ? "offline" : "Online status needs Realtime Database setup")} style={{ width: 8, height: 8, borderRadius: "50%", background: presence[friend.uid] === "online" ? "var(--success)" : "var(--text-dim)" }} />{friend.name}</span><button type="button" onClick={() => onOpenChat(friend)} style={{ border: 0, background: "transparent", color: "var(--accent-secondary)", cursor: "pointer" }}>Chat</button></div>
-        <div style={{ display: "flex", gap: 8, marginTop: 7 }}><button type="button" onClick={() => onRemoveFriend(friend)} style={{ border: 0, background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 11 }}>Remove friend</button><button type="button" onClick={() => onBlockFriend(friend)} style={{ border: 0, background: "transparent", color: "var(--danger)", cursor: "pointer", fontSize: 11 }}>Block</button></div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><span style={{ display: "flex", alignItems: "center", gap: 8 }}><img src={avatarForGamer({ displayName: friend.name, uid: friend.uid })} alt="" className="aspect-square h-7 w-7 rounded-full object-cover" /><span aria-label={presence[friend.uid] || "offline"} title={presence[friend.uid] || (presenceDb ? "offline" : "Online status needs Realtime Database setup")} style={{ width: 8, height: 8, borderRadius: "50%", background: presence[friend.uid] === "online" ? "var(--success)" : "var(--text-dim)" }} />{friend.name}{mutedIds.has(friend.uid) ? <span style={{ fontSize: 10, color: "var(--text-dim)" }}>muted</span> : null}</span><button type="button" onClick={() => onOpenChat(friend)} style={{ border: 0, background: "transparent", color: "var(--accent-secondary)", cursor: "pointer" }}>Chat</button></div>
+        <div style={{ display: "flex", gap: 8, marginTop: 7, flexWrap: "wrap" }}><button type="button" onClick={() => onToggleMute?.(friend.uid)} style={{ border: 0, background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 11 }}>{mutedIds.has(friend.uid) ? "Unmute" : "Mute"}</button><button type="button" onClick={() => onRemoveFriend(friend)} style={{ border: 0, background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 11 }}>Remove friend</button><button type="button" onClick={() => onBlockFriend(friend)} style={{ border: 0, background: "transparent", color: "var(--danger)", cursor: "pointer", fontSize: 11 }}>Block</button></div>
       </div>)}
-      {blockedUsers.filter((item) => item.blockerUid === currentUserId).length > 0 && <section style={{ borderTop: "1px solid var(--border)", marginTop: 8, paddingTop: 8 }}><div style={{ padding: "4px 8px", color: "var(--text-muted)", fontSize: 11 }}>Blocked players</div>{blockedUsers.filter((item) => item.blockerUid === currentUserId).map((item) => <div key={item.id} style={{ padding: "6px 8px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 12 }}>{item.blockedName || "Player"}<button type="button" onClick={() => onUnblockFriend(item)} style={{ border: 0, background: "transparent", color: "var(--accent-secondary)", cursor: "pointer" }}>Unblock</button></div>)}</section>}
+      <section style={{ borderTop: "1px solid var(--border)", marginTop: 8 }}>
+        <button type="button" onClick={() => setBlockedOpen((open) => !open)} aria-expanded={blockedOpen} style={{ width: "100%", display: "flex", justifyContent: "space-between", padding: "10px 8px", border: 0, background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", fontFamily: "'JetBrains Mono', monospace" }}>
+          <span>Blocked ({myBlocks.length})</span>
+          <span>{blockedOpen ? "−" : "+"}</span>
+        </button>
+        {blockedOpen && (myBlocks.length === 0 ? <div style={{ padding: "6px 8px 10px", color: "var(--text-dim)", fontSize: 12 }}>No blocked players.</div> : myBlocks.map((item) => <div key={item.id} style={{ padding: "6px 8px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 12 }}>{item.blockedName || "Player"}<button type="button" onClick={() => onUnblockFriend(item)} style={{ border: 0, background: "transparent", color: "var(--accent-secondary)", cursor: "pointer" }}>Unblock</button></div>))}
+      </section>
       {!presenceDb && <div style={{ padding: "8px 10px", color: "var(--text-dim)", fontSize: 11 }}>Live online status needs Realtime Database setup.</div>}
     </div>;
-  if (placement === "header") {
-    return <div>
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 8 }}>Friends ({friends.length})</div>
-      {list}
-    </div>;
-  }
+  if (placement === "header") return list;
   return <aside style={{ position: "fixed", right: 14, bottom: 14, zIndex: 55, width: expanded ? "min(330px, calc(100vw - 28px))" : "auto", background: "var(--panel-bg)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)" }}>
     <button type="button" onClick={() => setExpanded((open) => !open)} aria-expanded={expanded} style={{ width: "100%", padding: "12px 14px", border: 0, background: "transparent", color: "var(--page-text)", textAlign: "left", cursor: "pointer", fontWeight: 700 }}>Friends <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>({friends.length})</span> <span style={{ float: "right" }}>{expanded ? "−" : "+"}</span></button>
     {expanded && list}
   </aside>;
 }
 
-function FriendChat({ currentUser, friend, onClose }) {
+function FriendChat({ currentUser, friend, onClose, muted = false, onToggleMute, onBlock }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [error, setError] = useState("");
@@ -1309,8 +1313,15 @@ function FriendChat({ currentUser, friend, onClose }) {
     try { await addDoc(CHAT_MESSAGES_COLLECTION(conversationId), { senderId: currentUser.uid, text: clean, createdAt: Date.now() }); setText(""); setError(""); }
     catch { setError("Message not sent. Confirm you are still friends and try again."); }
   };
-  return <section aria-label={`Chat with ${friend.name}`} style={{ position: "fixed", right: 14, bottom: 72, zIndex: 56, width: "min(340px, calc(100vw - 28px))", height: "min(440px, calc(100vh - 110px))", display: "flex", flexDirection: "column", background: "var(--panel-bg)", color: "var(--page-text)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)" }}>
-    <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 12, borderBottom: "1px solid var(--border)" }}><strong>{friend.name}</strong><Button variant="ghost" onClick={onClose}>Close</Button></header>
+  return <section aria-label={`Chat with ${friend.name}`} style={{ position: "fixed", right: 14, bottom: 14, zIndex: 56, width: "min(340px, calc(100vw - 28px))", height: "min(440px, calc(100vh - 110px))", display: "flex", flexDirection: "column", background: "var(--panel-bg)", color: "var(--page-text)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)" }}>
+    <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: 12, borderBottom: "1px solid var(--border)" }}>
+      <strong>{friend.name}{muted ? " · muted" : ""}</strong>
+      <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {onToggleMute && <Button variant="ghost" onClick={() => onToggleMute(friend.uid)}>{muted ? "Unmute" : "Mute"}</Button>}
+        {onBlock && <Button variant="danger" onClick={() => onBlock(friend)}>Block</Button>}
+        <Button variant="ghost" onClick={onClose}>Close</Button>
+      </span>
+    </header>
     <div aria-live="polite" style={{ flex: 1, overflowY: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>{messages.map((message) => <div key={message.id} style={{ alignSelf: message.senderId === currentUser.uid ? "flex-end" : "flex-start", maxWidth: "85%", padding: "8px 10px", background: message.senderId === currentUser.uid ? "var(--panel-raised)" : "transparent", border: "1px solid var(--border)", whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontSize: 13 }}>{message.text}</div>)}{!messages.length && ready && <span style={{ color: "var(--text-muted)", fontSize: 13, padding: 8 }}>Start the conversation.</span>}</div>
     {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 12, padding: "0 10px 8px" }}>{error}</div>}
     <form onSubmit={send} style={{ display: "flex", gap: 6, padding: 10, borderTop: "1px solid var(--border)" }}><TextInput aria-label="Message" value={text} maxLength={1000} onChange={(event) => setText(event.target.value)} placeholder="Write a message" /><Button disabled={!ready || !text.trim()}>Send</Button></form>
