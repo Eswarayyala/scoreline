@@ -17,8 +17,7 @@ import {
 } from "firebase/firestore";
 import {
   onAuthStateChanged,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   signOut,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -1653,14 +1652,6 @@ export default function App() {
   const [authBusy, setAuthBusy] = useState(false);
 
   useEffect(() => {
-    getRedirectResult(auth).catch((e) => {
-      const messages = {
-        "auth/unauthorized-domain": "This site isn't allowed for Google sign-in yet.",
-        "auth/account-exists-with-different-credential": "That Google email already has an account. Sign in with email.",
-      };
-      setAuthError(messages[e.code] || "Couldn't finish Google sign-in — try email instead.");
-      setAuthDialogOpen(true);
-    });
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
       const returningGuest = !u && sessionStorage.getItem("grindinfo-guest-mode") === "true";
@@ -1683,13 +1674,18 @@ export default function App() {
     setAuthError("");
     setAuthBusy(true);
     try {
-      await signInWithRedirect(auth, googleProvider);
+      await signInWithPopup(auth, googleProvider);
     } catch (e) {
       const messages = {
         "auth/unauthorized-domain": "This site isn't allowed for Google sign-in yet.",
         "auth/operation-not-allowed": "Google sign-in isn't enabled on this Firebase project.",
+        "auth/popup-blocked": "Your browser blocked the Google window. Allow popups for this site, or use email.",
+        "auth/popup-closed-by-user": "Google sign-in was closed before it finished.",
+        "auth/cancelled-popup-request": "Google sign-in was cancelled. Try once more.",
+        "auth/account-exists-with-different-credential": "That Google email already has an account. Sign in with email.",
       };
-      setAuthError(messages[e.code] || "Couldn't start Google sign-in — try email instead.");
+      setAuthError(messages[e.code] || "Couldn't finish Google sign-in — try email instead.");
+    } finally {
       setAuthBusy(false);
     }
   }, []);
