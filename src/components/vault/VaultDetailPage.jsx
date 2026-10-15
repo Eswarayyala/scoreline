@@ -16,7 +16,7 @@ export default function VaultDetailPage({ liveEntries = [], slug }) {
       <div className="mx-auto max-w-3xl px-5 py-16 text-center">
         <h1 className="font-display text-5xl text-white">Slide not in The Vault</h1>
         <p className="mt-3 text-slate-400">That highlight window does not exist yet.</p>
-        <Link to="/" className="mt-6 inline-flex items-center gap-2 text-neon"> <ArrowLeft size={16} /> Back to desk</Link>
+        <Link to="/" className="mt-6 inline-flex items-center gap-2 text-neon"> <ArrowLeft size={16} /> The Vault</Link>
       </div>
     );
   }
@@ -24,7 +24,7 @@ export default function VaultDetailPage({ liveEntries = [], slug }) {
   return (
     <article className="mx-auto max-w-5xl px-5 pb-20 pt-6">
       <Link to="/" className="mb-5 inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neon">
-        <ArrowLeft size={14} /> Desk
+        <ArrowLeft size={14} /> The Vault
       </Link>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950 shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
         <div className="relative h-[280px] md:h-[380px]">

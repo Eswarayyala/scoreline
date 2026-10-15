@@ -893,7 +893,7 @@ function PlayerCard({ player, currentUid, friendRequest, onFriendRequest, onFrie
     </div>
   );
 }
-function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendRequest, onFriendDecision, onReport, onEditProfile }) {
+function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendRequest, onFriendDecision, onReport, onEditProfile, embedded = false }) {
   const [gameFilters, setGameFilters] = useState([]);
   const [regionFilter, setRegionFilter] = useState("");
   const [languageFilter, setLanguageFilter] = useState("");
@@ -989,14 +989,14 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
           display: "flex",
           alignItems: "flex-end",
           justifyContent: "space-between",
-          padding: "36px 0 20px",
+          padding: embedded ? "18px 0 12px" : "36px 0 20px",
           flexWrap: "wrap",
           gap: 16,
         }}
       >
         <div>
-          <Eyebrow>Squad up</Eyebrow>
-          <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 44, margin: "4px 0 0" }}>Find similar players</h1>
+          {!embedded && <Eyebrow>Squad up</Eyebrow>}
+          <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: embedded ? 28 : 44, margin: "4px 0 0" }}>{embedded ? "Find players" : "Find similar players"}</h1>
         </div>
         {onEditProfile && <Button variant="ghost" onClick={onEditProfile}>{myProfile ? "Edit my profile" : "Set up my profile"}</Button>}
       </div>
@@ -1604,7 +1604,7 @@ function parseVaultText(text) {
   }));
 }
 
-function HistoricalArchive({ entries, isModerator, user, submissions, onSubmitRequest, onImport, onSignIn }) {
+function HistoricalArchive({ entries, isModerator, user, submissions, onSubmitRequest, onImport, onSignIn, embedded = false }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState(null);
@@ -1634,10 +1634,12 @@ function HistoricalArchive({ entries, isModerator, user, submissions, onSubmitRe
   };
   const updateStaff = (key, value) => setStaffForm((current) => ({ ...current, [key]: value }));
   return (
-    <div style={{ paddingTop: 34 }}>
+    <div style={{ paddingTop: embedded ? 8 : 34 }}>
+      {!embedded && <>
       <Eyebrow>Past esports results</Eyebrow>
       <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 8px" }}>The Vault</h1>
       <div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 18 }}>Winners, runners-up, and MVPs from majors and underdog events — a public record of what already happened.</div>
+      </>}
       {user && <ArchiveRequestForm user={user} submissions={submissions} onSubmit={onSubmitRequest} />}
       {!user && <section style={{ padding: 14, marginBottom: 18, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 9 }}>Sign in to suggest a result for The Vault.</div><Button onClick={onSignIn}>Sign in to suggest a record</Button></section>}
       {isModerator && <section style={{ display: "grid", gap: 10, maxWidth: 680, padding: 16, margin: "0 0 16px", background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
@@ -1691,7 +1693,7 @@ function LoadingScreen({ label }) {
   return <div role="status" aria-live="polite" style={{ minHeight: "60vh", display: "grid", placeItems: "center", background: "var(--page-bg-solid, #101820)", color: "var(--page-text, #EDF1F4)", fontFamily: "'Inter',sans-serif" }}><div style={{ textAlign: "center" }}><div className="grind-loader" aria-hidden="true"><span>G</span></div><div style={{ marginTop: 16 }}>{label}…</div><style>{`.grind-loader{width:68px;height:68px;margin:auto;border:2px solid var(--border,#314);border-top-color:var(--accent,#08f);border-right-color:var(--accent-secondary,#0dc);border-radius:50%;display:grid;place-items:center;animation:grind-spin 1.2s linear infinite}.grind-loader span{font-family:'Bebas Neue',sans-serif;font-size:30px;animation:grind-spin 1.2s linear infinite reverse}@keyframes grind-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.grind-loader,.grind-loader span{animation:none}}`}</style></div></div>;
 }
 
-function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDelete, onSignIn }) {
+function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDelete, onSignIn, embedded = false }) {
   const [title, setTitle] = useState("");
   const [game, setGame] = useState("");
   const [content, setContent] = useState("");
@@ -1713,7 +1715,7 @@ function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDele
     try { await onEdit(post, { title: draft.title.trim(), game: draft.game.trim(), content: draft.content.trim(), source: draft.source.trim() }); setEditingId(""); setError(""); }
     catch { setError("Could not save this post. Please try again."); }
   };
-  return <div style={{ paddingTop: 32 }}><Eyebrow>Community stories</Eyebrow><h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42 }}>Esports blog</h1><p style={{ color: "var(--text-muted)" }}>Read community stories, tournament recaps, and esports updates.</p>{user ? <section style={{ display: "grid", gap: 10, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)", maxWidth: 680 }}><p style={{ color: "var(--text-muted)", fontSize: 13, margin: 0 }}>Send a tournament recap or esports story to the GrindInfo owner for review.</p><Field label="Post title"><TextInput value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} /></Field><Field label="Game"><TextInput value={game} maxLength={60} onChange={(e) => setGame(e.target.value)} placeholder="e.g. Valorant" /></Field><Field label="Story or tournament update"><textarea value={content} maxLength={6000} onChange={(e) => setContent(e.target.value)} rows={6} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput value={source} maxLength={500} onChange={(e) => setSource(e.target.value)} placeholder="https://" /></Field>{error && <span role="alert" style={{ color: "var(--danger)" }}>{error}</span>}<Button onClick={submit}>Request publication</Button></section> : <section style={{ maxWidth: 680, padding: 16, marginTop: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 10 }}>Sign in to request that a blog post be published.</div><Button onClick={onSignIn}>Sign in to request a post</Button></section>}<div style={{ display: "grid", gap: 12, marginTop: 20 }}>{visible.map((post) => <article key={post.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}</Eyebrow>{editingId === post.id ? <div style={{ display: "grid", gap: 8, marginTop: 8 }}><Field label="Post title"><TextInput maxLength={120} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /></Field><Field label="Game"><TextInput maxLength={60} value={draft.game} onChange={(e) => setDraft({ ...draft, game: e.target.value })} /></Field><Field label="Story"><textarea maxLength={6000} rows={6} value={draft.content} onChange={(e) => setDraft({ ...draft, content: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput maxLength={500} value={draft.source} onChange={(e) => setDraft({ ...draft, source: e.target.value })} /></Field><div style={{ display: "flex", gap: 8 }}><Button onClick={() => saveEdit(post)}>Save changes</Button><Button variant="ghost" onClick={() => setEditingId("")}>Cancel</Button></div></div> : <><h2 style={{ fontFamily: "'Bebas Neue',sans-serif" }}>{post.title}</h2><div style={{ color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{post.content}</div><div style={{ marginTop: 8, fontSize: 12 }}>By {post.authorName || "Player"}</div>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{isModerator && post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button onClick={() => onReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onReview(post.id, "rejected")}>Decline</Button></div>}{(user && post.authorId === user.uid || isModerator) && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button variant="ghost" onClick={() => startEdit(post)}>Edit post</Button><Button variant="danger" onClick={() => { if (window.confirm("Delete this blog post? This cannot be undone.")) onDelete(post); }}>Delete post</Button></div>}{user && post.authorId === user.uid && post.status === "published" && <small style={{ display: "block", marginTop: 8, color: "var(--text-muted)" }}>Saving an edit sends the post back for review.</small>}</>}{error && editingId === post.id && <div role="alert" style={{ color: "var(--danger)", marginTop: 8 }}>{error}</div>}</article>)}</div></div>;
+  return <div style={{ paddingTop: embedded ? 16 : 32 }}>{!embedded && <><Eyebrow>Community stories</Eyebrow><h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42 }}>Esports blog</h1><p style={{ color: "var(--text-muted)" }}>Read community stories, tournament recaps, and esports updates.</p></>}{embedded && <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, margin: "0 0 12px" }}>Community blog</h2>}{user ? <section style={{ display: "grid", gap: 10, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)", maxWidth: 680 }}><p style={{ color: "var(--text-muted)", fontSize: 13, margin: 0 }}>Send a tournament recap or esports story to the GrindInfo owner for review.</p><Field label="Post title"><TextInput value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} /></Field><Field label="Game"><TextInput value={game} maxLength={60} onChange={(e) => setGame(e.target.value)} placeholder="e.g. Valorant" /></Field><Field label="Story or tournament update"><textarea value={content} maxLength={6000} onChange={(e) => setContent(e.target.value)} rows={6} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput value={source} maxLength={500} onChange={(e) => setSource(e.target.value)} placeholder="https://" /></Field>{error && <span role="alert" style={{ color: "var(--danger)" }}>{error}</span>}<Button onClick={submit}>Request publication</Button></section> : <section style={{ maxWidth: 680, padding: 16, marginTop: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 10 }}>Sign in to request that a blog post be published.</div><Button onClick={onSignIn}>Sign in to request a post</Button></section>}<div style={{ display: "grid", gap: 12, marginTop: 20 }}>{visible.map((post) => <article key={post.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}</Eyebrow>{editingId === post.id ? <div style={{ display: "grid", gap: 8, marginTop: 8 }}><Field label="Post title"><TextInput maxLength={120} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /></Field><Field label="Game"><TextInput maxLength={60} value={draft.game} onChange={(e) => setDraft({ ...draft, game: e.target.value })} /></Field><Field label="Story"><textarea maxLength={6000} rows={6} value={draft.content} onChange={(e) => setDraft({ ...draft, content: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput maxLength={500} value={draft.source} onChange={(e) => setDraft({ ...draft, source: e.target.value })} /></Field><div style={{ display: "flex", gap: 8 }}><Button onClick={() => saveEdit(post)}>Save changes</Button><Button variant="ghost" onClick={() => setEditingId("")}>Cancel</Button></div></div> : <><h2 style={{ fontFamily: "'Bebas Neue',sans-serif" }}>{post.title}</h2><div style={{ color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{post.content}</div><div style={{ marginTop: 8, fontSize: 12 }}>By {post.authorName || "Player"}</div>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{isModerator && post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button onClick={() => onReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onReview(post.id, "rejected")}>Decline</Button></div>}{(user && post.authorId === user.uid || isModerator) && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button variant="ghost" onClick={() => startEdit(post)}>Edit post</Button><Button variant="danger" onClick={() => { if (window.confirm("Delete this blog post? This cannot be undone.")) onDelete(post); }}>Delete post</Button></div>}{user && post.authorId === user.uid && post.status === "published" && <small style={{ display: "block", marginTop: 8, color: "var(--text-muted)" }}>Saving an edit sends the post back for review.</small>}</>}{error && editingId === post.id && <div role="alert" style={{ color: "var(--danger)", marginTop: 8 }}>{error}</div>}</article>)}</div></div>;
 }
 
 
@@ -1843,6 +1845,7 @@ export default function App() {
   // ---- player profiles ----
   const [section, setSection] = useState(() => new URLSearchParams(window.location.search).has("tournament") ? "tournaments" : "home");
   const [ownerPanelOpen, setOwnerPanelOpen] = useState(false);
+  const [deskAnchor, setDeskAnchor] = useState("home");
   const [myProfile, setMyProfile] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
@@ -2619,8 +2622,29 @@ export default function App() {
   }, [isSiteStaff, section]);
 
   const goSection = (id) => {
-    setSection(id);
+    const target = id === "archive" ? "home" : id;
     if (location.pathname.startsWith("/vault")) navigate("/");
+    if (target === "home") {
+      setSection("home");
+      setView("list");
+      setDeskAnchor("home");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    if (target === "tournaments" || target === "players" || target === "blog") {
+      if (target === "tournaments") {
+        setSelectedId(null);
+        const url = new URL(window.location.href);
+        url.searchParams.delete("tournament");
+        window.history.replaceState({}, "", url);
+      }
+      setSection("home");
+      setView("list");
+      setDeskAnchor(target);
+      window.setTimeout(() => document.getElementById(`section-${target}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+      return;
+    }
+    setSection(target);
   };
 
   const needsAuthChoice = !user && !guestMode;
@@ -2665,26 +2689,28 @@ export default function App() {
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "16px 20px 0" }}>
         <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--border)" }}>
-          {(user ? [
-            { id: "home", label: "Desk" },
+          {[
+            { id: "home", label: "The Vault" },
             { id: "tournaments", label: "Tournaments" },
             { id: "players", label: "Find players" },
-            { id: "archive", label: "The Vault" },
             { id: "blog", label: "Community blog" },
-          ] : [
-            { id: "home", label: "Desk" },
-            { id: "tournaments", label: "Tournaments" },
-            { id: "archive", label: "The Vault" },
-            { id: "blog", label: "Community blog" },
-          ]).map((s) => (
+          ].map((s) => {
+            const tabOn = location.pathname.startsWith("/vault")
+              ? s.id === "home"
+              : section === "tournaments" && view === "detail"
+                ? s.id === "tournaments"
+                : section === "home"
+                  ? deskAnchor === s.id
+                  : section === s.id;
+            return (
             <button
               key={s.id}
               onClick={() => goSection(s.id)}
               style={{
                 background: "none",
                 border: "none",
-                borderBottom: (location.pathname.startsWith("/vault") ? s.id === "archive" : section === s.id) ? "2px solid var(--accent-secondary)" : "2px solid transparent",
-                color: (location.pathname.startsWith("/vault") ? s.id === "archive" : section === s.id) ? "var(--page-text)" : "var(--text-muted)",
+                borderBottom: tabOn ? "2px solid var(--accent-secondary)" : "2px solid transparent",
+                color: tabOn ? "var(--page-text)" : "var(--text-muted)",
                 fontFamily: "'JetBrains Mono', monospace",
                 fontSize: 12,
                 letterSpacing: "0.05em",
@@ -2695,7 +2721,8 @@ export default function App() {
             >
               {s.label}
             </button>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -2705,28 +2732,44 @@ export default function App() {
         ) : (
             <>
         {section === "home" && view === "list" && (
-          <PlatformHome
-            tournaments={tournaments}
-            blogPosts={blogPosts}
-            onOpenVaultSlide={(slug) => navigate(`/vault/${slug}`)}
-            onOpenTournament={(id) => {
-              goSection("tournaments");
-              setSelectedId(id);
-              setView("detail");
-              const url = new URL(window.location.href); url.searchParams.set("tournament", id); window.history.replaceState({}, "", url);
-              setDetailTab("teams");
-            }}
-            onOpenTournaments={() => goSection("tournaments")}
-            onOpenPlayers={() => (user ? goSection("players") : setAuthDialogOpen(true))}
-            onOpenBlog={() => goSection("blog")}
-            onConnectPlayer={() => (user ? goSection("players") : setAuthDialogOpen(true))}
-          />
+          <PlatformHome onOpenVaultSlide={(slug) => navigate(`/vault/${slug}`)}>
+            <HistoricalArchive embedded entries={archiveEntries} isModerator={isSiteStaff || isModerator} user={user} submissions={archiveSubmissions} onSubmitRequest={submitArchiveRequest} onImport={importArchiveEntries} onSignIn={() => setAuthDialogOpen(true)} />
+            <section id="section-tournaments" style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
+              <TournamentList
+                embedded
+                tournaments={tournaments}
+                currentUserId={user?.uid || null}
+                currentUserName={safeProfileName(myProfile?.displayName, user?.displayName)}
+                pendingInvites={user ? tournamentInvites.filter((item) => item.inviteeUid === user.uid && item.status === "pending") : []}
+                onInviteDecision={decideTournamentInvite}
+                onOpen={(id) => {
+                  setDeskAnchor("tournaments");
+                  setSection("tournaments");
+                  setSelectedId(id);
+                  setView("detail");
+                  const url = new URL(window.location.href); url.searchParams.set("tournament", id); window.history.replaceState({}, "", url);
+                  setDetailTab("teams");
+                }}
+                onNew={() => user ? setShowNewTournament(true) : setAuthDialogOpen(true)}
+                onSignIn={() => setAuthDialogOpen(true)}
+              />
+            </section>
+            <section id="section-players" style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
+              {user ? (
+                <FindPlayersPage embedded currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid, player.displayName)} onFriendDecision={decideFriendRequest} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} onEditProfile={() => setShowProfileModal(true)} />
+              ) : (
+                <div style={{ padding: "18px 0" }}>
+                  <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, margin: "0 0 10px" }}>Find players</h2>
+                  <p style={{ color: "var(--text-muted)", fontSize: 13, margin: "0 0 12px" }}>Sign in to search similar players and send a connect request.</p>
+                  <Button onClick={() => setAuthDialogOpen(true)}>Sign in to find players</Button>
+                </div>
+              )}
+            </section>
+            <section id="section-blog" style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
+              <BlogPage embedded posts={blogPosts} user={user} isModerator={isSiteStaff || isModerator} onSubmit={submitBlogPost} onReview={reviewBlogPost} onEdit={editBlogPost} onDelete={deleteBlogPost} onSignIn={() => setAuthDialogOpen(true)} />
+            </section>
+          </PlatformHome>
         )}
-        {user && section === "players" && (
-          <FindPlayersPage currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid, player.displayName)} onFriendDecision={decideFriendRequest} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} onEditProfile={() => setShowProfileModal(true)} />
-        )}
-        {section === "archive" && <HistoricalArchive entries={archiveEntries} isModerator={isSiteStaff || isModerator} user={user} submissions={archiveSubmissions} onSubmitRequest={submitArchiveRequest} onImport={importArchiveEntries} onSignIn={() => setAuthDialogOpen(true)} />}
-        {section === "blog" && <BlogPage posts={blogPosts} user={user} isModerator={isSiteStaff || isModerator} onSubmit={submitBlogPost} onReview={reviewBlogPost} onEdit={editBlogPost} onDelete={deleteBlogPost} onSignIn={() => setAuthDialogOpen(true)} />}
         {user && section === "requests" && <FriendRequestCenter requests={friendRequests} currentUserId={user.uid} onDecision={decideFriendRequest} />}
         {user && section === "dashboard" && isSiteStaff && <OwnerDashboard
           role={siteRole || "support"}
@@ -2794,7 +2837,7 @@ export default function App() {
             onJoinDisclaimerVisibilityChange={setJoinDisclaimerOpen}
             onSaveResults={(results) => saveTournamentResults(selected.id, results)}
             onCloseTournament={() => closeTournament(selected.id)}
-            onBack={() => { setView("list"); setSelectedId(null); const url = new URL(window.location.href); url.searchParams.delete("tournament"); window.history.replaceState({}, "", url); }}
+            onBack={() => { setView("list"); setSelectedId(null); setSection("home"); setDeskAnchor("tournaments"); const url = new URL(window.location.href); url.searchParams.delete("tournament"); window.history.replaceState({}, "", url); window.setTimeout(() => document.getElementById("section-tournaments")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60); }}
             onShare={() => shareTournament(selected)}
             onRequestFriend={() => requestHostFriend(selected)}
             onRequestRegistration={(player) => requestRegistration(selected.id, player)}
@@ -2842,7 +2885,7 @@ export default function App() {
         onClose={() => setOwnerPanelOpen(false)}
         onSelect={(id) => {
           setOwnerPanelOpen(false);
-          if (id === "vault") goSection("archive");
+          if (id === "vault") goSection("home");
           else if (id === "tournaments") goSection("tournaments");
           else if (id === "players") goSection("dashboard");
           else if (id === "blogs") goSection("blog");
@@ -2913,7 +2956,7 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onNavigate,
     </div>
   );
 }
-function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, onNew, onSignIn, pendingInvites = [], onInviteDecision }) {
+function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, onNew, onSignIn, pendingInvites = [], onInviteDecision, embedded = false }) {
   const [showArchived, setShowArchived] = useState(false);
   const visibleTournaments = tournaments.filter((t) => isTournamentArchived(t) === showArchived);
   return (
@@ -2923,17 +2966,17 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
           display: "flex",
           alignItems: "flex-end",
           justifyContent: "space-between",
-          padding: "36px 0 20px",
+          padding: embedded ? "18px 0 12px" : "36px 0 20px",
           flexWrap: "wrap",
           gap: 16,
         }}
       >
         <div>
-          <Eyebrow>Live standings desk</Eyebrow>
+          {!embedded && <Eyebrow>Live standings desk</Eyebrow>}
           <h1
             style={{
               fontFamily: "'Bebas Neue', sans-serif",
-              fontSize: 44,
+              fontSize: embedded ? 28 : 44,
               margin: "4px 0 0",
               letterSpacing: "0.01em",
             }}

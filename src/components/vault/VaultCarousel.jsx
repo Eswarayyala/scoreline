@@ -1,7 +1,19 @@
 import { useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { VAULT_SLIDES } from "../../data/platformShowcase";
+
+const navBtn = {
+  width: 36,
+  height: 36,
+  borderRadius: 999,
+  border: "1px solid var(--border)",
+  background: "var(--panel-bg)",
+  color: "var(--page-text)",
+  cursor: "pointer",
+  display: "grid",
+  placeItems: "center",
+};
 
 export default function VaultCarousel({ slides = VAULT_SLIDES, onOpenSlide }) {
   const reduce = useReducedMotion();
@@ -17,17 +29,14 @@ export default function VaultCarousel({ slides = VAULT_SLIDES, onOpenSlide }) {
   };
 
   return (
-    <section className="relative z-20 -mt-6 mb-8">
-      <div className="mb-4 flex items-end justify-between gap-4 px-1">
-        <div>
-          <p className="font-mono text-[11px] font-bold uppercase tracking-[0.22em] text-neon">The Vault</p>
-          <h2 className="font-display text-4xl tracking-wide text-white md:text-5xl">Floating circuit windows</h2>
-        </div>
-        <div className="flex gap-2">
-          <button type="button" aria-label="Previous Vault slide" onClick={() => scrollTo(active - 1)} className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-slate-950/70 text-white hover:border-neon hover:text-neon">
+    <section style={{ marginBottom: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
+        <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 40, margin: 0, letterSpacing: "0.02em" }}>The Vault</h1>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          <button type="button" aria-label="Previous Vault slide" onClick={() => scrollTo(active - 1)} style={navBtn}>
             <ChevronLeft size={18} />
           </button>
-          <button type="button" aria-label="Next Vault slide" onClick={() => scrollTo(active + 1)} className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-slate-950/70 text-white hover:border-neon hover:text-neon">
+          <button type="button" aria-label="Next Vault slide" onClick={() => scrollTo(active + 1)} style={navBtn}>
             <ChevronRight size={18} />
           </button>
         </div>
@@ -35,7 +44,7 @@ export default function VaultCarousel({ slides = VAULT_SLIDES, onOpenSlide }) {
 
       <div
         ref={trackRef}
-        className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-8 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        style={{ display: "flex", gap: 14, overflowX: "auto", padding: "6px 2px 14px", scrollbarWidth: "none" }}
       >
         {items.map((slide, index) => (
           <motion.button
@@ -44,50 +53,37 @@ export default function VaultCarousel({ slides = VAULT_SLIDES, onOpenSlide }) {
             type="button"
             onClick={() => onOpenSlide(slide.slug)}
             onFocus={() => setActive(index)}
-            className="relative w-[min(78vw,340px)] shrink-0 snap-center text-left"
-            style={{ transformStyle: "preserve-3d" }}
-            initial={{ y: 18, opacity: 0 }}
-            animate={reduce ? { y: 0, opacity: 1 } : { y: [0, -10, 0], opacity: 1 }}
-            transition={reduce ? { duration: 0.3 } : { y: { duration: 4.4 + index * 0.15, repeat: Infinity, ease: "easeInOut" }, opacity: { duration: 0.45, delay: index * 0.05 } }}
-            whileHover={reduce ? undefined : { y: -22, rotateX: 5, rotateY: -4, scale: 1.03 }}
+            style={{
+              flex: "0 0 260px",
+              width: 260,
+              textAlign: "left",
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              color: "inherit",
+            }}
+            initial={{ y: 10, opacity: 0 }}
+            animate={reduce ? { y: 0, opacity: 1 } : { y: [0, -8, 0], opacity: 1 }}
+            transition={reduce ? { duration: 0.25 } : { y: { duration: 4.2 + index * 0.12, repeat: Infinity, ease: "easeInOut" }, opacity: { duration: 0.35 } }}
+            whileHover={reduce ? undefined : { y: -14, scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            <div className="overflow-hidden rounded-2xl border border-white/15 bg-slate-950/80 shadow-[0_24px_60px_rgba(0,0,0,0.45),0_0_40px_rgba(34,243,196,0.12)] backdrop-blur-xl">
-              <div className="relative h-48 overflow-hidden">
-                <img src={slide.poster} alt="" className="h-full w-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
-                <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full border border-neon/40 bg-slate-950/70 px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-neon">
-                  <Sparkles size={12} /> {slide.kicker}
+            <div style={{ overflow: "hidden", borderRadius: 16, border: "1px solid var(--border)", background: "var(--panel-bg)", boxShadow: "var(--panel-shadow)" }}>
+              <div style={{ position: "relative", height: 132 }}>
+                <img src={slide.poster} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                <span style={{ position: "absolute", left: 10, top: 10, fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--accent-secondary)", background: "rgba(23,17,15,0.78)", border: "1px solid var(--border)", borderRadius: 999, padding: "3px 8px" }}>
+                  {slide.kicker}
                 </span>
               </div>
-              <div className="space-y-1 p-4">
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-400">{slide.game} · {slide.season}</p>
-                <h3 className="font-display text-3xl text-white">{slide.title}</h3>
-                <p className="line-clamp-2 text-sm text-slate-300">{slide.summary}</p>
+              <div style={{ padding: "10px 12px 12px" }}>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "var(--text-dim)", letterSpacing: "0.08em", textTransform: "uppercase" }}>{slide.game}</div>
+                <h3 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, margin: "4px 0 0", lineHeight: 1.1 }}>{slide.title}</h3>
               </div>
             </div>
           </motion.button>
         ))}
       </div>
-
-      <div className="flex justify-center gap-2">
-        {items.map((slide, index) => (
-          <button
-            key={slide.slug}
-            type="button"
-            aria-label={`Show ${slide.title}`}
-            onClick={() => scrollTo(index)}
-            className={`h-1.5 rounded-full transition-all ${active === index ? "w-8 bg-neon" : "w-3 bg-white/20"}`}
-          />
-        ))}
-      </div>
-      <AnimatePresence>
-        {items[active] && (
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-3 text-center font-mono text-[11px] uppercase tracking-widest text-slate-500">
-            Open {items[active].title} → /vault/{items[active].slug}
-          </motion.p>
-        )}
-      </AnimatePresence>
     </section>
   );
 }
