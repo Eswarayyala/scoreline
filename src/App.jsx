@@ -33,6 +33,8 @@ import VaultLibraryPage from "./components/vault/VaultLibraryPage";
 import { avatarForGamer, bannerForGame, flyerForEvent } from "./data/platformShowcase";
 import CircuitCmsDesk from "./components/cms/CircuitCmsDesk";
 import { useCircuitCms } from "./hooks/useCircuitCms";
+import { useEsportsMedia } from "./hooks/useEsportsMedia";
+import { mergeVaultMedia } from "./services/esportsMedia";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { onValue, ref as databaseRef, onDisconnect, serverTimestamp, set as setDatabaseValue } from "firebase/database";
 
@@ -1888,6 +1890,11 @@ export default function App() {
   const [showFriendRequests, setShowFriendRequests] = useState(false);
   const [showArchivedTournaments, setShowArchivedTournaments] = useState(false);
   const circuitCms = useCircuitCms();
+  const liveEsportsBanners = useEsportsMedia();
+  const vaultSlides = useMemo(
+    () => mergeVaultMedia(circuitCms.vaultSlides, liveEsportsBanners),
+    [circuitCms.vaultSlides, liveEsportsBanners],
+  );
   const [myProfile, setMyProfile] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
@@ -2793,16 +2800,16 @@ export default function App() {
             <div className={`mx-auto px-5 pb-24 ${location.pathname === "/" || location.pathname.startsWith("/vault") ? "max-w-6xl" : "max-w-5xl"}`}>
               <Routes>
                 <Route path="/" element={(
-                  <PlatformHome slides={circuitCms.vaultSlides}>
+                  <PlatformHome slides={vaultSlides}>
                     <HubSections />
                   </PlatformHome>
                 )} />
                 <Route path="/vault" element={(
-                  <VaultLibraryPage slides={circuitCms.vaultSlides}>
+                  <VaultLibraryPage slides={vaultSlides}>
                     <HistoricalArchive embedded entries={archiveEntries} user={user} submissions={archiveSubmissions} onSubmitRequest={submitArchiveRequest} onSignIn={() => setAuthDialogOpen(true)} />
                   </VaultLibraryPage>
                 )} />
-                <Route path="/vault/:slug" element={<VaultDetailPage slides={circuitCms.vaultSlides} slug={location.pathname.replace(/^\/vault\//, "").split("/")[0]} liveEntries={archiveEntries} />} />
+                <Route path="/vault/:slug" element={<VaultDetailPage slides={vaultSlides} slug={location.pathname.replace(/^\/vault\//, "").split("/")[0]} liveEntries={archiveEntries} />} />
                 <Route path="/tournaments" element={(
                   <>
                     <TournamentOpsRail
