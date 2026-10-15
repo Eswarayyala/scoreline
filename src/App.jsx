@@ -17,7 +17,8 @@ import {
 } from "firebase/firestore";
 import {
   onAuthStateChanged,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -1652,6 +1653,14 @@ export default function App() {
   const [authBusy, setAuthBusy] = useState(false);
 
   useEffect(() => {
+    getRedirectResult(auth).catch((e) => {
+      const messages = {
+        "auth/unauthorized-domain": "This site isn't allowed for Google sign-in yet.",
+        "auth/account-exists-with-different-credential": "That Google email already has an account. Sign in with email.",
+      };
+      setAuthError(messages[e.code] || "Couldn't finish Google sign-in — try email instead.");
+      setAuthDialogOpen(true);
+    });
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
       const returningGuest = !u && sessionStorage.getItem("grindinfo-guest-mode") === "true";
@@ -1674,10 +1683,13 @@ export default function App() {
     setAuthError("");
     setAuthBusy(true);
     try {
-      await signInWithPopup(auth, googleProvider);
+      await signInWithRedirect(auth, googleProvider);
     } catch (e) {
-      setAuthError("Couldn't sign in with Google — try again");
-    } finally {
+      const messages = {
+        "auth/unauthorized-domain": "This site isn't allowed for Google sign-in yet.",
+        "auth/operation-not-allowed": "Google sign-in isn't enabled on this Firebase project.",
+      };
+      setAuthError(messages[e.code] || "Couldn't start Google sign-in — try email instead.");
       setAuthBusy(false);
     }
   }, []);
