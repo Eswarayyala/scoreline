@@ -464,7 +464,7 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowse
   };
 
   return (
-    <div role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !requireChoice) onClose(); }} style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", justifyContent: "flex-end", alignItems: "flex-start", padding: "82px max(16px, calc((100vw - 980px) / 2)) 16px", background: requireChoice ? "rgba(3, 8, 13, .42)" : "transparent", pointerEvents: requireChoice ? "auto" : "none", fontFamily: "'Inter', sans-serif" }}>
+    <div role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !requireChoice) onClose(); }} style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", justifyContent: requireChoice ? "center" : "flex-end", alignItems: requireChoice ? "center" : "flex-start", padding: requireChoice ? 20 : "82px max(16px, calc((100vw - 980px) / 2)) 16px", background: requireChoice ? "var(--page-bg-solid)" : "transparent", pointerEvents: requireChoice ? "auto" : "none", fontFamily: "'Inter', sans-serif" }}>
       <div role="dialog" aria-modal={requireChoice ? "true" : "false"} aria-label="Sign in to GrindInfo" onMouseDown={(event) => event.stopPropagation()} style={{ width: "min(380px, 100%)", maxHeight: "calc(100vh - 100px)", overflowY: "auto", padding: 20, color: "var(--page-text)", background: "var(--panel-bg)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)", pointerEvents: "auto" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
           <div>
@@ -2496,6 +2496,8 @@ export default function App() {
     if (!isSiteStaff && section === "dashboard") setSection("tournaments");
   }, [isSiteStaff, section]);
 
+  const needsAuthChoice = !user && !guestMode;
+
   if (authLoading) {
     return (
       <div style={shellStyle} data-theme="solar-flare">
@@ -2506,7 +2508,7 @@ export default function App() {
     );
   }
 
-  if (loading) {
+  if (loading && !needsAuthChoice) {
     return (
       <div style={shellStyle} data-theme="solar-flare">
         <div style={{ color: "var(--text-muted)", fontFamily: "'Inter', sans-serif", padding: 40, textAlign: "center" }}>
@@ -2530,6 +2532,8 @@ export default function App() {
         @keyframes sl-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
       `}</style>
 
+        {!needsAuthChoice && (
+          <>
         <Header saving={saving} user={user} guestMode={guestMode} onSignInClick={() => setAuthDialogOpen((open) => !open)} onSignOut={handleSignOut} onNavigate={setSection} onEditProfile={() => setShowProfileModal(true)} dashboardRole={dashboardRole} />
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "16px 20px 0" }}>
@@ -2651,6 +2655,8 @@ export default function App() {
           />
         )}
       </div>
+          </>
+        )}
 
       {user && showNewTournament && (
         <NewTournamentModal onClose={() => setShowNewTournament(false)} onCreate={addTournament} />
