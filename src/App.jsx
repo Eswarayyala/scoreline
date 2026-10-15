@@ -156,6 +156,51 @@ const PLAY_STYLES = [
   "Sniper / Precision",
   "Flex / All-rounder",
 ];
+const LOOKING_FOR = ["Duo", "Squad", "Ranked", "Casual", "Tournament"];
+const RANK_BANDS = ["Unranked", "Beginner", "Intermediate", "High rank", "Pro / scrim"];
+
+function normalizeLookingFor(list = []) {
+  return [...new Set((Array.isArray(list) ? list : []).filter((item) => LOOKING_FOR.includes(item)))];
+}
+
+function normalizeRank(rank) {
+  return RANK_BANDS.includes(rank) ? rank : "";
+}
+
+function similarityMatch(me, them) {
+  if (!me) return { score: 0, reasons: [] };
+  const myGames = new Set(normalizeGameNames(me.games || []));
+  const sharedGames = normalizeGameNames(them.games || []).filter((game) => myGames.has(game));
+  const myWants = new Set(normalizeLookingFor(me.lookingFor));
+  const sharedWants = normalizeLookingFor(them.lookingFor).filter((want) => myWants.has(want));
+  const reasons = [];
+  let score = 0;
+  if (sharedGames.length) {
+    score += sharedGames.length * 5;
+    reasons.push(`Same game: ${sharedGames.slice(0, 2).join(", ")}`);
+  }
+  if (me.region && them.region === me.region) {
+    score += 4;
+    reasons.push("Same region");
+  }
+  if (me.language && them.language === me.language) {
+    score += 3;
+    reasons.push("Same language");
+  }
+  if (sharedWants.length) {
+    score += sharedWants.length * 2;
+    reasons.push(`Also looking for ${sharedWants.slice(0, 2).join(", ")}`);
+  }
+  if (me.style && them.style && them.style === me.style) {
+    score += 2;
+    reasons.push("Same play style");
+  }
+  if (me.rank && them.rank && them.rank === me.rank) {
+    score += 2;
+    reasons.push("Same rank band");
+  }
+  return { score, reasons };
+}
 const PLAYER_AVATARS = ["🎮", "⚡", "🎯", "🛡️", "🔥", "❄️", "🐺", "🦊", "🦁", "🤖", "👾", "🌟"];
 const GAME_ICONS = {
   "Valorant": "🎯",
@@ -551,6 +596,8 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
   const [region, setRegion] = useState(initialProfile?.region || "");
   const [language, setLanguage] = useState(initialProfile?.language || "");
   const [style, setStyle] = useState(initialProfile?.style || "");
+  const [lookingFor, setLookingFor] = useState(normalizeLookingFor(initialProfile?.lookingFor));
+  const [rank, setRank] = useState(normalizeRank(initialProfile?.rank));
   const [bio, setBio] = useState(initialProfile?.bio || "");
   const [avatar, setAvatar] = useState(initialProfile?.avatar || "🎮");
   const [discoverable, setDiscoverable] = useState(initialProfile?.discoverable === true);
@@ -569,7 +616,18 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
       setError("Pick at least one game, a region, and a language");
       return;
     }
-    onSave({ displayName: displayName.trim(), games, region, language, style, bio: bio.trim(), avatar, discoverable });
+    onSave({
+      displayName: displayName.trim(),
+      games,
+      region,
+      language,
+      style,
+      lookingFor: normalizeLookingFor(lookingFor),
+      rank: normalizeRank(rank),
+      bio: bio.trim(),
+      avatar,
+      discoverable,
+    });
   };
 
   return (
@@ -705,6 +763,19 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
               ))}
             </Select>
           </Field>
+          <Field label="Looking for (optional)">
+            <MultiToggle options={LOOKING_FOR} selected={lookingFor} onToggle={(want) => setLookingFor((previous) => previous.includes(want) ? previous.filter((item) => item !== want) : [...previous, want])} />
+          </Field>
+          <Field label="Rank band (optional)">
+            <Select value={rank} onChange={(e) => setRank(e.target.value)}>
+              <option value="">Not specified</option>
+              {RANK_BANDS.map((band) => (
+                <option key={band} value={band}>
+                  {band}
+                </option>
+              ))}
+            </Select>
+          </Field>
           <Field label="Bio (optional)">
             <textarea
               value={bio}
@@ -744,7 +815,7 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
   );
 }
 
-function PlayerCard({ player, currentUid, friendRequest, onFriendRequest, onFriendDecision, onReport }) {
+function PlayerCard({ player, currentUid, friendRequest, onFriendRequest, onFriendDecision, onReport, matchReasons = [] }) {
   const incoming = friendRequest?.status === "pending" && friendRequest.recipientId === currentUid;
   const sentByMe = friendRequest?.requesterId === currentUid;
   const friendLabel = !friendRequest
@@ -786,7 +857,22 @@ function PlayerCard({ player, currentUid, friendRequest, onFriendRequest, onFrie
       <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--text-muted)" }}>
         {player.region} · {player.language}
         {player.style ? ` · ${player.style}` : ""}
+        {player.rank ? ` · ${player.rank}` : ""}
       </div>
+      {normalizeLookingFor(player.lookingFor).length > 0 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+          {normalizeLookingFor(player.lookingFor).map((want) => (
+            <span key={want} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, padding: "3px 8px", border: "1px solid var(--border)", color: "var(--page-text)" }}>{want}</span>
+          ))}
+        </div>
+      )}
+      {matchReasons.length > 0 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+          {matchReasons.map((reason) => (
+            <span key={reason} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, padding: "3px 8px", background: "var(--panel-raised)", color: "var(--accent-secondary)" }}>{reason}</span>
+          ))}
+        </div>
+      )}
       {player.bio && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--page-text)", marginTop: 10 }}>{player.bio}</div>}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
         {incoming ? (
@@ -804,24 +890,35 @@ function PlayerCard({ player, currentUid, friendRequest, onFriendRequest, onFrie
     </div>
   );
 }
-function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendRequest, onFriendDecision, onReport }) {
+function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendRequest, onFriendDecision, onReport, onEditProfile }) {
   const [gameFilters, setGameFilters] = useState([]);
   const [regionFilter, setRegionFilter] = useState("");
   const [languageFilter, setLanguageFilter] = useState("");
   const [styleFilter, setStyleFilter] = useState("");
+  const [lookingForFilters, setLookingForFilters] = useState([]);
+  const [rankFilter, setRankFilter] = useState("");
   const [nameFilter, setNameFilter] = useState("");
   const [playerTagFilter, setPlayerTagFilter] = useState("");
   const [players, setPlayers] = useState([]);
   const [playersLoading, setPlayersLoading] = useState(false);
   const [playersError, setPlayersError] = useState("");
+  const primedFromProfile = useRef(false);
   const normalizedPlayerTag = playerTagFilter.trim().replace(/^.*#/, "");
-  const hasFilters = Boolean(gameFilters.length || regionFilter || languageFilter || normalizedPlayerTag);
-  const useMyInterests = () => {
+  const hasFilters = Boolean(gameFilters.length || regionFilter || languageFilter || styleFilter || lookingForFilters.length || rankFilter || normalizedPlayerTag);
+  const applyMyInterests = () => {
     setGameFilters(normalizeGameNames(myProfile?.games || []));
     setRegionFilter(myProfile?.region || "");
     setLanguageFilter(myProfile?.language || "");
     setStyleFilter(myProfile?.style || "");
+    setLookingForFilters(normalizeLookingFor(myProfile?.lookingFor));
+    setRankFilter(normalizeRank(myProfile?.rank));
   };
+
+  useEffect(() => {
+    if (primedFromProfile.current || !myProfile) return;
+    primedFromProfile.current = true;
+    applyMyInterests();
+  }, [myProfile]);
 
   useEffect(() => {
     setPlayersError("");
@@ -858,7 +955,7 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
     if (regionFilter) filters.push(where("region", "==", regionFilter));
     if (languageFilter) filters.push(where("language", "==", languageFilter));
 
-    const playersQuery = query(PLAYERS_COLLECTION, ...filters);
+    const playersQuery = query(PLAYERS_COLLECTION, ...filters, limit(50));
     return onSnapshot(
       playersQuery,
       (snap) => {
@@ -870,10 +967,17 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
         setPlayersLoading(false);
       }
     );
-  }, [gameFilters, regionFilter, languageFilter, hasFilters, normalizedPlayerTag]);
+  }, [gameFilters, regionFilter, languageFilter, styleFilter, lookingForFilters, rankFilter, hasFilters, normalizedPlayerTag]);
 
-  const filtered = players.filter((p) => p.uid !== currentUid && (!styleFilter || p.style === styleFilter)
-    && (!nameFilter.trim() || (p.displayName || "").toLowerCase().includes(nameFilter.trim().toLowerCase())));
+  const filtered = players
+    .filter((p) => p.uid !== currentUid
+      && (!nameFilter.trim() || (p.displayName || "").toLowerCase().includes(nameFilter.trim().toLowerCase()))
+      && (Boolean(normalizedPlayerTag)
+        || ((!styleFilter || p.style === styleFilter)
+          && (!rankFilter || p.rank === rankFilter)
+          && (!lookingForFilters.length || normalizeLookingFor(p.lookingFor).some((want) => lookingForFilters.includes(want))))))
+    .map((p) => ({ ...p, ...similarityMatch(myProfile, p) }))
+    .sort((a, b) => b.score - a.score || String(a.displayName || "").localeCompare(String(b.displayName || "")));
 
   return (
     <div>
@@ -889,15 +993,21 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
       >
         <div>
           <Eyebrow>Squad up</Eyebrow>
-          <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 44, margin: "4px 0 0" }}>Find players</h1>
+          <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 44, margin: "4px 0 0" }}>Find similar players</h1>
         </div>
+        {onEditProfile && <Button variant="ghost" onClick={onEditProfile}>{myProfile ? "Edit my profile" : "Set up my profile"}</Button>}
       </div>
 
       <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14, borderLeft: "2px solid var(--accent)", paddingLeft: 12 }}>
-        Online teammates are people you may not know. Keep personal contact details private and stop interacting if someone makes you uncomfortable.
+        Closest matches appear first: shared games, region, language, what you want to play, style, and rank band. Keep personal contact details private.
       </div>
+      {!myProfile && (
+        <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14, padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+          Set up your profile so GrindInfo can fill filters from your games and find closer matches.
+        </div>
+      )}
       <div style={{ display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-        {myProfile && <Button variant="ghost" onClick={useMyInterests}>Use my interests</Button>}
+        {myProfile && <Button variant="ghost" onClick={applyMyInterests}>Use my profile</Button>}
         <div style={{ width: "100%" }}>
           <Field label="Games (choose any)">
             <MultiToggle
@@ -943,6 +1053,25 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
             ))}
           </Select>
         </div>
+        <div style={{ minWidth: 180 }}>
+          <Select value={rankFilter} onChange={(e) => setRankFilter(e.target.value)} aria-label="Rank band">
+            <option value="">Any rank band</option>
+            {RANK_BANDS.map((band) => (
+              <option key={band} value={band}>
+                {band}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div style={{ width: "100%" }}>
+          <Field label="Looking for">
+            <MultiToggle
+              options={LOOKING_FOR}
+              selected={lookingForFilters}
+              onToggle={(want) => setLookingForFilters((previous) => previous.includes(want) ? previous.filter((item) => item !== want) : [...previous, want])}
+            />
+          </Field>
+        </div>
       </div>
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "8px 0 16px" }}>
         <div style={{ maxWidth: 360, flex: "1 1 250px" }}><Field label="Search names in these matches"><TextInput value={nameFilter} onChange={(event) => setNameFilter(event.target.value)} placeholder="Type a player name" /></Field></div>
@@ -951,17 +1080,17 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
       {normalizedPlayerTag && normalizedPlayerTag.length < 8 && <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>Enter the full 8-digit number after # to look up a player.</div>}
       {myProfile && (
         <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
-          “Use my interests” fills these filters from your profile. You can change them before searching.
+          Filters start from your profile. Change them any time, or tap Use my profile to reset.
         </div>
       )}
 
       {playersError && <div style={{ fontSize: 13, color: "var(--danger)", marginBottom: 14 }}>{playersError}</div>}
       {!hasFilters ? (
-        <EmptyState title="Choose a search filter" body="Select games, region, or language to find opted-in players, or enter a full GrindInfo ID. Playing style can narrow your matches." />
+        <EmptyState title="Choose a search filter" body="Select games, region, language, looking-for, or rank, or enter a full GrindInfo ID." />
       ) : playersLoading ? (
         <div style={{ color: "var(--text-muted)", fontSize: 13, padding: 20 }}>Searching opted-in players…</div>
       ) : filtered.length === 0 ? (
-        <EmptyState title="No players match yet" body="Try another game, region, language, or playing style." />
+        <EmptyState title="No similar players yet" body="Try fewer filters, another game, or ask a teammate to turn on player discovery." />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
             {filtered.map((p) => {
@@ -978,6 +1107,7 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
                   onFriendRequest={onFriendRequest}
                   onFriendDecision={onFriendDecision}
                   onReport={onReport}
+                  matchReasons={p.reasons}
                 />
               );
             })}
@@ -1892,6 +2022,8 @@ export default function App() {
         await setDoc(playerDocRef(user.uid), {
           ...fields,
           displayName: safeProfileName(fields.displayName, user.displayName),
+          lookingFor: normalizeLookingFor(fields.lookingFor),
+          rank: normalizeRank(fields.rank),
           bio: String(fields.bio || "").slice(0, 200),
           discoverable: fields.discoverable === true,
           updatedAt: Date.now(),
@@ -2436,7 +2568,7 @@ export default function App() {
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "0 20px 80px" }}>
         {user && section === "players" && (
-          <FindPlayersPage currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid, player.displayName)} onFriendDecision={decideFriendRequest} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} />
+          <FindPlayersPage currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid, player.displayName)} onFriendDecision={decideFriendRequest} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} onEditProfile={() => setShowProfileModal(true)} />
         )}
         {section === "archive" && <HistoricalArchive entries={archiveEntries} isModerator={isSiteStaff || isModerator} user={user} submissions={archiveSubmissions} onSubmitRequest={submitArchiveRequest} onImport={importArchiveEntries} onSignIn={() => setAuthDialogOpen(true)} />}
         {section === "blog" && <BlogPage posts={blogPosts} user={user} isModerator={isSiteStaff || isModerator} onSubmit={submitBlogPost} onReview={reviewBlogPost} onEdit={editBlogPost} onDelete={deleteBlogPost} onSignIn={() => setAuthDialogOpen(true)} />}

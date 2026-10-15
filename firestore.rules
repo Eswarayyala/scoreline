@@ -77,6 +77,7 @@ service cloud.firestore {
     function validPlayerProfile(data) {
       return data.keys().hasOnly([
                'displayName', 'games', 'region', 'language', 'style',
+               'lookingFor', 'rank',
                'bio', 'avatar', 'discoverable', 'updatedAt', 'playerTag'
              ])
              && data.keys().hasAll([
@@ -94,6 +95,8 @@ service cloud.firestore {
              && data.language.size() <= 40
              && data.style is string
              && data.style.size() <= 60
+             && (!data.keys().hasAny(['lookingFor']) || (data.lookingFor is list && data.lookingFor.size() <= 6))
+             && (!data.keys().hasAny(['rank']) || (data.rank is string && data.rank.size() <= 40))
              && data.bio is string
              && data.bio.size() <= 200
              && data.avatar is string
