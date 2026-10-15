@@ -5,10 +5,7 @@ import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBlQWnHSz_ennegidtyrwiap6Oe_YtNtqI",
-  authDomain:
-    typeof window !== "undefined" && window.location.protocol === "https:"
-      ? window.location.host
-      : "scoreliner.firebaseapp.com",
+  authDomain: "scoreliner.firebaseapp.com",
   projectId: "scoreliner",
   storageBucket: "scoreliner.firebasestorage.app",
   messagingSenderId: "884777080649",
