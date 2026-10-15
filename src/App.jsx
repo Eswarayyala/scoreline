@@ -195,7 +195,7 @@ const BIO_EXAMPLES = [
   { label: "Flexible", text: "Happy to fill roles and play a few games when schedules line up." },
 ];
 
-const THEME_CSS = "[data-theme=\"glacier\"] {\n  --page-bg: radial-gradient(circle at 12% 0%, rgba(74, 174, 232, 0.16), transparent 28%), linear-gradient(145deg, #EAF6FF 0%, #F7FBFF 52%, #E3F1FF 100%);\n  --page-bg-solid: #EFF8FF;\n  --page-text: #102B45;\n  --panel-bg: rgba(255, 255, 255, 0.94);\n  --panel-raised: #F1F8FF;\n  --input-bg: #F8FBFF;\n  --text-muted: #526C86;\n  --text-dim: #7189A1;\n  --border: #C9DFF1;\n  --border-strong: #AFCBE2;\n  --accent: #087FEA;\n  --accent-secondary: #13AFC7;\n  --accent-contrast: #FFFFFF;\n  --danger: #C83D4A;\n  --danger-border: #E7BDC5;\n  --rank-second: #70889F;\n  --rank-third: #A9653B;\n  --success: #148A72;\n  --google-bg: #FFFFFF;\n  --google-text: #102B45;\n  --panel-shadow: 0 8px 24px rgba(42, 112, 163, 0.10);\n}\n\n[data-theme=\"solar-flare\"] {\n  --page-bg: radial-gradient(circle at 90% 0%, rgba(255, 132, 39, 0.12), transparent 30%), linear-gradient(145deg, #17110F 0%, #1A1412 58%, #211510 100%);\n  --page-bg-solid: #17110F;\n  --page-text: #FFF1E6;\n  --panel-bg: rgba(34, 25, 21, 0.96);\n  --panel-raised: #2B1E19;\n  --input-bg: #1A1411;\n  --text-muted: #C3AA9A;\n  --text-dim: #967D70;\n  --border: #493025;\n  --border-strong: #684534;\n  --accent: #FF8A24;\n  --accent-secondary: #FFC04B;\n  --accent-contrast: #23120B;\n  --danger: #FF6B5D;\n  --danger-border: #673832;\n  --rank-second: #D2B99F;\n  --rank-third: #C8804A;\n  --success: #55CEA2;\n  --google-bg: #F8F7F4;\n  --google-text: #17110F;\n  --panel-shadow: 0 8px 26px rgba(255, 118, 29, 0.10);\n}\n\n[data-theme=\"glacier\"] [style*=\"var(--panel-bg)\"],\n[data-theme=\"solar-flare\"] [style*=\"var(--panel-bg)\"] {\n  box-shadow: var(--panel-shadow);\n}";
+const THEME_CSS = `[data-theme="solar-flare"] [style*="var(--panel-bg)"] { box-shadow: var(--panel-shadow); }`;
 
 const FORMATS = ["Single elimination", "Double elimination", "Round robin", "Swiss", "Group stage"];
 
@@ -1481,7 +1481,6 @@ function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDele
 
 
 export default function App() {
-  const [theme, setTheme] = useState(() => localStorage.getItem("grindinfo-theme") || "glacier");
   const [tournaments, setTournaments] = useState([]);
   const [selectedTeams, setSelectedTeams] = useState([]);
   const [selectedMatches, setSelectedMatches] = useState([]);
@@ -1830,11 +1829,8 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    localStorage.setItem("grindinfo-theme", theme);
-  }, [theme]);
-
-  useEffect(() => {
     ensureFonts();
+    localStorage.removeItem("grindinfo-theme");
   }, []);
 
   useEffect(() => {
@@ -2370,7 +2366,7 @@ export default function App() {
 
   if (authLoading) {
     return (
-      <div style={shellStyle}>
+      <div style={shellStyle} data-theme="solar-flare">
         <div style={{ color: "var(--text-muted)", fontFamily: "'Inter', sans-serif", padding: 40, textAlign: "center" }}>
           <LoadingScreen label="Loading GrindInfo" />
         </div>
@@ -2380,7 +2376,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div style={shellStyle}>
+      <div style={shellStyle} data-theme="solar-flare">
         <div style={{ color: "var(--text-muted)", fontFamily: "'Inter', sans-serif", padding: 40, textAlign: "center" }}>
           <LoadingScreen label="Loading tournaments" />
         </div>
@@ -2389,7 +2385,7 @@ export default function App() {
   }
 
   return (
-    <div style={shellStyle} data-theme={theme}>
+    <div style={shellStyle} data-theme="solar-flare">
       <style>{THEME_CSS}</style>
       <style>{`
         * { box-sizing: border-box; }
@@ -2402,7 +2398,7 @@ export default function App() {
         @keyframes sl-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
       `}</style>
 
-        <Header saving={saving} user={user} guestMode={guestMode} onSignInClick={() => setAuthDialogOpen((open) => !open)} onSignOut={handleSignOut} theme={theme} setTheme={setTheme} onNavigate={setSection} onEditProfile={() => setShowProfileModal(true)} dashboardRole={dashboardRole} />
+        <Header saving={saving} user={user} guestMode={guestMode} onSignInClick={() => setAuthDialogOpen((open) => !open)} onSignOut={handleSignOut} onNavigate={setSection} onEditProfile={() => setShowProfileModal(true)} dashboardRole={dashboardRole} />
 
       <div style={{ maxWidth: 980, margin: "0 auto", padding: "16px 20px 0" }}>
         <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--border)" }}>
@@ -2555,7 +2551,7 @@ const shellStyle = {
   fontFamily: "'Inter', sans-serif",
 };
 
-function Header({ saving, user, guestMode, onSignInClick, onSignOut, theme, setTheme, onNavigate, onEditProfile, dashboardRole }) {
+function Header({ saving, user, guestMode, onSignInClick, onSignOut, onNavigate, onEditProfile, dashboardRole }) {
   const displayName = user?.displayName || user?.email || "Player";
   const initials = safeProfileName(user?.displayName).slice(0, 1).toUpperCase();
 
@@ -2596,12 +2592,6 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, theme, setT
               <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>{displayName}</div>
               <Button variant="ghost" style={{ width: "100%", marginBottom: 12 }} onClick={(event) => { onEditProfile(); event.currentTarget.closest("details")?.removeAttribute("open"); }}>Edit my profile</Button>
               {dashboardRole && <Button variant="ghost" style={{ width: "100%", marginBottom: 12 }} onClick={(event) => { onNavigate("dashboard"); event.currentTarget.closest("details")?.removeAttribute("open"); }}>{dashboardRole === "owner" ? "Owner dashboard" : "Support dashboard"}</Button>}
-              <Field label="Theme">
-                <Select value={theme} onChange={(event) => setTheme(event.target.value)}>
-                  <option value="glacier">Glacier (default)</option>
-                  <option value="solar-flare">Solar Flare (dark)</option>
-                </Select>
-              </Field>
               <Button variant="ghost" style={{ width: "100%", marginTop: 14 }} onClick={onSignOut}>
                 Sign out
               </Button>
