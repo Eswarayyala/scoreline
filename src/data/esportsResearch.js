@@ -1,4 +1,5 @@
 import { bannerForGame } from "./platformShowcase";
+import { normalizeEdition } from "./vaultDeskSchema";
 
 export const ESPORTS_RESEARCH = [
   {
@@ -1665,7 +1666,7 @@ export function seedResearchCmsRecords() {
 export function researchVaultSlides() {
   return [...ESPORTS_RESEARCH]
     .map((game) => {
-      const editions = editionsNewestFirst(game.editions);
+      const editions = editionsNewestFirst(game.editions).map((edition) => normalizeEdition(edition, game.game));
       const latest = editions[0];
       const oldest = editions[editions.length - 1];
       const top = (rankPrefix) => {

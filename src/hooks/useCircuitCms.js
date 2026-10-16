@@ -5,6 +5,7 @@ import { CIRCUIT_CMS_MOCK } from "../data/circuitCmsMock";
 import { VAULT_SLIDES } from "../data/platformShowcase";
 import { seedResearchCmsRecords } from "../data/esportsResearch";
 import { buildFilterGames } from "../data/gameCatalog";
+import { normalizeEdition } from "../data/vaultDeskSchema";
 
 const STORAGE_KEY = "grindinfo-circuit-cms-v2";
 const CMS_COLLECTION = "circuitCms";
@@ -194,6 +195,10 @@ export function useCircuitCms({ canWrite = false } = {}) {
   const researchSlides = useMemo(
     () => records
       .filter((item) => item.surface === "research" || item.research)
+      .map((item) => ({
+        ...item,
+        editions: (item.editions || []).map((edition) => normalizeEdition(edition, item.game)),
+      }))
       .sort((a, b) => Number(b.editions?.[0]?.year || 0) - Number(a.editions?.[0]?.year || 0)),
     [records],
   );
