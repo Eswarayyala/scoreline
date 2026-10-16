@@ -374,6 +374,38 @@ function isTournamentArchived(t) {
   return Date.now() > cutoff;
 }
 
+function hasPostedResults(t) {
+  const results = t?.results;
+  if (!results || typeof results !== "object") return false;
+  return ["winner", "mvp", "runnerUp", "secondRunnerUp"].some((key) => String(results[key] || "").trim());
+}
+
+function managesTournament(t, uid) {
+  if (!t || !uid) return false;
+  return t.adminUserId === uid || (Array.isArray(t.coAdminUserIds) && t.coAdminUserIds.includes(uid));
+}
+
+function DeskFold({ title, defaultOpen = false, children }) {
+  return (
+    <details open={defaultOpen} style={{ marginTop: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+      <summary
+        style={{
+          cursor: "pointer",
+          padding: "14px 16px",
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: 12,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: "var(--text-muted)",
+        }}
+      >
+        {title}
+      </summary>
+      <div style={{ padding: "0 16px 16px" }}>{children}</div>
+    </details>
+  );
+}
+
 function fmtDate(d) {
   if (!d) return "TBD";
   try {
@@ -614,21 +646,25 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowse
 
         <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {mode === "signup" && (
+            <>
             <Field label="Player name">
               <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="ghostpeak" maxLength={16} required />
             </Field>
             <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -6 }}>3–16 letters, numbers, or underscore. GrindInfo adds a #4-digit code, like ghostpeak#4821.</div>
             {name && !isValidPlayerName(name) && <div role="alert" style={{ fontSize: 12, color: "var(--danger)" }}>Use 3–16 letters, numbers, or underscore. Do not type the #code yourself.</div>}
+            </>
           )}
           {mode === "signup" ? (
             <Field label="Email">
               <TextInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
             </Field>
           ) : (
+            <>
             <Field label="GrindInfo ID or email">
               <TextInput value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="ghostpeak#1234" autoComplete="username" required />
             </Field>
             <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -6 }}>Use your Name#1234 ID and password, or the email you registered.</div>
+            </>
           )}
           <Field label="Password">
             <TextInput
@@ -1274,13 +1310,21 @@ function RegistrationPanel({ tournament, requests, currentUserId, currentUserNam
   const joiningOpen = tournament.registrationOpen !== false && !isTournamentArchived(tournament) && !full;
   const slotLabel = Number(tournament.maxSlots) > 0 ? `${approved.length}/${tournament.maxSlots} ${isCustomRoomEvent(tournament) ? "players" : "slots"}` : `${approved.length} joined`;
   return (
-    <section style={{ marginTop: 20, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
-      <Eyebrow>{openJoin ? "Open join" : "Request to join"} · {slotLabel}</Eyebrow>
+    <section style={{ marginTop: isAdmin ? 0 : 20, padding: isAdmin ? 0 : 16, background: isAdmin ? "transparent" : "var(--panel-bg)", border: isAdmin ? "none" : "1px solid var(--border)" }}>
+      {isAdmin ? (
+        <Eyebrow>{openJoin ? "Free join" : "Request to join"} · {slotLabel}</Eyebrow>
+      ) : (
+        <Eyebrow>{mine ? `Your place · ${mine.status}` : joiningOpen ? "Enter this tournament" : "Registration"}</Eyebrow>
+      )}
       <div style={{ fontSize: 13, color: "var(--text-muted)", margin: "8px 0 12px" }}>
-        {full ? "This tournament is full." : mine ? `Your request is ${mine.status}.` : currentUserId ? (openJoin ? "Join now. No host approval needed." : "Request a place. The tournament host or co-host must approve it.") : "Sign in to take a place in this tournament."}
+        {full ? "This tournament is full." : mine ? `Your request is ${mine.status}.` : currentUserId
+          ? (isAdmin
+            ? (openJoin ? "Join now. No host approval needed." : "Request a place. The tournament host or co-host must approve it.")
+            : "Join if you want a place. The host decides how entries work.")
+          : "Sign in to take a place in this tournament."}
       </div>
-      {!currentUserId && joiningOpen && <Button onClick={onSignIn}>{openJoin ? "Sign in to join" : "Sign in to request a place"}</Button>}
-      {currentUserId && !isAdmin && !mine && joiningOpen && <Button onClick={() => { setShowJoinDisclaimer(true); onDisclaimerVisibilityChange(true); }}>{openJoin ? "Join now" : "Request to join"}</Button>}
+      {!currentUserId && joiningOpen && <Button onClick={onSignIn}>Sign in to join</Button>}
+      {currentUserId && !isAdmin && !mine && joiningOpen && <Button onClick={() => { setShowJoinDisclaimer(true); onDisclaimerVisibilityChange(true); }}>Join</Button>}
       {!isAdmin && !joiningOpen && !mine && <div style={{ color: "var(--text-dim)", fontSize: 12 }}>{full ? "No places left." : "Registration is closed."}</div>}
       {isAdmin && (
         <div style={{ display: "grid", gap: 8 }}>
@@ -1308,16 +1352,8 @@ function RegistrationPanel({ tournament, requests, currentUserId, currentUserNam
   );
 }
 
-function RoomLobbyPanel({ isAdmin, canSee, lobby, onSave }) {
-  const [roomId, setRoomId] = useState(lobby?.roomId || "");
-  const [roomPassword, setRoomPassword] = useState(lobby?.roomPassword || "");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+function RoomLobbyPanel({ isAdmin, canSee, lobby }) {
   const [copied, setCopied] = useState("");
-  useEffect(() => {
-    setRoomId(lobby?.roomId || "");
-    setRoomPassword(lobby?.roomPassword || "");
-  }, [lobby?.roomId, lobby?.roomPassword]);
   const copyValue = async (value, label) => {
     try {
       await navigator.clipboard.writeText(value);
@@ -1328,29 +1364,12 @@ function RoomLobbyPanel({ isAdmin, canSee, lobby, onSave }) {
     }
   };
   const posted = Boolean(lobby?.roomId && lobby?.roomPassword);
-  const submit = async () => {
-    const nextId = roomId.trim();
-    const nextPassword = roomPassword.trim();
-    if (!nextId || !nextPassword) { setError("Enter both the room ID and password."); return; }
-    setBusy(true); setError("");
-    try { await onSave({ roomId: nextId, roomPassword: nextPassword }); }
-    catch { setError("Couldn't share room details. Try again."); }
-    finally { setBusy(false); }
-  };
+  if (isAdmin) return null;
+  if (!canSee) return null;
   return (
     <section style={{ marginTop: 16, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
       <Eyebrow>Custom room</Eyebrow>
-      {isAdmin ? (
-        <>
-          <div style={{ color: "var(--text-muted)", fontSize: 12, margin: "7px 0 12px" }}>Share the in-game room ID and password with approved players. Guests cannot see this.</div>
-          <div style={{ display: "grid", gap: 10, maxWidth: 420 }}>
-            <Field label="Room ID"><TextInput value={roomId} onChange={(event) => setRoomId(event.target.value)} maxLength={40} placeholder="Room ID" /></Field>
-            <Field label="Room password"><TextInput value={roomPassword} onChange={(event) => setRoomPassword(event.target.value)} maxLength={40} placeholder="Room password" /></Field>
-          </div>
-          {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 13, marginTop: 8 }}>{error}</div>}
-          <div style={{ marginTop: 12 }}><Button disabled={busy} onClick={submit}>{busy ? "Sharing…" : posted ? "Update room details" : "Share with approved players"}</Button></div>
-        </>
-      ) : canSee && posted ? (
+      {posted ? (
         <>
           <div style={{ color: "var(--text-muted)", fontSize: 12, margin: "7px 0 12px" }}>Host posted the custom room. Copy these into the game.</div>
           <div style={{ display: "grid", gap: 10, maxWidth: 420 }}>
@@ -1365,9 +1384,7 @@ function RoomLobbyPanel({ isAdmin, canSee, lobby, onSave }) {
           </div>
         </>
       ) : (
-        <div style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 7 }}>
-          {canSee ? "The host has not posted a room ID and password yet." : "Room ID and password appear here after the host posts them and your join request is approved."}
-        </div>
+        <div style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 7 }}>The host has not posted a room ID and password yet.</div>
       )}
     </section>
   );
@@ -1387,16 +1404,15 @@ function CoAdminPanel({ tournament, isOwner, onChange, onAddByPlayerId }) {
     finally { setSaving(false); }
   };
   return (
-    <section style={{ marginTop: 16, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
-      <Eyebrow>Co-host access</Eyebrow>
-      <div style={{ color: "var(--text-muted)", fontSize: 12, margin: "7px 0 10px" }}>Enter the player's GrindInfo ID (the number after #). The player must have a profile and be visible in player search. Co-hosts can manage registrations and tournament details; only you can transfer ownership or delete the tournament.</div>
+    <div>
+      <div style={{ color: "var(--text-muted)", fontSize: 12, margin: "0 0 10px" }}>Enter the player's GrindInfo ID (the number after #). The player must have a profile and be visible in player search. Co-hosts can manage registrations and tournament details; only you can transfer ownership or delete the tournament.</div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <TextInput aria-label="Co-host GrindInfo ID" value={playerTag} onChange={(event) => setPlayerTag(event.target.value)} placeholder="PlayerName#1234" />
         <Button disabled={!playerTag.trim() || saving} onClick={addByTag}>{saving ? "Checking…" : "Add co-host"}</Button>
       </div>
       {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 12, marginTop: 8 }}>{error}</div>}
       {ids.map((id) => <div key={id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", padding: "8px 0", marginTop: 8, fontSize: 12 }}>{tags[id] ? `GrindInfo #${tags[id]}` : "Existing co-host"}<Button variant="danger" onClick={() => onChange(ids.filter((item) => item !== id), Object.fromEntries(Object.entries(tags).filter(([key]) => key !== id)))}>Remove</Button></div>)}
-    </section>
+    </div>
   );
 }
 
@@ -1967,7 +1983,6 @@ export default function App() {
   const [toast, setToast] = useState("");
   const [view, setView] = useState(() => /^\/tournaments\/[^/]+/.test(window.location.pathname) || new URLSearchParams(window.location.search).has("tournament") ? "detail" : "list");
   const [selectedId, setSelectedId] = useState(() => window.location.pathname.match(/^\/tournaments\/([^/]+)/)?.[1] || new URLSearchParams(window.location.search).get("tournament"));
-  const [detailTab, setDetailTab] = useState("teams");
   const [showNewTournament, setShowNewTournament] = useState(false);
   const [joinDisclaimerOpen, setJoinDisclaimerOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState(null);
@@ -2471,8 +2486,8 @@ export default function App() {
         coAdminPlayerTags: {},
         status: event.status || "upcoming",
         kind: event.kind || (event.format === "Custom room" ? "custom_room" : "bracket"),
-        joinMode: event.joinMode || "request",
-        maxSlots: Number(event.maxSlots) || 0,
+        joinMode: event.joinMode === "open" ? "open" : "request",
+        maxSlots: Math.max(0, Math.min(256, Math.trunc(Number(event.maxSlots) || 0))),
         blurb: String(event.blurb || "").slice(0, 400),
         posterUrl: String(event.posterUrl || "").slice(0, 500),
         isLegacyImport: false,
@@ -2487,7 +2502,7 @@ export default function App() {
       showToast("Tournament created");
       setShowNewTournament(false);
     } catch (e) {
-      showToast("Couldn't create tournament — try again");
+      showToast(e?.message || "Couldn't create tournament — try again");
     } finally {
       setSaving(false);
     }
@@ -2634,7 +2649,9 @@ export default function App() {
 
   const updateTournamentSettings = async (tournamentId, patch) => {
     try {
-      await updateDoc(tournamentDocRef(tournamentId), { ...patch, updatedAt: Date.now() });
+      const next = { ...patch, updatedAt: Date.now() };
+      if (next.maxSlots != null) next.maxSlots = Math.max(0, Math.min(256, Math.trunc(Number(next.maxSlots) || 0)));
+      await updateDoc(tournamentDocRef(tournamentId), next);
       showToast("Tournament settings saved");
     } catch (e) {
       showToast("Couldn't update tournament settings. Check Firestore rules.");
@@ -3033,7 +3050,7 @@ export default function App() {
                   archiveSubmissions={archiveSubmissions}
                   onArchiveDecision={decideArchiveSubmission}
                   auditLog={auditLog}
-                  onOpenTournament={(id) => { setDetailTab("teams"); navigate(`/tournaments/${id}`); }}
+                  onOpenTournament={(id) => navigate(`/tournaments/${id}`)}
                   onImportArchive={importArchiveEntries}
                 />
               </div>
@@ -3103,7 +3120,7 @@ export default function App() {
                       currentUserName={grindHandle(safeProfileName(myProfile?.displayName, user?.displayName), myProfile?.playerTag)}
                       pendingInvites={user ? tournamentInvites.filter((item) => item.inviteeUid === user.uid && item.status === "pending") : []}
                       onInviteDecision={decideTournamentInvite}
-                      onOpen={(id) => { setDetailTab("teams"); navigate(`/tournaments/${id}`); }}
+                      onOpen={(id) => navigate(`/tournaments/${id}`)}
                       onNew={() => user ? setShowNewTournament(true) : setAuthDialogOpen(true)}
                       onSignIn={() => setAuthDialogOpen(true)}
                     />
@@ -3115,8 +3132,6 @@ export default function App() {
                     teams={selectedTeams}
                     matches={selectedMatches}
                     stats={selectedStats}
-                    tab={detailTab}
-                    setTab={setDetailTab}
                     isAdmin={isAdmin}
                     isOwner={isOwner}
                     currentUserId={user?.uid || null}
@@ -3392,8 +3407,8 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
                   </div>
                 )}
                 <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-dim)" }}>
-                  {(t.status || "upcoming").toUpperCase()} · {t.joinMode === "open" ? "Open join" : "Request to join"}
-                  {Number(t.maxSlots) > 0 ? ` · ${t.maxSlots} slots` : ""}
+                  {(t.status || "upcoming").toUpperCase()}
+                  {managesTournament(t, currentUserId) ? ` · ${t.joinMode === "open" ? "Free join" : "Request to join"}${Number(t.maxSlots) > 0 ? ` · ${t.maxSlots} slots` : ""}` : ""}
                 </div>
                 <div style={{ marginTop: 6, fontSize: 12, color: "var(--text-dim)" }}>
                   {fmtDate(t.startDate)} {t.endDate ? `– ${fmtDate(t.endDate)}` : ""}
@@ -3495,7 +3510,7 @@ function NewTournamentModal({ onClose, onCreate, slides = [] }) {
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, margin: "4px 0 8px" }}>
           Create tournament
         </div>
-        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-muted)" }}>No flyer upload. The game you pick fills the card art automatically.</p>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-muted)" }}>No flyer upload. Set join type, team cap, and optional room codes here. Card art comes from the game.</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <Field label="Tournament name">
             <TextInput
@@ -3542,6 +3557,7 @@ function NewTournamentModal({ onClose, onCreate, slides = [] }) {
               </Select>
             </Field>
           )}
+          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.08em", color: "var(--accent-secondary)", textTransform: "uppercase" }}>Host setup</div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 150 }}>
               <Field label="Who can enter">
@@ -3615,8 +3631,8 @@ function TournamentResults({ results, isAdmin, onSave }) {
     setSecondRunnerUp(results?.secondRunnerUp || "");
   }, [results?.winner, results?.mvp, results?.runnerUp, results?.secondRunnerUp]);
 
-  const hasResults = [results?.winner, results?.mvp, results?.runnerUp, results?.secondRunnerUp]
-    .some((value) => typeof value === "string" && value.trim());
+  const hasResults = hasPostedResults({ results });
+  if (!isAdmin && !hasResults) return null;
 
   const submit = () => {
     const nextResults = {
@@ -3637,10 +3653,10 @@ function TournamentResults({ results, isAdmin, onSave }) {
     <section
       aria-label="Tournament results"
       style={{
-        marginTop: 24,
-        padding: 18,
-        border: "1px solid var(--border)",
-        background: "var(--panel-bg)",
+        marginTop: isAdmin ? 0 : 24,
+        padding: isAdmin ? 0 : 18,
+        border: isAdmin ? "none" : "1px solid var(--border)",
+        background: isAdmin ? "transparent" : "var(--panel-bg)",
         display: "flex",
         flexDirection: "column",
         gap: 14,
@@ -3707,31 +3723,48 @@ function TournamentInvitePanel({ tournament, friends, invites, onInvite }) {
   </section>;
 }
 
-function HostControls({ tournament, requests, onUpdateSettings, onCloseTournament }) {
+function HostControls({ tournament, requests, lobby, onUpdateSettings, onCloseTournament, onSaveLobby }) {
   const [joinMode, setJoinMode] = useState(tournament.joinMode === "open" ? "open" : "request");
   const [maxSlots, setMaxSlots] = useState(String(tournament.maxSlots ?? 0));
   const [blurb, setBlurb] = useState(tournament.blurb || "");
   const [kind, setKind] = useState(isCustomRoomEvent(tournament) ? "custom_room" : "bracket");
+  const [roomId, setRoomId] = useState(lobby?.roomId || "");
+  const [roomPassword, setRoomPassword] = useState(lobby?.roomPassword || "");
+  const [roomError, setRoomError] = useState("");
+  const [roomBusy, setRoomBusy] = useState(false);
   useEffect(() => {
     setJoinMode(tournament.joinMode === "open" ? "open" : "request");
     setMaxSlots(String(tournament.maxSlots ?? 0));
     setBlurb(tournament.blurb || "");
     setKind(isCustomRoomEvent(tournament) ? "custom_room" : "bracket");
   }, [tournament.joinMode, tournament.maxSlots, tournament.blurb, tournament.kind, tournament.format]);
+  useEffect(() => {
+    setRoomId(lobby?.roomId || "");
+    setRoomPassword(lobby?.roomPassword || "");
+  }, [lobby?.roomId, lobby?.roomPassword]);
   const save = () => onUpdateSettings({
     joinMode,
-    maxSlots: Math.max(0, Math.min(256, Number(maxSlots) || 0)),
+    maxSlots: Math.max(0, Math.min(256, Math.trunc(Number(maxSlots) || 0))),
     blurb: blurb.trim().slice(0, 400),
     kind,
     format: kind === "custom_room" ? "Custom room" : (tournament.format === "Custom room" ? FORMATS[0] : tournament.format),
     registrationOpen: tournament.registrationOpen !== false,
   });
+  const saveRoom = async () => {
+    const nextId = roomId.trim();
+    const nextPassword = roomPassword.trim();
+    if (!nextId || !nextPassword) { setRoomError("Enter both the room ID and password."); return; }
+    setRoomBusy(true); setRoomError("");
+    try { await onSaveLobby({ roomId: nextId, roomPassword: nextPassword }); }
+    catch { setRoomError("Couldn't share room details. Try again."); }
+    finally { setRoomBusy(false); }
+  };
+  const postedRoom = Boolean(lobby?.roomId && lobby?.roomPassword);
   const setLive = () => onUpdateSettings({ status: "live", archived: false, registrationOpen: true });
   const setUpcoming = () => onUpdateSettings({ status: "upcoming", archived: false });
   return (
-    <section style={{ marginTop: 16, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
-      <Eyebrow>Host desk</Eyebrow>
-      <div style={{ fontSize: 12, color: "var(--text-muted)", margin: "7px 0 12px" }}>Control capacity, join style, and whether this is a full bracket or just a custom room.</div>
+    <div>
+      <div style={{ fontSize: 12, color: "var(--text-muted)", margin: "0 0 12px" }}>Join type, team cap, live/closed, and room codes live here. Visitors only see what you post.</div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
         <Button variant={tournament.status === "upcoming" ? "primary" : "ghost"} onClick={setUpcoming}>Upcoming</Button>
         <Button variant={tournament.status === "live" ? "primary" : "ghost"} onClick={setLive}>Live</Button>
@@ -3759,10 +3792,20 @@ function HostControls({ tournament, requests, onUpdateSettings, onCloseTournamen
         <Field label="Basic info">
           <textarea value={blurb} maxLength={400} rows={3} onChange={(event) => setBlurb(event.target.value)} style={{ ...inputStyle, resize: "vertical" }} />
         </Field>
+        <Field label="Room ID">
+          <TextInput value={roomId} onChange={(event) => setRoomId(event.target.value)} maxLength={40} placeholder="In-game room ID" />
+        </Field>
+        <Field label="Room password">
+          <TextInput value={roomPassword} onChange={(event) => setRoomPassword(event.target.value)} maxLength={40} placeholder="In-game password" />
+        </Field>
       </div>
-      <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-dim)" }}>{approvedCount(requests)} currently approved.</div>
-      <div style={{ marginTop: 10 }}><Button onClick={save}>Save host settings</Button></div>
-    </section>
+      {roomError && <div role="alert" style={{ color: "var(--danger)", fontSize: 13, marginTop: 8 }}>{roomError}</div>}
+      <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-dim)" }}>{approvedCount(requests)} currently approved. Room codes stay hidden until you post them and a player is approved.</div>
+      <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <Button onClick={save}>Save host settings</Button>
+        <Button variant="ghost" disabled={roomBusy} onClick={saveRoom}>{roomBusy ? "Sharing…" : postedRoom ? "Update room codes" : "Post room codes"}</Button>
+      </div>
+    </div>
   );
 }
 
@@ -3772,8 +3815,6 @@ function TournamentDetail(props) {
     teams,
     matches,
     stats,
-    tab,
-    setTab,
     isAdmin,
     isOwner,
     currentUserId,
@@ -3805,13 +3846,6 @@ function TournamentDetail(props) {
     onAddStat,
     onDeleteStat,
   } = props;
-
-  const tabs = [
-    { id: "teams", label: `Teams (${teams.length})` },
-    { id: "matches", label: `Matches (${matches.length})` },
-    { id: "stats", label: `Player stats (${stats.length})` },
-    { id: "leaderboard", label: "Leaderboard" },
-  ];
 
   return (
     <div style={{ paddingTop: 24 }}>
@@ -3891,56 +3925,74 @@ function TournamentDetail(props) {
       </div>
 
       {tournament.blurb && <p style={{ marginTop: 14, color: "var(--text-muted)", whiteSpace: "pre-wrap", maxWidth: 680 }}>{tournament.blurb}</p>}
-      {isAdmin && <HostControls tournament={tournament} requests={registrations || []} onUpdateSettings={onUpdateSettings} onCloseTournament={onCloseTournament} />}
-      <RegistrationPanel tournament={tournament} requests={registrations || []} currentUserId={currentUserId} currentUserName={currentUserName} isAdmin={isAdmin} onRequest={onRequestRegistration} onDecision={onRegistrationDecision} disclaimer={props.registrationDisclaimer} onDisclaimerVisibilityChange={props.onJoinDisclaimerVisibilityChange} onSignIn={onSignIn} />
-      <RoomLobbyPanel isAdmin={isAdmin} canSee={isAdmin || (registrations || []).some((request) => request.playerId === currentUserId && request.status === "approved")} lobby={lobby} onSave={onSaveLobby} />
+      {isAdmin && (
+        <DeskFold title="Host desk · join type, cap, room codes" defaultOpen>
+          <HostControls tournament={tournament} requests={registrations || []} lobby={lobby} onUpdateSettings={onUpdateSettings} onCloseTournament={onCloseTournament} onSaveLobby={onSaveLobby} />
+          <div style={{ marginTop: 18 }}>
+            <RegistrationPanel tournament={tournament} requests={registrations || []} currentUserId={currentUserId} currentUserName={currentUserName} isAdmin={isAdmin} onRequest={onRequestRegistration} onDecision={onRegistrationDecision} disclaimer={props.registrationDisclaimer} onDisclaimerVisibilityChange={props.onJoinDisclaimerVisibilityChange} onSignIn={onSignIn} />
+          </div>
+        </DeskFold>
+      )}
+      {!isAdmin && (
+        <RegistrationPanel tournament={tournament} requests={registrations || []} currentUserId={currentUserId} currentUserName={currentUserName} isAdmin={isAdmin} onRequest={onRequestRegistration} onDecision={onRegistrationDecision} disclaimer={props.registrationDisclaimer} onDisclaimerVisibilityChange={props.onJoinDisclaimerVisibilityChange} onSignIn={onSignIn} />
+      )}
+      <RoomLobbyPanel isAdmin={isAdmin} canSee={!isAdmin && (registrations || []).some((request) => request.playerId === currentUserId && request.status === "approved")} lobby={lobby} />
       {currentUserId && <TournamentInvitePanel tournament={tournament} friends={friends} invites={tournamentInvites} onInvite={(friend) => onInviteFriend(tournament, friend)} />}
-      <CoAdminPanel tournament={tournament} isOwner={isOwner} onChange={(ids, tags) => onCoAdminsChange(ids, tags)} onAddByPlayerId={(playerTag) => onAddCoAdmin(tournament, playerTag)} />
-      {!isCustomRoomEvent(tournament) && <TournamentResults results={tournament.results} isAdmin={isAdmin} onSave={onSaveResults} />}
+      {isOwner && (
+        <DeskFold title="Co-host">
+          <CoAdminPanel tournament={tournament} isOwner={isOwner} onChange={(ids, tags) => onCoAdminsChange(ids, tags)} onAddByPlayerId={(playerTag) => onAddCoAdmin(tournament, playerTag)} />
+        </DeskFold>
+      )}
+      {!isCustomRoomEvent(tournament) && (isAdmin || hasPostedResults(tournament)) && (
+        isAdmin ? (
+          <DeskFold title="Final results">
+            <TournamentResults results={tournament.results} isAdmin={isAdmin} onSave={onSaveResults} />
+          </DeskFold>
+        ) : (
+          <TournamentResults results={tournament.results} isAdmin={isAdmin} onSave={onSaveResults} />
+        )
+      )}
 
-      {!isCustomRoomEvent(tournament) && (
-        <>
-      <div style={{ display: "flex", gap: 4, marginTop: 28, borderBottom: "1px solid var(--border)", flexWrap: "wrap" }}>
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            style={{
-              background: "none",
-              border: "none",
-              borderBottom: tab === t.id ? "2px solid var(--accent)" : "2px solid transparent",
-              color: tab === t.id ? "var(--page-text)" : "var(--text-muted)",
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: 12,
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
-              padding: "10px 14px",
-              cursor: "pointer",
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ paddingTop: 26 }}>
-        {tab === "teams" && <TeamsPanel teams={teams} isAdmin={isAdmin} onAdd={onAddTeam} onDelete={onDeleteTeam} />}
-        {tab === "matches" && (
-          <MatchesPanel
-            teams={teams}
-            matches={matches}
-            isAdmin={isAdmin}
-            onAdd={onAddMatch}
-            onUpdate={onUpdateMatch}
-            onDelete={onDeleteMatch}
-          />
-        )}
-        {tab === "stats" && (
-          <StatsPanel teams={teams} matches={matches} stats={stats} isAdmin={isAdmin} onAdd={onAddStat} onDelete={onDeleteStat} />
-        )}
-        {tab === "leaderboard" && <LeaderboardPanel teams={teams} stats={stats} />}
-      </div>
-        </>
+      {!isCustomRoomEvent(tournament) && (isAdmin || teams.length > 0 || matches.length > 0 || stats.length > 0) && (
+        isAdmin ? (
+          <>
+            <DeskFold title={`Teams (${teams.length})`}>
+              <TeamsPanel teams={teams} isAdmin={isAdmin} onAdd={onAddTeam} onDelete={onDeleteTeam} />
+            </DeskFold>
+            <DeskFold title={`Matches (${matches.length})`}>
+              <MatchesPanel teams={teams} matches={matches} isAdmin={isAdmin} onAdd={onAddMatch} onUpdate={onUpdateMatch} onDelete={onDeleteMatch} />
+            </DeskFold>
+            <DeskFold title={`Player stats (${stats.length})`}>
+              <StatsPanel teams={teams} matches={matches} stats={stats} isAdmin={isAdmin} onAdd={onAddStat} onDelete={onDeleteStat} />
+            </DeskFold>
+            <DeskFold title="Leaderboard">
+              <LeaderboardPanel teams={teams} stats={stats} />
+            </DeskFold>
+          </>
+        ) : (
+          <>
+            {teams.length > 0 && (
+              <DeskFold title={`Teams (${teams.length})`} defaultOpen>
+                <TeamsPanel teams={teams} isAdmin={false} onAdd={onAddTeam} onDelete={onDeleteTeam} />
+              </DeskFold>
+            )}
+            {matches.length > 0 && (
+              <DeskFold title={`Matches (${matches.length})`} defaultOpen>
+                <MatchesPanel teams={teams} matches={matches} isAdmin={false} onAdd={onAddMatch} onUpdate={onUpdateMatch} onDelete={onDeleteMatch} />
+              </DeskFold>
+            )}
+            {stats.length > 0 && (
+              <DeskFold title={`Player stats (${stats.length})`} defaultOpen>
+                <StatsPanel teams={teams} matches={matches} stats={stats} isAdmin={false} onAdd={onAddStat} onDelete={onDeleteStat} />
+              </DeskFold>
+            )}
+            {stats.length > 0 && (
+              <DeskFold title="Leaderboard">
+                <LeaderboardPanel teams={teams} stats={stats} />
+              </DeskFold>
+            )}
+          </>
+        )
       )}
     </div>
   );
