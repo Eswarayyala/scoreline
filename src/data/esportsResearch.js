@@ -1642,16 +1642,44 @@ export function yearlyStatsFromEditions(editions = []) {
 export function flattenEwcEditions(slides = []) {
   return slides.flatMap((slide) =>
     editionsNewestFirst(slide.editions || [])
-      .filter((edition) => isEwcEdition(edition) || slide.research)
-      .filter((edition) => edition.eventScope !== "region" && edition.eventScope !== "random")
+      .filter((edition) => {
+        if (edition.eventScope === "region" || edition.eventScope === "random") return false;
+        return isEwcEdition(edition) || slide.research || slide.eventScope === "ewc";
+      })
       .map((edition) => ({
         ...edition,
+        eventScope: "ewc",
         game: slide.game,
         slug: slide.slug,
         dossier: slide.title,
         peakPrizePool: slide.peakPrizePool,
       })),
   ).sort((a, b) => Number(b.year) - Number(a.year) || String(a.game).localeCompare(String(b.game)));
+}
+
+export function groupEwcChampionships(editions = []) {
+  const groups = new Map();
+  editions.forEach((edition) => {
+    const year = String(edition.year || "");
+    const place = /paris/i.test(edition.event || "") ? "Paris" : /riyadh|gamers8/i.test(edition.event || "") ? "Riyadh" : "";
+    const family = /gamers8/i.test(edition.event || "") ? "Gamers8" : "Esports World Cup";
+    const key = `${year}|${family}|${place}`;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        year,
+        title: [family, year, place && `(${place})`].filter(Boolean).join(" "),
+        games: [],
+      });
+    }
+    groups.get(key).games.push(edition);
+  });
+  return [...groups.values()]
+    .sort((a, b) => Number(b.year) - Number(a.year) || String(a.title).localeCompare(String(b.title)))
+    .map((group) => ({
+      ...group,
+      games: [...group.games].sort((a, b) => String(a.game).localeCompare(String(b.game))),
+    }));
 }
 
 export function seedResearchCmsRecords() {
@@ -1670,7 +1698,10 @@ export function seedResearchCmsRecords() {
 export function researchVaultSlides() {
   return [...ESPORTS_RESEARCH]
     .map((game) => {
-      const editions = editionsNewestFirst(game.editions).map((edition) => normalizeEdition(edition, game.game));
+      const editions = editionsNewestFirst(game.editions).map((edition) => ({
+        ...normalizeEdition(edition, game.game),
+        eventScope: "ewc",
+      }));
       const latest = editions[0];
       const oldest = editions[editions.length - 1];
       const top = (rankPrefix) => {

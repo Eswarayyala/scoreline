@@ -47,6 +47,31 @@ export function findGameVault(records = [], game) {
   return records.find((item) => (item.surface === "research" || item.research) && gamesMatch(item.game, game));
 }
 
+function editionKey(edition = {}) {
+  return `${edition.year}|${normalizeGameKey(edition.event)}`;
+}
+
+export function mergeEwcEditions(seed = [], existing = []) {
+  const byKey = new Map();
+  seed.forEach((edition) => {
+    byKey.set(editionKey(edition), { ...edition, eventScope: edition.eventScope || "ewc" });
+  });
+  existing.forEach((edition) => {
+    const key = editionKey(edition);
+    const prior = byKey.get(key);
+    if (!prior) {
+      byKey.set(key, { ...edition, eventScope: edition.eventScope || "ewc" });
+      return;
+    }
+    byKey.set(key, {
+      ...prior,
+      ...edition,
+      eventScope: edition.eventScope === "region" ? "region" : prior?.eventScope === "region" ? "region" : "ewc",
+    });
+  });
+  return [...byKey.values()];
+}
+
 export function editionFromEvent(fields = {}) {
   const year = String(fields.eventDate || fields.year || "").match(/(\d{4})/)?.[1] || String(fields.year || "");
   return serializeEdition({
