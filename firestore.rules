@@ -7,6 +7,12 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/siteBans/$(request.auth.uid))
         && get(/databases/$(database)/documents/siteBans/$(request.auth.uid)).data.active == true;
     }
+    function isSiteRestricted() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/siteBans/$(request.auth.uid))
+        && get(/databases/$(database)/documents/siteBans/$(request.auth.uid)).data.restricted == true
+        && get(/databases/$(database)/documents/siteBans/$(request.auth.uid)).data.active != true;
+    }
 
     function isOwner(t) {
       return request.auth != null && !isSiteBanned() && request.auth.uid == t.adminUserId;
@@ -216,7 +222,8 @@ service cloud.firestore {
                'blog_published', 'blog_declined', 'blog_edited', 'blog_deleted',
                'archive_imported', 'archive_request_approved', 'archive_request_rejected',
                'blog_added_to_archive', 'report_reviewed', 'popup_saved', 'popup_deleted',
-             'support_granted', 'support_revoked', 'player_banned', 'player_unbanned'
+             'support_granted', 'support_revoked', 'player_banned', 'player_unbanned',
+               'player_restricted', 'player_unrestricted'
              ]
              && data.targetType in ['blog', 'archive', 'archiveSubmission', 'archiveEntry', 'report', 'popup', 'support', 'player']
              && data.targetId is string && data.targetId.size() > 0 && data.targetId.size() <= 128
@@ -308,6 +315,7 @@ service cloud.firestore {
       allow read: if canBrowsePublicData();
 
       allow create: if isActiveSiteUser()
+                    && !isSiteRestricted()
                     && request.resource.data.adminUserId == request.auth.uid
                     && request.resource.data.coAdminUserIds is list
                     && request.resource.data.coAdminUserIds.size() == 0
@@ -504,7 +512,7 @@ service cloud.firestore {
       allow update: if isSiteStaff()
                     && request.resource.data.diff(resource.data).affectedKeys()
                          .hasOnly(['status', 'reviewedAt'])
-                    && request.resource.data.status in ['reviewing', 'closed']
+                    && request.resource.data.status in ['reviewing', 'closed', 'archived']
                     && request.resource.data.reviewedAt is int;
       allow delete: if false;
     }
@@ -524,6 +532,7 @@ service cloud.firestore {
                     && (!request.resource.data.keys().hasAny(['recipientName']) || (request.resource.data.recipientName is string && request.resource.data.recipientName.size() <= 40))
 
                     && request.resource.data.status == 'pending'
+                    && !isSiteRestricted()
                     && !isBlocked(request.auth.uid, request.resource.data.recipientId)
                     && request.resource.data.createdAt is int;
       allow update: if isActiveSiteUser()
@@ -689,6 +698,7 @@ service cloud.firestore {
                     && validPlayerProfile(request.resource.data);
       allow update: if isActiveSiteUser()
                     && request.auth.uid == userId
+                    && (!isSiteRestricted() || request.resource.data.discoverable == false)
                     && validPlayerProfile(request.resource.data)
                     && (!resource.data.keys().hasAny(['playerTag'])
                         ? (!request.resource.data.keys().hasAny(['playerTag'])

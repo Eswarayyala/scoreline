@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { canWriteCircuitContent } from "../../lib/staffAccess";
 import { FILTER_GAMES } from "../../data/gameCatalog";
@@ -145,11 +146,11 @@ function ResearchForm({ initial, canWrite, games, onSave, onCancel }) {
   const patch = (key, value) => setForm((current) => ({ ...current, [key]: value }));
   const editions = form.editions?.length ? form.editions : [emptyEdition(form.game)];
 
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault();
     setError("");
     try {
-      onSave({
+      await onSave({
         ...form,
         surface: "research",
         research: true,
@@ -270,10 +271,36 @@ function CatalogDesk({ records, role, games, onSave, onDelete }) {
   );
 }
 
-export default function VaultResearchDesk({ records, role, onSave, onDelete, filterGames = FILTER_GAMES }) {
+export default function VaultResearchDesk({ records, role, onSave, onDelete, filterGames = FILTER_GAMES, focusId }) {
+  const navigate = useNavigate();
   const canWrite = canWriteCircuitContent(role);
-  const [editing, setEditing] = useState(null);
   const items = useMemo(() => records.filter((item) => item.surface === "research" || item.research), [records]);
+
+  if (focusId) {
+    const initial = focusId === "new"
+      ? { surface: "research", research: true }
+      : items.find((item) => item.id === focusId);
+    return (
+      <section className="space-y-4">
+        <Link to="/admin/portal?tab=vault" className="font-mono text-xs uppercase tracking-widest text-neon">← Game vaults</Link>
+        <h2 className="font-display text-3xl text-white">{focusId === "new" ? "New game vault" : initial?.title || "Edit game vault"}</h2>
+        {!initial && focusId !== "new" ? (
+          <p className="text-sm text-slate-400">That game vault is not in the desk.</p>
+        ) : (
+          <ResearchForm
+            initial={initial}
+            canWrite={canWrite}
+            games={filterGames}
+            onSave={async (draft) => {
+              const saved = await onSave(draft);
+              if (focusId === "new" && saved?.id) navigate(`/admin/portal/vault/${saved.id}`, { replace: true });
+            }}
+            onCancel={() => navigate("/admin/portal?tab=vault")}
+          />
+        )}
+      </section>
+    );
+  }
 
   return (
     <section className="space-y-4">
@@ -281,24 +308,15 @@ export default function VaultResearchDesk({ records, role, onSave, onDelete, fil
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-neon">Shared research desk</p>
           <h2 className="font-display text-3xl text-white">Game vaults</h2>
-          <p className="mt-1 text-sm text-slate-400">Season text, placings, kickouts, and a finals table that matches each game.</p>
+          <p className="mt-1 text-sm text-slate-400">Open a game in a new tab to edit. The rest of the list stays on this desk.</p>
         </div>
         {canWrite && (
-          <button type="button" onClick={() => setEditing({ surface: "research", research: true })} className="inline-flex items-center gap-1 rounded-full bg-neon px-4 py-2 text-sm font-semibold text-slate-950">
+          <a href="/admin/portal/vault/new" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full bg-neon px-4 py-2 text-sm font-semibold text-slate-950 no-underline">
             <Plus size={14} /> New game vault
-          </button>
+          </a>
         )}
       </div>
       <CatalogDesk records={records} role={role} games={filterGames} onSave={onSave} onDelete={onDelete} />
-      {editing && (
-        <ResearchForm
-          initial={editing}
-          canWrite={canWrite}
-          games={filterGames}
-          onSave={(draft) => { onSave(draft); setEditing(null); }}
-          onCancel={() => setEditing(null)}
-        />
-      )}
       <div className="grid gap-3">
         {items.map((item) => (
           <article key={item.id} className="flex items-start justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
@@ -308,7 +326,7 @@ export default function VaultResearchDesk({ records, role, onSave, onDelete, fil
             </div>
             {canWrite && (
               <div className="flex gap-3">
-                <button type="button" onClick={() => setEditing(item)} className="inline-flex items-center gap-1 text-xs text-neon"><Pencil size={12} /> Edit</button>
+                <a href={`/admin/portal/vault/${item.id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-neon no-underline"><Pencil size={12} /> Edit</a>
                 <button type="button" onClick={() => onDelete(item.id)} className="inline-flex items-center gap-1 text-xs text-rose-400"><Trash2 size={12} /> Remove</button>
               </div>
             )}

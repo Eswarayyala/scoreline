@@ -30,6 +30,16 @@ export default function VaultCarousel({ slides = VAULT_SLIDES }) {
     node?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", inline: "center", block: "nearest" });
   };
 
+  if (!items.length) {
+    return (
+      <section style={{ marginBottom: 8 }}>
+        <Link to="/vault" style={{ color: "inherit", textDecoration: "none" }}>
+          <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 40, margin: 0, letterSpacing: "0.02em" }}>The Vault</h1>
+        </Link>
+      </section>
+    );
+  }
+
   return (
     <section style={{ marginBottom: 8, overflow: "hidden", position: "relative", zIndex: 1 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>

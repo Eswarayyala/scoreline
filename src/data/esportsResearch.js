@@ -1682,6 +1682,23 @@ export function groupEwcChampionships(editions = []) {
     }));
 }
 
+export function ewcFloatingSlides(slides = []) {
+  return groupEwcChampionships(flattenEwcEditions(slides)).map((group, index) => ({
+    slug: `ewc-year-${String(group.key).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
+    title: group.title,
+    game: "Esports World Cup",
+    kicker: "EWC",
+    eventScope: "ewc",
+    surface: "ewc-window",
+    floating: true,
+    season: group.year,
+    summary: `${group.games.length} titles in this championship.`,
+    poster: bannerForGame(group.games[0]?.game),
+    championship: group,
+    floatingPriority: 80 - index,
+  }));
+}
+
 export function seedResearchCmsRecords() {
   return researchVaultSlides().map((slide) => ({
     ...slide,

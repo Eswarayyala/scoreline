@@ -38,7 +38,8 @@ import { useCircuitCms } from "./hooks/useCircuitCms";
 import { useEsportsMedia } from "./hooks/useEsportsMedia";
 import { fetchGamePoster, mergeVaultMedia } from "./services/esportsMedia";
 import { FILTER_GAMES } from "./data/gameCatalog";
-import { EVENT_SCOPES, applyEventToVault, findGameVault, inferEventScope, normalizeGameKey } from "./data/eventScope";
+import { ewcFloatingSlides } from "./data/esportsResearch";
+import { EVENT_SCOPES, applyEventToVault, findGameVault, inferEventScope, normalizeGameKey, publicScopeKicker } from "./data/eventScope";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { onValue, ref as databaseRef, onDisconnect, serverTimestamp, set as setDatabaseValue } from "firebase/database";
 
@@ -373,6 +374,10 @@ function approvedCount(requests = []) {
 function isTournamentFull(t, requests = []) {
   const max = Number(t?.maxSlots) || 0;
   return max > 0 && approvedCount(requests) >= max;
+}
+
+function isReportArchived(report) {
+  return report?.status === "closed" || report?.status === "archived";
 }
 
 function isTournamentArchived(t) {
@@ -1629,12 +1634,65 @@ function FriendChat({ currentUser, friend, onClose, muted = false, onToggleMute,
   </section>;
 }
 
-function ReportsInbox({ reports, onStatusChange, bans = [], role, onSetPlayerBan }) {
+function ReportCard({ report, archived = false, bans = [], role, onStatusChange, onSetPlayerAccess }) {
+  const record = bans.find((item) => item.id === report.targetId);
+  const banned = record?.active === true;
+  const restricted = !banned && record?.restricted === true;
+  return (
+    <article style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+      <Eyebrow>{archived ? "archived" : (report.status || "submitted")} · {report.targetType} · {report.reason}{banned ? " · banned" : restricted ? " · restricted" : ""}</Eyebrow>
+      <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0", fontSize: 22 }}>{report.targetName || "Reported item"}</h2>
+      <p style={{ fontSize: 13, color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{report.details || "No extra details provided."}</p>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {!archived && (
+          <>
+            <Button variant="ghost" onClick={() => onStatusChange(report.id, "reviewing")}>Mark reviewing</Button>
+            <Button onClick={() => onStatusChange(report.id, "archived")}>Report considered</Button>
+          </>
+        )}
+        {role === "owner" && report.targetType === "player" && (
+          <>
+            <Button variant={banned ? "ghost" : "danger"} onClick={() => onSetPlayerAccess(report, banned ? "clear" : "ban")}>{banned ? "Remove ban" : "Ban player"}</Button>
+            {!banned && (
+              <Button variant={restricted ? "ghost" : "danger"} onClick={() => onSetPlayerAccess(report, restricted ? "clear" : "restrict")}>{restricted ? "Remove restriction" : "Restrict player"}</Button>
+            )}
+          </>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function ReportsInbox({ reports, onStatusChange, bans = [], role, onSetPlayerAccess }) {
+  const [showArchive, setShowArchive] = useState(false);
+  const open = reports.filter((item) => !isReportArchived(item));
+  const archived = reports.filter((item) => isReportArchived(item));
   return (
     <div style={{ paddingTop: 34 }}>
       <Eyebrow>Owner and support tools · private</Eyebrow>
       <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 18px" }}>Safety reports</h1>
-      {reports.length === 0 ? <EmptyState title="No reports to review" body="New abuse, scam and inappropriate-content reports appear here." /> : <div style={{ display: "grid", gap: 10 }}>{reports.map((report) => { const banned = bans.find((item) => item.id === report.targetId && item.active); return <article key={report.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{report.status || "submitted"} · {report.targetType} · {report.reason}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0", fontSize: 22 }}>{report.targetName || "Reported item"}</h2><p style={{ fontSize: 13, color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{report.details || "No extra details provided."}</p><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><Button variant="ghost" onClick={() => onStatusChange(report.id, "reviewing")}>Mark reviewing</Button><Button onClick={() => onStatusChange(report.id, "closed")}>Report considered</Button>{role === "owner" && report.targetType === "player" && <Button variant={banned ? "ghost" : "danger"} onClick={() => onSetPlayerBan(report, !banned)}>{banned ? "Remove ban" : "Ban player"}</Button>}</div></article>; })}</div>}
+      <p style={{ color: "var(--text-muted)", fontSize: 13, margin: "0 0 14px" }}>After you mark a report considered, ban a player, or restrict a player, it moves into the archive.</p>
+      {open.length === 0 ? <EmptyState title="No reports to review" body="New abuse, scam and inappropriate-content reports appear here. Reviewed reports stay in the archive." /> : (
+        <div style={{ display: "grid", gap: 10 }}>
+          {open.map((report) => (
+            <ReportCard key={report.id} report={report} bans={bans} role={role} onStatusChange={onStatusChange} onSetPlayerAccess={onSetPlayerAccess} />
+          ))}
+        </div>
+      )}
+      {archived.length > 0 && (
+        <div style={{ marginTop: 22 }}>
+          <Button variant="ghost" onClick={() => setShowArchive((openArchive) => !openArchive)}>
+            {showArchive ? "Hide archived reports" : `Archived reports (${archived.length})`}
+          </Button>
+          {showArchive && (
+            <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+              {archived.map((report) => (
+                <ReportCard key={report.id} report={report} archived bans={bans} role={role} onStatusChange={onStatusChange} onSetPlayerAccess={onSetPlayerAccess} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1673,21 +1731,43 @@ function TournamentMonitor({ tournaments, onOpen }) {
   );
 }
 
-function VaultMonitor({ entries, submissions, blogPosts, onDecision, onPromote }) {
-  const ordered = [...entries].sort((a, b) => String(b.eventDate || "").localeCompare(String(a.eventDate || "")));
+function slidesFromBlogs(posts = []) {
+  return posts
+    .filter((post) => post.status === "published")
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+    .map((post) => ({
+      slug: `blog-${post.id}`,
+      id: post.id,
+      title: post.title,
+      game: post.game,
+      summary: String(post.content || "").slice(0, 400),
+      fullContent: post.content,
+      authorName: post.authorName,
+      source: post.source,
+      eventScope: post.eventScope,
+      kicker: publicScopeKicker(post) || "Blog",
+      poster: bannerForGame(post.game),
+      blog: true,
+      surface: "blog",
+      createdAt: post.createdAt,
+    }));
+}
+
+function VaultMonitor({ submissions, blogPosts, onDecision, onPromote }) {
+  const published = [...blogPosts].filter((post) => post.status === "published").sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   return (
     <section style={{ display: "grid", gap: 22 }}>
       <ArchiveSubmissionInbox submissions={submissions} onDecision={onDecision} />
       <BlogArchivePromoter posts={blogPosts} onPromote={onPromote} />
       <div>
-        <Eyebrow>Published in The Vault · {entries.length}</Eyebrow>
-        {ordered.length === 0 ? <EmptyState title="The Vault is empty" body="Approve a request, promote a blog, or paste records from this staff portal." /> : (
+        <Eyebrow>Published blogs in The Vault · {published.length}</Eyebrow>
+        {published.length === 0 ? <EmptyState title="No published blogs in The Vault yet" body="Publish a recap from the Blogs tab, then it appears here." /> : (
           <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
-            {ordered.map((entry) => (
-              <article key={entry.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
-                <Eyebrow>{entry.game} · {entry.eventDate}{entry.eventScope ? ` · ${entry.eventScope}` : ""}</Eyebrow>
-                <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "4px 0", fontSize: 22 }}>{entry.tournament}</h2>
-                <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Winner: {entry.winner}{entry.runnerUp ? ` · Runner-up: ${entry.runnerUp}` : ""}{entry.mvp ? ` · MVP: ${entry.mvp}` : ""}</div>
+            {published.map((post) => (
+              <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+                <Eyebrow>{post.game} · {post.status}{post.eventScope ? ` · ${post.eventScope}` : ""}</Eyebrow>
+                <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "4px 0", fontSize: 22 }}>{post.title}</h2>
+                <p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{post.content}</p>
               </article>
             ))}
           </div>
@@ -1790,14 +1870,14 @@ function SitePopup({ popup, onDismiss }) {
   );
 }
 
-function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerBan, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], onSaveCircuit, onDeleteCircuit, onImportArchive, filterGames = FILTER_GAMES }) {
+function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerAccess, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], onSaveCircuit, onDeleteCircuit, onImportArchive, filterGames = FILTER_GAMES }) {
   const isOwner = role === "owner";
   const [tab, setTab] = useState(initialTab);
   const [editing, setEditing] = useState(null);
   const [staffUid, setStaffUid] = useState("");
   const [popupError, setPopupError] = useState("");
   const [staffError, setStaffError] = useState("");
-  const activeReports = reports.filter((item) => item.status !== "closed").length;
+  const activeReports = reports.filter((item) => !isReportArchived(item)).length;
   const pendingBlogs = blogPosts.filter((post) => post.status === "pending").length;
   const pendingArchiveRequests = archiveSubmissions.filter((item) => item.status === "pending").length;
   const activeTournaments = tournaments.filter((item) => !isTournamentArchived(item)).length;
@@ -1850,9 +1930,9 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerB
         </div>
         <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Monitor tournaments, The Vault, and the community blog from the tabs above{isOwner ? ". Owner-only tools for popups and support access stay in this desk." : "."}</p>
       </>}
-      {tab === "reports" && <ReportsInbox reports={reports} onStatusChange={onStatusChange} bans={bans} role={role} onSetPlayerBan={onSetPlayerBan} />}
+      {tab === "reports" && <ReportsInbox reports={reports} onStatusChange={onStatusChange} bans={bans} role={role} onSetPlayerAccess={onSetPlayerAccess} />}
       {tab === "tournaments" && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="tournament" records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} games={filterGames} /><TournamentMonitor tournaments={tournaments} onOpen={onOpenTournament} /></div>}
-      {tab === "vault" && <div style={{ display: "grid", gap: 28 }}><VaultResearchDesk records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} filterGames={filterGames} /><CircuitCmsDesk surface="vault" records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} games={filterGames} /><StaffVaultFill entries={archiveEntries} onImport={onImportArchive} /><VaultMonitor entries={archiveEntries} submissions={archiveSubmissions} blogPosts={blogPosts} onDecision={onArchiveDecision} onPromote={onPromoteBlog} /></div>}
+      {tab === "vault" && <div style={{ display: "grid", gap: 28 }}><VaultResearchDesk records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} filterGames={filterGames} /><VaultMonitor submissions={archiveSubmissions} blogPosts={blogPosts} onDecision={onArchiveDecision} onPromote={onPromoteBlog} /></div>}
       {tab === "activity log" && isOwner && <StaffActivityLog actions={auditLog} />}
       {tab === "blogs" && <section><p style={{ color: "var(--text-muted)", fontSize: 13 }}>Watch every community blog from this desk. Publish or decline pending posts, then promote a published story into The Vault from the Vault tab.</p><div style={{ display: "flex", gap: 16, margin: "0 0 14px", fontSize: 13, color: "var(--text-muted)" }}><span>Pending {pendingBlogs}</span><span>Published {blogPosts.filter((post) => post.status === "published").length}</span><span>Total {blogPosts.length}</span></div>{blogPosts.length === 0 ? <EmptyState title="No blog posts yet" body="Community submissions will appear here for preview." /> : <div style={{ display: "grid", gap: 10 }}>{[...blogPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 30).map((post) => <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}{post.eventScope ? ` · ${post.eventScope}` : ""} · by {post.authorName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{post.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{post.content}</p>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onBlogReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onBlogReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div>}</section>}
       {tab === "popups" && isOwner && <section>
@@ -2102,6 +2182,7 @@ export default function App() {
   const [blogPosts, setBlogPosts] = useState([]);
   const [privateReports, setPrivateReports] = useState([]);
   const [siteBans, setSiteBans] = useState([]);
+  const [myAccess, setMyAccess] = useState(null);
   const [activePopups, setActivePopups] = useState([]);
   const [adminPopups, setAdminPopups] = useState([]);
   const [siteStaff, setSiteStaff] = useState([]);
@@ -2250,25 +2331,27 @@ export default function App() {
   }, []);
 
   // ---- player profiles ----
-  const [dashTabHint, setDashTabHint] = useState("overview");
+  const [dashTabHint, setDashTabHint] = useState(() => new URLSearchParams(window.location.search).get("tab") || "overview");
   const [showFriendRequests, setShowFriendRequests] = useState(false);
   const [mutedFriendIds, setMutedFriendIds] = useState([]);
   const [showArchivedTournaments, setShowArchivedTournaments] = useState(false);
   const circuitCms = useCircuitCms({ canWrite: Boolean(siteRole) });
   const liveEsportsBanners = useEsportsMedia();
-  const floatingSlides = useMemo(
-    () => mergeVaultMedia(circuitCms.vaultSlides, liveEsportsBanners),
-    [circuitCms.vaultSlides, liveEsportsBanners],
-  );
+  const blogSlides = useMemo(() => slidesFromBlogs(blogPosts), [blogPosts]);
+  const ewcWindows = useMemo(() => ewcFloatingSlides(circuitCms.researchSlides), [circuitCms.researchSlides]);
   const vaultSlides = useMemo(() => {
     const seen = new Set();
-    return mergeVaultMedia([...circuitCms.researchSlides, ...circuitCms.vaultSlides], liveEsportsBanners).filter((slide) => {
+    return mergeVaultMedia([...ewcWindows, ...circuitCms.researchSlides, ...blogSlides], liveEsportsBanners).filter((slide) => {
       const key = slide.slug || slide.id;
       if (!key || seen.has(key)) return false;
       seen.add(key);
       return true;
     });
-  }, [circuitCms.researchSlides, circuitCms.vaultSlides, liveEsportsBanners]);
+  }, [ewcWindows, circuitCms.researchSlides, blogSlides, liveEsportsBanners]);
+  const homeSlides = useMemo(
+    () => [...ewcWindows, ...blogSlides].sort((a, b) => (Number(b.floatingPriority) || 0) - (Number(a.floatingPriority) || 0)),
+    [ewcWindows, blogSlides],
+  );
   const [myProfile, setMyProfile] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
@@ -2450,6 +2533,11 @@ export default function App() {
     if (siteRole !== "owner" && siteRole !== "support") { setSiteBans([]); return undefined; }
     return onSnapshot(SITE_BANS_COLLECTION, (snapshot) => setSiteBans(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))), () => setSiteBans([]));
   }, [siteRole]);
+
+  useEffect(() => {
+    if (!user) { setMyAccess(null); return undefined; }
+    return onSnapshot(doc(db, "siteBans", user.uid), (snapshot) => setMyAccess(snapshot.exists() ? snapshot.data() : null), () => setMyAccess(null));
+  }, [user]);
 
   useEffect(() => {
     if (!user) { setActivePopups([]); return undefined; }
@@ -2634,6 +2722,7 @@ export default function App() {
   // ---- mutations (now writing to the tournaments collection + sub-collections) ----
   const addTournament = async (t) => {
     if (!user) return;
+    if (myAccess?.restricted) { showToast("This account is restricted from hosting tournaments."); return; }
     setSaving(true);
     try {
       const { roomId, roomPassword, ...event } = t;
@@ -2926,6 +3015,7 @@ export default function App() {
 
   const requestFriend = async (recipientId, recipientName = "Player") => {
     if (!user || !recipientId || recipientId === user.uid) return;
+    if (myAccess?.restricted) { showToast("This account is restricted from sending friend requests."); return; }
     try {
       await setDoc(doc(FRIEND_REQUESTS_COLLECTION, `${user.uid}_${recipientId}`), {
         requesterId: user.uid,
@@ -2947,21 +3037,27 @@ export default function App() {
     await requestFriend(tournament.adminUserId, tournament.adminDisplayName || "Tournament host");
   };
 
-  const setPlayerBan = async (report, active) => {
+  const setPlayerAccess = async (report, mode) => {
     if (siteRole !== "owner" || report?.targetType !== "player") return;
-    if (active && !window.confirm(`Ban ${report.targetName || "this player"} and disable their GrindInfo account? Review the report details before continuing. You can remove the ban later.`)) return;
-    if (!active && !window.confirm(`Restore GrindInfo account access for ${report.targetName || "this player"}?`)) return;
+    const prompts = {
+      ban: `Ban ${report.targetName || "this player"} and disable their GrindInfo account? The report will be archived. You can remove the ban later.`,
+      restrict: `Restrict ${report.targetName || "this player"} from hosting tournaments, player discovery, and new friend requests? The report will be archived. They can still sign in.`,
+      clear: `Restore full GrindInfo access for ${report.targetName || "this player"}?`,
+    };
+    if (!window.confirm(prompts[mode] || prompts.clear)) return;
     try {
       await httpsCallable(getFunctions(), "setPlayerBan")({
         targetUid: report.targetId,
-        active,
+        active: mode === "ban",
+        mode,
         reportId: report.id,
         note: `${report.reason}${report.details ? `: ${report.details}` : ""}`.slice(0, 500),
       });
-      showToast(active ? "Player access disabled" : "Player access restored");
+      await updateReportStatus(report.id, "archived");
+      showToast(mode === "ban" ? "Player banned and report archived" : mode === "restrict" ? "Player restricted and report archived" : "Player access restored");
     } catch (error) {
       showToast(error?.code === "functions/permission-denied"
-        ? "Only the site owner can ban or unban players."
+        ? "Only the site owner can ban or restrict players."
         : "Could not change player access. The Firebase ban function must be deployed.");
     }
   };
@@ -3107,8 +3203,20 @@ export default function App() {
   };
 
   const updateReportStatus = async (reportId, status) => {
-    try { const batch = writeBatch(db); batch.update(doc(REPORTS_COLLECTION, reportId), { status, reviewedAt: Date.now() }); appendStaffAction(batch, "report_reviewed", "report", reportId, `Safety report marked ${status}`); await batch.commit(); }
-    catch (e) { showToast("Couldn't update report status"); }
+    const writeStatus = async (next) => {
+      const batch = writeBatch(db);
+      batch.update(doc(REPORTS_COLLECTION, reportId), { status: next, reviewedAt: Date.now() });
+      appendStaffAction(batch, "report_reviewed", "report", reportId, `Safety report marked ${next === "archived" ? "archived" : next}`);
+      await batch.commit();
+    };
+    try {
+      await writeStatus(status);
+    } catch (e) {
+      if (status === "archived") {
+        try { await writeStatus("closed"); return; } catch { /* fall through */ }
+      }
+      showToast("Couldn't update report status");
+    }
   };
 
   const saveSitePopup = async (popupId, fields) => {
@@ -3176,6 +3284,12 @@ export default function App() {
     if (!user || (siteRoleResolved && !isSiteStaff)) navigate("/", { replace: true });
   }, [authLoading, isSiteStaff, routePath, navigate, siteRoleResolved, user]);
 
+  useEffect(() => {
+    const tab = new URLSearchParams(location.search).get("tab");
+    if (tab) setDashTabHint(tab);
+  }, [location.search]);
+
+  const vaultEditId = routePath.match(/^\/admin\/portal\/vault\/([^/]+)/)?.[1];
   const needsAuthChoice = !user && !guestMode;
 
   if (authLoading) {
@@ -3214,6 +3328,16 @@ export default function App() {
                 </div>
               </header>
               <div className="mx-auto max-w-6xl px-5 pb-24">
+                {vaultEditId ? (
+                  <VaultResearchDesk
+                    focusId={decodeURIComponent(vaultEditId)}
+                    records={circuitCms.records}
+                    role={siteRole || "support"}
+                    onSave={circuitCms.upsert}
+                    onDelete={circuitCms.remove}
+                    filterGames={circuitCms.filterGames}
+                  />
+                ) : (
                 <OwnerDashboard
                   key={dashTabHint}
                   initialTab={dashTabHint}
@@ -3224,7 +3348,7 @@ export default function App() {
                   reports={privateReports}
                   onStatusChange={updateReportStatus}
                   bans={siteBans}
-                  onSetPlayerBan={setPlayerBan}
+                  onSetPlayerAccess={setPlayerAccess}
                   popups={adminPopups}
                   onSavePopup={saveSitePopup}
                   onDeletePopup={deleteSitePopup}
@@ -3242,6 +3366,7 @@ export default function App() {
                   onImportArchive={importArchiveEntries}
                   filterGames={circuitCms.filterGames}
                 />
+                )}
               </div>
             </div>
           ) : <Navigate to="/" replace />
@@ -3282,22 +3407,22 @@ export default function App() {
             <div className={`mx-auto px-5 pb-24 ${routePath === "/" || routePath.startsWith("/vault") ? "max-w-6xl" : "max-w-5xl"}`}>
               <Routes location={windowLocation}>
                 <Route path="/" element={(
-                  <PlatformHome slides={floatingSlides}>
+                  <PlatformHome slides={homeSlides}>
                     <HubSections />
                   </PlatformHome>
                 )} />
-                <Route path="/vault" element={(
-                  <VaultLibraryPage slides={vaultSlides}>
-                    <HistoricalArchive embedded entries={archiveEntries} user={user} submissions={archiveSubmissions} onSubmitRequest={submitArchiveRequest} onSignIn={() => setAuthDialogOpen(true)} />
-                  </VaultLibraryPage>
-                )} />
+                <Route path="/vault" element={<VaultLibraryPage slides={vaultSlides} />} />
                 <Route path="/vault/ewc" element={<EwcDirectoryPage slides={vaultSlides} liveEntries={archiveEntries} />} />
                 <Route path="/vault/:slug" element={<VaultDetailPage slides={vaultSlides} slug={routePath.replace(/^\/vault\//, "").split("/")[0]} liveEntries={archiveEntries} />} />
                 <Route path="/tournaments" element={(
                   <>
                     <TournamentOpsRail
                       signedIn={!!user}
-                      onNew={() => user ? setShowNewTournament(true) : setAuthDialogOpen(true)}
+                      onNew={() => {
+                        if (!user) { setAuthDialogOpen(true); return; }
+                        if (myAccess?.restricted) { showToast("This account is restricted from hosting tournaments."); return; }
+                        setShowNewTournament(true);
+                      }}
                       onSignIn={() => setAuthDialogOpen(true)}
                       onShowActive={() => setShowArchivedTournaments(false)}
                       onShowArchive={() => setShowArchivedTournaments(true)}
@@ -3313,7 +3438,11 @@ export default function App() {
                       pendingInvites={user ? tournamentInvites.filter((item) => item.inviteeUid === user.uid && item.status === "pending") : []}
                       onInviteDecision={decideTournamentInvite}
                       onOpen={(id) => navigate(`/tournaments/${id}`)}
-                      onNew={() => user ? setShowNewTournament(true) : setAuthDialogOpen(true)}
+                      onNew={() => {
+                        if (!user) { setAuthDialogOpen(true); return; }
+                        if (myAccess?.restricted) { showToast("This account is restricted from hosting tournaments."); return; }
+                        setShowNewTournament(true);
+                      }}
                       onSignIn={() => setAuthDialogOpen(true)}
                     />
                   </>

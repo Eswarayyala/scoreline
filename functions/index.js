@@ -157,34 +157,37 @@ export const setPlayerBan = onCall({ maxInstances: 3 }, async (request) => {
   const actorUid = request.auth.uid;
   const role = await db.doc(`siteRoles/${actorUid}`).get();
   if (!role.exists || role.data()?.role !== "owner" || role.data()?.enabled !== true) {
-    throw new HttpsError("permission-denied", "Only the enabled site owner can ban or unban players.");
+    throw new HttpsError("permission-denied", "Only the enabled site owner can ban or restrict players.");
   }
 
   const targetUid = typeof request.data?.targetUid === "string" ? request.data.targetUid.trim() : "";
-  const active = request.data?.active;
   const reportId = typeof request.data?.reportId === "string" ? request.data.reportId : "";
   const note = typeof request.data?.note === "string" ? request.data.note.trim().slice(0, 500) : "";
-  if (!targetUid || targetUid.length > 128 || targetUid === actorUid || typeof active !== "boolean") {
-    throw new HttpsError("invalid-argument", "Choose a different player and specify whether to ban or unban them.");
+  const mode = request.data?.mode === "restrict" || request.data?.mode === "clear" || request.data?.mode === "ban"
+    ? request.data.mode
+    : (request.data?.active === true ? "ban" : "clear");
+  if (!targetUid || targetUid.length > 128 || targetUid === actorUid) {
+    throw new HttpsError("invalid-argument", "Choose a different player and specify whether to ban, restrict, or restore them.");
   }
   const targetRole = await db.doc(`siteRoles/${targetUid}`).get();
   if (targetRole.exists && targetRole.data()?.role === "owner" && targetRole.data()?.enabled === true) {
-    throw new HttpsError("failed-precondition", "A site owner account cannot be banned from player reports.");
+    throw new HttpsError("failed-precondition", "A site owner account cannot be banned or restricted from player reports.");
   }
   if (reportId && !/^[^/]{1,200}$/.test(reportId)) throw new HttpsError("invalid-argument", "Invalid report reference.");
 
   const auth = getAuth();
   const banRef = db.doc(`siteBans/${targetUid}`);
   const existingBan = await banRef.get();
-  if (!active && (!existingBan.exists || existingBan.data()?.active !== true)) {
-    throw new HttpsError("failed-precondition", "This player does not have an active GrindInfo ban.");
+  const existing = existingBan.data() || {};
+  if (mode === "clear" && existing.active !== true && existing.restricted !== true) {
+    throw new HttpsError("failed-precondition", "This player does not have an active GrindInfo ban or restriction.");
   }
   let targetAuthUser;
   try {
     targetAuthUser = await auth.getUser(targetUid);
-    const disabled = active ? true : existingBan.data()?.disabledBeforeBan === true;
+    const disabled = mode === "ban" ? true : existing.disabledBeforeBan === true;
     await auth.updateUser(targetUid, { disabled });
-    await auth.revokeRefreshTokens(targetUid);
+    if (mode === "ban" || existing.active === true) await auth.revokeRefreshTokens(targetUid);
   } catch (error) {
     if (error?.code === "auth/user-not-found") throw new HttpsError("not-found", "That player account was not found.");
     throw new HttpsError("internal", "Could not update this player's account access.");
@@ -192,25 +195,33 @@ export const setPlayerBan = onCall({ maxInstances: 3 }, async (request) => {
 
   const now = Date.now();
   const auditRef = db.collection("staffActions").doc();
+  const playerRef = db.doc(`players/${targetUid}`);
+  const player = await playerRef.get();
   const batch = db.batch();
-  batch.set(banRef, active
-    ? { active: true, targetUid, reportId, note, actorUid, disabledBeforeBan: targetAuthUser.disabled === true, createdAt: now, updatedAt: now }
-    : { active: false, targetUid, reportId, note, actorUid, updatedAt: now, removedAt: now }, { merge: true });
+  const action = mode === "ban" ? "player_banned" : mode === "restrict" ? "player_restricted" : (existing.active === true ? "player_unbanned" : "player_unrestricted");
+  batch.set(banRef, mode === "ban"
+    ? { active: true, restricted: false, targetUid, reportId, note, actorUid, disabledBeforeBan: targetAuthUser.disabled === true, createdAt: existing.createdAt || now, updatedAt: now }
+    : mode === "restrict"
+      ? { active: false, restricted: true, targetUid, reportId, note, actorUid, createdAt: existing.createdAt || now, updatedAt: now }
+      : { active: false, restricted: false, targetUid, reportId, note, actorUid, updatedAt: now, removedAt: now }, { merge: true });
   batch.set(auditRef, {
-    action: active ? "player_banned" : "player_unbanned",
+    action,
     targetType: "player",
     targetId: targetUid,
-    targetLabel: `Player access ${active ? "disabled" : "restored"}`,
+    targetLabel: mode === "ban" ? "Player access disabled" : mode === "restrict" ? "Player restricted" : "Player access restored",
     actorUid,
     actorName: "Site owner",
-    summary: `${active ? "Banned" : "Unbanned"} player ${targetUid}${note ? `: ${note}` : ""}`.slice(0, 240),
+    summary: `${mode === "ban" ? "Banned" : mode === "restrict" ? "Restricted" : "Restored"} player ${targetUid}${note ? `: ${note}` : ""}`.slice(0, 240),
     createdAt: now,
   });
+  if (mode === "restrict" && player.exists) {
+    batch.update(playerRef, { discoverable: false, updatedAt: now });
+  }
   if (reportId) {
     const reportRef = db.doc(`reports/${reportId}`);
     const report = await reportRef.get();
     if (report.exists && report.data()?.targetType === "player" && report.data()?.targetId === targetUid) {
-      batch.update(reportRef, { status: "closed", reviewedAt: now });
+      batch.update(reportRef, { status: "archived", reviewedAt: now });
     }
   }
   try {
@@ -219,7 +230,7 @@ export const setPlayerBan = onCall({ maxInstances: 3 }, async (request) => {
     try { await auth.updateUser(targetUid, { disabled: targetAuthUser.disabled === true }); } catch {}
     throw new HttpsError("internal", "The audit record could not be saved, so the account change was rolled back.");
   }
-  if (active) await removeUserPresenceLinks(targetUid);
-  return { active, targetUid };
+  if (mode === "ban") await removeUserPresenceLinks(targetUid);
+  return { active: mode === "ban", restricted: mode === "restrict", targetUid };
 });
 

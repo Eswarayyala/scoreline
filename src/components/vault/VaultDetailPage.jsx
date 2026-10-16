@@ -30,7 +30,7 @@ export default function VaultDetailPage({ liveEntries = [], slug, slides = VAULT
         <Link to="/vault" className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neon">
           <ArrowLeft size={14} /> The Vault
         </Link>
-        {(slide.research || slide.surface === "research") && (
+        {(slide.research || slide.surface === "research" || slide.surface === "ewc-window") && (
           <Link to="/vault/ewc" className="font-mono text-xs uppercase tracking-widest text-amber-300">EWC index</Link>
         )}
       </div>
@@ -44,15 +44,34 @@ export default function VaultDetailPage({ liveEntries = [], slug, slides = VAULT
             <p className="mt-1 text-slate-300">{slide.season}</p>
           </div>
         </div>
-        <div className="grid gap-8 p-6 md:grid-cols-[1.4fr_0.8fr] md:p-8">
+        <div className={`grid gap-8 p-6 md:p-8 ${slide.blog ? "" : "md:grid-cols-[1.4fr_0.8fr]"}`}>
           <div>
-            <p className="text-base leading-7 text-slate-200">{slide.summary}</p>
+            <p className="text-base leading-7 text-slate-200 whitespace-pre-wrap">{slide.blog ? slide.fullContent || slide.summary : slide.summary}</p>
+            {!!slide.championship?.games?.length && (
+              <section className="mt-8">
+                <h2 className="font-display text-3xl text-white">Titles in this championship</h2>
+                <ul className="mt-3 space-y-2 text-sm text-slate-300">
+                  {slide.championship.games.map((edition) => (
+                    <li key={`${edition.game}-${edition.year}-${edition.event}`} className="border-t border-white/5 pt-2">
+                      {edition.slug ? (
+                        <Link to={`/vault/${edition.slug}`} className="text-white no-underline hover:text-neon">{edition.game}</Link>
+                      ) : (
+                        <strong className="text-white">{edition.game}</strong>
+                      )}
+                      <span className="text-slate-400"> · {[edition.event, edition.champion && `Champion ${edition.champion}`, edition.prizePool].filter(Boolean).join(" · ")}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {slide.blog && slide.authorName && <p className="mt-3 text-sm text-slate-400">By {slide.authorName}</p>}
+            {slide.blog && slide.source && <a href={slide.source} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-neon">Source</a>}
             {(slide.fullName || slide.peakPrizePool || slide.region) && (
               <p className="mt-3 text-sm text-slate-400">
                 {[slide.fullName, slide.region, slide.peakPrizePool && `Peak prize pool ${slide.peakPrizePool}`].filter(Boolean).join(" · ")}
               </p>
             )}
-            {!!slide.yearlyStats?.length && (
+            {!slide.blog && !!slide.yearlyStats?.length && (
               <section className="mt-8">
                 <h2 className="font-display text-3xl text-white">Tournaments by year</h2>
                 <table className="mt-3 w-full text-left text-sm text-slate-300">
@@ -77,7 +96,7 @@ export default function VaultDetailPage({ liveEntries = [], slug, slides = VAULT
                 </table>
               </section>
             )}
-            {!!slide.relatedTournaments?.length && (
+            {!slide.blog && !!slide.relatedTournaments?.length && (
               <section className="mt-8">
                 <h2 className="font-display text-3xl text-white">Related past tournaments</h2>
                 <ul className="mt-3 space-y-2 text-sm text-slate-300">
@@ -90,7 +109,7 @@ export default function VaultDetailPage({ liveEntries = [], slug, slides = VAULT
                 </ul>
               </section>
             )}
-            {!!slide.editions?.length && (
+            {!slide.blog && !!slide.editions?.length && (
               <div className="mt-8 space-y-8">
                 {editionsNewestFirst(slide.editions).map((edition) => {
                   const format = formatForGame(slide.game, edition.structureId);
@@ -232,7 +251,7 @@ export default function VaultDetailPage({ liveEntries = [], slug, slides = VAULT
               </div>
             )}
           </div>
-          <aside className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          {!slide.blog && <aside className="rounded-2xl border border-white/10 bg-white/5 p-4">
             <p className="mb-3 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-volt">
               <Trophy size={14} /> Live Vault records
             </p>
@@ -245,7 +264,7 @@ export default function VaultDetailPage({ liveEntries = [], slug, slides = VAULT
                 {entry.source && <a href={entry.source} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-neon"><ExternalLink size={12} /> Source</a>}
               </div>
             ))}
-          </aside>
+          </aside>}
         </div>
       </motion.div>
     </article>

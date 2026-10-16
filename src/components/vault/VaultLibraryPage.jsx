@@ -31,13 +31,14 @@ export default function VaultLibraryPage({ slides = VAULT_SLIDES, children }) {
     const scopeOk = scope === "all" || itemScope === scope;
     return gameOk && scopeOk;
   });
-  const research = visible.filter((slide) => slide.research || slide.surface === "research");
-  const floating = visible.filter((slide) => slide.surface === "vault" && !slide.research);
+  const floating = visible.filter((slide) => slide.floating || slide.surface === "ewc-window");
+  const research = visible.filter((slide) => (slide.research || slide.surface === "research") && !slide.floating && slide.surface !== "ewc-window");
+  const blogs = visible.filter((slide) => slide.blog || slide.surface === "blog");
   return (
     <div className="pb-10 pt-6">
       <p className="m-0 font-mono text-[11px] uppercase tracking-[0.18em] text-amber-400">Circuit archive</p>
       <h1 className="mt-1 font-['Bebas_Neue',sans-serif] text-5xl tracking-wide text-white">The Vault</h1>
-      <p className="mb-6 mt-2 max-w-2xl text-sm text-stone-400">Championship research dossiers, floating event windows, and the historical record of completed majors. One shared catalog powers the EWC index and each game vault.</p>
+      <p className="mb-6 mt-2 max-w-2xl text-sm text-stone-400">EWC championship years float here as windows. Game vaults and published recaps stay on the same catalog.</p>
       <div className="mb-8 flex flex-wrap items-center gap-3">
         <Link to="/vault/ewc" className="inline-flex border border-amber-400/40 bg-amber-400/10 px-4 py-2 font-mono text-[11px] uppercase tracking-widest text-amber-300 no-underline">All EWC editions</Link>
         <label className="font-mono text-[11px] uppercase tracking-widest text-stone-400">
@@ -57,6 +58,14 @@ export default function VaultLibraryPage({ slides = VAULT_SLIDES, children }) {
           </select>
         </label>
       </div>
+      {floating.length > 0 && (
+        <>
+          <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Floating windows</h2>
+          <div className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {floating.map((slide) => <SlideCard key={slide.slug || slide.id} slide={slide} />)}
+          </div>
+        </>
+      )}
       {research.length > 0 && (
         <>
           <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Game vaults</h2>
@@ -65,13 +74,15 @@ export default function VaultLibraryPage({ slides = VAULT_SLIDES, children }) {
           </div>
         </>
       )}
-      <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Floating windows</h2>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {floating.map((slide) => <SlideCard key={slide.slug || slide.id} slide={slide} />)}
-      </div>
-      <div className="mt-10 border-t border-white/10 pt-6">
-        {children}
-      </div>
+      <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Published blogs</h2>
+      {blogs.length === 0 ? (
+        <p className="text-sm text-stone-400">No published recaps in The Vault yet.</p>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {blogs.map((slide) => <SlideCard key={slide.slug || slide.id} slide={slide} />)}
+        </div>
+      )}
+      {children ? <div className="mt-10 border-t border-white/10 pt-6">{children}</div> : null}
     </div>
   );
 }
