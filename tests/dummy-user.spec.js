@@ -11,7 +11,8 @@ test("dummy guest can open live Home, Vault, and Tournaments", async ({ page }) 
   await page.getByRole("button", { name: "The Vault" }).click();
   await expect(page).toHaveURL(/\/vault/);
 
-  await page.getByRole("button", { name: "Tournaments", exact: true }).click();
+  await page.getByRole("button", { name: "Home", exact: true }).click();
+  await page.getByRole("button", { name: /Live desk/ }).click();
   await expect(page).toHaveURL(/\/tournaments/);
   await expect(page.getByRole("button", { name: "+ New tournament" })).toHaveCount(0);
 });
@@ -23,7 +24,8 @@ test("dummy signed-in user can open the create-tournament form", async ({ page }
   await page.goto("/");
   await signInDummy(page, { email, password });
 
-  await page.getByRole("button", { name: "Tournaments", exact: true }).click();
+  await page.getByRole("button", { name: "Home", exact: true }).click();
+  await page.getByRole("button", { name: /Live desk/ }).click();
   await expect(page).toHaveURL(/\/tournaments/);
   await dismissProfilePrompt(page);
   await openCreateTournament(page);

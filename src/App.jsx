@@ -137,6 +137,17 @@ function grindHandle(name, tag) {
   return tag ? `${clean}#${tag}` : clean;
 }
 
+function playerMatchesQuery(player, raw) {
+  const q = String(raw || "").trim().toLowerCase();
+  if (!q) return true;
+  const name = String(player.displayName || player.name || "").toLowerCase();
+  const handle = String(player.handle || "").toLowerCase();
+  const tag = String(player.playerTag || "");
+  const id = grindHandle(player.displayName || player.name, player.playerTag).toLowerCase();
+  if (q.includes("#")) return id === q || handle === q || tag === extractPlayerTag(raw);
+  return name.includes(q) || handle.includes(q) || id.includes(q) || tag.includes(q.replace(/^#/, ""));
+}
+
 function normalizeHandle(value) {
   const name = playerNameFromInput(value).toLowerCase();
   const tag = extractPlayerTag(value);
@@ -1108,7 +1119,8 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
   const [playersError, setPlayersError] = useState("");
   const primedFromProfile = useRef(false);
   const normalizedPlayerTag = extractPlayerTag(playerTagFilter);
-  const hasFilters = Boolean(gameFilters.length || regionFilter || languageFilter || styleFilter || lookingForFilters.length || rankFilter || normalizedPlayerTag);
+  const nameQuery = nameFilter.trim();
+  const hasFilters = Boolean(gameFilters.length || regionFilter || languageFilter || styleFilter || lookingForFilters.length || rankFilter || normalizedPlayerTag || nameQuery.length >= 2);
   const applyMyInterests = () => {
     setGameFilters(normalizeGameNames(myProfile?.games || []));
     setRegionFilter(myProfile?.region || "");
@@ -1175,7 +1187,7 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
 
   const filtered = players
     .filter((p) => p.uid !== currentUid
-      && (!nameFilter.trim() || (p.displayName || "").toLowerCase().includes(nameFilter.trim().toLowerCase()))
+      && playerMatchesQuery(p, nameFilter)
       && (Boolean(normalizedPlayerTag)
         || ((!styleFilter || p.style === styleFilter)
           && (!rankFilter || p.rank === rankFilter)
@@ -1202,8 +1214,25 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
         {onEditProfile && <Button variant="ghost" onClick={onEditProfile}>{myProfile ? "Edit my profile" : "Set up my profile"}</Button>}
       </div>
 
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "0 0 16px" }}>
+        <div style={{ flex: "1 1 280px", minWidth: 220 }}>
+          <Field label="Search players">
+            <TextInput
+              value={nameFilter}
+              onChange={(event) => {
+                const next = event.target.value;
+                setNameFilter(next);
+                if (next.includes("#")) setPlayerTagFilter(next);
+                else if (!next.trim()) setPlayerTagFilter("");
+              }}
+              placeholder="Player name or Name#1234"
+              aria-label="Search players by name or GrindInfo ID"
+            />
+          </Field>
+        </div>
+      </div>
       <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14, borderLeft: "2px solid var(--accent)", paddingLeft: 12 }}>
-        Closest matches appear first: shared games, region, language, what you want to play, style, and rank band. Keep personal contact details private.
+        Search by name or GrindInfo ID, or use filters. Closest matches appear first. Keep personal contact details private.
       </div>
       {!myProfile && (
         <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14, padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
@@ -1277,10 +1306,6 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
           </Field>
         </div>
       </div>
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "8px 0 16px" }}>
-        <div style={{ maxWidth: 360, flex: "1 1 250px" }}><Field label="Search names in these matches"><TextInput value={nameFilter} onChange={(event) => setNameFilter(event.target.value)} placeholder="Type a player name" /></Field></div>
-        <div style={{ maxWidth: 360, flex: "1 1 250px" }}><Field label="Find by GrindInfo ID"><TextInput value={playerTagFilter} onChange={(event) => setPlayerTagFilter(event.target.value)} placeholder="PlayerName#1234" /></Field></div>
-      </div>
       {normalizedPlayerTag && !PLAYER_TAG_PATTERN.test(normalizedPlayerTag) && <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>Enter the 4-digit code after # to look up a player.</div>}
       {myProfile && (
         <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
@@ -1290,7 +1315,7 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
 
       {playersError && <div style={{ fontSize: 13, color: "var(--danger)", marginBottom: 14 }}>{playersError}</div>}
       {!hasFilters ? (
-        <EmptyState title="Choose a search filter" body="Select games, region, language, looking-for, or rank, or enter a full GrindInfo ID." />
+        <EmptyState title="Search for a player" body="Type a name or Name#1234, or pick a game, region, or rank filter." />
       ) : playersLoading ? (
         <div style={{ color: "var(--text-muted)", fontSize: 13, padding: 20 }}>Searching opted-in players…</div>
       ) : filtered.length === 0 ? (
@@ -1478,15 +1503,20 @@ function FriendRequestCenter({ requests, currentUserId, onDecision }) {
   );
 }
 
-function FriendDock({ requests, currentUserId, onOpenChat, onOpenRequests, presenceDb, onFriendOnline, blockedUsers = [], onRemoveFriend, onBlockFriend, onUnblockFriend, mutedIds = new Set(), onToggleMute, placement = "dock" }) {
+function FriendDock({ requests, currentUserId, onOpenChat, onOpenRequests, presenceDb, onFriendOnline, blockedUsers = [], onRemoveFriend, onBlockFriend, onUnblockFriend, mutedIds = new Set(), onToggleMute, onFriendRequest, placement = "dock" }) {
   const [expanded, setExpanded] = useState(false);
   const [blockedOpen, setBlockedOpen] = useState(false);
   const [presence, setPresence] = useState({});
+  const [friendSearch, setFriendSearch] = useState("");
+  const [foundPlayers, setFoundPlayers] = useState([]);
+  const [searchingPlayers, setSearchingPlayers] = useState(false);
   const blockedIds = new Set(blockedUsers.map((item) => item.blockerUid === currentUserId ? item.blockedUid : item.blockerUid));
   const friends = requests.filter((item) => item.status === "accepted").map((item) => ({
     uid: item.requesterId === currentUserId ? item.recipientId : item.requesterId,
     name: item.requesterId === currentUserId ? (item.recipientName || "Player") : (item.requesterName || "Player"),
   })).filter((item, index, all) => !blockedIds.has(item.uid) && all.findIndex((candidate) => candidate.uid === item.uid) === index);
+  const visibleFriends = friends.filter((friend) => playerMatchesQuery({ displayName: friend.name, name: friend.name }, friendSearch));
+  const friendIds = new Set(friends.map((friend) => friend.uid));
   const myBlocks = blockedUsers.filter((item) => item.blockerUid === currentUserId);
   const friendKey = friends.map((item) => item.uid).sort().join("|");
   const mutedKey = [...mutedIds].sort().join("|");
@@ -1508,12 +1538,58 @@ function FriendDock({ requests, currentUserId, onOpenChat, onOpenRequests, prese
     });
     return () => { active = false; stops.forEach((stop) => stop()); };
   }, [presenceDb, currentUserId, friendKey, onFriendOnline, mutedIds]);
+  useEffect(() => {
+    const raw = friendSearch.trim();
+    const tag = extractPlayerTag(raw);
+    const byId = raw.includes("#") && PLAYER_TAG_PATTERN.test(tag);
+    const byName = raw.length >= 2;
+    if (!byId && !byName) {
+      setFoundPlayers([]);
+      setSearchingPlayers(false);
+      return undefined;
+    }
+    setSearchingPlayers(true);
+    const filters = [where("discoverable", "==", true)];
+    if (byId) filters.push(where("playerTag", "==", tag));
+    const playersQuery = query(PLAYERS_COLLECTION, ...filters, limit(30));
+    return onSnapshot(playersQuery, (snap) => {
+      setFoundPlayers(snap.docs.map((d) => ({ uid: d.id, ...d.data() })).filter((player) => player.uid !== currentUserId && !friendIds.has(player.uid) && !blockedIds.has(player.uid) && playerMatchesQuery(player, raw)));
+      setSearchingPlayers(false);
+    }, () => {
+      setFoundPlayers([]);
+      setSearchingPlayers(false);
+    });
+  }, [friendSearch, currentUserId, friendKey]);
   const list = <div style={{ maxHeight: 320, overflowY: "auto", padding: placement === "header" ? 0 : 8 }}>
+      <div style={{ padding: "8px 8px 6px" }}>
+        <TextInput aria-label="Search friends or players" value={friendSearch} onChange={(event) => setFriendSearch(event.target.value)} placeholder="Search friends or Name#1234" />
+      </div>
       <button type="button" onClick={() => { onOpenRequests(); setExpanded(false); }} style={{ width: "100%", textAlign: "left", border: 0, borderBottom: "1px solid var(--border)", padding: 11, background: "transparent", color: "var(--accent-secondary)", cursor: "pointer" }}>Friend requests{requests.filter((item) => item.recipientId === currentUserId && item.status === "pending").length ? ` (${requests.filter((item) => item.recipientId === currentUserId && item.status === "pending").length})` : ""}</button>
-      {friends.length === 0 ? <div style={{ padding: 12, color: "var(--text-muted)", fontSize: 13 }}>Accepted friends will appear here.</div> : friends.map((friend) => <div key={friend.uid} style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>
+      {visibleFriends.map((friend) => <div key={friend.uid} style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><span style={{ display: "flex", alignItems: "center", gap: 8 }}><img src={avatarForGamer({ displayName: friend.name, uid: friend.uid })} alt="" className="aspect-square h-7 w-7 rounded-full object-cover" /><span aria-label={presence[friend.uid] || "offline"} title={presence[friend.uid] || (presenceDb ? "offline" : "Online status needs Realtime Database setup")} style={{ width: 8, height: 8, borderRadius: "50%", background: presence[friend.uid] === "online" ? "var(--success)" : "var(--text-dim)" }} />{friend.name}{mutedIds.has(friend.uid) ? <span style={{ fontSize: 10, color: "var(--text-dim)" }}>muted</span> : null}</span><button type="button" onClick={() => onOpenChat(friend)} style={{ border: 0, background: "transparent", color: "var(--accent-secondary)", cursor: "pointer" }}>Chat</button></div>
         <div style={{ display: "flex", gap: 8, marginTop: 7, flexWrap: "wrap" }}><button type="button" onClick={() => onToggleMute?.(friend.uid)} style={{ border: 0, background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 11 }}>{mutedIds.has(friend.uid) ? "Unmute" : "Mute"}</button><button type="button" onClick={() => onRemoveFriend(friend)} style={{ border: 0, background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 11 }}>Remove friend</button><button type="button" onClick={() => onBlockFriend(friend)} style={{ border: 0, background: "transparent", color: "var(--danger)", cursor: "pointer", fontSize: 11 }}>Block</button></div>
       </div>)}
+      {!friendSearch.trim() && friends.length === 0 && <div style={{ padding: 12, color: "var(--text-muted)", fontSize: 13 }}>Accepted friends will appear here. Search a name or Name#1234 to find players.</div>}
+      {friendSearch.trim() && searchingPlayers && <div style={{ padding: 12, color: "var(--text-muted)", fontSize: 12 }}>Searching players…</div>}
+      {friendSearch.trim() && foundPlayers.length > 0 && (
+        <section style={{ borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+          <div style={{ padding: "4px 10px 8px", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-dim)" }}>Players</div>
+          {foundPlayers.map((player) => {
+            const outgoing = requests.find((request) => request.requesterId === currentUserId && request.recipientId === player.uid);
+            return (
+              <div key={player.uid} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "8px 10px", borderBottom: "1px solid var(--border)", fontSize: 13 }}>
+                <span>{grindHandle(player.displayName, player.playerTag)}</span>
+                {onFriendRequest && (
+                  <button type="button" disabled={Boolean(outgoing)} onClick={() => onFriendRequest(player)} style={{ border: 0, background: "transparent", color: "var(--accent-secondary)", cursor: outgoing ? "default" : "pointer", fontSize: 12 }}>
+                    {outgoing ? (outgoing.status === "accepted" ? "Friends" : "Requested") : "Add friend"}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </section>
+      )}
+      {friendSearch.trim() && !searchingPlayers && visibleFriends.length === 0 && foundPlayers.length === 0 && <div style={{ padding: 12, color: "var(--text-muted)", fontSize: 13 }}>No friends or discoverable players match that search.</div>}
       <section style={{ borderTop: "1px solid var(--border)", marginTop: 8 }}>
         <button type="button" onClick={() => setBlockedOpen((open) => !open)} aria-expanded={blockedOpen} style={{ width: "100%", display: "flex", justifyContent: "space-between", padding: "10px 8px", border: 0, background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", fontFamily: "'JetBrains Mono', monospace" }}>
           <span>Blocked ({myBlocks.length})</span>
@@ -3184,6 +3260,7 @@ export default function App() {
                   onUnblockFriend={unblockFriend}
                   mutedIds={mutedFriendSet}
                   onToggleMute={toggleMuteFriend}
+                  onFriendRequest={(player) => requestFriend(player.uid, player.displayName)}
                 />
               ) : null}
             />
