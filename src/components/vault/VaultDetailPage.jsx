@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, ExternalLink, Trophy } from "lucide-react";
 import { VAULT_SLIDES } from "../../data/platformShowcase";
-import { researchHighlightLabels } from "../../data/esportsResearch";
+import { editionsNewestFirst, researchHighlightLabels } from "../../data/esportsResearch";
 
 export default function VaultDetailPage({ liveEntries = [], slug, slides = VAULT_SLIDES }) {
   const slide = slides.find((item) => item.slug === slug) || VAULT_SLIDES.find((item) => item.slug === slug);
@@ -47,7 +47,7 @@ export default function VaultDetailPage({ liveEntries = [], slug, slides = VAULT
             )}
             {!!slide.editions?.length && (
               <div className="mt-8 space-y-8">
-                {slide.editions.map((edition) => (
+                {editionsNewestFirst(slide.editions).map((edition) => (
                   <section key={`${edition.year}-${edition.event}`} className="border-t border-white/10 pt-6">
                     <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-volt">{edition.year}</p>
                     <h2 className="font-display text-3xl text-white">{edition.event}</h2>

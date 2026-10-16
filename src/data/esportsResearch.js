@@ -1624,35 +1624,41 @@ export function researchHighlightLabels() {
   return HIGHLIGHT_LABELS;
 }
 
+export function editionsNewestFirst(editions = []) {
+  return [...editions].sort((a, b) => Number(b.year) - Number(a.year));
+}
+
 export function researchVaultSlides() {
-  return ESPORTS_RESEARCH.map((game) => {
-    const latest = game.editions[game.editions.length - 1];
-    const top = (rankPrefix) => {
-      const row = latest?.payouts?.find((item) => String(item.rank).startsWith(rankPrefix));
-      return row?.team || row?.player || "";
-    };
-    const champion = top("1st");
-    const runnerUp = top("2nd");
-    const firstYear = game.editions[0]?.year;
-    const lastYear = latest?.year;
-    return {
-      slug: `research-${game.id}`,
-      title: `${game.game} · Esports World Cup`,
-      game: game.game,
-      kicker: "Championship research",
-      season: firstYear === lastYear ? String(firstYear || "") : `${firstYear || ""}–${lastYear || ""}`,
-      summary: game.overview,
-      poster: bannerForGame(game.game),
-      eventStatus: "completed",
-      surface: "vault",
-      research: true,
-      genre: game.genre,
-      type: game.type,
-      peakPrizePool: game.peakPrizePool,
-      fullName: game.fullName,
-      editions: game.editions,
-      winners: champion,
-      runnerUps: runnerUp,
-    };
-  });
+  return [...ESPORTS_RESEARCH]
+    .map((game) => {
+      const editions = editionsNewestFirst(game.editions);
+      const latest = editions[0];
+      const oldest = editions[editions.length - 1];
+      const top = (rankPrefix) => {
+        const row = latest?.payouts?.find((item) => String(item.rank).startsWith(rankPrefix));
+        return row?.team || row?.player || "";
+      };
+      const firstYear = oldest?.year;
+      const lastYear = latest?.year;
+      return {
+        slug: `research-${game.id}`,
+        title: `${game.game} · Esports World Cup`,
+        game: game.game,
+        kicker: "Championship research",
+        season: firstYear === lastYear ? String(lastYear || "") : `${lastYear || ""}–${firstYear || ""}`,
+        summary: game.overview,
+        poster: bannerForGame(game.game),
+        eventStatus: "completed",
+        surface: "vault",
+        research: true,
+        genre: game.genre,
+        type: game.type,
+        peakPrizePool: game.peakPrizePool,
+        fullName: game.fullName,
+        editions,
+        winners: top("1st"),
+        runnerUps: top("2nd"),
+      };
+    })
+    .sort((a, b) => Number(b.editions[0]?.year || 0) - Number(a.editions[0]?.year || 0));
 }
