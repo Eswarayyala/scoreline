@@ -35,6 +35,7 @@ import CircuitCmsDesk from "./components/cms/CircuitCmsDesk";
 import { useCircuitCms } from "./hooks/useCircuitCms";
 import { useEsportsMedia } from "./hooks/useEsportsMedia";
 import { fetchGamePoster, mergeVaultMedia } from "./services/esportsMedia";
+import { researchVaultSlides } from "./data/esportsResearch";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { onValue, ref as databaseRef, onDisconnect, serverTimestamp, set as setDatabaseValue } from "firebase/database";
 
@@ -2269,10 +2270,12 @@ export default function App() {
   const [showArchivedTournaments, setShowArchivedTournaments] = useState(false);
   const circuitCms = useCircuitCms();
   const liveEsportsBanners = useEsportsMedia();
-  const vaultSlides = useMemo(
-    () => mergeVaultMedia(circuitCms.vaultSlides, liveEsportsBanners),
-    [circuitCms.vaultSlides, liveEsportsBanners],
-  );
+  const vaultSlides = useMemo(() => {
+    const research = researchVaultSlides();
+    const used = new Set(research.map((slide) => slide.slug));
+    const rest = circuitCms.vaultSlides.filter((slide) => !used.has(slide.slug));
+    return mergeVaultMedia([...research, ...rest], liveEsportsBanners);
+  }, [circuitCms.vaultSlides, liveEsportsBanners]);
   const [myProfile, setMyProfile] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
 

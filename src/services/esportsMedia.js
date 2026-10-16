@@ -18,14 +18,38 @@ const GAME_RAWG_SLUGS = {
   "League of Legends": "league-of-legends",
   "Apex Legends": "apex-legends",
   PUBG: "pubg-battlegrounds",
+  "PUBG: Battlegrounds": "pubg-battlegrounds",
+  "PUBG Mobile (PMWC)": "playerunknowns-battlegrounds",
   "PUBG Mobile": "playerunknowns-battlegrounds",
   BGMI: "playerunknowns-battlegrounds",
   "Rocket League": "rocket-league",
   "Dota 2": "dota-2",
+  "Dota 2 (Riyadh Masters)": "dota-2",
   Fortnite: "fortnite",
   "Overwatch 2": "overwatch-2",
+  "Rainbow Six Siege": "tom-clancys-rainbow-six-siege",
   "Call of Duty": "call-of-duty-warzone",
+  "Call of Duty (CDL & Warzone)": "call-of-duty-warzone",
   "Mobile Legends: Bang Bang": "mobile-legends-bang-bang",
+  "Mobile Legends: Bang Bang (MLBB)": "mobile-legends-bang-bang",
+  "Honor of Kings": "honor-of-kings",
+  "Honor of Kings (HoK)": "honor-of-kings",
+  "Free Fire": "garena-free-fire",
+  "Garena Free Fire": "garena-free-fire",
+  "Street Fighter 6": "street-fighter-6",
+  "Tekken 8": "tekken-8",
+  "EA Sports FC": "ea-sports-fc-24",
+  "Teamfight Tactics": "teamfight-tactics",
+  "Teamfight Tactics (TFT)": "teamfight-tactics",
+  "StarCraft II": "starcraft-ii",
+  "StarCraft 2": "starcraft-ii",
+  "Rennsport (ESL R1)": "rennsport",
+  Rennsport: "rennsport",
+  Crossfire: "crossfire",
+  "Standoff 2": "standoff-2",
+  Trackmania: "trackmania",
+  Chess: "chess",
+  "Chess (EWC Invitational)": "chess",
 };
 
 export async function fetchGamePoster(game) {
@@ -48,7 +72,21 @@ function normalizeGameName(value) {
   if (raw.includes("counter-strike") || raw === "cs2") return "cs2";
   if (raw.includes("pubg") || raw.includes("battlegrounds") || raw === "bgmi") return "pubg";
   if (raw.includes("league of legends")) return "league of legends";
+  if (raw.includes("dota")) return "dota 2";
   if (raw.includes("mobile legends")) return "mobile legends: bang bang";
+  if (raw.includes("honor of kings") || raw.includes("(hok)") || raw === "hok") return "honor of kings";
+  if (raw.includes("free fire")) return "free fire";
+  if (raw.includes("street fighter")) return "street fighter 6";
+  if (raw.includes("tekken")) return "tekken 8";
+  if (raw.includes("ea sports fc") || raw.includes("fifa") || raw === "eafc") return "ea sports fc";
+  if (raw.includes("teamfight tactics") || raw === "tft") return "teamfight tactics";
+  if (raw.includes("starcraft")) return "starcraft ii";
+  if (raw.includes("rennsport") || raw.includes("esl r1")) return "rennsport";
+  if (raw.includes("crossfire")) return "crossfire";
+  if (raw.includes("call of duty") || raw.includes("warzone") || raw === "cdl" || raw === "cod") return "call of duty";
+  if (raw.includes("standoff")) return "standoff 2";
+  if (raw.includes("trackmania")) return "trackmania";
+  if (raw.includes("chess")) return "chess";
   return raw;
 }
 

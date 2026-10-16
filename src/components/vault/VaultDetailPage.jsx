@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, ExternalLink, Trophy } from "lucide-react";
 import { VAULT_SLIDES } from "../../data/platformShowcase";
+import { researchHighlightLabels } from "../../data/esportsResearch";
 
 export default function VaultDetailPage({ liveEntries = [], slug, slides = VAULT_SLIDES }) {
   const slide = slides.find((item) => item.slug === slug) || VAULT_SLIDES.find((item) => item.slug === slug);
@@ -39,7 +40,61 @@ export default function VaultDetailPage({ liveEntries = [], slug, slides = VAULT
         <div className="grid gap-8 p-6 md:grid-cols-[1.4fr_0.8fr] md:p-8">
           <div>
             <p className="text-base leading-7 text-slate-200">{slide.summary}</p>
-            {slide.eventStatus === "completed" && (
+            {(slide.fullName || slide.genre || slide.peakPrizePool) && (
+              <p className="mt-3 text-sm text-slate-400">
+                {[slide.fullName, slide.genre, slide.type, slide.peakPrizePool && `Peak prize pool ${slide.peakPrizePool}`].filter(Boolean).join(" · ")}
+              </p>
+            )}
+            {!!slide.editions?.length && (
+              <div className="mt-8 space-y-8">
+                {slide.editions.map((edition) => (
+                  <section key={`${edition.year}-${edition.event}`} className="border-t border-white/10 pt-6">
+                    <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-volt">{edition.year}</p>
+                    <h2 className="font-display text-3xl text-white">{edition.event}</h2>
+                    <p className="mt-1 text-sm text-slate-400">Prize pool {edition.prizePool}</p>
+                    {!!edition.payouts?.length && (
+                      <table className="mt-4 w-full text-left text-sm text-slate-300">
+                        <thead>
+                          <tr className="text-slate-500">
+                            <th className="py-1 pr-3 font-mono text-[10px] uppercase tracking-widest">Place</th>
+                            <th className="py-1 pr-3 font-mono text-[10px] uppercase tracking-widest">
+                              {edition.payouts.some((row) => row.team) && edition.payouts.some((row) => row.player)
+                                ? "Team / player"
+                                : edition.payouts.some((row) => row.player)
+                                  ? "Player"
+                                  : "Team"}
+                            </th>
+                            <th className="py-1 font-mono text-[10px] uppercase tracking-widest">Prize</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {edition.payouts.map((row) => (
+                            <tr key={`${edition.year}-${row.rank}`} className="border-t border-white/5">
+                              <td className="py-2 pr-3">{row.rank}</td>
+                              <td className="py-2 pr-3">{row.team || row.player}</td>
+                              <td className="py-2">{row.prize}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                    {edition.highlights && (
+                      <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                        {researchHighlightLabels().map(([key, label]) =>
+                          edition.highlights[key] ? (
+                            <div key={key} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                              <dt className="font-mono text-[10px] uppercase tracking-widest text-neon">{label}</dt>
+                              <dd className="mt-1 text-sm leading-6 text-slate-200">{edition.highlights[key]}</dd>
+                            </div>
+                          ) : null,
+                        )}
+                      </dl>
+                    )}
+                  </section>
+                ))}
+              </div>
+            )}
+            {slide.eventStatus === "completed" && !slide.editions?.length && (
               <dl className="mt-5 grid gap-2 text-sm text-slate-300">
                 {slide.winners && <div>Winners · {slide.winners}</div>}
                 {slide.runnerUps && <div>Runner-ups · {slide.runnerUps}</div>}
