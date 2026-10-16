@@ -697,6 +697,11 @@ service cloud.firestore {
       allow delete: if isActiveSiteUser() && request.auth.uid == userId;
     }
 
+    match /circuitCms/{recordId} {
+      allow get, list: if canBrowsePublicData();
+      allow create, update, delete: if isSiteStaff();
+    }
+
     match /scoreline/shared-data {
       // No current app feature uses this legacy document; deny client access
       // until a specific, validated schema is introduced.

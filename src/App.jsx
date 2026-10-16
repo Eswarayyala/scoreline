@@ -30,12 +30,14 @@ import PublicNav from "./components/layout/PublicNav";
 import TournamentOpsRail from "./components/layout/TournamentOpsRail";
 import VaultDetailPage from "./components/vault/VaultDetailPage";
 import VaultLibraryPage from "./components/vault/VaultLibraryPage";
+import EwcDirectoryPage from "./components/vault/EwcDirectoryPage";
+import VaultResearchDesk from "./components/cms/VaultResearchDesk";
 import { avatarForGamer, bannerForGame, flyerForEvent } from "./data/platformShowcase";
 import CircuitCmsDesk from "./components/cms/CircuitCmsDesk";
 import { useCircuitCms } from "./hooks/useCircuitCms";
 import { useEsportsMedia } from "./hooks/useEsportsMedia";
 import { fetchGamePoster, mergeVaultMedia } from "./services/esportsMedia";
-import { researchVaultSlides } from "./data/esportsResearch";
+import { FILTER_GAMES } from "./data/gameCatalog";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { onValue, ref as databaseRef, onDisconnect, serverTimestamp, set as setDatabaseValue } from "firebase/database";
 
@@ -223,30 +225,6 @@ function normalizeGameName(game) {
 function normalizeGameNames(games = []) {
   return [...new Set(games.map(normalizeGameName))];
 }
-
-const GAME_PRESETS = [
-  "Valorant",
-  "League of Legends",
-  "CS2",
-  "Dota 2",
-  "Overwatch 2",
-  "Rocket League",
-  "Apex Legends",
-  "BGMI",
-  "PUBG Mobile",
-  "PUBG PC",
-  "Mobile Legends: Bang Bang",
-  "Free Fire",
-  "Call of Duty",
-  "Fortnite",
-  "Rainbow Six Siege",
-  "Honor of Kings",
-  "Clash Royale",
-  "Brawl Stars",
-  "StarCraft 2",
-  "Teamfight Tactics",
-  "Other",
-];
 
 const REGIONS = [
   "North America",
@@ -804,7 +782,7 @@ function MultiToggle({ options, selected, onToggle }) {
   );
 }
 
-function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onClose }) {
+function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onClose, gamesList = FILTER_GAMES }) {
   const [displayName, setDisplayName] = useState(safeProfileName(initialProfile?.displayName, defaultDisplayName));
   const [games, setGames] = useState(normalizeGameNames(initialProfile?.games || []));
   const [region, setRegion] = useState(initialProfile?.region || "");
@@ -941,7 +919,7 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
           </Field>
           <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -8 }}>3–16 letters, numbers, or underscore. The #4-digit code is assigned after you save.</div>
           <Field label="Games you play">
-            <MultiToggle options={GAME_PRESETS} selected={games} onToggle={toggleGame} />
+            <MultiToggle options={gamesList} selected={games} onToggle={toggleGame} />
           </Field>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 150 }}>
@@ -1125,7 +1103,7 @@ function playerSearchActive(search) {
   );
 }
 
-function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendRequest, onFriendDecision, onReport, onEditProfile, embedded = false }) {
+function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendRequest, onFriendDecision, onReport, onEditProfile, embedded = false, gamesList = FILTER_GAMES }) {
   const [draft, setDraft] = useState(emptyPlayerSearch);
   const [applied, setApplied] = useState(null);
   const [players, setPlayers] = useState([]);
@@ -1240,7 +1218,7 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
           <div style={{ width: "100%" }}>
             <Field label="Games (optional)">
               <MultiToggle
-                options={GAME_PRESETS}
+                options={gamesList}
                 selected={draft.games}
                 onToggle={(game) =>
                   updateDraft({
@@ -1807,7 +1785,7 @@ function SitePopup({ popup, onDismiss }) {
   );
 }
 
-function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerBan, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], onSaveCircuit, onDeleteCircuit, onImportArchive }) {
+function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerBan, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], onSaveCircuit, onDeleteCircuit, onImportArchive, filterGames = FILTER_GAMES }) {
   const isOwner = role === "owner";
   const [tab, setTab] = useState(initialTab);
   const [editing, setEditing] = useState(null);
@@ -1868,8 +1846,8 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerB
         <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Monitor tournaments, The Vault, and the community blog from the tabs above{isOwner ? ". Owner-only tools for popups and support access stay in this desk." : "."}</p>
       </>}
       {tab === "reports" && <ReportsInbox reports={reports} onStatusChange={onStatusChange} bans={bans} role={role} onSetPlayerBan={onSetPlayerBan} />}
-      {tab === "tournaments" && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="tournament" records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} /><TournamentMonitor tournaments={tournaments} onOpen={onOpenTournament} /></div>}
-      {tab === "vault" && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="vault" records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} /><StaffVaultFill entries={archiveEntries} onImport={onImportArchive} /><VaultMonitor entries={archiveEntries} submissions={archiveSubmissions} blogPosts={blogPosts} onDecision={onArchiveDecision} onPromote={onPromoteBlog} /></div>}
+      {tab === "tournaments" && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="tournament" records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} games={filterGames} /><TournamentMonitor tournaments={tournaments} onOpen={onOpenTournament} /></div>}
+      {tab === "vault" && <div style={{ display: "grid", gap: 28 }}><VaultResearchDesk records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} filterGames={filterGames} /><CircuitCmsDesk surface="vault" records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} games={filterGames} /><StaffVaultFill entries={archiveEntries} onImport={onImportArchive} /><VaultMonitor entries={archiveEntries} submissions={archiveSubmissions} blogPosts={blogPosts} onDecision={onArchiveDecision} onPromote={onPromoteBlog} /></div>}
       {tab === "activity log" && isOwner && <StaffActivityLog actions={auditLog} />}
       {tab === "blogs" && <section><p style={{ color: "var(--text-muted)", fontSize: 13 }}>Watch every community blog from this desk. Publish or decline pending posts, then promote a published story into The Vault from the Vault tab.</p><div style={{ display: "flex", gap: 16, margin: "0 0 14px", fontSize: 13, color: "var(--text-muted)" }}><span>Pending {pendingBlogs}</span><span>Published {blogPosts.filter((post) => post.status === "published").length}</span><span>Total {blogPosts.length}</span></div>{blogPosts.length === 0 ? <EmptyState title="No blog posts yet" body="Community submissions will appear here for preview." /> : <div style={{ display: "grid", gap: 10 }}>{[...blogPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 30).map((post) => <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status} · by {post.authorName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{post.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{post.content}</p>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onBlogReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onBlogReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div>}</section>}
       {tab === "popups" && isOwner && <section>
@@ -2268,14 +2246,21 @@ export default function App() {
   const [showFriendRequests, setShowFriendRequests] = useState(false);
   const [mutedFriendIds, setMutedFriendIds] = useState([]);
   const [showArchivedTournaments, setShowArchivedTournaments] = useState(false);
-  const circuitCms = useCircuitCms();
+  const circuitCms = useCircuitCms({ canWrite: Boolean(siteRole) });
   const liveEsportsBanners = useEsportsMedia();
+  const floatingSlides = useMemo(
+    () => mergeVaultMedia(circuitCms.vaultSlides, liveEsportsBanners),
+    [circuitCms.vaultSlides, liveEsportsBanners],
+  );
   const vaultSlides = useMemo(() => {
-    const research = researchVaultSlides();
-    const used = new Set(research.map((slide) => slide.slug));
-    const rest = circuitCms.vaultSlides.filter((slide) => !used.has(slide.slug));
-    return mergeVaultMedia([...research, ...rest], liveEsportsBanners);
-  }, [circuitCms.vaultSlides, liveEsportsBanners]);
+    const seen = new Set();
+    return mergeVaultMedia([...circuitCms.researchSlides, ...circuitCms.vaultSlides], liveEsportsBanners).filter((slide) => {
+      const key = slide.slug || slide.id;
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [circuitCms.researchSlides, circuitCms.vaultSlides, liveEsportsBanners]);
   const [myProfile, setMyProfile] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
@@ -3194,7 +3179,7 @@ export default function App() {
                   <Link to="/" className="font-mono text-xs uppercase tracking-wider text-stone-400 hover:text-white">Leave portal</Link>
                 </div>
               </header>
-              <div className="mx-auto max-w-5xl px-5 pb-24">
+              <div className="mx-auto max-w-6xl px-5 pb-24">
                 <OwnerDashboard
                   key={dashTabHint}
                   initialTab={dashTabHint}
@@ -3221,6 +3206,7 @@ export default function App() {
                   auditLog={auditLog}
                   onOpenTournament={(id) => navigate(`/tournaments/${id}`)}
                   onImportArchive={importArchiveEntries}
+                  filterGames={circuitCms.filterGames}
                 />
               </div>
             </div>
@@ -3262,7 +3248,7 @@ export default function App() {
             <div className={`mx-auto px-5 pb-24 ${routePath === "/" || routePath.startsWith("/vault") ? "max-w-6xl" : "max-w-5xl"}`}>
               <Routes location={windowLocation}>
                 <Route path="/" element={(
-                  <PlatformHome slides={vaultSlides}>
+                  <PlatformHome slides={floatingSlides}>
                     <HubSections />
                   </PlatformHome>
                 )} />
@@ -3271,6 +3257,7 @@ export default function App() {
                     <HistoricalArchive embedded entries={archiveEntries} user={user} submissions={archiveSubmissions} onSubmitRequest={submitArchiveRequest} onSignIn={() => setAuthDialogOpen(true)} />
                   </VaultLibraryPage>
                 )} />
+                <Route path="/vault/ewc" element={<EwcDirectoryPage slides={vaultSlides} />} />
                 <Route path="/vault/:slug" element={<VaultDetailPage slides={vaultSlides} slug={routePath.replace(/^\/vault\//, "").split("/")[0]} liveEntries={archiveEntries} />} />
                 <Route path="/tournaments" element={(
                   <>
@@ -3338,7 +3325,7 @@ export default function App() {
                   />
                 ) : <EmptyState title="Tournament not found" body="This event is missing or was removed." actionLabel="Back to tournaments" onAction={() => navigate("/tournaments")} />} />
                 <Route path="/find-players" element={user ? (
-                  <FindPlayersPage currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid, player.displayName)} onFriendDecision={decideFriendRequest} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} onEditProfile={() => setShowProfileModal(true)} />
+                  <FindPlayersPage gamesList={circuitCms.filterGames} currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid, player.displayName)} onFriendDecision={decideFriendRequest} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} onEditProfile={() => setShowProfileModal(true)} />
                 ) : (
                   <div className="pt-8">
                     <h1 className="m-0 font-['Bebas_Neue',sans-serif] text-5xl">Find players</h1>
@@ -3365,13 +3352,14 @@ export default function App() {
         )}
 
       {user && showNewTournament && (
-        <NewTournamentModal slides={vaultSlides} onClose={() => setShowNewTournament(false)} onCreate={addTournament} />
+        <NewTournamentModal slides={vaultSlides} gamesList={circuitCms.filterGames} onClose={() => setShowNewTournament(false)} onCreate={addTournament} />
       )}
 
       {showProfileModal && (
         <ProfileModal
           initialProfile={myProfile}
           defaultDisplayName={user.displayName}
+          gamesList={circuitCms.filterGames}
           onSave={saveProfile}
           onSkip={skipProfile}
           onClose={() => setShowProfileModal(false)}
@@ -3594,9 +3582,9 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
   );
 }
 
-function NewTournamentModal({ onClose, onCreate, slides = [] }) {
+function NewTournamentModal({ onClose, onCreate, slides = [], gamesList = FILTER_GAMES }) {
   const [name, setName] = useState("");
-  const [game, setGame] = useState(GAME_PRESETS[0]);
+  const [game, setGame] = useState(gamesList[0]);
   const [kind, setKind] = useState("bracket");
   const [format, setFormat] = useState(FORMATS[0]);
   const [joinMode, setJoinMode] = useState("open");
@@ -3702,7 +3690,7 @@ function NewTournamentModal({ onClose, onCreate, slides = [] }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <GameIcon game={game} size={38} />
                   <Select value={game} onChange={(e) => setGame(e.target.value)} style={{ flex: 1 }}>
-                    {GAME_PRESETS.map((g) => (
+                    {gamesList.map((g) => (
                       <option key={g} value={g}>
                         {g}
                       </option>

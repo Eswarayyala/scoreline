@@ -1,3 +1,4 @@
+import { FILTER_GAMES } from "./gameCatalog";
 import { GAME_BANNERS } from "./platformShowcase";
 
 export const POSTER_PRESETS = [
@@ -13,7 +14,7 @@ export const POSTER_PRESETS = [
   { id: "bgmi-1", game: "BGMI", label: "National series", src: GAME_BANNERS.BGMI },
 ];
 
-export const CMS_GAMES = [...new Set(POSTER_PRESETS.map((item) => item.game))];
+export const CMS_GAMES = FILTER_GAMES;
 
 export const EVENT_STAGES = [
   "Group Stage",

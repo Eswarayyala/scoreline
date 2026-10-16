@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { VAULT_SLIDES, flyerForEvent } from "../../data/platformShowcase";
 
@@ -20,24 +21,37 @@ function SlideCard({ slide }) {
 
 export default function VaultLibraryPage({ slides = VAULT_SLIDES, children }) {
   const items = slides.length ? slides : VAULT_SLIDES;
-  const research = items.filter((slide) => slide.research);
-  const floating = items.filter((slide) => !slide.research);
+  const [game, setGame] = useState("all");
+  const games = useMemo(() => [...new Set(items.map((slide) => slide.game).filter(Boolean))].sort(), [items]);
+  const visible = items.filter((slide) => game === "all" || slide.game === game);
+  const research = visible.filter((slide) => slide.research || slide.surface === "research");
+  const floating = visible.filter((slide) => slide.surface === "vault" && !slide.research);
   return (
     <div className="pb-10 pt-6">
       <p className="m-0 font-mono text-[11px] uppercase tracking-[0.18em] text-amber-400">Circuit archive</p>
       <h1 className="mt-1 font-['Bebas_Neue',sans-serif] text-5xl tracking-wide text-white">The Vault</h1>
-      <p className="mb-6 mt-2 max-w-2xl text-sm text-stone-400">Championship research dossiers, floating event windows, and the historical record of completed majors.</p>
+      <p className="mb-6 mt-2 max-w-2xl text-sm text-stone-400">Championship research dossiers, floating event windows, and the historical record of completed majors. One shared catalog powers the EWC index and each game vault.</p>
+      <div className="mb-8 flex flex-wrap items-center gap-3">
+        <Link to="/vault/ewc" className="inline-flex border border-amber-400/40 bg-amber-400/10 px-4 py-2 font-mono text-[11px] uppercase tracking-widest text-amber-300 no-underline">All EWC editions</Link>
+        <label className="font-mono text-[11px] uppercase tracking-widest text-stone-400">
+          Game vault
+          <select className="ml-2 border border-white/15 bg-black/40 px-2 py-1 text-white" value={game} onChange={(e) => setGame(e.target.value)}>
+            <option value="all">All games</option>
+            {games.map((name) => <option key={name} value={name}>{name}</option>)}
+          </select>
+        </label>
+      </div>
       {research.length > 0 && (
         <>
-          <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Championship research</h2>
+          <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Game vaults</h2>
           <div className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {research.map((slide) => <SlideCard key={slide.slug} slide={slide} />)}
+            {research.map((slide) => <SlideCard key={slide.slug || slide.id} slide={slide} />)}
           </div>
         </>
       )}
-      <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Floating events</h2>
+      <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Floating windows</h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {floating.map((slide) => <SlideCard key={slide.slug} slide={slide} />)}
+        {floating.map((slide) => <SlideCard key={slide.slug || slide.id} slide={slide} />)}
       </div>
       <div className="mt-10 border-t border-white/10 pt-6">
         {children}

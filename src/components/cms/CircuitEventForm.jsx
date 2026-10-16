@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { CMS_GAMES } from "../../data/posterPresets";
+import { FILTER_GAMES } from "../../data/gameCatalog";
 import { emptyCircuitEvent } from "../../hooks/useCircuitCms";
 import EventStatusFields from "./EventStatusFields";
 import PosterPicker from "./PosterPicker";
 
 const inputClass = "w-full rounded-lg border border-white/15 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none focus:border-neon";
 
-export default function CircuitEventForm({ surface, initial, canWrite, onSave, onCancel }) {
+export default function CircuitEventForm({ surface, initial, canWrite, onSave, onCancel, games = FILTER_GAMES }) {
   const [form, setForm] = useState(() => ({ ...emptyCircuitEvent(surface), ...initial, surface }));
   const [error, setError] = useState("");
 
@@ -59,11 +59,16 @@ export default function CircuitEventForm({ surface, initial, canWrite, onSave, o
         </label>
         <label className="grid gap-1 text-xs text-slate-400">
           Game
-          <select className={inputClass} value={form.game} onChange={(e) => patch("game", e.target.value)}>
-            {CMS_GAMES.map((game) => <option key={game} value={game}>{game}</option>)}
-          </select>
+          <input list="circuit-games" className={inputClass} value={form.game} onChange={(e) => patch("game", e.target.value)} />
+          <datalist id="circuit-games">{games.map((game) => <option key={game} value={game} />)}</datalist>
         </label>
       </div>
+      {surface === "vault" && (
+        <label className="grid gap-1 text-xs text-slate-400">
+          Home priority (higher floats first)
+          <input type="number" min="0" max="99" className={inputClass} value={form.floatingPriority ?? 5} onChange={(e) => patch("floatingPriority", Number(e.target.value))} />
+        </label>
+      )}
       <label className="grid gap-1 text-xs text-slate-400">
         Short kicker
         <input className={inputClass} value={form.kicker || ""} onChange={(e) => patch("kicker", e.target.value)} />

@@ -1628,6 +1628,40 @@ export function editionsNewestFirst(editions = []) {
   return [...editions].sort((a, b) => Number(b.year) - Number(a.year));
 }
 
+export function yearlyStatsFromEditions(editions = []) {
+  return editionsNewestFirst(editions).map((edition) => ({
+    year: edition.year,
+    tournamentCount: 1,
+    circuit: edition.event || "",
+    region: /paris/i.test(edition.event || "") ? "Europe" : /riyadh|gamers8/i.test(edition.event || "") ? "Middle East" : "Global",
+  }));
+}
+
+export function flattenEwcEditions(slides = []) {
+  return slides.flatMap((slide) =>
+    editionsNewestFirst(slide.editions || []).map((edition) => ({
+      ...edition,
+      game: slide.game,
+      slug: slide.slug,
+      dossier: slide.title,
+      peakPrizePool: slide.peakPrizePool,
+    })),
+  ).sort((a, b) => Number(b.year) - Number(a.year) || String(a.game).localeCompare(String(b.game)));
+}
+
+export function seedResearchCmsRecords() {
+  return researchVaultSlides().map((slide) => ({
+    ...slide,
+    id: slide.slug,
+    surface: "research",
+    research: true,
+    floatingPriority: 0,
+    region: "Global",
+    yearlyStats: yearlyStatsFromEditions(slide.editions),
+    relatedTournaments: [],
+  }));
+}
+
 export function researchVaultSlides() {
   return [...ESPORTS_RESEARCH]
     .map((game) => {
@@ -1649,7 +1683,7 @@ export function researchVaultSlides() {
         summary: game.overview,
         poster: bannerForGame(game.game),
         eventStatus: "completed",
-        surface: "vault",
+        surface: "research",
         research: true,
         genre: game.genre,
         type: game.type,

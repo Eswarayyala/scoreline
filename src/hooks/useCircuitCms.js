@@ -1,8 +1,13 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { collection, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore";
+import { db } from "../firebase";
 import { CIRCUIT_CMS_MOCK } from "../data/circuitCmsMock";
 import { VAULT_SLIDES } from "../data/platformShowcase";
+import { seedResearchCmsRecords } from "../data/esportsResearch";
+import { buildFilterGames } from "../data/gameCatalog";
 
-const STORAGE_KEY = "grindinfo-circuit-cms-v1";
+const STORAGE_KEY = "grindinfo-circuit-cms-v2";
+const CMS_COLLECTION = "circuitCms";
 
 function slugify(value) {
   return String(value || "event")
@@ -10,6 +15,18 @@ function slugify(value) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 48) || "event";
+}
+
+function stripUndefined(value) {
+  if (Array.isArray(value)) return value.map(stripUndefined);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, item]) => item !== undefined)
+        .map(([key, item]) => [key, stripUndefined(item)]),
+    );
+  }
+  return value;
 }
 
 function seedFromVaultLibrary() {
@@ -25,32 +42,55 @@ function seedFromVaultLibrary() {
     poster: slide.poster,
     posterSource: "preset",
     season: slide.season,
+    floatingPriority: Math.max(1, 12 - index),
   }));
 }
 
-function loadRecords() {
+function mergeWithSeed(remote = []) {
+  const byId = new Map(remote.map((item) => [item.id, item]));
+  seedResearchCmsRecords().forEach((item) => {
+    const existing = byId.get(item.id);
+    if (!existing) {
+      byId.set(item.id, item);
+      return;
+    }
+    byId.set(item.id, {
+      ...item,
+      ...existing,
+      surface: "research",
+      research: true,
+      editions: existing.editions?.length ? existing.editions : item.editions,
+      yearlyStats: existing.yearlyStats?.length ? existing.yearlyStats : item.yearlyStats,
+      relatedTournaments: existing.relatedTournaments?.length ? existing.relatedTournaments : item.relatedTournaments,
+      region: existing.region || item.region,
+    });
+  });
+  if (![...byId.values()].some((item) => item.surface === "vault")) {
+    [...CIRCUIT_CMS_MOCK, ...seedFromVaultLibrary()].forEach((item) => {
+      if (!byId.has(item.id)) byId.set(item.id, item);
+    });
+  }
+  return [...byId.values()];
+}
+
+function loadLocal() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length) return parsed;
+      if (Array.isArray(parsed) && parsed.length) return mergeWithSeed(parsed);
     }
   } catch {
-    /* keep seed */
+    /* seed */
   }
-  const seeded = [...CIRCUIT_CMS_MOCK];
-  const usedSlugs = new Set(seeded.map((item) => item.slug).filter(Boolean));
-  seedFromVaultLibrary().forEach((item) => {
-    if (!usedSlugs.has(item.slug)) seeded.push(item);
-  });
-  return seeded;
+  return mergeWithSeed([]);
 }
 
-function persist(records) {
+function persistLocal(records) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
   } catch {
-    /* quota — still keep in memory */
+    /* quota */
   }
 }
 
@@ -81,45 +121,94 @@ export function emptyCircuitEvent(surface) {
     seasonTitle: "",
     startAt: "",
     endAt: "",
+    floatingPriority: 5,
+    region: "Global",
+    yearlyStats: [{ year: new Date().getFullYear(), tournamentCount: 1, circuit: "", region: "Global" }],
+    relatedTournaments: [{ year: "", name: "", region: "", result: "" }],
+    editions: [],
+    research: surface === "research",
+    inFilters: true,
   };
 }
 
-export function useCircuitCms() {
-  const [records, setRecords] = useState(loadRecords);
+export function useCircuitCms({ canWrite = false } = {}) {
+  const [records, setRecords] = useState(loadLocal);
 
-  const commit = useCallback((next) => {
-    setRecords(next);
-    persist(next);
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, CMS_COLLECTION), (snap) => {
+      const remote = snap.docs.map((item) => ({ id: item.id, ...item.data() }));
+      const next = mergeWithSeed(remote);
+      setRecords(next);
+      persistLocal(next);
+    }, () => {
+      setRecords(loadLocal());
+    });
+    return unsub;
   }, []);
 
-  const upsert = useCallback((draft) => {
-    const title = String(draft.title || "").trim();
-    if (!title) throw new Error("Add a title.");
+  const upsert = useCallback(async (draft) => {
+    const title = String(draft.title || draft.game || "").trim();
+    if (!title) throw new Error("Add a title or game name.");
     const id = draft.id || `cms-${Date.now().toString(36)}`;
     const slug = draft.slug || slugify(title);
-    const record = { ...draft, id, slug, title, updatedAt: Date.now() };
+    const record = stripUndefined({ ...draft, id, slug, title, updatedAt: Date.now() });
     setRecords((current) => {
       const next = current.some((item) => item.id === id)
         ? current.map((item) => (item.id === id ? record : item))
         : [record, ...current];
-      persist(next);
+      persistLocal(next);
       return next;
     });
+    if (canWrite) {
+      try {
+        await setDoc(doc(db, CMS_COLLECTION, id), record);
+      } catch {
+        /* rules not live — local desk still keeps the edit */
+      }
+    }
     return record;
-  }, []);
+  }, [canWrite]);
 
-  const remove = useCallback((id) => {
-    commit(records.filter((item) => item.id !== id));
-  }, [commit, records]);
+  const remove = useCallback(async (id) => {
+    setRecords((current) => {
+      const next = current.filter((item) => item.id !== id);
+      persistLocal(next);
+      return next;
+    });
+    if (canWrite) {
+      try {
+        await deleteDoc(doc(db, CMS_COLLECTION, id));
+      } catch {
+        /* keep local */
+      }
+    }
+  }, [canWrite]);
 
   const vaultSlides = useMemo(
-    () => records.filter((item) => item.surface === "vault").slice(0, 10),
+    () => records
+      .filter((item) => item.surface === "vault")
+      .sort((a, b) => (Number(b.floatingPriority) || 0) - (Number(a.floatingPriority) || 0) || (b.updatedAt || 0) - (a.updatedAt || 0)),
     [records],
   );
+
+  const researchSlides = useMemo(
+    () => records
+      .filter((item) => item.surface === "research" || item.research)
+      .sort((a, b) => Number(b.editions?.[0]?.year || 0) - Number(a.editions?.[0]?.year || 0)),
+    [records],
+  );
+
   const managedTournaments = useMemo(
     () => records.filter((item) => item.surface === "tournament"),
     [records],
   );
 
-  return { records, vaultSlides, managedTournaments, upsert, remove, emptyCircuitEvent };
+  const filterGames = useMemo(() => {
+    const extras = records
+      .filter((item) => item.inFilters !== false && (item.surface === "catalog" || item.surface === "research" || item.research || item.game))
+      .map((item) => item.game || item.title);
+    return buildFilterGames(extras);
+  }, [records]);
+
+  return { records, vaultSlides, researchSlides, managedTournaments, filterGames, upsert, remove, emptyCircuitEvent };
 }

@@ -24,9 +24,14 @@ export default function VaultDetailPage({ liveEntries = [], slug, slides = VAULT
 
   return (
     <article className="mx-auto max-w-5xl px-5 pb-20 pt-6">
-      <Link to="/vault" className="mb-5 inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neon">
-        <ArrowLeft size={14} /> The Vault
-      </Link>
+      <div className="mb-5 flex flex-wrap items-center gap-4">
+        <Link to="/vault" className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neon">
+          <ArrowLeft size={14} /> The Vault
+        </Link>
+        {(slide.research || slide.surface === "research") && (
+          <Link to="/vault/ewc" className="font-mono text-xs uppercase tracking-widest text-amber-300">EWC index</Link>
+        )}
+      </div>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950 shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
         <div className="relative aspect-video max-h-[420px]">
           <img src={slide.poster} alt="" className="h-full w-full object-cover" />
@@ -40,10 +45,48 @@ export default function VaultDetailPage({ liveEntries = [], slug, slides = VAULT
         <div className="grid gap-8 p-6 md:grid-cols-[1.4fr_0.8fr] md:p-8">
           <div>
             <p className="text-base leading-7 text-slate-200">{slide.summary}</p>
-            {(slide.fullName || slide.genre || slide.peakPrizePool) && (
+            {(slide.fullName || slide.genre || slide.peakPrizePool || slide.region) && (
               <p className="mt-3 text-sm text-slate-400">
-                {[slide.fullName, slide.genre, slide.type, slide.peakPrizePool && `Peak prize pool ${slide.peakPrizePool}`].filter(Boolean).join(" · ")}
+                {[slide.fullName, slide.genre, slide.type, slide.region, slide.peakPrizePool && `Peak prize pool ${slide.peakPrizePool}`].filter(Boolean).join(" · ")}
               </p>
+            )}
+            {!!slide.yearlyStats?.length && (
+              <section className="mt-8">
+                <h2 className="font-display text-3xl text-white">Tournaments by year</h2>
+                <table className="mt-3 w-full text-left text-sm text-slate-300">
+                  <thead>
+                    <tr className="text-slate-500">
+                      <th className="py-1 pr-3 font-mono text-[10px] uppercase tracking-widest">Year</th>
+                      <th className="py-1 pr-3 font-mono text-[10px] uppercase tracking-widest">Held</th>
+                      <th className="py-1 pr-3 font-mono text-[10px] uppercase tracking-widest">Circuit</th>
+                      <th className="py-1 font-mono text-[10px] uppercase tracking-widest">Region</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {slide.yearlyStats.map((row) => (
+                      <tr key={`${row.year}-${row.circuit}`} className="border-t border-white/5">
+                        <td className="py-2 pr-3">{row.year}</td>
+                        <td className="py-2 pr-3">{row.tournamentCount}</td>
+                        <td className="py-2 pr-3">{row.circuit}</td>
+                        <td className="py-2">{row.region}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+            )}
+            {!!slide.relatedTournaments?.length && (
+              <section className="mt-8">
+                <h2 className="font-display text-3xl text-white">Related past tournaments</h2>
+                <ul className="mt-3 space-y-2 text-sm text-slate-300">
+                  {slide.relatedTournaments.map((row) => (
+                    <li key={`${row.year}-${row.name}`} className="border-t border-white/5 pt-2">
+                      <strong className="text-white">{row.name}</strong>
+                      <span className="text-slate-400"> · {[row.year, row.region, row.result].filter(Boolean).join(" · ")}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             )}
             {!!slide.editions?.length && (
               <div className="mt-8 space-y-8">
