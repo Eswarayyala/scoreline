@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { VAULT_SLIDES } from "../../data/platformShowcase";
+import { publicScopeKicker } from "../../data/eventScope";
 
 const navBtn = {
   width: 36,
@@ -71,7 +72,7 @@ export default function VaultCarousel({ slides = VAULT_SLIDES }) {
               <div className="relative aspect-video overflow-hidden">
                 <img src={slide.poster} alt="" className="h-full w-full object-cover" />
                 <span style={{ position: "absolute", left: 10, top: 10, fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--accent-secondary)", background: "rgba(23,17,15,0.78)", border: "1px solid var(--border)", borderRadius: 999, padding: "3px 8px" }}>
-                  {slide.kicker}
+                  {publicScopeKicker(slide) || slide.game}
                 </span>
               </div>
               <div style={{ padding: "10px 12px 12px" }}>

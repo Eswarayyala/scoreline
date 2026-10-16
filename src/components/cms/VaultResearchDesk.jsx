@@ -3,7 +3,8 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { canWriteCircuitContent } from "../../lib/staffAccess";
 import { FILTER_GAMES } from "../../data/gameCatalog";
 import { emptyCircuitEvent } from "../../hooks/useCircuitCms";
-import { emptyEdition, emptyFinalsRow, formatForGame, normalizeEdition, serializeEdition } from "../../data/vaultDeskSchema";
+import EventScopeField from "./EventScopeField";
+import { emptyEdition, emptyFinalsRow, formatForGame, normalizeEdition, serializeEdition, VAULT_FORMATS } from "../../data/vaultDeskSchema";
 
 const inputClass = "w-full rounded-lg border border-white/15 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none focus:border-neon";
 
@@ -17,7 +18,7 @@ function Field({ label, children }) {
 }
 
 function EditionCard({ edition, game, onChange, onRemove }) {
-  const format = formatForGame(game);
+  const format = formatForGame(game, edition.structureId);
   const patch = (key, value) => onChange({ ...edition, [key]: value });
   const payouts = edition.payouts?.length ? edition.payouts : [{ rank: "", team: "", player: "", prize: "" }];
   const stages = edition.stages?.length ? edition.stages : format.stages.map((name) => ({ name, teams: "", kickedOff: "" }));
@@ -26,7 +27,7 @@ function EditionCard({ edition, game, onChange, onRemove }) {
   return (
     <div className="grid gap-3 rounded-2xl border border-white/10 p-4">
       <div className="flex items-center justify-between">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-volt">{format.label} · {edition.year || "Season"}</p>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-volt">{edition.year || "Season"}</p>
         <button type="button" onClick={onRemove} className="inline-flex items-center gap-1 text-xs text-rose-400"><Trash2 size={12} /> Remove season</button>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -41,7 +42,20 @@ function EditionCard({ edition, game, onChange, onRemove }) {
         {format.hasIgl && <Field label="Best IGL"><input className={inputClass} value={edition.bestIgl || ""} onChange={(e) => patch("bestIgl", e.target.value)} /></Field>}
         <Field label="Fan favourite"><input className={inputClass} value={edition.fanFavourite || ""} onChange={(e) => patch("fanFavourite", e.target.value)} /></Field>
         <Field label="Teams from groups to finals"><input className={inputClass} value={edition.totalTeams || ""} onChange={(e) => patch("totalTeams", e.target.value)} /></Field>
+        <EventScopeField value={edition.eventScope} onChange={(value) => patch("eventScope", value)} />
       </div>
+      <details className="rounded-lg border border-white/10 p-3">
+        <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-widest text-slate-500">Structure category</summary>
+        <select
+          className={`${inputClass} mt-2`}
+          value={edition.structureId || format.id}
+          onChange={(e) => patch("structureId", e.target.value)}
+        >
+          {Object.values(VAULT_FORMATS).map((item) => (
+            <option key={item.id} value={item.id}>{item.id}</option>
+          ))}
+        </select>
+      </details>
       <Field label="Who lost in the early stage">
         <textarea rows={2} className={inputClass} value={edition.earlyExits || ""} onChange={(e) => patch("earlyExits", e.target.value)} />
       </Field>
@@ -75,7 +89,7 @@ function EditionCard({ edition, game, onChange, onRemove }) {
 
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Finals point table · {format.label}</p>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Finals point table</p>
           <button type="button" className="text-xs text-neon" onClick={() => patch("finalsTable", [...finals, emptyFinalsRow(format)])}>+ Row</button>
         </div>
         <div className="mb-1 hidden gap-2 text-[10px] uppercase tracking-widest text-slate-500 sm:grid" style={{ gridTemplateColumns: `repeat(${format.finalsColumns.length}, minmax(0, 1fr)) auto` }}>
@@ -154,7 +168,6 @@ function ResearchForm({ initial, canWrite, games, onSave, onCancel }) {
   return (
     <form onSubmit={submit} className="grid gap-3 rounded-2xl border border-neon/20 bg-slate-950/80 p-5">
       <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-neon">{form.id ? "Edit game vault" : "New game vault"}</p>
-      <p className="text-sm text-slate-400">Text fields only. Columns follow this game&apos;s structure (bracket series, BR points, fighting, racing, or chess).</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Title"><input required className={inputClass} value={form.title || ""} onChange={(e) => patch("title", e.target.value)} /></Field>
         <Field label="Game">
@@ -163,9 +176,15 @@ function ResearchForm({ initial, canWrite, games, onSave, onCancel }) {
         </Field>
         <Field label="Region"><input className={inputClass} value={form.region || ""} onChange={(e) => patch("region", e.target.value)} /></Field>
         <Field label="Peak prize pool"><input className={inputClass} value={form.peakPrizePool || ""} onChange={(e) => patch("peakPrizePool", e.target.value)} /></Field>
-        <Field label="Genre"><input className={inputClass} value={form.genre || ""} onChange={(e) => patch("genre", e.target.value)} /></Field>
-        <Field label="Platform / type"><input className={inputClass} value={form.type || ""} onChange={(e) => patch("type", e.target.value)} /></Field>
+        <EventScopeField value={form.eventScope} onChange={(value) => patch("eventScope", value)} />
       </div>
+      <details className="rounded-lg border border-white/10 p-3">
+        <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-widest text-slate-500">Game type category</summary>
+        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+          <Field label="Genre"><input className={inputClass} value={form.genre || ""} onChange={(e) => patch("genre", e.target.value)} /></Field>
+          <Field label="Platform / type"><input className={inputClass} value={form.type || ""} onChange={(e) => patch("type", e.target.value)} /></Field>
+        </div>
+      </details>
       <Field label="Overview"><textarea rows={3} className={inputClass} value={form.summary || ""} onChange={(e) => patch("summary", e.target.value)} /></Field>
       <div>
         <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">Tournaments held by year</p>

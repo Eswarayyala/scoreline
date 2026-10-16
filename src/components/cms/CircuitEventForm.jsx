@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { FILTER_GAMES } from "../../data/gameCatalog";
 import { emptyCircuitEvent } from "../../hooks/useCircuitCms";
 import EventStatusFields from "./EventStatusFields";
+import EventScopeField from "./EventScopeField";
 import PosterPicker from "./PosterPicker";
 
 const inputClass = "w-full rounded-lg border border-white/15 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none focus:border-neon";
@@ -63,6 +64,7 @@ export default function CircuitEventForm({ surface, initial, canWrite, onSave, o
           <datalist id="circuit-games">{games.map((game) => <option key={game} value={game} />)}</datalist>
         </label>
       </div>
+      <EventScopeField value={form.eventScope} onChange={(value) => patch("eventScope", value)} />
       {surface === "vault" && (
         <label className="grid gap-1 text-xs text-slate-400">
           Home priority (higher floats first)

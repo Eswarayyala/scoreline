@@ -79,7 +79,8 @@ export const VAULT_FORMATS = {
   },
 };
 
-export function formatForGame(game = "") {
+export function formatForGame(game = "", structureId) {
+  if (structureId && VAULT_FORMATS[structureId]) return VAULT_FORMATS[structureId];
   const name = String(game).toLowerCase();
   if (/apex|pubg|fortnite|free fire|warzone|bgmi|standoff/.test(name)) return VAULT_FORMATS.battleRoyale;
   if (/street fighter|tekken/.test(name)) return VAULT_FORMATS.fighting;
@@ -124,8 +125,8 @@ export function emptyFinalsRow(format) {
   return Object.fromEntries((format.finalsColumns || []).map((column) => [column.key, ""]));
 }
 
-export function emptyEdition(game = "") {
-  const format = formatForGame(game);
+export function emptyEdition(game = "", structureId) {
+  const format = formatForGame(game, structureId);
   return {
     year: "",
     season: "",
@@ -143,6 +144,8 @@ export function emptyEdition(game = "") {
     clutchesAndRivalries: "",
     totalTeams: "",
     formatNotes: "",
+    eventScope: "ewc",
+    structureId: format.id,
     stages: format.stages.map((name) => ({ name, teams: "", kickedOff: "" })),
     finalsTable: [emptyFinalsRow(format)],
     payouts: [{ rank: "1st (Champion)", team: "", player: "", prize: "" }],
@@ -150,7 +153,7 @@ export function emptyEdition(game = "") {
 }
 
 export function normalizeEdition(edition = {}, game = "") {
-  const format = formatForGame(game);
+  const format = formatForGame(game, edition.structureId);
   const payouts = edition.payouts || [];
   const highlights = edition.highlights || {};
   const first = payoutByPrefix(payouts, "1st");
@@ -172,6 +175,8 @@ export function normalizeEdition(edition = {}, game = "") {
     clutchesAndRivalries: edition.clutchesAndRivalries || highlights.clutchesAndRivalries || "",
     totalTeams: inferTotalTeams(edition),
     formatNotes: edition.formatNotes || "",
+    eventScope: edition.eventScope || (/ewc|esports world cup|gamers8|riyadh masters/i.test(edition.event || "") ? "ewc" : "random"),
+    structureId: edition.structureId || format.id,
     stages: stagesFromPayouts(edition, format),
     finalsTable: edition.finalsTable?.length ? edition.finalsTable : [emptyFinalsRow(format)],
     payouts: payouts.length ? payouts : emptyEdition(game).payouts,

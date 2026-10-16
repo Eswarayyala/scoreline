@@ -128,6 +128,7 @@ export function emptyCircuitEvent(surface) {
     relatedTournaments: [{ year: "", name: "", region: "", result: "" }],
     editions: [],
     research: surface === "research",
+    eventScope: surface === "research" ? "ewc" : "random",
     inFilters: true,
   };
 }

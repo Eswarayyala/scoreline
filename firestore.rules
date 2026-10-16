@@ -135,7 +135,7 @@ service cloud.firestore {
       return data.keys().hasOnly([
 
                'title', 'game', 'content', 'source', 'authorId', 'authorName',
-               'status', 'createdAt', 'updatedAt', 'reviewedAt', 'reviewedBy'
+               'status', 'createdAt', 'updatedAt', 'reviewedAt', 'reviewedBy', 'eventScope'
              ])
              && data.keys().hasAll([
                'title', 'game', 'content', 'source', 'authorId', 'authorName',
@@ -152,14 +152,15 @@ service cloud.firestore {
              && data.createdAt is int
              && (!data.keys().hasAny(['updatedAt']) || data.updatedAt is int)
              && (!data.keys().hasAny(['reviewedAt']) || data.reviewedAt is int)
-             && (!data.keys().hasAny(['reviewedBy']) || data.reviewedBy is string);
+             && (!data.keys().hasAny(['reviewedBy']) || data.reviewedBy is string)
+             && (!data.keys().hasAny(['eventScope']) || data.eventScope in ['ewc', 'region', 'random']);
     }
 
     function validArchiveSubmission(data) {
       return data.keys().hasOnly([
                'tournament', 'game', 'eventDate', 'winner', 'runnerUp', 'mvp',
                'source', 'submitterId', 'submitterName', 'status', 'createdAt',
-               'reviewedAt', 'reviewedBy', 'archiveEntryId'
+               'reviewedAt', 'reviewedBy', 'archiveEntryId', 'eventScope'
              ])
              && data.keys().hasAll([
                'tournament', 'game', 'eventDate', 'winner', 'runnerUp', 'mvp',
@@ -179,14 +180,15 @@ service cloud.firestore {
              && data.createdAt is int
              && (!data.keys().hasAny(['reviewedAt']) || data.reviewedAt is int)
              && (!data.keys().hasAny(['reviewedBy']) || data.reviewedBy is string)
-             && (!data.keys().hasAny(['archiveEntryId']) || (data.archiveEntryId is string && data.archiveEntryId.size() <= 128));
+             && (!data.keys().hasAny(['archiveEntryId']) || (data.archiveEntryId is string && data.archiveEntryId.size() <= 128))
+             && (!data.keys().hasAny(['eventScope']) || data.eventScope in ['ewc', 'region', 'random']);
     }
 
     function validArchiveEntry(data) {
       return data.keys().hasOnly([
 
                'tournament', 'game', 'eventDate', 'winner', 'runnerUp', 'mvp',
-               'source', 'createdAt', 'createdBy', 'submissionId', 'blogPostId'
+               'source', 'createdAt', 'createdBy', 'submissionId', 'blogPostId', 'eventScope'
              ])
              && data.keys().hasAll([
                'tournament', 'game', 'eventDate', 'winner', 'runnerUp', 'mvp',
@@ -203,7 +205,8 @@ service cloud.firestore {
              && data.createdAt is int
              && data.createdBy == request.auth.uid
              && (!data.keys().hasAny(['submissionId']) || (data.submissionId is string && data.submissionId.size() <= 128))
-             && (!data.keys().hasAny(['blogPostId']) || (data.blogPostId is string && data.blogPostId.size() <= 128));
+             && (!data.keys().hasAny(['blogPostId']) || (data.blogPostId is string && data.blogPostId.size() <= 128))
+             && (!data.keys().hasAny(['eventScope']) || data.eventScope in ['ewc', 'region', 'random']);
     }
 
     function validStaffAction(data) {

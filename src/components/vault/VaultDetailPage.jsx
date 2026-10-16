@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, ExternalLink, Trophy } from "lucide-react";
 import { VAULT_SLIDES } from "../../data/platformShowcase";
 import { editionsNewestFirst, researchHighlightLabels } from "../../data/esportsResearch";
+import { publicScopeKicker } from "../../data/eventScope";
 import { formatForGame } from "../../data/vaultDeskSchema";
 
 export default function VaultDetailPage({ liveEntries = [], slug, slides = VAULT_SLIDES }) {
@@ -38,7 +39,7 @@ export default function VaultDetailPage({ liveEntries = [], slug, slides = VAULT
           <img src={slide.poster} alt="" className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-neon">{slide.kicker} · {slide.game}</p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-neon">{[publicScopeKicker(slide), slide.game].filter(Boolean).join(" · ")}</p>
             <h1 className="font-display text-5xl text-white md:text-7xl">{slide.title}</h1>
             <p className="mt-1 text-slate-300">{slide.season}</p>
           </div>
@@ -46,9 +47,9 @@ export default function VaultDetailPage({ liveEntries = [], slug, slides = VAULT
         <div className="grid gap-8 p-6 md:grid-cols-[1.4fr_0.8fr] md:p-8">
           <div>
             <p className="text-base leading-7 text-slate-200">{slide.summary}</p>
-            {(slide.fullName || slide.genre || slide.peakPrizePool || slide.region) && (
+            {(slide.fullName || slide.peakPrizePool || slide.region) && (
               <p className="mt-3 text-sm text-slate-400">
-                {[slide.fullName, slide.genre, slide.type, slide.region, slide.peakPrizePool && `Peak prize pool ${slide.peakPrizePool}`].filter(Boolean).join(" · ")}
+                {[slide.fullName, slide.region, slide.peakPrizePool && `Peak prize pool ${slide.peakPrizePool}`].filter(Boolean).join(" · ")}
               </p>
             )}
             {!!slide.yearlyStats?.length && (
@@ -92,7 +93,7 @@ export default function VaultDetailPage({ liveEntries = [], slug, slides = VAULT
             {!!slide.editions?.length && (
               <div className="mt-8 space-y-8">
                 {editionsNewestFirst(slide.editions).map((edition) => {
-                  const format = formatForGame(slide.game);
+                  const format = formatForGame(slide.game, edition.structureId);
                   const finalsRows = (edition.finalsTable || []).filter((row) => Object.values(row).some((value) => String(value || "").trim()));
                   const stages = (edition.stages || []).filter((row) => row.name || row.kickedOff || row.teams);
                   return (
@@ -136,7 +137,7 @@ export default function VaultDetailPage({ liveEntries = [], slug, slides = VAULT
                     )}
                     {!!finalsRows.length && (
                       <div className="mt-4">
-                        <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Finals · {format.label}</p>
+                        <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Finals</p>
                         <table className="mt-2 w-full text-left text-sm text-slate-300">
                           <thead>
                             <tr className="text-slate-500">

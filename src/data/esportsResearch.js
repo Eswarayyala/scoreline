@@ -1,4 +1,5 @@
 import { bannerForGame } from "./platformShowcase";
+import { isEwcEdition } from "./eventScope";
 import { normalizeEdition } from "./vaultDeskSchema";
 
 export const ESPORTS_RESEARCH = [
@@ -1640,13 +1641,16 @@ export function yearlyStatsFromEditions(editions = []) {
 
 export function flattenEwcEditions(slides = []) {
   return slides.flatMap((slide) =>
-    editionsNewestFirst(slide.editions || []).map((edition) => ({
-      ...edition,
-      game: slide.game,
-      slug: slide.slug,
-      dossier: slide.title,
-      peakPrizePool: slide.peakPrizePool,
-    })),
+    editionsNewestFirst(slide.editions || [])
+      .filter((edition) => isEwcEdition(edition) || slide.research)
+      .filter((edition) => edition.eventScope !== "region" && edition.eventScope !== "random")
+      .map((edition) => ({
+        ...edition,
+        game: slide.game,
+        slug: slide.slug,
+        dossier: slide.title,
+        peakPrizePool: slide.peakPrizePool,
+      })),
   ).sort((a, b) => Number(b.year) - Number(a.year) || String(a.game).localeCompare(String(b.game)));
 }
 
@@ -1686,6 +1690,7 @@ export function researchVaultSlides() {
         eventStatus: "completed",
         surface: "research",
         research: true,
+        eventScope: "ewc",
         genre: game.genre,
         type: game.type,
         peakPrizePool: game.peakPrizePool,

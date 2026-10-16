@@ -38,6 +38,7 @@ import { useCircuitCms } from "./hooks/useCircuitCms";
 import { useEsportsMedia } from "./hooks/useEsportsMedia";
 import { fetchGamePoster, mergeVaultMedia } from "./services/esportsMedia";
 import { FILTER_GAMES } from "./data/gameCatalog";
+import { EVENT_SCOPES, applyEventToVault, findGameVault, inferEventScope, normalizeGameKey } from "./data/eventScope";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { onValue, ref as databaseRef, onDisconnect, serverTimestamp, set as setDatabaseValue } from "firebase/database";
 
@@ -1684,7 +1685,7 @@ function VaultMonitor({ entries, submissions, blogPosts, onDecision, onPromote }
           <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
             {ordered.map((entry) => (
               <article key={entry.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
-                <Eyebrow>{entry.game} · {entry.eventDate}</Eyebrow>
+                <Eyebrow>{entry.game} · {entry.eventDate}{entry.eventScope ? ` · ${entry.eventScope}` : ""}</Eyebrow>
                 <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "4px 0", fontSize: 22 }}>{entry.tournament}</h2>
                 <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Winner: {entry.winner}{entry.runnerUp ? ` · Runner-up: ${entry.runnerUp}` : ""}{entry.mvp ? ` · MVP: ${entry.mvp}` : ""}</div>
               </article>
@@ -1712,14 +1713,16 @@ function BlogArchivePromoter({ posts, onPromote }) {
   const [runnerUp, setRunnerUp] = useState("");
   const [mvp, setMvp] = useState("");
   const [source, setSource] = useState("");
+  const [eventScope, setEventScope] = useState("ewc");
   const [error, setError] = useState("");
   const selected = candidates.find((post) => post.id === postId);
   const choosePost = (id) => {
     const post = candidates.find((item) => item.id === id);
-    setPostId(id); setEventDate(""); setWinner(""); setRunnerUp(""); setMvp(""); setSource(post?.source || ""); setError("");
+    setPostId(id); setEventDate(""); setWinner(""); setRunnerUp(""); setMvp(""); setSource(post?.source || "");
+    setEventScope(post?.eventScope || inferEventScope(`${post?.title || ""} ${post?.game || ""}`)); setError("");
   };
   return <section style={{ maxWidth: 680 }}>
-    <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Turn a published blog into a structured Vault record. Add the event date and winner before saving.</p>
+    <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Turn a published recap into The Vault. Mark it EWC related to merge it into that game vault and the shared EWC list.</p>
     {candidates.length === 0 ? <EmptyState title="No published blogs to add" body="Publish a blog first, then you can create a Vault record from it." /> : <>
       <Field label="Published blog"><Select value={postId} onChange={(event) => choosePost(event.target.value)}><option value="">Choose a post…</option>{candidates.map((post) => <option key={post.id} value={post.id}>{post.title} · {post.game}</option>)}</Select></Field>
       {selected && <div style={{ display: "grid", gap: 8, marginTop: 10, padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
@@ -1728,8 +1731,9 @@ function BlogArchivePromoter({ posts, onPromote }) {
         <Field label="Runner-up (optional)"><TextInput maxLength={100} value={runnerUp} onChange={(event) => setRunnerUp(event.target.value)} /></Field>
         <Field label="MVP (optional)"><TextInput maxLength={100} value={mvp} onChange={(event) => setMvp(event.target.value)} /></Field>
         <Field label="Source link (optional)"><TextInput maxLength={500} value={source} onChange={(event) => setSource(event.target.value)} /></Field>
+        <Field label="Event type"><Select value={eventScope} onChange={(event) => setEventScope(event.target.value)}>{EVENT_SCOPES.map((scope) => <option key={scope.id} value={scope.id}>{scope.label}</option>)}</Select></Field>
         {error && <div role="alert" style={{ color: "var(--danger)" }}>{error}</div>}
-        <Button onClick={async () => { if (!eventDate.trim() || !winner.trim()) { setError("Add the event date and winner."); return; } try { await onPromote(selected, { eventDate, winner, runnerUp, mvp, source }); choosePost(""); } catch { setError("Could not add this record to The Vault."); } }}>Add event to The Vault</Button>
+        <Button onClick={async () => { if (!eventDate.trim() || !winner.trim()) { setError("Add the event date and winner."); return; } try { await onPromote(selected, { eventDate, winner, runnerUp, mvp, source, eventScope }); choosePost(""); } catch { setError("Could not add this record to The Vault."); } }}>Add event to The Vault</Button>
       </div>}
     </>}
   </section>;
@@ -1737,7 +1741,7 @@ function BlogArchivePromoter({ posts, onPromote }) {
 
 function ArchiveRequestForm({ user, submissions = [], onSubmit, onSignIn }) {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ tournament: "", game: "", eventDate: "", winner: "", source: "" });
+  const [form, setForm] = useState({ tournament: "", game: "", eventDate: "", winner: "", source: "", eventScope: "random" });
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const ownRequests = user ? submissions.filter((item) => item.submitterId === user.uid).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 4) : [];
@@ -1745,7 +1749,7 @@ function ArchiveRequestForm({ user, submissions = [], onSubmit, onSignIn }) {
   const submit = async () => {
     if (!form.tournament.trim() || !form.game.trim() || !form.eventDate.trim() || !form.winner.trim()) { setError("Add event, game, date, and winner."); return; }
     if (form.source.trim() && !/^https:\/\//i.test(form.source.trim())) { setError("Source links must start with https://."); return; }
-    try { await onSubmit(form); setForm({ tournament: "", game: "", eventDate: "", winner: "", source: "" }); setError(""); setMessage("Sent for review."); }
+    try { await onSubmit(form); setForm({ tournament: "", game: "", eventDate: "", winner: "", source: "", eventScope: "random" }); setError(""); setMessage("Sent for review."); }
     catch { setError("Could not send this request."); }
   };
   return (
@@ -1760,6 +1764,7 @@ function ArchiveRequestForm({ user, submissions = [], onSubmit, onSignIn }) {
             <TextInput maxLength={40} value={form.eventDate} onChange={(e) => update("eventDate", e.target.value)} placeholder="Date" />
             <TextInput maxLength={100} value={form.winner} onChange={(e) => update("winner", e.target.value)} placeholder="Winner" />
             <TextInput maxLength={500} value={form.source} onChange={(e) => update("source", e.target.value)} placeholder="https:// source" />
+            <Select value={form.eventScope} onChange={(e) => update("eventScope", e.target.value)} aria-label="Event type">{EVENT_SCOPES.map((scope) => <option key={scope.id} value={scope.id}>{scope.label}</option>)}</Select>
             {error && <div role="alert" className="text-xs text-red-400">{error}</div>}
             {message && <div role="status" className="text-xs text-emerald-400">{message}</div>}
             <Button onClick={submit}>Send</Button>
@@ -1849,7 +1854,7 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerB
       {tab === "tournaments" && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="tournament" records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} games={filterGames} /><TournamentMonitor tournaments={tournaments} onOpen={onOpenTournament} /></div>}
       {tab === "vault" && <div style={{ display: "grid", gap: 28 }}><VaultResearchDesk records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} filterGames={filterGames} /><CircuitCmsDesk surface="vault" records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} games={filterGames} /><StaffVaultFill entries={archiveEntries} onImport={onImportArchive} /><VaultMonitor entries={archiveEntries} submissions={archiveSubmissions} blogPosts={blogPosts} onDecision={onArchiveDecision} onPromote={onPromoteBlog} /></div>}
       {tab === "activity log" && isOwner && <StaffActivityLog actions={auditLog} />}
-      {tab === "blogs" && <section><p style={{ color: "var(--text-muted)", fontSize: 13 }}>Watch every community blog from this desk. Publish or decline pending posts, then promote a published story into The Vault from the Vault tab.</p><div style={{ display: "flex", gap: 16, margin: "0 0 14px", fontSize: 13, color: "var(--text-muted)" }}><span>Pending {pendingBlogs}</span><span>Published {blogPosts.filter((post) => post.status === "published").length}</span><span>Total {blogPosts.length}</span></div>{blogPosts.length === 0 ? <EmptyState title="No blog posts yet" body="Community submissions will appear here for preview." /> : <div style={{ display: "grid", gap: 10 }}>{[...blogPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 30).map((post) => <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status} · by {post.authorName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{post.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{post.content}</p>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onBlogReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onBlogReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div>}</section>}
+      {tab === "blogs" && <section><p style={{ color: "var(--text-muted)", fontSize: 13 }}>Watch every community blog from this desk. Publish or decline pending posts, then promote a published story into The Vault from the Vault tab.</p><div style={{ display: "flex", gap: 16, margin: "0 0 14px", fontSize: 13, color: "var(--text-muted)" }}><span>Pending {pendingBlogs}</span><span>Published {blogPosts.filter((post) => post.status === "published").length}</span><span>Total {blogPosts.length}</span></div>{blogPosts.length === 0 ? <EmptyState title="No blog posts yet" body="Community submissions will appear here for preview." /> : <div style={{ display: "grid", gap: 10 }}>{[...blogPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 30).map((post) => <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}{post.eventScope ? ` · ${post.eventScope}` : ""} · by {post.authorName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{post.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{post.content}</p>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onBlogReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onBlogReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div>}</section>}
       {tab === "popups" && isOwner && <section>
         <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Create plain-text safety reminders or general popups. General popups appear at random intervals of 15 to 30 minutes while someone is actively browsing.</p>
         <Button onClick={() => openEditor()}>Add popup</Button>
@@ -1890,6 +1895,7 @@ function normalizeVaultRecords(records, existingEntries) {
     runnerUp: String(entry.runnerup || entry.runnerUp || "").slice(0, 100),
     mvp: String(entry.mvp || "").slice(0, 100),
     source: String(entry.source || "").trim().slice(0, 500),
+    eventScope: ["ewc", "region", "random"].includes(entry.eventScope) ? entry.eventScope : inferEventScope(`${entry.tournament} ${entry.game}`),
   })).filter((entry) => {
     if (entry.source && !/^https:\/\//i.test(entry.source)) throw new Error("Source links must start with https://.");
     const key = [entry.tournament, entry.game, entry.eventDate].map((part) => part.toLowerCase()).join("|");
@@ -1949,7 +1955,7 @@ function StaffVaultFill({ entries = [], onImport }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState(null);
-  const [staffForm, setStaffForm] = useState({ tournament: "", game: "", eventDate: "", winner: "", runnerUp: "", mvp: "", source: "" });
+  const [staffForm, setStaffForm] = useState({ tournament: "", game: "", eventDate: "", winner: "", runnerUp: "", mvp: "", source: "", eventScope: "ewc" });
   const [paste, setPaste] = useState("");
   const stageRecords = (records) => {
     const clean = normalizeVaultRecords(records, entries);
@@ -1969,7 +1975,8 @@ function StaffVaultFill({ entries = [], onImport }) {
       <Field label="Runner-up (optional)"><TextInput maxLength={100} value={staffForm.runnerUp} onChange={(event) => updateStaff("runnerUp", event.target.value)} /></Field>
       <Field label="MVP (optional)"><TextInput maxLength={100} value={staffForm.mvp} onChange={(event) => updateStaff("mvp", event.target.value)} /></Field>
       <Field label="Source link (optional)"><TextInput maxLength={500} value={staffForm.source} onChange={(event) => updateStaff("source", event.target.value)} placeholder="https://" /></Field>
-      <Button onClick={() => { setError(""); setMessage(""); try { stageRecords([{ tournament: staffForm.tournament, game: staffForm.game, eventdate: staffForm.eventDate, winner: staffForm.winner, runnerup: staffForm.runnerUp, mvp: staffForm.mvp, source: staffForm.source }]); setStaffForm({ tournament: "", game: "", eventDate: "", winner: "", runnerUp: "", mvp: "", source: "" }); } catch (issue) { setError(issue.message || "Could not stage this event."); } }}>Stage this event</Button>
+      <Field label="Event type"><Select value={staffForm.eventScope} onChange={(event) => updateStaff("eventScope", event.target.value)}>{EVENT_SCOPES.map((scope) => <option key={scope.id} value={scope.id}>{scope.label}</option>)}</Select></Field>
+      <Button onClick={() => { setError(""); setMessage(""); try { stageRecords([{ tournament: staffForm.tournament, game: staffForm.game, eventdate: staffForm.eventDate, winner: staffForm.winner, runnerup: staffForm.runnerUp, mvp: staffForm.mvp, source: staffForm.source, eventScope: staffForm.eventScope }]); setStaffForm({ tournament: "", game: "", eventDate: "", winner: "", runnerUp: "", mvp: "", source: "", eventScope: "ewc" }); } catch (issue) { setError(issue.message || "Could not stage this event."); } }}>Stage this event</Button>
       <Field label="Paste a list of events">
         <textarea value={paste} onChange={(event) => setPaste(event.target.value)} rows={6} placeholder={"IEM Katowice|CS2|2024-02-11|Team Spirit|FaZe|donk|https://example.com"} style={{ ...inputStyle, resize: "vertical", minHeight: 120 }} />
       </Field>
@@ -2017,7 +2024,7 @@ function HistoricalArchive({ entries, user, submissions, onSubmitRequest, onSign
               <img src={flyerForEvent(entry)} alt="" className="h-full w-full object-cover" />
             </div>
             <div className="p-4">
-              <Eyebrow>{entry.game} · {entry.eventDate}</Eyebrow>
+              <Eyebrow>{entry.game} · {entry.eventDate}{entry.eventScope ? ` · ${entry.eventScope}` : ""}</Eyebrow>
               <h3 className="my-1 font-['Bebas_Neue',sans-serif] text-2xl">{entry.tournament}</h3>
               <div className="text-sm text-stone-300">Winner {entry.winner}{entry.runnerUp ? ` · Runner-up ${entry.runnerUp}` : ""}{entry.mvp ? ` · MVP ${entry.mvp}` : ""}</div>
               {entry.source && <a href={entry.source} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sm text-amber-300">Source</a>}
@@ -2036,28 +2043,29 @@ function LoadingScreen({ label }) {
 function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDelete, onSignIn, embedded = false, manageInDrawer = false }) {
   const [title, setTitle] = useState("");
   const [game, setGame] = useState("");
+  const [eventScope, setEventScope] = useState("random");
   const [content, setContent] = useState("");
   const [source, setSource] = useState("");
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState("");
   const [manageOpen, setManageOpen] = useState(false);
-  const [draft, setDraft] = useState({ title: "", game: "", content: "", source: "" });
+  const [draft, setDraft] = useState({ title: "", game: "", content: "", source: "", eventScope: "random" });
   const visible = posts.filter((post) => post.status === "published" || (user && post.authorId === user.uid) || (isModerator && post.status === "pending"));
   const submit = async () => {
     if (!title.trim() || !game.trim() || !content.trim()) { setError("Add a title, game, and post text."); return; }
     if (source.trim() && !/^https:\/\//i.test(source.trim())) { setError("Use a secure https source link."); return; }
-    try { await onSubmit({ title: title.trim(), game: game.trim(), content: content.trim(), source: source.trim() }); setTitle(""); setGame(""); setContent(""); setSource(""); setError(""); }
+    try { await onSubmit({ title: title.trim(), game: game.trim(), content: content.trim(), source: source.trim(), eventScope }); setTitle(""); setGame(""); setEventScope("random"); setContent(""); setSource(""); setError(""); }
     catch { setError("Could not submit this post. Please try again."); }
   };
-  const startEdit = (post) => { setEditingId(post.id); setDraft({ title: post.title || "", game: post.game || "", content: post.content || "", source: post.source || "" }); setError(""); };
+  const startEdit = (post) => { setEditingId(post.id); setDraft({ title: post.title || "", game: post.game || "", content: post.content || "", source: post.source || "", eventScope: post.eventScope || "random" }); setError(""); };
   const saveEdit = async (post) => {
     if (!draft.title.trim() || !draft.game.trim() || !draft.content.trim()) { setError("Add a title, game, and post text."); return; }
     if (draft.source.trim() && !/^https:\/\//i.test(draft.source.trim())) { setError("Use a secure https source link."); return; }
-    try { await onEdit(post, { title: draft.title.trim(), game: draft.game.trim(), content: draft.content.trim(), source: draft.source.trim() }); setEditingId(""); setError(""); }
+    try { await onEdit(post, { title: draft.title.trim(), game: draft.game.trim(), content: draft.content.trim(), source: draft.source.trim(), eventScope: draft.eventScope || "random" }); setEditingId(""); setError(""); }
     catch { setError("Could not save this post. Please try again."); }
   };
-  const compose = user ? <section style={{ display: "grid", gap: 10, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)", maxWidth: 680 }}><p style={{ color: "var(--text-muted)", fontSize: 13, margin: 0 }}>Send a tournament recap or esports story to the GrindInfo owner for review.</p><Field label="Post title"><TextInput value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} /></Field><Field label="Game"><TextInput value={game} maxLength={60} onChange={(e) => setGame(e.target.value)} placeholder="e.g. Valorant" /></Field><Field label="Story or tournament update"><textarea value={content} maxLength={6000} onChange={(e) => setContent(e.target.value)} rows={6} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput value={source} maxLength={500} onChange={(e) => setSource(e.target.value)} placeholder="https://" /></Field>{error && !editingId && <span role="alert" style={{ color: "var(--danger)" }}>{error}</span>}<Button onClick={submit}>Request publication</Button></section> : <section style={{ maxWidth: 680, padding: 16, marginTop: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 10 }}>Sign in to request that a blog post be published.</div><Button onClick={onSignIn}>Sign in to request a post</Button></section>;
-  return <div style={{ paddingTop: embedded ? 16 : 32, paddingBottom: manageInDrawer ? 88 : 0 }}>{!embedded && <><Eyebrow>Community stories</Eyebrow><h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42 }}>Esports blog</h1><p style={{ color: "var(--text-muted)" }}>Read community stories, tournament recaps, and esports updates.</p></>}{embedded && <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, margin: "0 0 12px" }}>Community blog</h2>}{!manageInDrawer && compose}<div style={{ display: "grid", gap: 12, marginTop: 20 }}>{visible.map((post) => <article key={post.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}</Eyebrow>{editingId === post.id ? <div style={{ display: "grid", gap: 8, marginTop: 8 }}><Field label="Post title"><TextInput maxLength={120} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /></Field><Field label="Game"><TextInput maxLength={60} value={draft.game} onChange={(e) => setDraft({ ...draft, game: e.target.value })} /></Field><Field label="Story"><textarea maxLength={6000} rows={6} value={draft.content} onChange={(e) => setDraft({ ...draft, content: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput maxLength={500} value={draft.source} onChange={(e) => setDraft({ ...draft, source: e.target.value })} /></Field><div style={{ display: "flex", gap: 8 }}><Button onClick={() => saveEdit(post)}>Save changes</Button><Button variant="ghost" onClick={() => setEditingId("")}>Cancel</Button></div></div> : <><h2 style={{ fontFamily: "'Bebas Neue',sans-serif" }}>{post.title}</h2><div style={{ color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{post.content}</div><div style={{ marginTop: 8, fontSize: 12 }}>By {post.authorName || "Player"}</div>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{isModerator && post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button onClick={() => onReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onReview(post.id, "rejected")}>Decline</Button></div>}{(user && post.authorId === user.uid || isModerator) && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button variant="ghost" onClick={() => startEdit(post)}>Edit post</Button><Button variant="danger" onClick={() => { if (window.confirm("Delete this blog post? This cannot be undone.")) onDelete(post); }}>Delete post</Button></div>}{user && post.authorId === user.uid && post.status === "published" && <small style={{ display: "block", marginTop: 8, color: "var(--text-muted)" }}>Saving an edit sends the post back for review.</small>}</>}{error && editingId === post.id && <div role="alert" style={{ color: "var(--danger)", marginTop: 8 }}>{error}</div>}</article>)}</div>{manageInDrawer && <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#17110f]/95 backdrop-blur-md"><button type="button" onClick={() => setManageOpen((open) => !open)} className="flex w-full items-center justify-between px-5 py-3 font-mono text-[11px] uppercase tracking-[0.22em] text-amber-300"><span>Manage Posts</span><span aria-hidden="true">{manageOpen ? "−" : "+"}</span></button>{manageOpen && <div className="max-h-[48vh] overflow-y-auto border-t border-white/10 px-5 py-4">{compose}</div>}</div>}</div>;
+  const compose = user ? <section style={{ display: "grid", gap: 10, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)", maxWidth: 680 }}><p style={{ color: "var(--text-muted)", fontSize: 13, margin: 0 }}>Send a tournament recap or esports story to the GrindInfo owner for review.</p><Field label="Post title"><TextInput value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} /></Field><Field label="Game"><TextInput value={game} maxLength={60} onChange={(e) => setGame(e.target.value)} placeholder="e.g. Valorant" /></Field><Field label="Event type"><Select value={eventScope} onChange={(e) => setEventScope(e.target.value)}>{EVENT_SCOPES.map((scope) => <option key={scope.id} value={scope.id}>{scope.label}</option>)}</Select></Field><Field label="Story or tournament update"><textarea value={content} maxLength={6000} onChange={(e) => setContent(e.target.value)} rows={6} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput value={source} maxLength={500} onChange={(e) => setSource(e.target.value)} placeholder="https://" /></Field>{error && !editingId && <span role="alert" style={{ color: "var(--danger)" }}>{error}</span>}<Button onClick={submit}>Request publication</Button></section> : <section style={{ maxWidth: 680, padding: 16, marginTop: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 10 }}>Sign in to request that a blog post be published.</div><Button onClick={onSignIn}>Sign in to request a post</Button></section>;
+  return <div style={{ paddingTop: embedded ? 16 : 32, paddingBottom: manageInDrawer ? 88 : 0 }}>{!embedded && <><Eyebrow>Community stories</Eyebrow><h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42 }}>Esports blog</h1><p style={{ color: "var(--text-muted)" }}>Read community stories, tournament recaps, and esports updates.</p></>}{embedded && <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, margin: "0 0 12px" }}>Community blog</h2>}{!manageInDrawer && compose}<div style={{ display: "grid", gap: 12, marginTop: 20 }}>{visible.map((post) => <article key={post.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}{post.eventScope ? ` · ${post.eventScope}` : ""}</Eyebrow>{editingId === post.id ? <div style={{ display: "grid", gap: 8, marginTop: 8 }}><Field label="Post title"><TextInput maxLength={120} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /></Field><Field label="Game"><TextInput maxLength={60} value={draft.game} onChange={(e) => setDraft({ ...draft, game: e.target.value })} /></Field><Field label="Event type"><Select value={draft.eventScope || "random"} onChange={(e) => setDraft({ ...draft, eventScope: e.target.value })}>{EVENT_SCOPES.map((scope) => <option key={scope.id} value={scope.id}>{scope.label}</option>)}</Select></Field><Field label="Story"><textarea maxLength={6000} rows={6} value={draft.content} onChange={(e) => setDraft({ ...draft, content: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput maxLength={500} value={draft.source} onChange={(e) => setDraft({ ...draft, source: e.target.value })} /></Field><div style={{ display: "flex", gap: 8 }}><Button onClick={() => saveEdit(post)}>Save changes</Button><Button variant="ghost" onClick={() => setEditingId("")}>Cancel</Button></div></div> : <><h2 style={{ fontFamily: "'Bebas Neue',sans-serif" }}>{post.title}</h2><div style={{ color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{post.content}</div><div style={{ marginTop: 8, fontSize: 12 }}>By {post.authorName || "Player"}</div>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{isModerator && post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button onClick={() => onReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onReview(post.id, "rejected")}>Decline</Button></div>}{(user && post.authorId === user.uid || isModerator) && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button variant="ghost" onClick={() => startEdit(post)}>Edit post</Button><Button variant="danger" onClick={() => { if (window.confirm("Delete this blog post? This cannot be undone.")) onDelete(post); }}>Delete post</Button></div>}{user && post.authorId === user.uid && post.status === "published" && <small style={{ display: "block", marginTop: 8, color: "var(--text-muted)" }}>Saving an edit sends the post back for review.</small>}</>}{error && editingId === post.id && <div role="alert" style={{ color: "var(--danger)", marginTop: 8 }}>{error}</div>}</article>)}</div>{manageInDrawer && <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#17110f]/95 backdrop-blur-md"><button type="button" onClick={() => setManageOpen((open) => !open)} className="flex w-full items-center justify-between px-5 py-3 font-mono text-[11px] uppercase tracking-[0.22em] text-amber-300"><span>Manage Posts</span><span aria-hidden="true">{manageOpen ? "−" : "+"}</span></button>{manageOpen && <div className="max-h-[48vh] overflow-y-auto border-t border-white/10 px-5 py-4">{compose}</div>}</div>}</div>;
 }
 
 
@@ -2813,7 +2821,7 @@ export default function App() {
   };
 
   const submitBlogPost = async (post) => {
-    try { await addDoc(BLOG_POSTS_COLLECTION, { ...post, authorId: user.uid, authorName: safeProfileName(myProfile?.displayName, user.displayName), status: "pending", createdAt: Date.now() }); showToast("Blog request sent for review"); }
+    try { await addDoc(BLOG_POSTS_COLLECTION, { ...post, eventScope: post.eventScope || "random", authorId: user.uid, authorName: safeProfileName(myProfile?.displayName, user.displayName), status: "pending", createdAt: Date.now() }); showToast("Blog request sent for review"); }
     catch (e) { showToast("Couldn\u2019t submit blog request. Firestore rules may need to be published."); }
   };
 
@@ -3011,6 +3019,12 @@ export default function App() {
     records.forEach((entry) => batch.set(doc(ARCHIVE_COLLECTION), { ...entry, createdAt: Date.now(), createdBy: user.uid }));
     appendStaffAction(batch, "archive_imported", "archive", "csv-import", `Imported ${records.length} Vault record(s)`);
     await batch.commit();
+    const merged = new Map();
+    records.filter((entry) => entry.eventScope === "ewc" || entry.eventScope === "region").forEach((entry) => {
+      const current = merged.get(normalizeGameKey(entry.game)) || findGameVault(circuitCms.records, entry.game);
+      merged.set(normalizeGameKey(entry.game), applyEventToVault(current, entry));
+    });
+    for (const next of merged.values()) await circuitCms.upsert(next);
   };
 
   const submitArchiveRequest = async (fields) => {
@@ -3022,6 +3036,7 @@ export default function App() {
       runnerUp: String(fields.runnerUp || "").trim().slice(0, 100),
       mvp: String(fields.mvp || "").trim().slice(0, 100),
       source: String(fields.source || "").trim().slice(0, 500),
+      eventScope: ["ewc", "region", "random"].includes(fields.eventScope) ? fields.eventScope : "random",
     };
     if (clean.source && !/^https:\/\//i.test(clean.source)) throw new Error("Use a secure https source link.");
     await addDoc(ARCHIVE_SUBMISSIONS_COLLECTION, { ...clean, submitterId: user.uid, submitterName: safeProfileName(myProfile?.displayName, user.displayName), status: "pending", createdAt: Date.now() });
@@ -3037,7 +3052,7 @@ export default function App() {
       const requestRef = doc(ARCHIVE_SUBMISSIONS_COLLECTION, requestId);
       if (status === "approved") {
         const entryRef = doc(ARCHIVE_COLLECTION);
-        batch.set(entryRef, { tournament: submission.tournament, game: submission.game, eventDate: submission.eventDate, winner: submission.winner, runnerUp: submission.runnerUp || "", mvp: submission.mvp || "", source: submission.source || "", createdAt: Date.now(), createdBy: user.uid, submissionId: requestId });
+        batch.set(entryRef, { tournament: submission.tournament, game: submission.game, eventDate: submission.eventDate, winner: submission.winner, runnerUp: submission.runnerUp || "", mvp: submission.mvp || "", source: submission.source || "", eventScope: submission.eventScope || "random", createdAt: Date.now(), createdBy: user.uid, submissionId: requestId });
         batch.update(requestRef, { status, reviewedAt: Date.now(), reviewedBy: user.uid, archiveEntryId: entryRef.id });
         appendStaffAction(batch, "archive_request_approved", "archiveSubmission", requestId, `Vault request approved: ${submission.tournament}`);
       } else {
@@ -3045,6 +3060,10 @@ export default function App() {
         appendStaffAction(batch, "archive_request_rejected", "archiveSubmission", requestId, `Vault request declined: ${submission.tournament}`);
       }
       await batch.commit();
+      if (status === "approved" && (submission.eventScope === "ewc" || submission.eventScope === "region")) {
+        const next = applyEventToVault(findGameVault(circuitCms.records, submission.game), submission);
+        await circuitCms.upsert(next);
+      }
       showToast(status === "approved" ? "Event added to The Vault" : "Vault request declined");
     } catch (error) {
       console.error("Could not review archive submission", error);
@@ -3056,6 +3075,7 @@ export default function App() {
     if (!isSiteStaff || post.status !== "published") throw new Error("Only staff can promote published posts");
     const source = String(fields.source || "").trim().slice(0, 500);
     if (source && !/^https:\/\//i.test(source)) throw new Error("Use a secure https source link.");
+    const eventScope = ["ewc", "region", "random"].includes(fields.eventScope) ? fields.eventScope : inferEventScope(`${post.title} ${post.game}`);
     const batch = writeBatch(db);
     const archiveRef = doc(ARCHIVE_COLLECTION);
     batch.set(archiveRef, {
@@ -3065,11 +3085,25 @@ export default function App() {
       winner: String(fields.winner || "").trim().slice(0, 100),
       runnerUp: String(fields.runnerUp || "").trim().slice(0, 100),
       mvp: String(fields.mvp || "").trim().slice(0, 100),
-      source, createdAt: Date.now(), createdBy: user.uid, blogPostId: post.id,
+      source, eventScope, createdAt: Date.now(), createdBy: user.uid, blogPostId: post.id,
     });
     appendStaffAction(batch, "blog_added_to_archive", "archiveEntry", archiveRef.id, `Blog added to The Vault: ${post.title}`);
     await batch.commit();
-    showToast("Structured event added to The Vault");
+    if (eventScope === "ewc" || eventScope === "region") {
+      const next = applyEventToVault(findGameVault(circuitCms.records, post.game), {
+        game: post.game,
+        tournament: post.title,
+        eventDate: fields.eventDate,
+        winner: fields.winner,
+        runnerUp: fields.runnerUp,
+        mvp: fields.mvp,
+        eventScope,
+        blogPostId: post.id,
+        content: post.content,
+      });
+      await circuitCms.upsert(next);
+    }
+    showToast(eventScope === "ewc" ? "Merged into that game vault and the EWC list" : "Structured event added to The Vault");
   };
 
   const updateReportStatus = async (reportId, status) => {
@@ -3257,7 +3291,7 @@ export default function App() {
                     <HistoricalArchive embedded entries={archiveEntries} user={user} submissions={archiveSubmissions} onSubmitRequest={submitArchiveRequest} onSignIn={() => setAuthDialogOpen(true)} />
                   </VaultLibraryPage>
                 )} />
-                <Route path="/vault/ewc" element={<EwcDirectoryPage slides={vaultSlides} />} />
+                <Route path="/vault/ewc" element={<EwcDirectoryPage slides={vaultSlides} liveEntries={archiveEntries} />} />
                 <Route path="/vault/:slug" element={<VaultDetailPage slides={vaultSlides} slug={routePath.replace(/^\/vault\//, "").split("/")[0]} liveEntries={archiveEntries} />} />
                 <Route path="/tournaments" element={(
                   <>

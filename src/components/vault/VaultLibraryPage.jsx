@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { VAULT_SLIDES, flyerForEvent } from "../../data/platformShowcase";
+import { publicScopeKicker } from "../../data/eventScope";
 
 function SlideCard({ slide }) {
   return (
@@ -9,7 +10,7 @@ function SlideCard({ slide }) {
         <img src={flyerForEvent(slide)} alt="" className="h-full w-full object-cover" />
       </div>
       <div className="p-3">
-        <p className="m-0 font-mono text-[10px] uppercase tracking-widest text-cyan-300">{slide.kicker} · {slide.game}</p>
+        <p className="m-0 font-mono text-[10px] uppercase tracking-widest text-cyan-300">{[publicScopeKicker(slide), slide.game].filter(Boolean).join(" · ")}</p>
         <h3 className="mt-1 font-['Bebas_Neue',sans-serif] text-2xl text-white">{slide.title}</h3>
         {slide.peakPrizePool && (
           <p className="mt-1 text-xs text-stone-400">Peak prize pool {slide.peakPrizePool}</p>
@@ -22,8 +23,14 @@ function SlideCard({ slide }) {
 export default function VaultLibraryPage({ slides = VAULT_SLIDES, children }) {
   const items = slides.length ? slides : VAULT_SLIDES;
   const [game, setGame] = useState("all");
+  const [scope, setScope] = useState("all");
   const games = useMemo(() => [...new Set(items.map((slide) => slide.game).filter(Boolean))].sort(), [items]);
-  const visible = items.filter((slide) => game === "all" || slide.game === game);
+  const visible = items.filter((slide) => {
+    const gameOk = game === "all" || slide.game === game;
+    const itemScope = slide.eventScope || (slide.research ? "ewc" : "random");
+    const scopeOk = scope === "all" || itemScope === scope;
+    return gameOk && scopeOk;
+  });
   const research = visible.filter((slide) => slide.research || slide.surface === "research");
   const floating = visible.filter((slide) => slide.surface === "vault" && !slide.research);
   return (
@@ -38,6 +45,15 @@ export default function VaultLibraryPage({ slides = VAULT_SLIDES, children }) {
           <select className="ml-2 border border-white/15 bg-black/40 px-2 py-1 text-white" value={game} onChange={(e) => setGame(e.target.value)}>
             <option value="all">All games</option>
             {games.map((name) => <option key={name} value={name}>{name}</option>)}
+          </select>
+        </label>
+        <label className="font-mono text-[11px] uppercase tracking-widest text-stone-400">
+          Event type
+          <select className="ml-2 border border-white/15 bg-black/40 px-2 py-1 text-white" value={scope} onChange={(e) => setScope(e.target.value)}>
+            <option value="all">All</option>
+            <option value="ewc">EWC related</option>
+            <option value="region">Region related</option>
+            <option value="random">Random event</option>
           </select>
         </label>
       </div>
