@@ -335,14 +335,6 @@ const GAME_ICONS = {
   "Teamfight Tactics": "♟️",
   "Other": "🎮",
 };
-const TOURNAMENT_ARTWORKS = [
-  { icon: "🏆", label: "Championship" },
-  { icon: "🌌", label: "Cosmic" },
-  { icon: "⚡", label: "Energy" },
-  { icon: "🔥", label: "Inferno" },
-  { icon: "❄️", label: "Frost" },
-  { icon: "🐉", label: "Dragon" },
-];
 const QUICK_PICK_GAMES = ["Valorant", "BGMI", "PUBG Mobile", "Apex Legends"];
 const BIO_EXAMPLES = [
   { label: "Friendly", text: "Here to improve, have fun, and find a friendly squad." },
@@ -2467,25 +2459,31 @@ export default function App() {
     if (!user) return;
     setSaving(true);
     try {
-      await addDoc(TOURNAMENTS_COLLECTION, {
-        ...t,
-        prizeAmount: Number(t.prizeAmount) || 0,
-        prizeCurrency: t.prizeCurrency || "INR",
+      const { roomId, roomPassword, ...event } = t;
+      const created = await addDoc(TOURNAMENTS_COLLECTION, {
+        ...event,
+        prizeAmount: Number(event.prizeAmount) || 0,
+        prizeCurrency: event.prizeCurrency || "INR",
         registrationOpen: true,
         adminUserId: user.uid,
         adminDisplayName: grindHandle(safeProfileName(myProfile?.displayName, user.displayName), myProfile?.playerTag),
         coAdminUserIds: [],
         coAdminPlayerTags: {},
-        status: t.status || "upcoming",
-        kind: t.kind || (t.format === "Custom room" ? "custom_room" : "bracket"),
-        joinMode: t.joinMode || "request",
-        maxSlots: Number(t.maxSlots) || 0,
-        blurb: String(t.blurb || "").slice(0, 400),
-        posterUrl: String(t.posterUrl || "").slice(0, 500),
+        status: event.status || "upcoming",
+        kind: event.kind || (event.format === "Custom room" ? "custom_room" : "bracket"),
+        joinMode: event.joinMode || "request",
+        maxSlots: Number(event.maxSlots) || 0,
+        blurb: String(event.blurb || "").slice(0, 400),
+        posterUrl: String(event.posterUrl || "").slice(0, 500),
         isLegacyImport: false,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
+      const nextRoom = String(roomId || "").trim();
+      const nextPassword = String(roomPassword || "").trim();
+      if (nextRoom && nextPassword) {
+        await setDoc(lobbyCredentialsRef(created.id), { roomId: nextRoom.slice(0, 40), roomPassword: nextPassword.slice(0, 40), updatedAt: Date.now() });
+      }
       showToast("Tournament created");
       setShowNewTournament(false);
     } catch (e) {
@@ -3414,12 +3412,14 @@ function NewTournamentModal({ onClose, onCreate, slides = [] }) {
   const [game, setGame] = useState(GAME_PRESETS[0]);
   const [kind, setKind] = useState("bracket");
   const [format, setFormat] = useState(FORMATS[0]);
-  const [joinMode, setJoinMode] = useState("request");
+  const [joinMode, setJoinMode] = useState("open");
   const [maxSlots, setMaxSlots] = useState("16");
   const [blurb, setBlurb] = useState("");
+  const [roomId, setRoomId] = useState("");
+  const [roomPassword, setRoomPassword] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [posterUrl, setPosterUrl] = useState(bannerForGame(GAME_PRESETS[0]));
+  const [posterUrl, setPosterUrl] = useState("");
   const [prizeAmount, setPrizeAmount] = useState("0");
   const [customPrize, setCustomPrize] = useState("");
   const [error, setError] = useState("");
@@ -3437,6 +3437,10 @@ function NewTournamentModal({ onClose, onCreate, slides = [] }) {
       setError("Enter a tournament name first");
       return;
     }
+    if ((roomId.trim() && !roomPassword.trim()) || (!roomId.trim() && roomPassword.trim())) {
+      setError("Add both room ID and password, or leave both blank.");
+      return;
+    }
     const amount = prizeAmount === "custom" ? Number(customPrize) : Number(prizeAmount);
     if (!Number.isFinite(amount) || amount < 0 || amount > 100000000) { setError("Enter a valid prize information amount."); return; }
     const slots = Math.max(0, Math.min(256, Number(maxSlots) || 0));
@@ -3450,7 +3454,8 @@ function NewTournamentModal({ onClose, onCreate, slides = [] }) {
       maxSlots: slots,
       blurb: blurb.trim().slice(0, 400),
       posterUrl,
-      artwork: posterUrl,
+      roomId: roomId.trim(),
+      roomPassword: roomPassword.trim(),
       startDate,
       endDate,
       prizeAmount: amount,
@@ -3470,7 +3475,7 @@ function NewTournamentModal({ onClose, onCreate, slides = [] }) {
         alignItems: "center",
         justifyContent: "center",
         padding: 20,
-        zIndex: 40,
+        zIndex: 85,
       }}
       onClick={onClose}
     >
@@ -3487,9 +3492,10 @@ function NewTournamentModal({ onClose, onCreate, slides = [] }) {
         }}
       >
         <Eyebrow>New entry</Eyebrow>
-        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, margin: "4px 0 20px" }}>
+        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, margin: "4px 0 8px" }}>
           Create tournament
         </div>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-muted)" }}>No flyer upload. The game you pick fills the card art automatically.</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <Field label="Tournament name">
             <TextInput
@@ -3503,10 +3509,6 @@ function NewTournamentModal({ onClose, onCreate, slides = [] }) {
             />
           </Field>
           {error && <div style={{ fontSize: 13, color: "var(--danger)" }}>{error}</div>}
-          <div className="aspect-video overflow-hidden border border-white/10">
-            <img src={posterUrl} alt="" className="h-full w-full object-cover" />
-          </div>
-          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Poster follows the selected game (RAWG art when the key is set).</div>
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ flex: 1 }}>
               <Field label="Game">
@@ -3542,18 +3544,27 @@ function NewTournamentModal({ onClose, onCreate, slides = [] }) {
           )}
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 150 }}>
-              <Field label="Join">
+              <Field label="Who can enter">
                 <Select value={joinMode} onChange={(e) => setJoinMode(e.target.value)}>
-                  <option value="request">Request to join</option>
-                  <option value="open">Open join</option>
+                  <option value="open">Free join — anyone signed in can enter</option>
+                  <option value="request">Request to join — host approves each player</option>
                 </Select>
               </Field>
             </div>
             <div style={{ flex: 1, minWidth: 150 }}>
-              <Field label={kind === "custom_room" ? "Max players (0 = no cap)" : "Max slots (0 = no cap)"}>
+              <Field label={kind === "custom_room" ? "Max players (0 = unlimited)" : "Max teams (0 = unlimited)"}>
                 <TextInput type="number" min="0" max="256" value={maxSlots} onChange={(e) => setMaxSlots(e.target.value)} />
               </Field>
             </div>
+          </div>
+          <div style={{ display: "grid", gap: 10 }}>
+            <Field label="Room ID (optional)">
+              <TextInput value={roomId} onChange={(e) => setRoomId(e.target.value)} maxLength={40} placeholder="In-game room ID" />
+            </Field>
+            <Field label="Room password (optional)">
+              <TextInput value={roomPassword} onChange={(e) => setRoomPassword(e.target.value)} maxLength={40} placeholder="In-game password" />
+            </Field>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Only approved or free-joined players will see these. You can add them later if you skip now.</div>
           </div>
           <Field label="Basic info for players">
             <textarea value={blurb} maxLength={400} rows={3} onChange={(e) => setBlurb(e.target.value)} style={{ ...inputStyle, resize: "vertical" }} placeholder="Server region, start time, rules, or what to bring." />
@@ -3736,13 +3747,13 @@ function HostControls({ tournament, requests, onUpdateSettings, onCloseTournamen
             <option value="custom_room">Custom room only</option>
           </Select>
         </Field>
-        <Field label="Join">
+        <Field label="Who can enter">
           <Select value={joinMode} onChange={(event) => setJoinMode(event.target.value)}>
-            <option value="request">Request to join</option>
-            <option value="open">Open join</option>
+            <option value="open">Free join — anyone signed in can enter</option>
+            <option value="request">Request to join — host approves each player</option>
           </Select>
         </Field>
-        <Field label="Max people / teams (0 = no cap)">
+        <Field label="Max teams / players (0 = unlimited)">
           <TextInput type="number" min="0" max="256" value={maxSlots} onChange={(event) => setMaxSlots(event.target.value)} />
         </Field>
         <Field label="Basic info">
