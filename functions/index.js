@@ -39,22 +39,46 @@ export const getOnlinePlayerCount = onCall({ maxInstances: 5 }, async (request) 
   return { count: Math.max(0, Number(snapshot.data()?.count) || 0) };
 });
 
+function normalizePlayerName(value) {
+  const raw = String(value || "").trim();
+  const name = (raw.includes("#") ? raw.slice(0, raw.indexOf("#")) : raw).trim().toLowerCase();
+  return /^[a-z0-9_]{3,16}$/.test(name) ? name : "";
+}
+
+function handleDocId(name, tag) {
+  return `${name}::${tag}`;
+}
+
 export const getOrCreatePlayerTag = onCall({ maxInstances: 5 }, async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Sign in to get your GrindInfo ID.");
-  const playerRef = db.doc(`players/${request.auth.uid}`);
-  const counterRef = db.doc("systemCounters/playerTagSequence");
+  const uid = request.auth.uid;
+  const playerRef = db.doc(`players/${uid}`);
+  const email = request.auth.token?.email || "";
   return db.runTransaction(async (transaction) => {
     const player = await transaction.get(playerRef);
     if (!player.exists) throw new HttpsError("failed-precondition", "Save your player profile before creating a GrindInfo ID.");
+    const name = normalizePlayerName(player.data()?.displayName);
+    if (!name) throw new HttpsError("failed-precondition", "Save a valid player name before creating a GrindInfo ID.");
     const existingTag = player.data()?.playerTag;
-    if (typeof existingTag === "string" && /^\d{8}$/.test(existingTag)) return { playerTag: existingTag };
-    const counter = await transaction.get(counterRef);
-    const next = (Number.isSafeInteger(counter.data()?.value) ? counter.data().value : 10000000) + 1;
-    if (next > 99999999) throw new HttpsError("resource-exhausted", "GrindInfo IDs are temporarily unavailable.");
-    const playerTag = String(next);
-    transaction.set(counterRef, { value: next });
-    transaction.update(playerRef, { playerTag });
-    return { playerTag };
+    const claim = async (tag) => {
+      const handle = `${name}#${tag}`;
+      const handleRef = db.doc(`handles/${handleDocId(name, tag)}`);
+      const taken = await transaction.get(handleRef);
+      if (taken.exists && taken.data()?.uid !== uid) return null;
+      transaction.set(handleRef, { uid, email, handle, createdAt: Date.now() });
+      transaction.update(playerRef, { playerTag: tag, handle });
+      return { playerTag: tag, handle };
+    };
+    if (typeof existingTag === "string" && /^\d{4}$|^\d{8}$/.test(existingTag)) {
+      const kept = await claim(existingTag);
+      if (kept) return kept;
+    }
+    for (let attempt = 0; attempt < 32; attempt += 1) {
+      const tag = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
+      const claimed = await claim(tag);
+      if (claimed) return claimed;
+    }
+    throw new HttpsError("already-exists", "That username plus code is taken. Choose another name.");
   });
 });
 

@@ -47,6 +47,7 @@ const teamsCollectionRef = (tid) => collection(db, "tournaments", tid, "teams");
 const matchesCollectionRef = (tid) => collection(db, "tournaments", tid, "matches");
 const statsCollectionRef = (tid) => collection(db, "tournaments", tid, "stats");
 const registrationsCollectionRef = (tid) => collection(db, "tournaments", tid, "registrations");
+const lobbyCredentialsRef = (tid) => doc(db, "tournaments", tid, "lobby", "credentials");
 const REPORTS_COLLECTION = collection(db, "reports");
 const FRIEND_REQUESTS_COLLECTION = collection(db, "friendRequests");
 const TOURNAMENT_INVITES_COLLECTION = collection(db, "tournamentInvites");
@@ -113,6 +114,74 @@ function isEmailLike(value) {
 
 function safeProfileName(...names) {
   return names.find((name) => typeof name === "string" && name.trim() && !isEmailLike(name))?.trim().slice(0, 40) || "Player";
+}
+
+const PLAYER_NAME_PATTERN = /^[A-Za-z0-9_]{3,16}$/;
+const PLAYER_TAG_PATTERN = /^\d{4}$|^\d{8}$/;
+
+function playerNameFromInput(value) {
+  const raw = String(value || "").trim();
+  return (raw.includes("#") ? raw.slice(0, raw.indexOf("#")) : raw).trim();
+}
+
+function extractPlayerTag(value) {
+  return String(value || "").trim().replace(/^.*#/, "");
+}
+
+function isValidPlayerName(value) {
+  return PLAYER_NAME_PATTERN.test(playerNameFromInput(value));
+}
+
+function grindHandle(name, tag) {
+  const clean = playerNameFromInput(name) || "Player";
+  return tag ? `${clean}#${tag}` : clean;
+}
+
+function normalizeHandle(value) {
+  const name = playerNameFromInput(value).toLowerCase();
+  const tag = extractPlayerTag(value);
+  if (!value || !String(value).includes("#") || !PLAYER_NAME_PATTERN.test(name) || !PLAYER_TAG_PATTERN.test(tag)) return "";
+  return `${name}#${tag}`;
+}
+
+function handleDocId(handle) {
+  const normalized = normalizeHandle(handle);
+  if (!normalized) return "";
+  const [name, tag] = normalized.split("#");
+  return `${name}::${tag}`;
+}
+
+const handleDocRef = (handle) => doc(db, "handles", handleDocId(handle));
+
+function randomPlayerTag() {
+  return String(Math.floor(Math.random() * 10000)).padStart(4, "0");
+}
+
+async function claimUniqueHandle(user, displayName, currentTag = "") {
+  const name = playerNameFromInput(displayName);
+  if (!user?.uid || !isValidPlayerName(name)) throw new Error("Choose a valid player name first.");
+  const email = user.email || "";
+  const tryClaim = async (tag) => {
+    const handle = `${name.toLowerCase()}#${tag}`;
+    await setDoc(handleDocRef(handle), { uid: user.uid, email, handle, createdAt: Date.now() });
+    return { tag, handle };
+  };
+  if (currentTag && PLAYER_TAG_PATTERN.test(currentTag)) {
+    const handle = `${name.toLowerCase()}#${currentTag}`;
+    const existing = await getDoc(handleDocRef(handle));
+    if (!existing.exists()) return tryClaim(currentTag);
+    if (existing.data()?.uid === user.uid) return { tag: currentTag, handle };
+    throw new Error("That username plus code is already taken. Choose another name.");
+  }
+  for (let attempt = 0; attempt < 48; attempt += 1) {
+    const tag = randomPlayerTag();
+    const handle = `${name.toLowerCase()}#${tag}`;
+    const existing = await getDoc(handleDocRef(handle));
+    if (existing.exists()) continue;
+    try { return await tryClaim(tag); }
+    catch { /* another player claimed this ID in the same moment */ }
+  }
+  throw new Error("Couldn't assign a unique GrindInfo ID. Try a different name.");
 }
 
 const LEGACY_GAME_NAMES = { "PUBG Mobile (BGMI)": "BGMI and PUBG Mobile" };
@@ -487,11 +556,13 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowse
   const [mode, setMode] = useState("signin"); // 'signin' | 'signup'
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
 
   const submit = (e) => {
     e.preventDefault();
-    onEmailAuth(mode, { name, email, password });
+    if (mode === "signup" && !isValidPlayerName(name)) return;
+    onEmailAuth(mode, { name: playerNameFromInput(name), email: mode === "signup" ? email : identifier, password });
   };
 
   return (
@@ -537,13 +608,22 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowse
 
         <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {mode === "signup" && (
-            <Field label="Display name">
-              <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="ghostpeak" required />
+            <Field label="Player name">
+              <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="ghostpeak" maxLength={16} required />
             </Field>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -6 }}>3–16 letters, numbers, or underscore. GrindInfo adds a #4-digit code, like ghostpeak#4821.</div>
+            {name && !isValidPlayerName(name) && <div role="alert" style={{ fontSize: 12, color: "var(--danger)" }}>Use 3–16 letters, numbers, or underscore. Do not type the #code yourself.</div>}
           )}
-          <Field label="Email">
-            <TextInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
-          </Field>
+          {mode === "signup" ? (
+            <Field label="Email">
+              <TextInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
+            </Field>
+          ) : (
+            <Field label="GrindInfo ID or email">
+              <TextInput value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="ghostpeak#1234" autoComplete="username" required />
+            </Field>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -6 }}>Use your Name#1234 ID and password, or the email you registered.</div>
+          )}
           <Field label="Password">
             <TextInput
               type="password"
@@ -639,8 +719,9 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
   };
 
   const submit = () => {
-    if (!displayName.trim() || isEmailLike(displayName)) {
-      setError("Choose a player name, not an email address");
+    const name = playerNameFromInput(displayName);
+    if (!isValidPlayerName(name) || isEmailLike(name)) {
+      setError("Use 3–16 letters, numbers, or underscore. Your public ID is Name#1234.");
       return;
     }
     if (games.length === 0 || !region || !language) {
@@ -648,7 +729,7 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
       return;
     }
     onSave({
-      displayName: displayName.trim(),
+      displayName: name,
       games,
       region,
       language,
@@ -691,7 +772,7 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, margin: "4px 0 6px" }}>
           Set up your player profile
         </div>
-        {initialProfile?.playerTag && <div style={{ color: "var(--accent-secondary)", fontFamily: "'JetBrains Mono', monospace", fontSize: 12, marginTop: 8 }}>Your GrindInfo ID: {displayName}#{initialProfile.playerTag}</div>}
+        <div style={{ color: "var(--accent-secondary)", fontFamily: "'JetBrains Mono', monospace", fontSize: 12, marginTop: 8 }}>Your GrindInfo ID: {grindHandle(displayName, initialProfile?.playerTag || "••••")}</div>
         <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>
           Your profile stays out of player search unless you choose to be discoverable. Use a gaming name and keep personal contact details private.
         </div>
@@ -753,8 +834,9 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
             </div>
           </div>
           <Field label="Player name">
-            <TextInput value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={40} placeholder="ghostpeak" />
+            <TextInput value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={16} placeholder="ghostpeak" />
           </Field>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -8 }}>3–16 letters, numbers, or underscore. The #4-digit code is assigned after you save.</div>
           <Field label="Games you play">
             <MultiToggle options={GAME_PRESETS} selected={games} onToggle={toggleGame} />
           </Field>
@@ -865,7 +947,7 @@ function PlayerCard({ player, currentUid, friendRequest, onFriendRequest, onFrie
         </span>
         {player.displayName}
       </div>
-      {player.playerTag && <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--accent-secondary)", marginTop: 3 }}>{player.displayName}#{player.playerTag}</div>}
+      {player.playerTag && <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--accent-secondary)", marginTop: 3 }}>{grindHandle(player.displayName, player.playerTag)}</div>}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "8px 0" }}>
         {normalizeGameNames(player.games || []).map((g) => (
           <span
@@ -934,7 +1016,7 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
   const [playersLoading, setPlayersLoading] = useState(false);
   const [playersError, setPlayersError] = useState("");
   const primedFromProfile = useRef(false);
-  const normalizedPlayerTag = playerTagFilter.trim().replace(/^.*#/, "");
+  const normalizedPlayerTag = extractPlayerTag(playerTagFilter);
   const hasFilters = Boolean(gameFilters.length || regionFilter || languageFilter || styleFilter || lookingForFilters.length || rankFilter || normalizedPlayerTag);
   const applyMyInterests = () => {
     setGameFilters(normalizeGameNames(myProfile?.games || []));
@@ -954,7 +1036,7 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
   useEffect(() => {
     setPlayersError("");
     if (normalizedPlayerTag) {
-      if (!/^\d{8}$/.test(normalizedPlayerTag)) {
+      if (!PLAYER_TAG_PATTERN.test(normalizedPlayerTag)) {
         setPlayers([]);
         setPlayersLoading(false);
         return undefined;
@@ -1106,9 +1188,9 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
       </div>
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "8px 0 16px" }}>
         <div style={{ maxWidth: 360, flex: "1 1 250px" }}><Field label="Search names in these matches"><TextInput value={nameFilter} onChange={(event) => setNameFilter(event.target.value)} placeholder="Type a player name" /></Field></div>
-        <div style={{ maxWidth: 360, flex: "1 1 250px" }}><Field label="Find by GrindInfo ID"><TextInput value={playerTagFilter} onChange={(event) => setPlayerTagFilter(event.target.value)} placeholder="PlayerName#12345678" /></Field></div>
+        <div style={{ maxWidth: 360, flex: "1 1 250px" }}><Field label="Find by GrindInfo ID"><TextInput value={playerTagFilter} onChange={(event) => setPlayerTagFilter(event.target.value)} placeholder="PlayerName#1234" /></Field></div>
       </div>
-      {normalizedPlayerTag && normalizedPlayerTag.length < 8 && <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>Enter the full 8-digit number after # to look up a player.</div>}
+      {normalizedPlayerTag && !PLAYER_TAG_PATTERN.test(normalizedPlayerTag) && <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>Enter the 4-digit code after # to look up a player.</div>}
       {myProfile && (
         <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
           Filters start from your profile. Change them any time, or tap Use my profile to reset.
@@ -1216,6 +1298,71 @@ function RegistrationPanel({ tournament, requests, currentUserId, currentUserNam
   );
 }
 
+function RoomLobbyPanel({ isAdmin, canSee, lobby, onSave }) {
+  const [roomId, setRoomId] = useState(lobby?.roomId || "");
+  const [roomPassword, setRoomPassword] = useState(lobby?.roomPassword || "");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState("");
+  useEffect(() => {
+    setRoomId(lobby?.roomId || "");
+    setRoomPassword(lobby?.roomPassword || "");
+  }, [lobby?.roomId, lobby?.roomPassword]);
+  const copyValue = async (value, label) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(label);
+      window.setTimeout(() => setCopied(""), 1600);
+    } catch {
+      setCopied("");
+    }
+  };
+  const posted = Boolean(lobby?.roomId && lobby?.roomPassword);
+  const submit = async () => {
+    const nextId = roomId.trim();
+    const nextPassword = roomPassword.trim();
+    if (!nextId || !nextPassword) { setError("Enter both the room ID and password."); return; }
+    setBusy(true); setError("");
+    try { await onSave({ roomId: nextId, roomPassword: nextPassword }); }
+    catch { setError("Couldn't share room details. Try again."); }
+    finally { setBusy(false); }
+  };
+  return (
+    <section style={{ marginTop: 16, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+      <Eyebrow>Custom room</Eyebrow>
+      {isAdmin ? (
+        <>
+          <div style={{ color: "var(--text-muted)", fontSize: 12, margin: "7px 0 12px" }}>Share the in-game room ID and password with approved players. Guests cannot see this.</div>
+          <div style={{ display: "grid", gap: 10, maxWidth: 420 }}>
+            <Field label="Room ID"><TextInput value={roomId} onChange={(event) => setRoomId(event.target.value)} maxLength={40} placeholder="Room ID" /></Field>
+            <Field label="Room password"><TextInput value={roomPassword} onChange={(event) => setRoomPassword(event.target.value)} maxLength={40} placeholder="Room password" /></Field>
+          </div>
+          {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 13, marginTop: 8 }}>{error}</div>}
+          <div style={{ marginTop: 12 }}><Button disabled={busy} onClick={submit}>{busy ? "Sharing…" : posted ? "Update room details" : "Share with approved players"}</Button></div>
+        </>
+      ) : canSee && posted ? (
+        <>
+          <div style={{ color: "var(--text-muted)", fontSize: 12, margin: "7px 0 12px" }}>Host posted the custom room. Copy these into the game.</div>
+          <div style={{ display: "grid", gap: 10, maxWidth: 420 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", padding: 10, background: "var(--panel-raised)", border: "1px solid var(--border)" }}>
+              <div><Eyebrow>Room ID</Eyebrow><div style={{ fontFamily: "'JetBrains Mono', monospace", marginTop: 4 }}>{lobby.roomId}</div></div>
+              <Button variant="ghost" onClick={() => copyValue(lobby.roomId, "id")}>{copied === "id" ? "Copied" : "Copy"}</Button>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", padding: 10, background: "var(--panel-raised)", border: "1px solid var(--border)" }}>
+              <div><Eyebrow>Password</Eyebrow><div style={{ fontFamily: "'JetBrains Mono', monospace", marginTop: 4 }}>{lobby.roomPassword}</div></div>
+              <Button variant="ghost" onClick={() => copyValue(lobby.roomPassword, "password")}>{copied === "password" ? "Copied" : "Copy"}</Button>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 7 }}>
+          {canSee ? "The host has not posted a room ID and password yet." : "Room ID and password appear here after the host posts them and your join request is approved."}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function CoAdminPanel({ tournament, isOwner, onChange, onAddByPlayerId }) {
   const [playerTag, setPlayerTag] = useState("");
   const [error, setError] = useState("");
@@ -1234,7 +1381,7 @@ function CoAdminPanel({ tournament, isOwner, onChange, onAddByPlayerId }) {
       <Eyebrow>Co-host access</Eyebrow>
       <div style={{ color: "var(--text-muted)", fontSize: 12, margin: "7px 0 10px" }}>Enter the player's GrindInfo ID (the number after #). The player must have a profile and be visible in player search. Co-hosts can manage registrations and tournament details; only you can transfer ownership or delete the tournament.</div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <TextInput aria-label="Co-host GrindInfo ID" value={playerTag} onChange={(event) => setPlayerTag(event.target.value)} placeholder="PlayerName#12345678" />
+        <TextInput aria-label="Co-host GrindInfo ID" value={playerTag} onChange={(event) => setPlayerTag(event.target.value)} placeholder="PlayerName#1234" />
         <Button disabled={!playerTag.trim() || saving} onClick={addByTag}>{saving ? "Checking…" : "Add co-host"}</Button>
       </div>
       {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 12, marginTop: 8 }}>{error}</div>}
@@ -1804,6 +1951,7 @@ export default function App() {
   const [selectedMatches, setSelectedMatches] = useState([]);
   const [selectedStats, setSelectedStats] = useState([]);
   const [selectedRegistrations, setSelectedRegistrations] = useState([]);
+  const [selectedLobby, setSelectedLobby] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
@@ -1885,17 +2033,30 @@ export default function App() {
     setAuthBusy(true);
     try {
       if (mode === "signup") {
-        const cred = await createUserWithEmailAndPassword(auth, email, password);
-        if (name.trim()) {
-          await updateProfile(cred.user, { displayName: name.trim() });
+        if (!isValidPlayerName(name)) {
+          setAuthError("Use 3–16 letters, numbers, or underscore. Your ID will be Name#1234.");
+          return;
         }
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(cred.user, { displayName: playerNameFromInput(name) });
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        const handle = normalizeHandle(email);
+        if (handle) {
+          const snapshot = await getDoc(handleDocRef(handle));
+          const accountEmail = snapshot.data()?.email;
+          if (!snapshot.exists() || !accountEmail) {
+            setAuthError("No account uses that GrindInfo ID. Check the #4-digit code.");
+            return;
+          }
+          await signInWithEmailAndPassword(auth, accountEmail, password);
+        } else {
+          await signInWithEmailAndPassword(auth, email, password);
+        }
       }
     } catch (e) {
       const messages = {
         "auth/email-already-in-use": "That email is already registered — try signing in instead.",
-        "auth/invalid-credential": "Incorrect email or password.",
+        "auth/invalid-credential": "Incorrect GrindInfo ID, email, or password.",
         "auth/weak-password": "Password should be at least 6 characters.",
         "auth/invalid-email": "That email address doesn't look right.",
       };
@@ -2035,13 +2196,17 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    if (!user || !myProfile || myProfile.playerTag) return undefined;
+    if (!user || !myProfile || (myProfile.playerTag && myProfile.handle)) return undefined;
     let active = true;
-    httpsCallable(getFunctions(), "getOrCreatePlayerTag")().catch(() => {
-      if (active) console.info("GrindInfo ID will be assigned when the latest Functions are deployed.");
-    });
+    claimUniqueHandle(user, myProfile.displayName, myProfile.playerTag || "")
+      .then(async (claimed) => {
+        if (!active) return;
+        await setDoc(playerDocRef(user.uid), { playerTag: claimed.tag, handle: claimed.handle, updatedAt: Date.now() }, { merge: true });
+        try { await updateProfile(user, { displayName: grindHandle(myProfile.displayName, claimed.tag) }); } catch { /* keep the existing Auth name */ }
+      })
+      .catch(() => {});
     return () => { active = false; };
-  }, [user?.uid, Boolean(myProfile), myProfile?.playerTag]);
+  }, [user, myProfile?.displayName, myProfile?.playerTag, myProfile?.handle]);
 
   useEffect(() => {
     let publicPosts = [], ownPosts = [], pendingPosts = [];
@@ -2190,6 +2355,7 @@ export default function App() {
       setSelectedTeams([]);
       setSelectedMatches([]);
       setSelectedStats([]);
+      setSelectedLobby(null);
       return;
     }
     const unsubs = [
@@ -2217,6 +2383,13 @@ export default function App() {
     }, () => setSelectedRegistrations([]));
   }, [selectedId, user, tournaments]);
 
+  useEffect(() => {
+    if (!selectedId || !user) { setSelectedLobby(null); return undefined; }
+    return onSnapshot(lobbyCredentialsRef(selectedId), (snapshot) => {
+      setSelectedLobby(snapshot.exists() ? snapshot.data() : null);
+    }, () => setSelectedLobby(null));
+  }, [selectedId, user]);
+
   const showToast = useCallback((msg) => {
     setToast(msg);
     window.clearTimeout(showToast._t);
@@ -2241,23 +2414,34 @@ export default function App() {
   const saveProfile = useCallback(
     async (fields) => {
       if (!user) return;
+      const displayName = playerNameFromInput(fields.displayName) || safeProfileName(fields.displayName, user.displayName);
+      const profileBody = {
+        ...fields,
+        displayName,
+        lookingFor: normalizeLookingFor(fields.lookingFor),
+        rank: normalizeRank(fields.rank),
+        bio: String(fields.bio || "").slice(0, 200),
+        discoverable: fields.discoverable === true,
+        updatedAt: Date.now(),
+      };
       try {
-        await setDoc(playerDocRef(user.uid), {
-          ...fields,
-          displayName: safeProfileName(fields.displayName, user.displayName),
-          lookingFor: normalizeLookingFor(fields.lookingFor),
-          rank: normalizeRank(fields.rank),
-          bio: String(fields.bio || "").slice(0, 200),
-          discoverable: fields.discoverable === true,
-          updatedAt: Date.now(),
-        }, { merge: true });
-        showToast("Profile saved");
+        if (!myProfile?.playerTag) {
+          await setDoc(playerDocRef(user.uid), profileBody, { merge: true });
+        }
+        const claimed = await claimUniqueHandle(user, displayName, myProfile?.playerTag || "");
+        await setDoc(playerDocRef(user.uid), { ...profileBody, playerTag: claimed.tag, handle: claimed.handle }, { merge: true });
+        if (myProfile?.handle && myProfile.handle !== claimed.handle) {
+          try { await deleteDoc(handleDocRef(myProfile.handle)); } catch { /* previous ID mapping can stay until overwritten */ }
+        }
+        try { await updateProfile(user, { displayName: grindHandle(displayName, claimed.tag) }); } catch { /* Auth display name stays as the player name if this fails */ }
+        showToast(`Profile saved · ${grindHandle(displayName, claimed.tag)}`);
       } catch (e) {
-        showToast("Couldn't save profile — try again");
+        showToast(e?.message || "Couldn't save profile — try again");
+        return;
       }
       setShowProfileModal(false);
     },
-    [user, showToast]
+    [user, myProfile, showToast]
   );
 
   // ---- mutations (now writing to the tournaments collection + sub-collections) ----
@@ -2271,7 +2455,7 @@ export default function App() {
         prizeCurrency: t.prizeCurrency || "INR",
         registrationOpen: true,
         adminUserId: user.uid,
-        adminDisplayName: safeProfileName(myProfile?.displayName, user.displayName),
+        adminDisplayName: grindHandle(safeProfileName(myProfile?.displayName, user.displayName), myProfile?.playerTag),
         coAdminUserIds: [],
         coAdminPlayerTags: {},
         status: t.status || "upcoming",
@@ -2463,9 +2647,18 @@ export default function App() {
     catch (e) { showToast("Couldn't update co-host access"); }
   };
 
+  const saveTournamentLobby = async (tournamentId, credentials) => {
+    await setDoc(lobbyCredentialsRef(tournamentId), {
+      roomId: String(credentials.roomId || "").trim().slice(0, 40),
+      roomPassword: String(credentials.roomPassword || "").trim().slice(0, 40),
+      updatedAt: Date.now(),
+    });
+    showToast("Room details shared with approved players");
+  };
+
   const addCoAdminByPlayerTag = async (tournament, input) => {
-    const playerTag = String(input || "").trim().split("#").pop();
-    if (!/^\d{8}$/.test(playerTag)) throw new Error("Enter the 8-digit number from the player's GrindInfo ID.");
+    const playerTag = extractPlayerTag(input);
+    if (!PLAYER_TAG_PATTERN.test(playerTag)) throw new Error("Enter the 4-digit code from the player's GrindInfo ID.");
     const results = await getDocs(query(PLAYERS_COLLECTION, where("playerTag", "==", playerTag), where("discoverable", "==", true)));
     const target = results.docs[0];
     if (!target) throw new Error("No visible player has that GrindInfo ID. Ask them to enable player discovery.");
@@ -2817,6 +3010,7 @@ export default function App() {
               onSignOut={handleSignOut}
               onEditProfile={() => setShowProfileModal(true)}
               dashboardRole={dashboardRole}
+              playerTag={myProfile?.playerTag}
               friendsPanel={user ? (
                 <FriendDock
                   placement="header"
@@ -2865,7 +3059,7 @@ export default function App() {
                       onArchivedView={setShowArchivedTournaments}
                       tournaments={tournaments}
                       currentUserId={user?.uid || null}
-                      currentUserName={safeProfileName(myProfile?.displayName, user?.displayName)}
+                      currentUserName={grindHandle(safeProfileName(myProfile?.displayName, user?.displayName), myProfile?.playerTag)}
                       pendingInvites={user ? tournamentInvites.filter((item) => item.inviteeUid === user.uid && item.status === "pending") : []}
                       onInviteDecision={decideTournamentInvite}
                       onOpen={(id) => { setDetailTab("teams"); navigate(`/tournaments/${id}`); }}
@@ -2885,8 +3079,10 @@ export default function App() {
                     isAdmin={isAdmin}
                     isOwner={isOwner}
                     currentUserId={user?.uid || null}
-                    currentUserName={safeProfileName(myProfile?.displayName, user?.displayName)}
+                    currentUserName={grindHandle(safeProfileName(myProfile?.displayName, user?.displayName), myProfile?.playerTag)}
                     registrations={selectedRegistrations}
+                    lobby={selectedLobby}
+                    onSaveLobby={(credentials) => saveTournamentLobby(selected.id, credentials)}
                     friends={acceptedFriends}
                     tournamentInvites={tournamentInvites}
                     onInviteFriend={inviteFriendToTournament}
@@ -2978,9 +3174,9 @@ const shellStyle = {
   fontFamily: "'Inter', sans-serif",
 };
 
-function Header({ saving, user, guestMode, onSignInClick, onSignOut, onEditProfile, dashboardRole, friendsPanel = null }) {
-  const displayName = user?.displayName || user?.email || "Player";
-  const initials = safeProfileName(user?.displayName).slice(0, 1).toUpperCase();
+function Header({ saving, user, guestMode, onSignInClick, onSignOut, onEditProfile, dashboardRole, friendsPanel = null, playerTag = "" }) {
+  const displayName = grindHandle(safeProfileName(user?.displayName), playerTag);
+  const initials = (playerNameFromInput(safeProfileName(user?.displayName)).slice(0, 1) || "P").toUpperCase();
 
   return (
     <div style={{ borderBottom: "1px solid var(--border)" }}>
@@ -3431,6 +3627,8 @@ function TournamentDetail(props) {
     currentUserId,
     currentUserName,
     registrations,
+    lobby = null,
+    onSaveLobby,
     friends = [],
     tournamentInvites = [],
     onInviteFriend,
@@ -3540,6 +3738,7 @@ function TournamentDetail(props) {
       </div>
 
       <RegistrationPanel tournament={tournament} requests={registrations || []} currentUserId={currentUserId} currentUserName={currentUserName} isAdmin={isAdmin} onRequest={onRequestRegistration} onDecision={onRegistrationDecision} disclaimer={props.registrationDisclaimer} onDisclaimerVisibilityChange={props.onJoinDisclaimerVisibilityChange} onSignIn={onSignIn} />
+      <RoomLobbyPanel isAdmin={isAdmin} canSee={isAdmin || (registrations || []).some((request) => request.playerId === currentUserId && request.status === "approved")} lobby={lobby} onSave={onSaveLobby} />
       {currentUserId && <TournamentInvitePanel tournament={tournament} friends={friends} invites={tournamentInvites} onInvite={(friend) => onInviteFriend(tournament, friend)} />}
       <CoAdminPanel tournament={tournament} isOwner={isOwner} onChange={(ids, tags) => onCoAdminsChange(ids, tags)} onAddByPlayerId={(playerTag) => onAddCoAdmin(tournament, playerTag)} />
       <TournamentResults results={tournament.results} isAdmin={isAdmin} onSave={onSaveResults} />

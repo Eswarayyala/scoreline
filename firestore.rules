@@ -78,15 +78,16 @@ service cloud.firestore {
       return data.keys().hasOnly([
                'displayName', 'games', 'region', 'language', 'style',
                'lookingFor', 'rank',
-               'bio', 'avatar', 'discoverable', 'updatedAt', 'playerTag'
+               'bio', 'avatar', 'discoverable', 'updatedAt', 'playerTag', 'handle'
              ])
              && data.keys().hasAll([
                'displayName', 'games', 'region', 'language', 'style',
                'bio', 'avatar', 'discoverable', 'updatedAt'
              ])
              && data.displayName is string
-             && data.displayName.size() > 0
-             && data.displayName.size() <= 40
+             && data.displayName.size() >= 3
+             && data.displayName.size() <= 16
+             && data.displayName.matches('^[A-Za-z0-9_]+$')
              && data.games is list
              && data.games.size() <= 20
              && data.region is string
@@ -103,7 +104,12 @@ service cloud.firestore {
              && data.avatar.size() <= 16
              && data.discoverable is bool
              && data.updatedAt is int
-             && (!data.keys().hasAny(['playerTag']) || (data.playerTag is string && data.playerTag.matches('^[0-9]{8}$')));
+             && (!data.keys().hasAny(['playerTag']) || (data.playerTag is string && data.playerTag.matches('^[0-9]{4}$|^[0-9]{8}$')))
+             && (!data.keys().hasAny(['handle'])
+                 || (data.handle is string
+                     && data.handle.size() <= 32
+                     && data.keys().hasAny(['playerTag'])
+                     && data.handle == data.displayName.lower() + '#' + data.playerTag));
     }
 
     function validReport(data) {
@@ -334,6 +340,24 @@ service cloud.firestore {
         allow delete: if isAdmin(parent(tid));
       }
 
+
+      match /lobby/{docId} {
+        allow read: if isAdmin(parent(tid))
+                    || (isActiveSiteUser()
+                        && exists(/databases/$(database)/documents/tournaments/$(tid)/registrations/$(request.auth.uid))
+                        && get(/databases/$(database)/documents/tournaments/$(tid)/registrations/$(request.auth.uid)).data.status == 'approved');
+        allow create, update: if docId == 'credentials'
+                              && isAdmin(parent(tid))
+                              && request.resource.data.keys().hasOnly(['roomId', 'roomPassword', 'updatedAt'])
+                              && request.resource.data.roomId is string
+                              && request.resource.data.roomId.size() > 0
+                              && request.resource.data.roomId.size() <= 40
+                              && request.resource.data.roomPassword is string
+                              && request.resource.data.roomPassword.size() > 0
+                              && request.resource.data.roomPassword.size() <= 40
+                              && request.resource.data.updatedAt is int;
+        allow delete: if docId == 'credentials' && isAdmin(parent(tid));
+      }
 
       match /registrations/{playerId} {
         allow read: if isAdmin(parent(tid))
@@ -622,6 +646,24 @@ service cloud.firestore {
       allow update, delete: if isModerator();
     }
 
+    match /handles/{handleId} {
+      allow get: if canBrowsePublicData();
+      allow list: if false;
+      allow create: if isActiveSiteUser()
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.keys().hasOnly(['uid', 'email', 'handle', 'createdAt'])
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.email is string
+                    && request.resource.data.email.size() <= 320
+                    && request.resource.data.handle is string
+                    && request.resource.data.handle.matches('^[a-z0-9_]{3,16}#[0-9]{4}$|^[a-z0-9_]{3,16}#[0-9]{8}$')
+                    && handleId.matches('^[a-z0-9_]{3,16}::[0-9]{4}$|^[a-z0-9_]{3,16}::[0-9]{8}$')
+                    && request.resource.data.handle == handleId.replace('::', '#')
+                    && request.resource.data.createdAt is int;
+      allow update: if false;
+      allow delete: if isActiveSiteUser() && resource.data.uid == request.auth.uid;
+    }
+
     match /players/{userId} {
       allow get: if isActiveSiteUser()
                  && (request.auth.uid == userId || resource.data.discoverable == true);
@@ -632,12 +674,16 @@ service cloud.firestore {
       allow create: if isActiveSiteUser()
                     && request.auth.uid == userId
                     && !request.resource.data.keys().hasAny(['playerTag'])
+                    && !request.resource.data.keys().hasAny(['handle'])
                     && validPlayerProfile(request.resource.data);
       allow update: if isActiveSiteUser()
                     && request.auth.uid == userId
                     && validPlayerProfile(request.resource.data)
                     && (!resource.data.keys().hasAny(['playerTag'])
-                        ? !request.resource.data.keys().hasAny(['playerTag'])
+                        ? (!request.resource.data.keys().hasAny(['playerTag'])
+                           || (request.resource.data.playerTag.matches('^[0-9]{4}$|^[0-9]{8}$')
+                               && exists(/databases/$(database)/documents/handles/$(request.resource.data.displayName.lower() + '::' + request.resource.data.playerTag))
+                               && get(/databases/$(database)/documents/handles/$(request.resource.data.displayName.lower() + '::' + request.resource.data.playerTag)).data.uid == request.auth.uid))
                         : request.resource.data.playerTag == resource.data.playerTag);
 
       allow delete: if isActiveSiteUser() && request.auth.uid == userId;
