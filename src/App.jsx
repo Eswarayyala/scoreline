@@ -34,7 +34,7 @@ import { avatarForGamer, bannerForGame, flyerForEvent } from "./data/platformSho
 import CircuitCmsDesk from "./components/cms/CircuitCmsDesk";
 import { useCircuitCms } from "./hooks/useCircuitCms";
 import { useEsportsMedia } from "./hooks/useEsportsMedia";
-import { mergeVaultMedia } from "./services/esportsMedia";
+import { fetchGamePoster, mergeVaultMedia } from "./services/esportsMedia";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { onValue, ref as databaseRef, onDisconnect, serverTimestamp, set as setDatabaseValue } from "firebase/database";
 
@@ -352,16 +352,30 @@ const BIO_EXAMPLES = [
 
 const THEME_CSS = `[data-theme="solar-flare"] [style*="var(--panel-bg)"] { box-shadow: var(--panel-shadow); }`;
 
-const FORMATS = ["Single elimination", "Double elimination", "Round robin", "Swiss", "Group stage"];
+const FORMATS = ["Single elimination", "Double elimination", "Round robin", "Swiss", "Group stage", "Custom room"];
 
 const STATUS_COLORS = {
   upcoming: "var(--text-muted)",
   live: "var(--accent-secondary)",
+  closed: "var(--text-dim)",
   completed: "var(--accent)",
 };
 
+function isCustomRoomEvent(t) {
+  return t?.kind === "custom_room" || t?.format === "Custom room";
+}
+
+function approvedCount(requests = []) {
+  return requests.filter((request) => request.status === "approved").length;
+}
+
+function isTournamentFull(t, requests = []) {
+  const max = Number(t?.maxSlots) || 0;
+  return max > 0 && approvedCount(requests) >= max;
+}
+
 function isTournamentArchived(t) {
-  if (t.archived === true || t.status === "completed") return true;
+  if (t.archived === true || t.status === "completed" || t.status === "closed") return true;
   const date = t.endDate || t.startDate;
   if (!date) return false;
   const cutoff = new Date(`${date}T23:59:59`).getTime() + 7 * 24 * 60 * 60 * 1000;
@@ -1263,15 +1277,19 @@ function RegistrationPanel({ tournament, requests, currentUserId, currentUserNam
   const mine = requests.find((request) => request.playerId === currentUserId);
   const pending = requests.filter((request) => request.status === "pending");
   const approved = requests.filter((request) => request.status === "approved");
+  const openJoin = tournament.joinMode === "open";
+  const full = isTournamentFull(tournament, requests);
+  const joiningOpen = tournament.registrationOpen !== false && !isTournamentArchived(tournament) && !full;
+  const slotLabel = Number(tournament.maxSlots) > 0 ? `${approved.length}/${tournament.maxSlots} ${isCustomRoomEvent(tournament) ? "players" : "slots"}` : `${approved.length} joined`;
   return (
     <section style={{ marginTop: 20, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
-      <Eyebrow>Free registration</Eyebrow>
+      <Eyebrow>{openJoin ? "Open join" : "Request to join"} · {slotLabel}</Eyebrow>
       <div style={{ fontSize: 13, color: "var(--text-muted)", margin: "8px 0 12px" }}>
-        {mine ? `Your request is ${mine.status}.` : currentUserId ? "Request a place. The tournament host or co-host must approve it." : "Sign in to request a place in this tournament."}
+        {full ? "This tournament is full." : mine ? `Your request is ${mine.status}.` : currentUserId ? (openJoin ? "Join now. No host approval needed." : "Request a place. The tournament host or co-host must approve it.") : "Sign in to take a place in this tournament."}
       </div>
-      {!currentUserId && tournament.registrationOpen !== false && !isTournamentArchived(tournament) && <Button onClick={onSignIn}>Sign in to request a place</Button>}
-      {currentUserId && !isAdmin && !mine && tournament.registrationOpen !== false && !isTournamentArchived(tournament) && <Button onClick={() => { setShowJoinDisclaimer(true); onDisclaimerVisibilityChange(true); }}>Request to join</Button>}
-      {!isAdmin && (tournament.registrationOpen === false || isTournamentArchived(tournament)) && <div style={{ color: "var(--text-dim)", fontSize: 12 }}>Registration is closed.</div>}
+      {!currentUserId && joiningOpen && <Button onClick={onSignIn}>{openJoin ? "Sign in to join" : "Sign in to request a place"}</Button>}
+      {currentUserId && !isAdmin && !mine && joiningOpen && <Button onClick={() => { setShowJoinDisclaimer(true); onDisclaimerVisibilityChange(true); }}>{openJoin ? "Join now" : "Request to join"}</Button>}
+      {!isAdmin && !joiningOpen && !mine && <div style={{ color: "var(--text-dim)", fontSize: 12 }}>{full ? "No places left." : "Registration is closed."}</div>}
       {isAdmin && (
         <div style={{ display: "grid", gap: 8 }}>
           {pending.length === 0 ? <div style={{ fontSize: 13, color: "var(--text-dim)" }}>No requests waiting.</div> : pending.map((request) => (
@@ -1290,7 +1308,7 @@ function RegistrationPanel({ tournament, requests, currentUserId, currentUserNam
           <p style={{ color: "var(--text-muted)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{disclaimer?.message || "Join only tournaments hosted by people you trust. Verify the details directly with the host, never send money or account credentials, and report suspicious activity. GrindInfo cannot guarantee a host's conduct."}</p>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
             <Button variant="ghost" onClick={() => { setShowJoinDisclaimer(false); onDisclaimerVisibilityChange(false); }}>Cancel</Button>
-            <Button onClick={() => { setShowJoinDisclaimer(false); onDisclaimerVisibilityChange(false); onRequest({ playerId: currentUserId, displayName: currentUserName }); }}>Continue to request</Button>
+            <Button onClick={() => { setShowJoinDisclaimer(false); onDisclaimerVisibilityChange(false); onRequest({ playerId: currentUserId, displayName: currentUserName }); }}>{openJoin ? "Join this tournament" : "Continue to request"}</Button>
           </div>
         </section>
       </div>}
@@ -2459,6 +2477,11 @@ export default function App() {
         coAdminUserIds: [],
         coAdminPlayerTags: {},
         status: t.status || "upcoming",
+        kind: t.kind || (t.format === "Custom room" ? "custom_room" : "bracket"),
+        joinMode: t.joinMode || "request",
+        maxSlots: Number(t.maxSlots) || 0,
+        blurb: String(t.blurb || "").slice(0, 400),
+        posterUrl: String(t.posterUrl || "").slice(0, 500),
         isLegacyImport: false,
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -2571,12 +2594,18 @@ export default function App() {
 
   const requestRegistration = async (tournamentId, player) => {
     if (!user) return;
+    const event = tournaments.find((item) => item.id === tournamentId);
+    if (isTournamentFull(event, selectedRegistrations)) {
+      showToast("This tournament is full.");
+      return;
+    }
+    const openJoin = event?.joinMode === "open";
     try {
       await setDoc(doc(registrationsCollectionRef(tournamentId), user.uid), {
         playerId: user.uid, displayName: safeProfileName(player.displayName),
-        status: "pending", requestedAt: Date.now(),
+        status: openJoin ? "approved" : "pending", requestedAt: Date.now(),
       });
-      showToast("Join request sent to the tournament host");
+      showToast(openJoin ? "You're in. Room details appear if the host posted them." : "Join request sent to the tournament host");
     } catch (e) {
       showToast(e?.code === "permission-denied"
         ? "Firebase blocked the join request. The Firestore rules may need to be published."
@@ -2585,6 +2614,11 @@ export default function App() {
   };
 
   const decideRegistration = async (tournamentId, requestId, status) => {
+    const event = tournaments.find((item) => item.id === tournamentId);
+    if (status === "approved" && isTournamentFull(event, selectedRegistrations)) {
+      showToast("This tournament is full.");
+      return;
+    }
     try {
       await updateDoc(doc(registrationsCollectionRef(tournamentId), requestId), { status, reviewedAt: Date.now(), reviewedBy: user.uid });
       showToast(status === "approved" ? "Player approved" : "Request declined");
@@ -2596,8 +2630,17 @@ export default function App() {
   };
 
   const closeTournament = async (tournamentId) => {
-    try { await updateDoc(tournamentDocRef(tournamentId), { registrationOpen: false, archived: true, archivedAt: Date.now(), updatedAt: Date.now() }); showToast("Tournament closed and moved to archive"); }
+    try { await updateDoc(tournamentDocRef(tournamentId), { registrationOpen: false, status: "closed", archived: true, archivedAt: Date.now(), updatedAt: Date.now() }); showToast("Tournament closed and moved to archive"); }
     catch (e) { showToast("Couldn\u2019t close tournament. Check Firestore rules."); }
+  };
+
+  const updateTournamentSettings = async (tournamentId, patch) => {
+    try {
+      await updateDoc(tournamentDocRef(tournamentId), { ...patch, updatedAt: Date.now() });
+      showToast("Tournament settings saved");
+    } catch (e) {
+      showToast("Couldn't update tournament settings. Check Firestore rules.");
+    }
   };
 
   const submitBlogPost = async (post) => {
@@ -3091,6 +3134,7 @@ export default function App() {
                     onJoinDisclaimerVisibilityChange={setJoinDisclaimerOpen}
                     onSaveResults={(results) => saveTournamentResults(selected.id, results)}
                     onCloseTournament={() => closeTournament(selected.id)}
+                    onUpdateSettings={(patch) => updateTournamentSettings(selected.id, patch)}
                     onBack={() => navigate("/tournaments")}
                     onShare={() => shareTournament(selected)}
                     onRequestFriend={() => requestHostFriend(selected)}
@@ -3137,7 +3181,7 @@ export default function App() {
         )}
 
       {user && showNewTournament && (
-        <NewTournamentModal onClose={() => setShowNewTournament(false)} onCreate={addTournament} />
+        <NewTournamentModal slides={vaultSlides} onClose={() => setShowNewTournament(false)} onCreate={addTournament} />
       )}
 
       {showProfileModal && (
@@ -3350,6 +3394,10 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
                   </div>
                 )}
                 <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-dim)" }}>
+                  {(t.status || "upcoming").toUpperCase()} · {t.joinMode === "open" ? "Open join" : "Request to join"}
+                  {Number(t.maxSlots) > 0 ? ` · ${t.maxSlots} slots` : ""}
+                </div>
+                <div style={{ marginTop: 6, fontSize: 12, color: "var(--text-dim)" }}>
                   {fmtDate(t.startDate)} {t.endDate ? `– ${fmtDate(t.endDate)}` : ""}
                 </div>
               </Link>
@@ -3361,16 +3409,28 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
   );
 }
 
-function NewTournamentModal({ onClose, onCreate }) {
+function NewTournamentModal({ onClose, onCreate, slides = [] }) {
   const [name, setName] = useState("");
   const [game, setGame] = useState(GAME_PRESETS[0]);
+  const [kind, setKind] = useState("bracket");
   const [format, setFormat] = useState(FORMATS[0]);
+  const [joinMode, setJoinMode] = useState("request");
+  const [maxSlots, setMaxSlots] = useState("16");
+  const [blurb, setBlurb] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [artwork, setArtwork] = useState(TOURNAMENT_ARTWORKS[0].icon);
+  const [posterUrl, setPosterUrl] = useState(bannerForGame(GAME_PRESETS[0]));
   const [prizeAmount, setPrizeAmount] = useState("0");
   const [customPrize, setCustomPrize] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fromVault = slides.find((slide) => String(slide.game || "").toLowerCase() === game.toLowerCase())?.poster;
+    setPosterUrl(fromVault || bannerForGame(game));
+    let active = true;
+    fetchGamePoster(game).then((url) => { if (active && url) setPosterUrl(url); });
+    return () => { active = false; };
+  }, [game, slides]);
 
   const submit = () => {
     if (!name.trim()) {
@@ -3379,7 +3439,25 @@ function NewTournamentModal({ onClose, onCreate }) {
     }
     const amount = prizeAmount === "custom" ? Number(customPrize) : Number(prizeAmount);
     if (!Number.isFinite(amount) || amount < 0 || amount > 100000000) { setError("Enter a valid prize information amount."); return; }
-    onCreate({ name: name.trim(), game, format, startDate, endDate, artwork, prizeAmount: amount, prizeCurrency: "INR" });
+    const slots = Math.max(0, Math.min(256, Number(maxSlots) || 0));
+    const nextKind = kind === "custom_room" ? "custom_room" : "bracket";
+    onCreate({
+      name: name.trim(),
+      game,
+      kind: nextKind,
+      format: nextKind === "custom_room" ? "Custom room" : format,
+      joinMode,
+      maxSlots: slots,
+      blurb: blurb.trim().slice(0, 400),
+      posterUrl,
+      artwork: posterUrl,
+      startDate,
+      endDate,
+      prizeAmount: amount,
+      prizeCurrency: "INR",
+      status: "upcoming",
+      registrationOpen: true,
+    });
   };
 
   return (
@@ -3403,7 +3481,9 @@ function NewTournamentModal({ onClose, onCreate }) {
           border: "1px solid var(--border)",
           padding: 28,
           width: "100%",
-          maxWidth: 460,
+          maxWidth: 520,
+          maxHeight: "88vh",
+          overflowY: "auto",
         }}
       >
         <Eyebrow>New entry</Eyebrow>
@@ -3423,32 +3503,10 @@ function NewTournamentModal({ onClose, onCreate }) {
             />
           </Field>
           {error && <div style={{ fontSize: 13, color: "var(--danger)" }}>{error}</div>}
-          <Field label="Tournament artwork">
-            <div role="group" aria-label="Choose tournament artwork" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {TOURNAMENT_ARTWORKS.map((option) => (
-                <button
-                  key={option.label}
-                  type="button"
-                  title={option.label}
-                  aria-label={"Choose " + option.label + " artwork"}
-                  aria-pressed={artwork === option.icon}
-                  onClick={() => setArtwork(option.icon)}
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 8,
-                    border: artwork === option.icon ? "2px solid var(--accent)" : "1px solid var(--border)",
-                    background: "var(--panel-raised)",
-                    color: "var(--page-text)",
-                    fontSize: 24,
-                    cursor: "pointer",
-                  }}
-                >
-                  {option.icon}
-                </button>
-              ))}
-            </div>
-          </Field>
+          <div className="aspect-video overflow-hidden border border-white/10">
+            <img src={posterUrl} alt="" className="h-full w-full object-cover" />
+          </div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Poster follows the selected game (RAWG art when the key is set).</div>
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ flex: 1 }}>
               <Field label="Game">
@@ -3465,17 +3523,41 @@ function NewTournamentModal({ onClose, onCreate }) {
               </Field>
             </div>
             <div style={{ flex: 1 }}>
-              <Field label="Format">
-                <Select value={format} onChange={(e) => setFormat(e.target.value)}>
-                  {FORMATS.map((f) => (
-                    <option key={f} value={f}>
-                      {f}
-                    </option>
-                  ))}
+              <Field label="Type">
+                <Select value={kind} onChange={(e) => setKind(e.target.value)}>
+                  <option value="bracket">Full tournament</option>
+                  <option value="custom_room">Custom room only</option>
                 </Select>
               </Field>
             </div>
           </div>
+          {kind === "bracket" && (
+            <Field label="Format">
+              <Select value={format} onChange={(e) => setFormat(e.target.value)}>
+                {FORMATS.filter((item) => item !== "Custom room").map((f) => (
+                  <option key={f} value={f}>{f}</option>
+                ))}
+              </Select>
+            </Field>
+          )}
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 150 }}>
+              <Field label="Join">
+                <Select value={joinMode} onChange={(e) => setJoinMode(e.target.value)}>
+                  <option value="request">Request to join</option>
+                  <option value="open">Open join</option>
+                </Select>
+              </Field>
+            </div>
+            <div style={{ flex: 1, minWidth: 150 }}>
+              <Field label={kind === "custom_room" ? "Max players (0 = no cap)" : "Max slots (0 = no cap)"}>
+                <TextInput type="number" min="0" max="256" value={maxSlots} onChange={(e) => setMaxSlots(e.target.value)} />
+              </Field>
+            </div>
+          </div>
+          <Field label="Basic info for players">
+            <textarea value={blurb} maxLength={400} rows={3} onChange={(e) => setBlurb(e.target.value)} style={{ ...inputStyle, resize: "vertical" }} placeholder="Server region, start time, rules, or what to bring." />
+          </Field>
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ flex: 1 }}>
               <Field label="Start date">
@@ -3614,6 +3696,65 @@ function TournamentInvitePanel({ tournament, friends, invites, onInvite }) {
   </section>;
 }
 
+function HostControls({ tournament, requests, onUpdateSettings, onCloseTournament }) {
+  const [joinMode, setJoinMode] = useState(tournament.joinMode === "open" ? "open" : "request");
+  const [maxSlots, setMaxSlots] = useState(String(tournament.maxSlots ?? 0));
+  const [blurb, setBlurb] = useState(tournament.blurb || "");
+  const [kind, setKind] = useState(isCustomRoomEvent(tournament) ? "custom_room" : "bracket");
+  useEffect(() => {
+    setJoinMode(tournament.joinMode === "open" ? "open" : "request");
+    setMaxSlots(String(tournament.maxSlots ?? 0));
+    setBlurb(tournament.blurb || "");
+    setKind(isCustomRoomEvent(tournament) ? "custom_room" : "bracket");
+  }, [tournament.joinMode, tournament.maxSlots, tournament.blurb, tournament.kind, tournament.format]);
+  const save = () => onUpdateSettings({
+    joinMode,
+    maxSlots: Math.max(0, Math.min(256, Number(maxSlots) || 0)),
+    blurb: blurb.trim().slice(0, 400),
+    kind,
+    format: kind === "custom_room" ? "Custom room" : (tournament.format === "Custom room" ? FORMATS[0] : tournament.format),
+    registrationOpen: tournament.registrationOpen !== false,
+  });
+  const setLive = () => onUpdateSettings({ status: "live", archived: false, registrationOpen: true });
+  const setUpcoming = () => onUpdateSettings({ status: "upcoming", archived: false });
+  return (
+    <section style={{ marginTop: 16, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+      <Eyebrow>Host desk</Eyebrow>
+      <div style={{ fontSize: 12, color: "var(--text-muted)", margin: "7px 0 12px" }}>Control capacity, join style, and whether this is a full bracket or just a custom room.</div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+        <Button variant={tournament.status === "upcoming" ? "primary" : "ghost"} onClick={setUpcoming}>Upcoming</Button>
+        <Button variant={tournament.status === "live" ? "primary" : "ghost"} onClick={setLive}>Live</Button>
+        <Button variant="ghost" onClick={onCloseTournament}>Closed</Button>
+        <Button variant={tournament.registrationOpen === false ? "ghost" : "primary"} onClick={() => onUpdateSettings({ registrationOpen: tournament.registrationOpen === false })}>
+          {tournament.registrationOpen === false ? "Open registration" : "Stop registration"}
+        </Button>
+      </div>
+      <div style={{ display: "grid", gap: 10, maxWidth: 520 }}>
+        <Field label="Event type">
+          <Select value={kind} onChange={(event) => setKind(event.target.value)}>
+            <option value="bracket">Full tournament</option>
+            <option value="custom_room">Custom room only</option>
+          </Select>
+        </Field>
+        <Field label="Join">
+          <Select value={joinMode} onChange={(event) => setJoinMode(event.target.value)}>
+            <option value="request">Request to join</option>
+            <option value="open">Open join</option>
+          </Select>
+        </Field>
+        <Field label="Max people / teams (0 = no cap)">
+          <TextInput type="number" min="0" max="256" value={maxSlots} onChange={(event) => setMaxSlots(event.target.value)} />
+        </Field>
+        <Field label="Basic info">
+          <textarea value={blurb} maxLength={400} rows={3} onChange={(event) => setBlurb(event.target.value)} style={{ ...inputStyle, resize: "vertical" }} />
+        </Field>
+      </div>
+      <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-dim)" }}>{approvedCount(requests)} currently approved.</div>
+      <div style={{ marginTop: 10 }}><Button onClick={save}>Save host settings</Button></div>
+    </section>
+  );
+}
+
 function TournamentDetail(props) {
   const {
     tournament,
@@ -3644,6 +3785,7 @@ function TournamentDetail(props) {
     onReport,
     onDelete,
     onCloseTournament,
+    onUpdateSettings,
     onAddTeam,
     onDeleteTeam,
     onAddMatch,
@@ -3691,7 +3833,7 @@ function TournamentDetail(props) {
             <img src={flyerForEvent(tournament)} alt="" className="h-full w-full object-cover" />
           </div>
           <Eyebrow color="var(--text-muted)">
-            {tournament.game} · {tournament.format}
+            {tournament.game} · {tournament.format} · {tournament.status || "upcoming"}
           </Eyebrow>
           <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 38, margin: "4px 0 6px" }}>
             {tournament.name}
@@ -3737,12 +3879,16 @@ function TournamentDetail(props) {
         </div>
       </div>
 
+      {tournament.blurb && <p style={{ marginTop: 14, color: "var(--text-muted)", whiteSpace: "pre-wrap", maxWidth: 680 }}>{tournament.blurb}</p>}
+      {isAdmin && <HostControls tournament={tournament} requests={registrations || []} onUpdateSettings={onUpdateSettings} onCloseTournament={onCloseTournament} />}
       <RegistrationPanel tournament={tournament} requests={registrations || []} currentUserId={currentUserId} currentUserName={currentUserName} isAdmin={isAdmin} onRequest={onRequestRegistration} onDecision={onRegistrationDecision} disclaimer={props.registrationDisclaimer} onDisclaimerVisibilityChange={props.onJoinDisclaimerVisibilityChange} onSignIn={onSignIn} />
       <RoomLobbyPanel isAdmin={isAdmin} canSee={isAdmin || (registrations || []).some((request) => request.playerId === currentUserId && request.status === "approved")} lobby={lobby} onSave={onSaveLobby} />
       {currentUserId && <TournamentInvitePanel tournament={tournament} friends={friends} invites={tournamentInvites} onInvite={(friend) => onInviteFriend(tournament, friend)} />}
       <CoAdminPanel tournament={tournament} isOwner={isOwner} onChange={(ids, tags) => onCoAdminsChange(ids, tags)} onAddByPlayerId={(playerTag) => onAddCoAdmin(tournament, playerTag)} />
-      <TournamentResults results={tournament.results} isAdmin={isAdmin} onSave={onSaveResults} />
+      {!isCustomRoomEvent(tournament) && <TournamentResults results={tournament.results} isAdmin={isAdmin} onSave={onSaveResults} />}
 
+      {!isCustomRoomEvent(tournament) && (
+        <>
       <div style={{ display: "flex", gap: 4, marginTop: 28, borderBottom: "1px solid var(--border)", flexWrap: "wrap" }}>
         {tabs.map((t) => (
           <button
@@ -3783,6 +3929,8 @@ function TournamentDetail(props) {
         )}
         {tab === "leaderboard" && <LeaderboardPanel teams={teams} stats={stats} />}
       </div>
+        </>
+      )}
     </div>
   );
 }

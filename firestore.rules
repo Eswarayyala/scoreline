@@ -229,7 +229,8 @@ service cloud.firestore {
                'name', 'game', 'format', 'startDate', 'endDate', 'artwork',
                'prizeAmount', 'prizeCurrency', 'registrationOpen',
                'adminUserId', 'adminDisplayName', 'coAdminUserIds', 'coAdminPlayerTags', 'status',
-               'isLegacyImport', 'createdAt', 'updatedAt', 'results', 'archived', 'archivedAt'
+               'isLegacyImport', 'createdAt', 'updatedAt', 'results', 'archived', 'archivedAt',
+               'kind', 'joinMode', 'maxSlots', 'blurb', 'posterUrl'
              ]))
              && data.name is string && data.name.size() > 0 && data.name.size() <= 120
              && data.game is string && data.game.size() <= 60
@@ -238,11 +239,16 @@ service cloud.firestore {
 
              && (!data.keys().hasAny(['startDate']) || (data.startDate is string && data.startDate.size() <= 40))
              && (!data.keys().hasAny(['endDate']) || (data.endDate is string && data.endDate.size() <= 40))
-             && (!data.keys().hasAny(['artwork']) || (data.artwork is string && data.artwork.size() <= 16))
+             && (!data.keys().hasAny(['artwork']) || (data.artwork is string && data.artwork.size() <= 500))
              && (!data.keys().hasAny(['adminDisplayName']) || (data.adminDisplayName is string && data.adminDisplayName.size() <= 40))
              && data.coAdminUserIds is list && data.coAdminUserIds.size() <= 20
              && (!data.keys().hasAny(['coAdminPlayerTags']) || (data.coAdminPlayerTags is map && data.coAdminPlayerTags.keys().size() <= 20 && data.coAdminPlayerTags.keys().hasOnly(data.coAdminUserIds)))
-             && data.status in ['upcoming', 'live', 'completed']
+             && data.status in ['upcoming', 'live', 'completed', 'closed']
+             && (!data.keys().hasAny(['kind']) || data.kind in ['bracket', 'custom_room'])
+             && (!data.keys().hasAny(['joinMode']) || data.joinMode in ['request', 'open'])
+             && (!data.keys().hasAny(['maxSlots']) || (data.maxSlots is int && data.maxSlots >= 0 && data.maxSlots <= 256))
+             && (!data.keys().hasAny(['blurb']) || (data.blurb is string && data.blurb.size() <= 400))
+             && (!data.keys().hasAny(['posterUrl']) || (data.posterUrl is string && data.posterUrl.size() <= 500))
              && (!data.keys().hasAny(['isLegacyImport']) || data.isLegacyImport is bool)
              && (!data.keys().hasAny(['createdAt']) || data.createdAt is int)
              && (!data.keys().hasAny(['updatedAt']) || data.updatedAt is int)
@@ -309,7 +315,7 @@ service cloud.firestore {
                     && (request.resource.data.coAdminUserIds == resource.data.coAdminUserIds
                         || isOwner(resource.data))
                     && request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['coAdminUserIds', 'coAdminPlayerTags', 'updatedAt', 'results', 'status', 'registrationOpen', 'archived', 'archivedAt'])
+                         .hasOnly(['coAdminUserIds', 'coAdminPlayerTags', 'updatedAt', 'results', 'status', 'registrationOpen', 'archived', 'archivedAt', 'joinMode', 'maxSlots', 'kind', 'blurb', 'posterUrl'])
                     && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['coAdminPlayerTags']) || isOwner(resource.data))
                     && validTournament(request.resource.data, false);
 
@@ -368,13 +374,15 @@ service cloud.firestore {
                           || parent(tid).registrationOpen == true)
                       && (!parent(tid).keys().hasAny(['archived']) || parent(tid).archived != true)
                       && parent(tid).status != 'completed'
+                      && parent(tid).status != 'closed'
                       && request.auth.uid == playerId
                       && request.resource.data.keys().hasOnly(['playerId', 'displayName', 'status', 'requestedAt'])
                       && request.resource.data.playerId == request.auth.uid
                       && request.resource.data.displayName is string
                       && request.resource.data.displayName.size() <= 40
-                      && request.resource.data.status == 'pending'
-                      && request.resource.data.requestedAt is int;
+                      && request.resource.data.requestedAt is int
+                      && ((parent(tid).joinMode == 'open' && request.resource.data.status == 'approved')
+                          || ((parent(tid).joinMode != 'open') && request.resource.data.status == 'pending'));
         allow update: if isAdmin(parent(tid))
                       && request.resource.data.diff(resource.data).affectedKeys()
                            .hasOnly(['status', 'reviewedAt', 'reviewedBy'])

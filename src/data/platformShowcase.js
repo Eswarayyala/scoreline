@@ -44,7 +44,7 @@ export function avatarForGamer(player = {}) {
 }
 
 export function flyerForEvent(item = {}) {
-  const url = [item.flyer, item.poster, item.banner, item.cover, item.artwork].find(isHttpUrl);
+  const url = [item.posterUrl, item.flyer, item.poster, item.banner, item.cover, item.artwork].find(isHttpUrl);
   if (url) return url;
   return bannerForGame(item.game);
 }

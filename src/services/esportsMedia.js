@@ -12,6 +12,36 @@ export const COMPETITIVE_GAMES = [
   { slug: "fortnite", game: "Fortnite" },
 ];
 
+const GAME_RAWG_SLUGS = {
+  Valorant: "valorant",
+  CS2: "counter-strike-2",
+  "League of Legends": "league-of-legends",
+  "Apex Legends": "apex-legends",
+  PUBG: "pubg-battlegrounds",
+  "PUBG Mobile": "playerunknowns-battlegrounds",
+  BGMI: "playerunknowns-battlegrounds",
+  "Rocket League": "rocket-league",
+  "Dota 2": "dota-2",
+  Fortnite: "fortnite",
+  "Overwatch 2": "overwatch-2",
+  "Call of Duty": "call-of-duty-warzone",
+  "Mobile Legends: Bang Bang": "mobile-legends-bang-bang",
+};
+
+export async function fetchGamePoster(game) {
+  if (!RAWG_API_KEY) return "";
+  const slug = GAME_RAWG_SLUGS[game];
+  if (!slug) return "";
+  try {
+    const response = await fetch(`${RAWG_BASE}/${encodeURIComponent(slug)}?key=${encodeURIComponent(RAWG_API_KEY)}`);
+    if (!response.ok) return "";
+    const data = await response.json();
+    return String(data.background_image || data.background_image_additional || "");
+  } catch {
+    return "";
+  }
+}
+
 function normalizeGameName(value) {
   const raw = String(value || "").trim().toLowerCase();
   if (!raw) return "";
