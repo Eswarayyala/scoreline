@@ -1547,7 +1547,7 @@ function FriendDock({ requests, currentUserId, onOpenChat, onOpenRequests, prese
       </div>
       <button type="button" onClick={() => { onOpenRequests(); setExpanded(false); }} style={{ width: "100%", textAlign: "left", border: 0, borderBottom: "1px solid var(--border)", padding: 11, background: "transparent", color: "var(--accent-secondary)", cursor: "pointer" }}>Friend requests{requests.filter((item) => item.recipientId === currentUserId && item.status === "pending").length ? ` (${requests.filter((item) => item.recipientId === currentUserId && item.status === "pending").length})` : ""}</button>
       {visibleFriends.map((friend) => <div key={friend.uid} style={{ borderBottom: "1px solid var(--border)", padding: 10 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><span style={{ display: "flex", alignItems: "center", gap: 8 }}><img src={avatarForGamer({ displayName: friend.name, uid: friend.uid })} alt="" className="aspect-square h-7 w-7 rounded-full object-cover" /><span aria-label={presence[friend.uid] || "offline"} title={presence[friend.uid] || (presenceDb ? "offline" : "Online status needs Realtime Database setup")} style={{ width: 8, height: 8, borderRadius: "50%", background: presence[friend.uid] === "online" ? "var(--success)" : "var(--text-dim)" }} />{friend.name}{mutedIds.has(friend.uid) ? <span style={{ fontSize: 10, color: "var(--text-dim)" }}>muted</span> : null}</span><button type="button" onClick={() => onOpenChat(friend)} style={{ border: 0, background: "transparent", color: "var(--accent-secondary)", cursor: "pointer" }}>Chat</button></div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><span style={{ display: "flex", alignItems: "center", gap: 8 }}><img src={avatarForGamer({ displayName: friend.name, uid: friend.uid })} alt="" className="aspect-square h-7 w-7 rounded-full object-cover" /><span aria-label={presence[friend.uid] || "offline"} title={presence[friend.uid] || (presenceDb ? "offline" : "Online status needs Realtime Database setup")} style={{ width: 8, height: 8, borderRadius: "50%", background: presence[friend.uid] === "online" ? "var(--success)" : "var(--text-dim)" }} />{friend.name}{mutedIds.has(friend.uid) ? <span style={{ fontSize: 10, color: "var(--text-dim)" }}>muted</span> : null}</span><button type="button" onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); onOpenChat(friend); }} style={{ border: 0, background: "transparent", color: "var(--accent-secondary)", cursor: "pointer" }}>Chat</button></div>
         <div style={{ display: "flex", gap: 8, marginTop: 7, flexWrap: "wrap" }}><button type="button" onClick={() => onToggleMute?.(friend.uid)} style={{ border: 0, background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 11 }}>{mutedIds.has(friend.uid) ? "Unmute" : "Mute"}</button><button type="button" onClick={() => onRemoveFriend(friend)} style={{ border: 0, background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 11 }}>Remove friend</button><button type="button" onClick={() => onBlockFriend(friend)} style={{ border: 0, background: "transparent", color: "var(--danger)", cursor: "pointer", fontSize: 11 }}>Block</button></div>
       </div>)}
       {!friendSearch.trim() && friends.length === 0 && <div style={{ padding: 12, color: "var(--text-muted)", fontSize: 13 }}>Accepted friends will appear here. Search a name or Name#1234 to find players.</div>}
@@ -1600,7 +1600,9 @@ function FriendChat({ currentUser, friend, onClose, muted = false, onToggleMute,
     setReady(false); setMessages([]); setError("");
     const openConversation = async () => {
       const conversationRef = doc(CHAT_CONVERSATIONS_COLLECTION, conversationId);
-      const snapshot = await getDoc(conversationRef);
+      let snapshot;
+      try { snapshot = await getDoc(conversationRef); }
+      catch { snapshot = { exists: () => false }; }
       if (!snapshot.exists()) {
         try { await setDoc(conversationRef, { participants, createdAt: Date.now() }); }
         catch (writeError) {
@@ -1624,7 +1626,7 @@ function FriendChat({ currentUser, friend, onClose, muted = false, onToggleMute,
     try { await addDoc(CHAT_MESSAGES_COLLECTION(conversationId), { senderId: currentUser.uid, text: clean, createdAt: Date.now() }); setText(""); setError(""); }
     catch { setError("Message not sent. Confirm you are still friends and try again."); }
   };
-  return <section aria-label={`Chat with ${friend.name}`} style={{ position: "fixed", right: 14, bottom: 14, zIndex: 56, width: "min(340px, calc(100vw - 28px))", height: "min(440px, calc(100vh - 110px))", display: "flex", flexDirection: "column", background: "var(--panel-bg)", color: "var(--page-text)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)" }}>
+  return <section aria-label={`Chat with ${friend.name}`} style={{ position: "fixed", right: 14, bottom: 14, zIndex: 80, width: "min(340px, calc(100vw - 28px))", height: "min(440px, calc(100vh - 110px))", display: "flex", flexDirection: "column", background: "var(--panel-bg)", color: "var(--page-text)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)" }}>
     <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: 12, borderBottom: "1px solid var(--border)" }}>
       <strong>{friend.name}{muted ? " · muted" : ""}</strong>
       <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -1635,7 +1637,7 @@ function FriendChat({ currentUser, friend, onClose, muted = false, onToggleMute,
     </header>
     <div aria-live="polite" style={{ flex: 1, overflowY: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>{messages.map((message) => <div key={message.id} style={{ alignSelf: message.senderId === currentUser.uid ? "flex-end" : "flex-start", maxWidth: "85%", padding: "8px 10px", background: message.senderId === currentUser.uid ? "var(--panel-raised)" : "transparent", border: "1px solid var(--border)", whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontSize: 13 }}>{message.text}</div>)}{!messages.length && ready && <span style={{ color: "var(--text-muted)", fontSize: 13, padding: 8 }}>Start the conversation.</span>}</div>
     {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 12, padding: "0 10px 8px" }}>{error}</div>}
-    <form onSubmit={send} style={{ display: "flex", gap: 6, padding: 10, borderTop: "1px solid var(--border)" }}><TextInput aria-label="Message" value={text} maxLength={1000} onChange={(event) => setText(event.target.value)} placeholder="Write a message" /><Button disabled={!ready || !text.trim()}>Send</Button></form>
+    <form onSubmit={send} style={{ display: "flex", gap: 6, padding: 10, borderTop: "1px solid var(--border)" }}><TextInput aria-label="Message" value={text} maxLength={1000} onChange={(event) => setText(event.target.value)} placeholder="Write a message" /><Button type="submit" disabled={!ready || !text.trim()}>Send</Button></form>
   </section>;
 }
 
