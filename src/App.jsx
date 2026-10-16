@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   doc,
   collection,
@@ -1105,93 +1105,99 @@ function PlayerCard({ player, currentUid, friendRequest, onFriendRequest, onFrie
     </div>
   );
 }
+function emptyPlayerSearch() {
+  return { games: [], region: "", language: "", style: "", lookingFor: [], rank: "", name: "" };
+}
+
+function playerSearchActive(search) {
+  if (!search) return false;
+  const tag = extractPlayerTag(search.name);
+  return Boolean(
+    search.games.length
+    || search.region
+    || search.language
+    || search.style
+    || search.lookingFor.length
+    || search.rank
+    || (search.name.includes("#") && PLAYER_TAG_PATTERN.test(tag))
+    || search.name.trim().length >= 2
+  );
+}
+
 function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendRequest, onFriendDecision, onReport, onEditProfile, embedded = false }) {
-  const [gameFilters, setGameFilters] = useState([]);
-  const [regionFilter, setRegionFilter] = useState("");
-  const [languageFilter, setLanguageFilter] = useState("");
-  const [styleFilter, setStyleFilter] = useState("");
-  const [lookingForFilters, setLookingForFilters] = useState([]);
-  const [rankFilter, setRankFilter] = useState("");
-  const [nameFilter, setNameFilter] = useState("");
-  const [playerTagFilter, setPlayerTagFilter] = useState("");
+  const [draft, setDraft] = useState(emptyPlayerSearch);
+  const [applied, setApplied] = useState(null);
   const [players, setPlayers] = useState([]);
   const [playersLoading, setPlayersLoading] = useState(false);
   const [playersError, setPlayersError] = useState("");
-  const primedFromProfile = useRef(false);
-  const normalizedPlayerTag = extractPlayerTag(playerTagFilter);
-  const nameQuery = nameFilter.trim();
-  const hasFilters = Boolean(gameFilters.length || regionFilter || languageFilter || styleFilter || lookingForFilters.length || rankFilter || normalizedPlayerTag || nameQuery.length >= 2);
-  const applyMyInterests = () => {
-    setGameFilters(normalizeGameNames(myProfile?.games || []));
-    setRegionFilter(myProfile?.region || "");
-    setLanguageFilter(myProfile?.language || "");
-    setStyleFilter(myProfile?.style || "");
-    setLookingForFilters(normalizeLookingFor(myProfile?.lookingFor));
-    setRankFilter(normalizeRank(myProfile?.rank));
+  const updateDraft = (patch) => setDraft((current) => ({ ...current, ...patch }));
+  const fillFromProfile = () => {
+    setDraft({
+      games: normalizeGameNames(myProfile?.games || []),
+      region: myProfile?.region || "",
+      language: myProfile?.language || "",
+      style: myProfile?.style || "",
+      lookingFor: normalizeLookingFor(myProfile?.lookingFor),
+      rank: normalizeRank(myProfile?.rank),
+      name: draft.name,
+    });
   };
+  const runSearch = (event) => {
+    event?.preventDefault();
+    setApplied({ ...draft, name: draft.name.trim() });
+  };
+  const appliedTag = extractPlayerTag(applied?.name || "");
+  const exactId = Boolean(applied?.name?.includes("#") && PLAYER_TAG_PATTERN.test(appliedTag));
+  const hasSearch = playerSearchActive(applied);
 
   useEffect(() => {
-    if (primedFromProfile.current || !myProfile) return;
-    primedFromProfile.current = true;
-    applyMyInterests();
-  }, [myProfile]);
-
-  useEffect(() => {
-    setPlayersError("");
-    if (normalizedPlayerTag) {
-      if (!PLAYER_TAG_PATTERN.test(normalizedPlayerTag)) {
-        setPlayers([]);
-        setPlayersLoading(false);
-        return undefined;
-      }
-      setPlayersLoading(true);
-      const exactIdQuery = query(PLAYERS_COLLECTION, where("discoverable", "==", true), where("playerTag", "==", normalizedPlayerTag));
-      return onSnapshot(exactIdQuery, (snap) => {
-        setPlayers(snap.docs.map((d) => ({ uid: d.id, ...d.data() })));
-        setPlayersLoading(false);
-      }, () => {
-        setPlayersError("Couldn't search this GrindInfo ID. Check your connection and try again.");
-        setPlayersLoading(false);
-      });
+    if (!applied) {
+      setPlayers([]);
+      setPlayersLoading(false);
+      setPlayersError("");
+      return undefined;
     }
-    if (!hasFilters) {
+    setPlayersError("");
+    if (applied.name.includes("#") && !PLAYER_TAG_PATTERN.test(appliedTag)) {
       setPlayers([]);
       setPlayersLoading(false);
       return undefined;
     }
-
+    if (!hasSearch) {
+      setPlayers([]);
+      setPlayersLoading(false);
+      return undefined;
+    }
     setPlayersLoading(true);
     const filters = [where("discoverable", "==", true)];
-    if (gameFilters.length) {
-      const queryGames = normalizeGameNames(gameFilters).flatMap((game) =>
-        game === "BGMI and PUBG Mobile" ? [game, "PUBG Mobile (BGMI)"] : [game]
-      );
-      filters.push(where("games", "array-contains-any", [...new Set(queryGames)]));
-    }
-    if (regionFilter) filters.push(where("region", "==", regionFilter));
-    if (languageFilter) filters.push(where("language", "==", languageFilter));
-
-    const playersQuery = query(PLAYERS_COLLECTION, ...filters, limit(50));
-    return onSnapshot(
-      playersQuery,
-      (snap) => {
-        setPlayers(snap.docs.map((d) => ({ uid: d.id, ...d.data() })));
-        setPlayersLoading(false);
-      },
-      () => {
-        setPlayersError("Couldn't load players. Check your connection or database indexes, then try again.");
-        setPlayersLoading(false);
+    if (exactId) filters.push(where("playerTag", "==", appliedTag));
+    else {
+      if (applied.games.length) {
+        const queryGames = normalizeGameNames(applied.games).flatMap((game) =>
+          game === "BGMI and PUBG Mobile" ? [game, "PUBG Mobile (BGMI)"] : [game]
+        );
+        filters.push(where("games", "array-contains-any", [...new Set(queryGames)].slice(0, 10)));
       }
-    );
-  }, [gameFilters, regionFilter, languageFilter, styleFilter, lookingForFilters, rankFilter, hasFilters, normalizedPlayerTag]);
+      if (applied.region) filters.push(where("region", "==", applied.region));
+      if (applied.language) filters.push(where("language", "==", applied.language));
+    }
+    const playersQuery = query(PLAYERS_COLLECTION, ...filters, limit(80));
+    return onSnapshot(playersQuery, (snap) => {
+      setPlayers(snap.docs.map((d) => ({ uid: d.id, ...d.data() })));
+      setPlayersLoading(false);
+    }, () => {
+      setPlayersError(exactId ? "Couldn't search this GrindInfo ID. Check your connection and try again." : "Couldn't load players. Check your connection or database indexes, then try again.");
+      setPlayersLoading(false);
+    });
+  }, [applied, appliedTag, exactId, hasSearch]);
 
   const filtered = players
     .filter((p) => p.uid !== currentUid
-      && playerMatchesQuery(p, nameFilter)
-      && (Boolean(normalizedPlayerTag)
-        || ((!styleFilter || p.style === styleFilter)
-          && (!rankFilter || p.rank === rankFilter)
-          && (!lookingForFilters.length || normalizeLookingFor(p.lookingFor).some((want) => lookingForFilters.includes(want))))))
+      && playerMatchesQuery(p, applied?.name || "")
+      && (exactId
+        || ((!applied?.style || p.style === applied.style)
+          && (!applied?.rank || p.rank === applied.rank)
+          && (!applied?.lookingFor?.length || normalizeLookingFor(p.lookingFor).some((want) => applied.lookingFor.includes(want))))))
     .map((p) => ({ ...p, ...similarityMatch(myProfile, p) }))
     .sort((a, b) => b.score - a.score || String(a.displayName || "").localeCompare(String(b.displayName || "")));
 
@@ -1214,108 +1220,93 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
         {onEditProfile && <Button variant="ghost" onClick={onEditProfile}>{myProfile ? "Edit my profile" : "Set up my profile"}</Button>}
       </div>
 
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "0 0 16px" }}>
-        <div style={{ flex: "1 1 280px", minWidth: 220 }}>
-          <Field label="Search players">
-            <TextInput
-              value={nameFilter}
-              onChange={(event) => {
-                const next = event.target.value;
-                setNameFilter(next);
-                if (next.includes("#")) setPlayerTagFilter(next);
-                else if (!next.trim()) setPlayerTagFilter("");
-              }}
-              placeholder="Player name or Name#1234"
-              aria-label="Search players by name or GrindInfo ID"
-            />
-          </Field>
+      <form onSubmit={runSearch} style={{ marginBottom: 18, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--accent-secondary)", marginBottom: 10 }}>Manual search</div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 14 }}>
+          <div style={{ flex: "1 1 280px", minWidth: 220 }}>
+            <Field label="Player name or GrindInfo ID">
+              <TextInput
+                value={draft.name}
+                onChange={(event) => updateDraft({ name: event.target.value })}
+                placeholder="ghostpeak or ghostpeak#1234"
+                aria-label="Search players by name or GrindInfo ID"
+              />
+            </Field>
+          </div>
+          <Button type="submit">Search players</Button>
         </div>
-      </div>
-      <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14, borderLeft: "2px solid var(--accent)", paddingLeft: 12 }}>
-        Search by name or GrindInfo ID, or use filters. Closest matches appear first. Keep personal contact details private.
-      </div>
-      {!myProfile && (
-        <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14, padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
-          Set up your profile so GrindInfo can fill filters from your games and find closer matches.
+        <div style={{ display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+          <div style={{ width: "100%" }}>
+            <Field label="Games (optional)">
+              <MultiToggle
+                options={GAME_PRESETS}
+                selected={draft.games}
+                onToggle={(game) =>
+                  updateDraft({
+                    games: draft.games.includes(game)
+                      ? draft.games.filter((item) => item !== game)
+                      : [...draft.games, game],
+                  })
+                }
+              />
+            </Field>
+          </div>
+          <div style={{ minWidth: 160 }}>
+            <Select aria-label="Region" value={draft.region} onChange={(e) => updateDraft({ region: e.target.value })}>
+              <option value="">All regions</option>
+              {REGIONS.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </Select>
+          </div>
+          <div style={{ minWidth: 160 }}>
+            <Select aria-label="Language" value={draft.language} onChange={(e) => updateDraft({ language: e.target.value })}>
+              <option value="">All languages</option>
+              {LANGUAGES.map((l) => (
+                <option key={l} value={l}>{l}</option>
+              ))}
+            </Select>
+          </div>
+          <div style={{ minWidth: 190 }}>
+            <Select aria-label="Playing style" value={draft.style} onChange={(e) => updateDraft({ style: e.target.value })}>
+              <option value="">Any playing style</option>
+              {PLAY_STYLES.map((style) => (
+                <option key={style} value={style}>{style}</option>
+              ))}
+            </Select>
+          </div>
+          <div style={{ minWidth: 180 }}>
+            <Select aria-label="Rank band" value={draft.rank} onChange={(e) => updateDraft({ rank: e.target.value })}>
+              <option value="">Any rank band</option>
+              {RANK_BANDS.map((band) => (
+                <option key={band} value={band}>{band}</option>
+              ))}
+            </Select>
+          </div>
+          <div style={{ width: "100%" }}>
+            <Field label="Looking for (optional)">
+              <MultiToggle
+                options={LOOKING_FOR}
+                selected={draft.lookingFor}
+                onToggle={(want) => updateDraft({ lookingFor: draft.lookingFor.includes(want) ? draft.lookingFor.filter((item) => item !== want) : [...draft.lookingFor, want] })}
+              />
+            </Field>
+          </div>
         </div>
-      )}
-      <div style={{ display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-        {myProfile && <Button variant="ghost" onClick={applyMyInterests}>Use my profile</Button>}
-        <div style={{ width: "100%" }}>
-          <Field label="Games (choose any)">
-            <MultiToggle
-              options={GAME_PRESETS}
-              selected={gameFilters}
-              onToggle={(game) =>
-                setGameFilters((previous) =>
-                  previous.includes(game)
-                    ? previous.filter((item) => item !== game)
-                    : [...previous, game]
-                )
-              }
-            />
-          </Field>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {myProfile && <Button type="button" variant="ghost" onClick={fillFromProfile}>Fill from my profile</Button>}
+          <Button type="button" variant="ghost" onClick={() => { setDraft(emptyPlayerSearch()); setApplied(null); setPlayers([]); }}>Clear</Button>
+          <Button type="submit">Search players</Button>
         </div>
-        <div style={{ minWidth: 160 }}>
-          <Select value={regionFilter} onChange={(e) => setRegionFilter(e.target.value)}>
-            <option value="">All regions</option>
-            {REGIONS.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div style={{ minWidth: 160 }}>
-          <Select value={languageFilter} onChange={(e) => setLanguageFilter(e.target.value)}>
-            <option value="">All languages</option>
-            {LANGUAGES.map((l) => (
-              <option key={l} value={l}>
-                {l}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div style={{ minWidth: 190 }}>
-          <Select value={styleFilter} onChange={(e) => setStyleFilter(e.target.value)} aria-label="Playing style">
-            <option value="">Any playing style</option>
-            {PLAY_STYLES.map((style) => (
-              <option key={style} value={style}>
-                {style}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div style={{ minWidth: 180 }}>
-          <Select value={rankFilter} onChange={(e) => setRankFilter(e.target.value)} aria-label="Rank band">
-            <option value="">Any rank band</option>
-            {RANK_BANDS.map((band) => (
-              <option key={band} value={band}>
-                {band}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div style={{ width: "100%" }}>
-          <Field label="Looking for">
-            <MultiToggle
-              options={LOOKING_FOR}
-              selected={lookingForFilters}
-              onToggle={(want) => setLookingForFilters((previous) => previous.includes(want) ? previous.filter((item) => item !== want) : [...previous, want])}
-            />
-          </Field>
-        </div>
-      </div>
-      {normalizedPlayerTag && !PLAYER_TAG_PATTERN.test(normalizedPlayerTag) && <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>Enter the 4-digit code after # to look up a player.</div>}
-      {myProfile && (
-        <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
-          Filters start from your profile. Change them any time, or tap Use my profile to reset.
-        </div>
-      )}
+        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 10 }}>Set a name, ID, and/or filters, then tap Search. Results only include players who turned on discovery.</div>
+      </form>
+      {applied?.name?.includes("#") && !PLAYER_TAG_PATTERN.test(appliedTag) && <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>Enter the 4-digit code after # to look up a player.</div>}
 
       {playersError && <div style={{ fontSize: 13, color: "var(--danger)", marginBottom: 14 }}>{playersError}</div>}
-      {!hasFilters ? (
-        <EmptyState title="Search for a player" body="Type a name or Name#1234, or pick a game, region, or rank filter." />
+      {!applied ? (
+        <EmptyState title="Search when you are ready" body="Type a name or Name#1234, add optional filters, then tap Search players." />
+      ) : !hasSearch ? (
+        <EmptyState title="Add a search" body="Enter a player name, a GrindInfo ID, or at least one filter, then tap Search players." />
       ) : playersLoading ? (
         <div style={{ color: "var(--text-muted)", fontSize: 13, padding: 20 }}>Searching opted-in players…</div>
       ) : filtered.length === 0 ? (
