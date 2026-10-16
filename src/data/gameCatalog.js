@@ -34,6 +34,8 @@ const VAULT_EXTRA_GAMES = [
   "Trackmania",
   "Chess",
   "StarCraft II",
+  "Fatal Fury",
+  "Sim Racing",
 ];
 
 function uniqueGames(list = []) {

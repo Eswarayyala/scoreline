@@ -31,6 +31,7 @@ import TournamentOpsRail from "./components/layout/TournamentOpsRail";
 import VaultDetailPage from "./components/vault/VaultDetailPage";
 import VaultLibraryPage from "./components/vault/VaultLibraryPage";
 import EwcDirectoryPage from "./components/vault/EwcDirectoryPage";
+import PreEwcHistoryPage from "./components/vault/PreEwcHistoryPage";
 import VaultResearchDesk from "./components/cms/VaultResearchDesk";
 import { avatarForGamer, bannerForGame, flyerForEvent } from "./data/platformShowcase";
 import CircuitCmsDesk from "./components/cms/CircuitCmsDesk";
@@ -3536,6 +3537,7 @@ export default function App() {
                 )} />
                 <Route path="/vault" element={<VaultLibraryPage slides={vaultSlides} />} />
                 <Route path="/vault/ewc" element={<EwcDirectoryPage slides={vaultSlides} liveEntries={archiveEntries} />} />
+                <Route path="/vault/legacy" element={<PreEwcHistoryPage />} />
                 <Route path="/vault/:slug" element={<VaultDetailPage slides={vaultSlides} slug={routePath.replace(/^\/vault\//, "").split("/")[0]} liveEntries={archiveEntries} />} />
                 <Route path="/tournaments" element={(
                   <>

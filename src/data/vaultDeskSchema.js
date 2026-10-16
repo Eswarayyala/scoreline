@@ -83,8 +83,8 @@ export function formatForGame(game = "", structureId) {
   if (structureId && VAULT_FORMATS[structureId]) return VAULT_FORMATS[structureId];
   const name = String(game).toLowerCase();
   if (/apex|pubg|fortnite|free fire|warzone|bgmi|standoff/.test(name)) return VAULT_FORMATS.battleRoyale;
-  if (/street fighter|tekken/.test(name)) return VAULT_FORMATS.fighting;
-  if (/renn|trackmania/.test(name)) return VAULT_FORMATS.racing;
+  if (/street fighter|tekken|fatal fury/.test(name)) return VAULT_FORMATS.fighting;
+  if (/renn|trackmania|sim racing/.test(name)) return VAULT_FORMATS.racing;
   if (/chess/.test(name)) return VAULT_FORMATS.chess;
   if (/rocket|ea sports|fifa|\bfc\b/.test(name)) return VAULT_FORMATS.sports;
   return VAULT_FORMATS.bracket;

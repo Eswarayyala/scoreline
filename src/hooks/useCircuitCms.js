@@ -8,7 +8,7 @@ import { buildFilterGames } from "../data/gameCatalog";
 import { mergeEwcEditions } from "../data/eventScope";
 import { normalizeEdition } from "../data/vaultDeskSchema";
 
-const STORAGE_KEY = "grindinfo-circuit-cms-v2";
+const STORAGE_KEY = "grindinfo-circuit-cms-v3";
 const CMS_COLLECTION = "circuitCms";
 
 function slugify(value) {
@@ -57,12 +57,11 @@ function mergeWithSeed(remote = []) {
       return;
     }
     byId.set(item.id, {
-      ...item,
       ...existing,
+      ...item,
       surface: "research",
       research: true,
       editions: mergeEwcEditions(item.editions, existing.editions),
-      eventScope: existing.eventScope === "region" || existing.eventScope === "random" ? existing.eventScope : "ewc",
       yearlyStats: existing.yearlyStats?.length ? existing.yearlyStats : item.yearlyStats,
       relatedTournaments: existing.relatedTournaments?.length ? existing.relatedTournaments : item.relatedTournaments,
       region: existing.region || item.region,

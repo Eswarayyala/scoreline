@@ -14,7 +14,7 @@ export function publicScopeKicker(item = {}) {
   if (item.eventScope === "ewc") return "EWC";
   if (item.eventScope === "region") return "Region";
   if (item.eventScope === "random") return "Event";
-  if (item.research) return "EWC";
+  if (item.research) return "Vault";
   return "";
 }
 

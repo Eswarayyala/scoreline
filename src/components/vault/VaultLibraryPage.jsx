@@ -27,9 +27,11 @@ export default function VaultLibraryPage({ slides = VAULT_SLIDES, children }) {
   const games = useMemo(() => [...new Set(items.map((slide) => slide.game).filter(Boolean))].sort(), [items]);
   const visible = items.filter((slide) => {
     const gameOk = game === "all" || slide.game === game;
-    const itemScope = slide.eventScope || (slide.research ? "ewc" : "random");
-    const scopeOk = scope === "all" || itemScope === scope;
-    return gameOk && scopeOk;
+    if (scope === "all") return gameOk;
+    if (slide.eventScope === scope) return gameOk;
+    if ((slide.editions || []).some((edition) => edition.eventScope === scope)) return gameOk;
+    if (scope === "ewc" && (slide.floating === true || slide.surface === "ewc-window")) return gameOk;
+    return false;
   });
   const floating = visible.filter((slide) => slide.floating === true);
   const research = visible.filter((slide) => (slide.research || slide.surface === "research") && !slide.floating && slide.surface !== "ewc-window");
