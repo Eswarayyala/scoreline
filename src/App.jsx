@@ -153,6 +153,24 @@ function handleDocId(handle) {
 
 const handleDocRef = (handle) => doc(db, "handles", handleDocId(handle));
 
+const KNOWN_ACCOUNTS_KEY = "grindinfo-known-accounts";
+const DUMMY_TESTER_EMAIL = "dummybot.grindinfo@gmail.com";
+
+function readKnownAccounts() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(KNOWN_ACCOUNTS_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed.filter((item) => item && (item.email || item.handle)).slice(0, 8) : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberKnownAccount(entry) {
+  if (!entry?.uid && !entry?.email) return;
+  const current = readKnownAccounts().filter((item) => item.uid !== entry.uid && item.email !== entry.email);
+  localStorage.setItem(KNOWN_ACCOUNTS_KEY, JSON.stringify([{ ...entry, seenAt: Date.now() }, ...current].slice(0, 8)));
+}
+
 function randomPlayerTag() {
   return String(Math.floor(Math.random() * 10000)).padStart(4, "0");
 }
@@ -590,12 +608,19 @@ function Toast({ message }) {
 
 // ---------- auth screen ----------
 
-function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowseAsGuest, onClose, requireChoice }) {
+function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowseAsGuest, onClose, requireChoice, knownAccounts = [] }) {
   const [mode, setMode] = useState("signin"); // 'signin' | 'signup'
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const accountChoices = [
+    { email: DUMMY_TESTER_EMAIL, label: "Dummybot tester", handle: "dummybot", provider: "password" },
+    ...knownAccounts,
+  ].filter((item, index, list) => {
+    const key = String(item.email || item.handle || "").toLowerCase();
+    return key && list.findIndex((other) => String(other.email || other.handle || "").toLowerCase() === key) === index;
+  });
 
   const submit = (e) => {
     e.preventDefault();
@@ -614,7 +639,31 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowse
           {!requireChoice && <button type="button" aria-label="Close sign in" onClick={onClose} style={{ background: "none", border: 0, color: "var(--text-muted)", fontSize: 22, cursor: "pointer" }}>×</button>}
         </div>
 
-        <div style={{ color: "var(--text-muted)", fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}>Browse tournaments, The Vault, and community blogs as a guest. Sign in when you want to take part.</div>
+        <div style={{ color: "var(--text-muted)", fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}>Your main account is usually Google. Dummybot uses email and password. Only one is signed in at a time — pick the account below, then sign in.</div>
+
+        {accountChoices.length > 0 && mode === "signin" && (
+          <div style={{ display: "grid", gap: 8, marginBottom: 14 }}>
+            <Eyebrow>Accounts on this device</Eyebrow>
+            {accountChoices.map((account) => (
+              <Button
+                key={account.email || account.handle}
+                variant="ghost"
+                style={{ width: "100%", textAlign: "left" }}
+                onClick={() => {
+                  if (account.provider === "google") {
+                    onGoogleSignIn();
+                    return;
+                  }
+                  setMode("signin");
+                  setIdentifier(account.email || account.handle || "");
+                }}
+              >
+                {account.label || account.handle || account.email}
+                <span style={{ display: "block", fontSize: 11, color: "var(--text-muted)", fontWeight: 500 }}>{account.provider === "google" ? "Continue with Google" : (account.email || "Email and password")}</span>
+              </Button>
+            ))}
+          </div>
+        )}
 
         <Button variant="ghost" onClick={onBrowseAsGuest} style={{ width: "100%", marginBottom: 12 }}>Browse as guest</Button>
 
@@ -661,7 +710,7 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowse
           ) : (
             <>
             <Field label="GrindInfo ID or email">
-              <TextInput value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="ghostpeak#1234" autoComplete="username" required />
+              <TextInput value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="email or Name#1234" autoComplete="username" required />
             </Field>
             <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -6 }}>Use your Name#1234 ID and password, or the email you registered.</div>
             </>
@@ -2012,6 +2061,7 @@ export default function App() {
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
+  const [knownAccounts, setKnownAccounts] = useState(() => readKnownAccounts());
 
   useEffect(() => {
     let unsub = () => {};
@@ -2037,7 +2087,17 @@ export default function App() {
           setShowNewTournament(false);
           setReportTarget(null);
         }
-        if (u) sessionStorage.removeItem("grindinfo-guest-mode");
+        if (u) {
+          sessionStorage.removeItem("grindinfo-guest-mode");
+          rememberKnownAccount({
+            uid: u.uid,
+            email: u.email || "",
+            handle: u.displayName && String(u.displayName).includes("#") ? String(u.displayName).toLowerCase() : "",
+            label: u.displayName || u.email || "Player",
+            provider: u.providerData?.some((item) => item.providerId === "google.com") ? "google" : "password",
+          });
+          setKnownAccounts(readKnownAccounts());
+        }
         setAuthLoading(false);
       });
     })();
@@ -2047,10 +2107,19 @@ export default function App() {
     };
   }, []);
 
-  const handleGoogleSignIn = useCallback(() => {
+  const handleGoogleSignIn = useCallback(async () => {
     setAuthError("");
     setAuthBusy(true);
-    signInWithGoogle();
+    try {
+      await signInWithGoogle();
+    } catch (e) {
+      if (e?.code === "auth/popup-closed-by-user" || e?.code === "auth/cancelled-popup-request") return;
+      setAuthError(e?.code === "auth/unauthorized-domain"
+        ? "This site isn't allowed for Google sign-in yet."
+        : "Couldn't finish Google sign-in — use Dummybot email/password, or try Google again.");
+    } finally {
+      setAuthBusy(false);
+    }
   }, []);
 
   const handleEmailAuth = useCallback(async (mode, { name, email, password }) => {
@@ -2065,23 +2134,36 @@ export default function App() {
         const cred = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(cred.user, { displayName: playerNameFromInput(name) });
       } else {
-        const handle = normalizeHandle(email);
+        const identifier = String(email || "").trim();
+        const handle = normalizeHandle(identifier);
+        let accountEmail = identifier;
         if (handle) {
-          const snapshot = await getDoc(handleDocRef(handle));
-          const accountEmail = snapshot.data()?.email;
-          if (!snapshot.exists() || !accountEmail) {
-            setAuthError("No account uses that GrindInfo ID. Check the #4-digit code.");
-            return;
+          try {
+            const snapshot = await getDoc(handleDocRef(handle));
+            const mapped = snapshot.data()?.email;
+            if (snapshot.exists() && mapped) accountEmail = mapped;
+            else if (!isEmailLike(identifier)) {
+              setAuthError("That GrindInfo ID is not linked yet. Use the email for that account, or Continue with Google for your main login.");
+              return;
+            }
+          } catch {
+            if (!isEmailLike(identifier)) {
+              setAuthError("Couldn't look up that GrindInfo ID. Use the account email, or Continue with Google.");
+              return;
+            }
           }
-          await signInWithEmailAndPassword(auth, accountEmail, password);
-        } else {
-          await signInWithEmailAndPassword(auth, email, password);
         }
+        await signInWithEmailAndPassword(auth, accountEmail, password);
       }
     } catch (e) {
       const messages = {
         "auth/email-already-in-use": "That email is already registered — try signing in instead.",
-        "auth/invalid-credential": "Incorrect GrindInfo ID, email, or password.",
+        "auth/invalid-credential": "Incorrect email or password. Your original GrindInfo account is usually Google — use Continue with Google. Dummybot uses its email and password.",
+        "auth/wrong-password": "Incorrect password. Google accounts do not use this password box.",
+        "auth/user-not-found": "No email/password account matches that. Try Continue with Google.",
+        "auth/too-many-requests": "Too many attempts. Wait a minute, then try again.",
+        "auth/network-request-failed": "Network error. Check your connection and try again.",
+        "auth/user-disabled": "This account is disabled.",
         "auth/weak-password": "Password should be at least 6 characters.",
         "auth/invalid-email": "That email address doesn't look right.",
       };
@@ -2093,6 +2175,14 @@ export default function App() {
 
   const handleSignOut = useCallback(() => {
     sessionStorage.removeItem("grindinfo-guest-mode");
+    signOut(auth);
+  }, []);
+
+  const handleSwitchAccount = useCallback(() => {
+    sessionStorage.removeItem("grindinfo-guest-mode");
+    setGuestMode(false);
+    setAuthDialogOpen(true);
+    setAuthError("");
     signOut(auth);
   }, []);
 
@@ -2125,6 +2215,13 @@ export default function App() {
     const unsub = onSnapshot(playerDocRef(user.uid), (snap) => {
       const profile = snap.exists() ? snap.data() : null;
       setMyProfile(profile);
+      rememberKnownAccount({
+        uid: user.uid,
+        email: user.email || "",
+        handle: profile?.handle || "",
+        label: grindHandle(safeProfileName(profile?.displayName, user.displayName), profile?.playerTag),
+        provider: user.providerData?.some((item) => item.providerId === "google.com") ? "google" : "password",
+      });
       const dismissed = localStorage.getItem(`profilePromptDismissed_${user.uid}`);
       if (!profile && !dismissed) {
         setShowProfileModal(true);
@@ -3064,8 +3161,9 @@ export default function App() {
               saving={saving}
               user={user}
               guestMode={guestMode}
-              onSignInClick={() => setAuthDialogOpen((open) => !open)}
+              onSignInClick={() => { setKnownAccounts(readKnownAccounts()); setAuthDialogOpen((open) => !open); }}
               onSignOut={handleSignOut}
+              onSwitchAccount={handleSwitchAccount}
               onEditProfile={() => setShowProfileModal(true)}
               dashboardRole={dashboardRole}
               playerTag={myProfile?.playerTag}
@@ -3217,7 +3315,7 @@ export default function App() {
         </div>
       )}
       {user && activeChatFriend && <FriendChat currentUser={user} friend={activeChatFriend} onClose={() => setActiveChatFriend(null)} muted={mutedFriendSet.has(activeChatFriend.uid)} onToggleMute={toggleMuteFriend} onBlock={(friend) => { blockFriend(friend); setActiveChatFriend(null); }} />}
-      {!user && authDialogOpen && <AuthScreen onGoogleSignIn={handleGoogleSignIn} onEmailAuth={handleEmailAuth} authError={authError} authBusy={authBusy} onBrowseAsGuest={browseAsGuest} onClose={() => setAuthDialogOpen(false)} requireChoice={!guestMode} />}
+      {!user && authDialogOpen && <AuthScreen onGoogleSignIn={handleGoogleSignIn} onEmailAuth={handleEmailAuth} authError={authError} authBusy={authBusy} onBrowseAsGuest={browseAsGuest} onClose={() => setAuthDialogOpen(false)} requireChoice={!guestMode} knownAccounts={knownAccounts} />}
       <SitePopup popup={currentPopup} onDismiss={dismissSitePopup} />
       <Toast message={toast} />
     </div>
@@ -3231,7 +3329,7 @@ const shellStyle = {
   fontFamily: "'Inter', sans-serif",
 };
 
-function Header({ saving, user, guestMode, onSignInClick, onSignOut, onEditProfile, dashboardRole, friendsPanel = null, playerTag = "" }) {
+function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAccount, onEditProfile, dashboardRole, friendsPanel = null, playerTag = "" }) {
   const displayName = grindHandle(safeProfileName(user?.displayName), playerTag);
   const initials = (playerNameFromInput(safeProfileName(user?.displayName)).slice(0, 1) || "P").toUpperCase();
 
@@ -3288,6 +3386,7 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onEditProfi
                     <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>{displayName}</div>
                     <Button variant="ghost" style={{ width: "100%", marginBottom: 12 }} onClick={(event) => { onEditProfile(); event.currentTarget.closest("details")?.removeAttribute("open"); }}>Edit my profile</Button>
                     {dashboardRole && <Link to="/admin/portal" style={{ display: "block", width: "100%", marginBottom: 12, textDecoration: "none" }}><Button variant="ghost" style={{ width: "100%" }}>{dashboardRole === "owner" ? "Owner dashboard" : "Support dashboard"}</Button></Link>}
+                    {onSwitchAccount && <Button variant="ghost" style={{ width: "100%", marginBottom: 12 }} onClick={onSwitchAccount}>Switch account</Button>}
                     <Button variant="ghost" style={{ width: "100%" }} onClick={onSignOut}>
                       Sign out
                     </Button>

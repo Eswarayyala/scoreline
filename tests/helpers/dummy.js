@@ -34,7 +34,7 @@ export async function signInDummy(page, { email, password }) {
   if (await dialog.getByRole("button", { name: "Create account" }).isVisible() && await signInLink.isVisible()) {
     await signInLink.click();
   }
-  await dialog.getByPlaceholder(/ghostpeak#1234|you@example.com/).fill(email);
+  await dialog.getByPlaceholder(/email or Name#1234|ghostpeak#1234|you@example.com/).fill(email);
   await dialog.getByPlaceholder("At least 6 characters").fill(password);
   await dialog.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByRole("dialog", { name: "Sign in to GrindInfo" }).waitFor({ state: "hidden", timeout: 20_000 });
