@@ -639,7 +639,7 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowse
           {!requireChoice && <button type="button" aria-label="Close sign in" onClick={onClose} style={{ background: "none", border: 0, color: "var(--text-muted)", fontSize: 22, cursor: "pointer" }}>×</button>}
         </div>
 
-        <div style={{ color: "var(--text-muted)", fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}>Your main account is usually Google. Dummybot uses email and password. Only one is signed in at a time — pick the account below, then sign in.</div>
+        <div style={{ color: "var(--text-muted)", fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}>Your main account uses Continue with Google. Dummybot uses email and password. Only one account is signed in at a time.</div>
 
         {accountChoices.length > 0 && mode === "signin" && (
           <div style={{ display: "grid", gap: 8, marginBottom: 14 }}>
@@ -2113,11 +2113,13 @@ export default function App() {
     try {
       await signInWithGoogle();
     } catch (e) {
-      if (e?.code === "auth/popup-closed-by-user" || e?.code === "auth/cancelled-popup-request") return;
+      if (e?.code === "auth/popup-closed-by-user" || e?.code === "auth/cancelled-popup-request") {
+        setAuthBusy(false);
+        return;
+      }
       setAuthError(e?.code === "auth/unauthorized-domain"
         ? "This site isn't allowed for Google sign-in yet."
         : "Couldn't finish Google sign-in — use Dummybot email/password, or try Google again.");
-    } finally {
       setAuthBusy(false);
     }
   }, []);
