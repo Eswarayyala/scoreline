@@ -223,9 +223,9 @@ service cloud.firestore {
                'archive_imported', 'archive_request_approved', 'archive_request_rejected',
                'blog_added_to_archive', 'report_reviewed', 'popup_saved', 'popup_deleted',
              'support_granted', 'support_revoked', 'player_banned', 'player_unbanned',
-               'player_restricted', 'player_unrestricted'
+               'player_restricted', 'player_unrestricted', 'support_change_approved', 'support_change_denied'
              ]
-             && data.targetType in ['blog', 'archive', 'archiveSubmission', 'archiveEntry', 'report', 'popup', 'support', 'player']
+             && data.targetType in ['blog', 'archive', 'archiveSubmission', 'archiveEntry', 'report', 'popup', 'support', 'player', 'supportChange']
              && data.targetId is string && data.targetId.size() > 0 && data.targetId.size() <= 128
              && data.targetLabel is string && data.targetLabel.size() <= 120
              && data.actorUid == request.auth.uid
@@ -712,7 +712,37 @@ service cloud.firestore {
 
     match /circuitCms/{recordId} {
       allow get, list: if canBrowsePublicData();
-      allow create, update, delete: if isSiteStaff();
+      allow create, update, delete: if isSiteOwner();
+    }
+
+    match /staffChangeRequests/{requestId} {
+      allow create: if isSiteSupport()
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.actorUid == request.auth.uid
+                    && request.resource.data.actorName is string
+                    && request.resource.data.actorName.size() <= 40
+                    && request.resource.data.action is string
+                    && request.resource.data.action.size() > 0
+                    && request.resource.data.action.size() <= 40
+                    && request.resource.data.summary is string
+                    && request.resource.data.summary.size() > 0
+                    && request.resource.data.summary.size() <= 240
+                    && request.resource.data.createdAt is int
+                    && request.resource.data.payload is map
+                    && (!request.resource.data.keys().hasAny(['targetType']) || (request.resource.data.targetType is string && request.resource.data.targetType.size() <= 40))
+                    && (!request.resource.data.keys().hasAny(['targetId']) || (request.resource.data.targetId is string && request.resource.data.targetId.size() <= 128))
+                    && (!request.resource.data.keys().hasAny(['targetLabel']) || (request.resource.data.targetLabel is string && request.resource.data.targetLabel.size() <= 120));
+      allow get, list: if isSiteOwner()
+                    || (isSiteSupport() && resource.data.actorUid == request.auth.uid);
+      allow update: if isSiteOwner()
+                    && resource.data.status == 'pending'
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['status', 'reviewedAt', 'reviewedBy', 'reviewNote'])
+                    && request.resource.data.status in ['approved', 'denied']
+                    && request.resource.data.reviewedAt is int
+                    && request.resource.data.reviewedBy == request.auth.uid
+                    && (!request.resource.data.keys().hasAny(['reviewNote']) || (request.resource.data.reviewNote is string && request.resource.data.reviewNote.size() <= 240));
+      allow delete: if false;
     }
 
     match /scoreline/shared-data {

@@ -178,7 +178,12 @@ function ResearchForm({ initial, canWrite, games, onSave, onCancel }) {
         <Field label="Region"><input className={inputClass} value={form.region || ""} onChange={(e) => patch("region", e.target.value)} /></Field>
         <Field label="Peak prize pool"><input className={inputClass} value={form.peakPrizePool || ""} onChange={(e) => patch("peakPrizePool", e.target.value)} /></Field>
         <EventScopeField value={form.eventScope} onChange={(value) => patch("eventScope", value)} />
+        <Field label="Floating priority"><input type="number" min="0" max="99" className={inputClass} value={form.floatingPriority ?? 0} onChange={(e) => patch("floatingPriority", Number(e.target.value))} /></Field>
       </div>
+      <label className="flex items-center gap-2 text-sm text-slate-200">
+        <input type="checkbox" checked={form.floating === true} onChange={(e) => patch("floating", e.target.checked)} />
+        Offer this game vault as a floating window (owner still has to enable Game vaults as a source)
+      </label>
       <details className="rounded-lg border border-white/10 p-3">
         <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-widest text-slate-500">Game type category</summary>
         <div className="mt-2 grid gap-3 sm:grid-cols-2">

@@ -34,7 +34,11 @@ import EwcDirectoryPage from "./components/vault/EwcDirectoryPage";
 import VaultResearchDesk from "./components/cms/VaultResearchDesk";
 import { avatarForGamer, bannerForGame, flyerForEvent } from "./data/platformShowcase";
 import CircuitCmsDesk from "./components/cms/CircuitCmsDesk";
+import FloatingWindowsDesk from "./components/cms/FloatingWindowsDesk";
+import SupportChangeQueue from "./components/cms/SupportChangeQueue";
 import { useCircuitCms } from "./hooks/useCircuitCms";
+import { useStaffChangeRequests } from "./hooks/useStaffChangeRequests";
+import { assembleFloatingSlides, floatingPolicyFromRecords, mergeEwcWindows } from "./data/floatingWindows";
 import { useEsportsMedia } from "./hooks/useEsportsMedia";
 import { fetchGamePoster, mergeVaultMedia } from "./services/esportsMedia";
 import { FILTER_GAMES } from "./data/gameCatalog";
@@ -1870,7 +1874,7 @@ function SitePopup({ popup, onDismiss }) {
   );
 }
 
-function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerAccess, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], onSaveCircuit, onDeleteCircuit, onImportArchive, filterGames = FILTER_GAMES }) {
+function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerAccess, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], onSaveCircuit, onDeleteCircuit, onImportArchive, filterGames = FILTER_GAMES, ewcWindows = [], blogSlides = [], supportChanges = [], onReviewSupportChange }) {
   const isOwner = role === "owner";
   const [tab, setTab] = useState(initialTab);
   const [editing, setEditing] = useState(null);
@@ -1881,6 +1885,7 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
   const pendingBlogs = blogPosts.filter((post) => post.status === "pending").length;
   const pendingArchiveRequests = archiveSubmissions.filter((item) => item.status === "pending").length;
   const activeTournaments = tournaments.filter((item) => !isTournamentArchived(item)).length;
+  const pendingSupportChanges = supportChanges.filter((item) => item.status === "pending").length;
   const openEditor = (popup = null) => {
     setPopupError("");
     const toLocalInput = (value) => {
@@ -1922,14 +1927,16 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
       <Eyebrow>{isOwner ? "Owner controls · protected" : "Support workspace · restricted"}</Eyebrow>
       <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 18px" }}>{isOwner ? "Owner dashboard" : "Support dashboard"}</h1>
       <div role="tablist" aria-label="Dashboard sections" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-        {["overview", "tournaments", "vault", "blogs", "reports", ...(isOwner ? ["activity log", "popups", "support access"] : [])].map((name) => <Button key={name} variant={tab === name ? "primary" : "ghost"} onClick={() => setTab(name)}>{name === "vault" ? "The Vault" : name[0].toUpperCase() + name.slice(1)}</Button>)}
+        {["overview", "windows", "tournaments", "vault", "blogs", "reports", ...(isOwner ? ["support changes", "activity log", "popups", "support access"] : ["my requests"])].map((name) => <Button key={name} variant={tab === name ? "primary" : "ghost"} onClick={() => setTab(name)}>{name === "vault" ? "The Vault" : name[0].toUpperCase() + name.slice(1)}</Button>)}
       </div>
       {tab === "overview" && <>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 18 }}>
-          {[["Open reports", activeReports, "reports"], ["Pending blogs", pendingBlogs, "blogs"], ["Vault requests", pendingArchiveRequests, "vault"], ["Active tournaments", activeTournaments, "tournaments"], ["Vault records", archiveEntries.length, "vault"]].map(([label, value, next]) => <button key={label} type="button" onClick={() => setTab(next)} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)", textAlign: "left", cursor: "pointer", color: "inherit" }}><Eyebrow>{label}</Eyebrow><strong style={{ display: "block", fontSize: 25, marginTop: 8 }}>{value}</strong></button>)}
+          {[["Open reports", activeReports, "reports"], ["Pending blogs", pendingBlogs, "blogs"], ["Vault requests", pendingArchiveRequests, "vault"], ["Support changes", pendingSupportChanges, isOwner ? "support changes" : "my requests"], ["Active tournaments", activeTournaments, "tournaments"], ["Vault records", archiveEntries.length, "vault"]].map(([label, value, next]) => <button key={label} type="button" onClick={() => setTab(next)} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)", textAlign: "left", cursor: "pointer", color: "inherit" }}><Eyebrow>{label}</Eyebrow><strong style={{ display: "block", fontSize: 25, marginTop: 8 }}>{value}</strong></button>)}
         </div>
-        <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Monitor tournaments, The Vault, and the community blog from the tabs above{isOwner ? ". Owner-only tools for popups and support access stay in this desk." : "."}</p>
+        <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Monitor tournaments, The Vault, and the community blog from the tabs above{isOwner ? ". Owner-only tools for popups and support access stay in this desk. Support edits wait here for your accept or deny." : ". Desk edits go to the owner for approval."}</p>
       </>}
+      {tab === "windows" && <FloatingWindowsDesk records={circuitRecords} ewcWindows={ewcWindows} blogSlides={blogSlides} role={role} onSave={onSaveCircuit} />}
+      {(tab === "support changes" || tab === "my requests") && <SupportChangeQueue requests={supportChanges} role={role} onReview={onReviewSupportChange} />}
       {tab === "reports" && <ReportsInbox reports={reports} onStatusChange={onStatusChange} bans={bans} role={role} onSetPlayerAccess={onSetPlayerAccess} />}
       {tab === "tournaments" && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="tournament" records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} games={filterGames} /><TournamentMonitor tournaments={tournaments} onOpen={onOpenTournament} /></div>}
       {tab === "vault" && <div style={{ display: "grid", gap: 28 }}><VaultResearchDesk records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} filterGames={filterGames} /><VaultMonitor submissions={archiveSubmissions} blogPosts={blogPosts} onDecision={onArchiveDecision} onPromote={onPromoteBlog} /></div>}
@@ -1955,7 +1962,7 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
         <div style={{ display: "grid", gap: 10, marginTop: 14 }}>{popups.map((popup) => <article key={popup.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{popup.enabled ? "Enabled" : "Disabled"} · {popup.type === "motivation" ? "Popup" : "Safety disclaimer"} · {popup.type === "disclaimer" ? "Before registration" : popup.frequency === "hourly" ? "Every hour" : popup.frequency === "session" ? "Once per visit" : popup.frequency === "busy" ? `${popup.minimumOnline || 10}+ online` : "Every 15–30 minutes"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "5px 0" }}>{popup.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{popup.message}</p><div style={{ display: "flex", gap: 8 }}><Button variant="ghost" onClick={() => openEditor(popup)}>Edit</Button><Button variant="danger" onClick={() => onDeletePopup(popup.id)}>Delete</Button></div></article>)}</div>
       </section>}
       {tab === "support access" && isOwner && <section style={{ maxWidth: 680 }}>
-        <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Support can review reports. Add only trusted people. For now, copy their Firebase Authentication UID from Firebase Console → Authentication → Users.</p>
+        <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Support can review reports immediately. Vault, floating-window, blog, and tournament desk edits wait in Support changes until you accept or deny them. Copy their Firebase Authentication UID from Firebase Console → Authentication → Users.</p>
      
    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><TextInput aria-label="Support account UID" placeholder="Paste support person's UID" value={staffUid} onChange={(e) => setStaffUid(e.target.value)} /><Button onClick={assignSupport}>Grant support access</Button></div>
         {staffError && <div role="alert" style={{ color: "var(--danger)", marginTop: 8 }}>{staffError}</div>}
@@ -2335,23 +2342,34 @@ export default function App() {
   const [showFriendRequests, setShowFriendRequests] = useState(false);
   const [mutedFriendIds, setMutedFriendIds] = useState([]);
   const [showArchivedTournaments, setShowArchivedTournaments] = useState(false);
-  const circuitCms = useCircuitCms({ canWrite: Boolean(siteRole) });
+  const circuitCms = useCircuitCms({ canWrite: siteRole === "owner" });
+  const staffChanges = useStaffChangeRequests({ role: siteRole, user });
   const liveEsportsBanners = useEsportsMedia();
   const blogSlides = useMemo(() => slidesFromBlogs(blogPosts), [blogPosts]);
-  const ewcWindows = useMemo(() => ewcFloatingSlides(circuitCms.researchSlides), [circuitCms.researchSlides]);
+  const ewcWindows = useMemo(
+    () => mergeEwcWindows(ewcFloatingSlides(circuitCms.researchSlides), circuitCms.records),
+    [circuitCms.researchSlides, circuitCms.records],
+  );
+  const floatingSlides = useMemo(
+    () => assembleFloatingSlides({
+      policy: floatingPolicyFromRecords(circuitCms.records),
+      ewcWindows,
+      records: circuitCms.records,
+      blogSlides,
+    }),
+    [circuitCms.records, ewcWindows, blogSlides],
+  );
   const vaultSlides = useMemo(() => {
     const seen = new Set();
-    return mergeVaultMedia([...ewcWindows, ...circuitCms.researchSlides, ...blogSlides], liveEsportsBanners).filter((slide) => {
+    const floatKeys = new Set(floatingSlides.map((slide) => slide.slug || slide.id));
+    return mergeVaultMedia([...floatingSlides, ...ewcWindows, ...circuitCms.researchSlides, ...blogSlides], liveEsportsBanners).filter((slide) => {
       const key = slide.slug || slide.id;
       if (!key || seen.has(key)) return false;
       seen.add(key);
       return true;
-    });
-  }, [ewcWindows, circuitCms.researchSlides, blogSlides, liveEsportsBanners]);
-  const homeSlides = useMemo(
-    () => [...ewcWindows, ...blogSlides].sort((a, b) => (Number(b.floatingPriority) || 0) - (Number(a.floatingPriority) || 0)),
-    [ewcWindows, blogSlides],
-  );
+    }).map((slide) => ({ ...slide, floating: floatKeys.has(slide.slug || slide.id) }));
+  }, [floatingSlides, ewcWindows, circuitCms.researchSlides, blogSlides, liveEsportsBanners]);
+  const homeSlides = floatingSlides;
   const [myProfile, setMyProfile] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
@@ -2928,7 +2946,56 @@ export default function App() {
     });
   };
 
+  const queueSupportChange = async (fields) => {
+    await staffChanges.submit(fields);
+    showToast("Sent to the owner for approval");
+    return true;
+  };
+
+  const saveCircuit = async (draft) => {
+    const id = draft.id || `cms-${Date.now().toString(36)}`;
+    const record = { ...draft, id };
+    if (siteRole === "support") {
+      await queueSupportChange({
+        action: "cms_upsert",
+        targetType: "circuitCms",
+        targetId: id,
+        targetLabel: record.title || record.game || id,
+        summary: `Update ${record.title || record.surface || "desk record"}`,
+        payload: record,
+      });
+      return record;
+    }
+    return circuitCms.upsert(record);
+  };
+
+  const deleteCircuit = async (id) => {
+    if (siteRole === "support") {
+      await queueSupportChange({
+        action: "cms_delete",
+        targetType: "circuitCms",
+        targetId: id,
+        targetLabel: id,
+        summary: `Remove desk record ${id}`,
+        payload: { id },
+      });
+      return;
+    }
+    return circuitCms.remove(id);
+  };
+
   const reviewBlogPost = async (postId, status) => {
+    if (siteRole === "support") {
+      await queueSupportChange({
+        action: "blog_review",
+        targetType: "blog",
+        targetId: postId,
+        targetLabel: postId,
+        summary: `Mark blog ${status}`,
+        payload: { postId, status },
+      });
+      return;
+    }
     try { const batch = writeBatch(db); batch.update(doc(BLOG_POSTS_COLLECTION, postId), { status, reviewedAt: Date.now(), reviewedBy: user.uid }); appendStaffAction(batch, status === "published" ? "blog_published" : "blog_declined", "blog", postId, `Blog ${status === "published" ? "published" : "declined"}: ${postId}`); await batch.commit(); showToast(status === "published" ? "Blog post published" : "Blog request declined"); }
     catch (e) { showToast("Couldn\u2019t update blog request"); }
   };
@@ -3141,6 +3208,17 @@ export default function App() {
 
   const decideArchiveSubmission = async (requestId, status) => {
     if (!isSiteStaff || !["approved", "rejected"].includes(status)) return;
+    if (siteRole === "support") {
+      await queueSupportChange({
+        action: "archive_decision",
+        targetType: "archiveSubmission",
+        targetId: requestId,
+        targetLabel: requestId,
+        summary: `Vault request ${status}`,
+        payload: { requestId, status },
+      });
+      return;
+    }
     try {
       const submission = archiveSubmissions.find((item) => item.id === requestId);
       if (!submission || submission.status !== "pending") { showToast("This Vault request was already reviewed"); return; }
@@ -3169,6 +3247,17 @@ export default function App() {
 
   const promoteBlogToArchive = async (post, fields) => {
     if (!isSiteStaff || post.status !== "published") throw new Error("Only staff can promote published posts");
+    if (siteRole === "support") {
+      await queueSupportChange({
+        action: "blog_promote",
+        targetType: "blog",
+        targetId: post.id,
+        targetLabel: post.title,
+        summary: `Promote blog ${post.title} into The Vault`,
+        payload: { post, fields },
+      });
+      return;
+    }
     const source = String(fields.source || "").trim().slice(0, 500);
     if (source && !/^https:\/\//i.test(source)) throw new Error("Use a secure https source link.");
     const eventScope = ["ewc", "region", "random"].includes(fields.eventScope) ? fields.eventScope : inferEventScope(`${post.title} ${post.game}`);
@@ -3216,6 +3305,36 @@ export default function App() {
         try { await writeStatus("closed"); return; } catch { /* fall through */ }
       }
       showToast("Couldn't update report status");
+    }
+  };
+
+  const reviewSupportChange = async (item, status) => {
+    if (siteRole !== "owner" || !item?.id) return;
+    try {
+      if (status === "approved") {
+        if (item.action === "cms_upsert" && item.payload) await circuitCms.upsert(item.payload);
+        if (item.action === "cms_delete") await circuitCms.remove(item.payload?.id || item.targetId);
+        if (item.action === "blog_review" && item.payload?.postId) {
+          const next = item.payload.status;
+          const batch = writeBatch(db);
+          batch.update(doc(BLOG_POSTS_COLLECTION, item.payload.postId), { status: next, reviewedAt: Date.now(), reviewedBy: user.uid });
+          appendStaffAction(batch, next === "published" ? "blog_published" : "blog_declined", "blog", item.payload.postId, `Blog ${next}: ${item.payload.postId}`);
+          await batch.commit();
+        }
+        if (item.action === "archive_decision" && item.payload?.requestId) {
+          await decideArchiveSubmission(item.payload.requestId, item.payload.status);
+        }
+        if (item.action === "blog_promote" && item.payload?.post) {
+          await promoteBlogToArchive(item.payload.post, item.payload.fields || {});
+        }
+      }
+      await staffChanges.review(item.id, status);
+      const log = writeBatch(db);
+      appendStaffAction(log, status === "approved" ? "support_change_approved" : "support_change_denied", "supportChange", item.id, `${status === "approved" ? "Accepted" : "Denied"}: ${item.summary}`);
+      await log.commit();
+      showToast(status === "approved" ? "Support change accepted" : "Support change denied");
+    } catch {
+      showToast("Could not review this support change. Publish the latest Firestore rules and try again.");
     }
   };
 
@@ -3333,8 +3452,8 @@ export default function App() {
                     focusId={decodeURIComponent(vaultEditId)}
                     records={circuitCms.records}
                     role={siteRole || "support"}
-                    onSave={circuitCms.upsert}
-                    onDelete={circuitCms.remove}
+                    onSave={saveCircuit}
+                    onDelete={deleteCircuit}
                     filterGames={circuitCms.filterGames}
                   />
                 ) : (
@@ -3342,8 +3461,12 @@ export default function App() {
                   key={dashTabHint}
                   initialTab={dashTabHint}
                   circuitRecords={circuitCms.records}
-                  onSaveCircuit={circuitCms.upsert}
-                  onDeleteCircuit={circuitCms.remove}
+                  onSaveCircuit={saveCircuit}
+                  onDeleteCircuit={deleteCircuit}
+                  ewcWindows={ewcWindows}
+                  blogSlides={blogSlides}
+                  supportChanges={staffChanges.requests}
+                  onReviewSupportChange={reviewSupportChange}
                   role={siteRole || "support"}
                   reports={privateReports}
                   onStatusChange={updateReportStatus}

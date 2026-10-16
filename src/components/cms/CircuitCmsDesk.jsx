@@ -16,7 +16,7 @@ export default function CircuitCmsDesk({ surface, records, role, onSave, onDelet
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-neon">Circuit CMS · {role || "staff"}</p>
           <h2 className="font-display text-3xl text-white">{surface === "vault" ? "Floating windows" : "Tournaments"}</h2>
-          <p className="mt-1 text-sm text-slate-400">{surface === "vault" ? "Priority controls which windows lead The Vault carousel. Higher numbers show first." : "Status dropdown swaps completed, live, and upcoming fields."} Owner and support both have write access.</p>
+          <p className="mt-1 text-sm text-slate-400">{surface === "vault" ? "Priority controls which windows lead The Vault carousel. Higher numbers show first." : "Status dropdown swaps completed, live, and upcoming fields."} Support edits wait for owner approval.</p>
         </div>
         {canWrite && (
           <button type="button" onClick={() => setEditing(emptyCircuitEvent(surface))} className="inline-flex items-center gap-1 rounded-full bg-neon px-4 py-2 text-sm font-semibold text-slate-950">

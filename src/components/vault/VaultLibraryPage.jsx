@@ -31,7 +31,7 @@ export default function VaultLibraryPage({ slides = VAULT_SLIDES, children }) {
     const scopeOk = scope === "all" || itemScope === scope;
     return gameOk && scopeOk;
   });
-  const floating = visible.filter((slide) => slide.floating || slide.surface === "ewc-window");
+  const floating = visible.filter((slide) => slide.floating === true);
   const research = visible.filter((slide) => (slide.research || slide.surface === "research") && !slide.floating && slide.surface !== "ewc-window");
   const blogs = visible.filter((slide) => slide.blog || slide.surface === "blog");
   return (

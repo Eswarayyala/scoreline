@@ -1,4 +1,4 @@
-/** Owner and support both have write access to circuit CMS (Vault slides + tournaments). */
+/** Owner publishes immediately. Support can fill the same desks; those writes wait for owner approval. */
 export const CMS_WRITE_ROLES = ["owner", "support"];
 
 export function canWriteCircuitContent(role) {
