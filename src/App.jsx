@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   doc,
   collection,
@@ -1592,52 +1592,90 @@ function FriendChat({ currentUser, friend, onClose, muted = false, onToggleMute,
   const [text, setText] = useState("");
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
+  const [sending, setSending] = useState(false);
+  const logRef = useRef(null);
+  const inputRef = useRef(null);
   const participants = [currentUser.uid, friend.uid].sort();
   const conversationId = `${participants[0]}_${participants[1]}`;
   useEffect(() => {
     let active = true;
     let stopMessages = null;
-    setReady(false); setMessages([]); setError("");
+    setReady(false);
+    setMessages([]);
+    setError("");
+    const conversationRef = doc(CHAT_CONVERSATIONS_COLLECTION, conversationId);
     const openConversation = async () => {
-      const conversationRef = doc(CHAT_CONVERSATIONS_COLLECTION, conversationId);
-      let snapshot;
-      try { snapshot = await getDoc(conversationRef); }
-      catch { snapshot = { exists: () => false }; }
-      if (!snapshot.exists()) {
+      try {
+        const snapshot = await getDoc(conversationRef);
+        if (!snapshot.exists()) await setDoc(conversationRef, { participants, createdAt: Date.now() });
+      } catch {
         try { await setDoc(conversationRef, { participants, createdAt: Date.now() }); }
         catch (writeError) {
-          const racedSnapshot = await getDoc(conversationRef);
-          if (!racedSnapshot.exists()) throw writeError;
+          const racedSnapshot = await getDoc(conversationRef).catch(() => null);
+          if (!racedSnapshot?.exists()) throw writeError;
         }
       }
       if (!active) return;
-      setReady(true);
-      stopMessages = onSnapshot(query(CHAT_MESSAGES_COLLECTION(conversationId), orderBy("createdAt", "desc"), limit(100)), (messageSnapshot) => {
-        if (active) setMessages(messageSnapshot.docs.map((item) => ({ id: item.id, ...item.data() })).reverse());
-      }, () => { if (active) setError("Couldn't load messages. Confirm the Firestore rules are published and try reopening chat."); });
+      stopMessages = onSnapshot(CHAT_MESSAGES_COLLECTION(conversationId), (messageSnapshot) => {
+        if (!active) return;
+        setMessages(messageSnapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0)).slice(-100));
+        setReady(true);
+      }, () => { if (active) setError("Couldn't load messages. Reopen chat and try again."); });
     };
-    openConversation().catch(() => { if (active) setError("Chat is available only after both players are accepted friends. Check the published Firestore rules."); });
+    openConversation().catch(() => { if (active) setError("Chat could not open. You both need to be accepted friends."); });
     return () => { active = false; stopMessages?.(); };
   }, [conversationId, currentUser.uid, friend.uid]);
+  useEffect(() => {
+    const node = logRef.current;
+    if (node) node.scrollTop = node.scrollHeight;
+  }, [messages]);
+  useEffect(() => {
+    if (ready) inputRef.current?.focus();
+  }, [ready, conversationId]);
   const send = async (event) => {
     event.preventDefault();
     const clean = text.trim().slice(0, 1000);
-    if (!ready || !clean) return;
-    try { await addDoc(CHAT_MESSAGES_COLLECTION(conversationId), { senderId: currentUser.uid, text: clean, createdAt: Date.now() }); setText(""); setError(""); }
-    catch { setError("Message not sent. Confirm you are still friends and try again."); }
+    if (!ready || !clean || sending) return;
+    const pending = { id: `local-${Date.now()}`, senderId: currentUser.uid, text: clean, createdAt: Date.now() };
+    setSending(true);
+    setMessages((current) => [...current, pending]);
+    setText("");
+    setError("");
+    try {
+      await addDoc(CHAT_MESSAGES_COLLECTION(conversationId), { senderId: currentUser.uid, text: clean, createdAt: pending.createdAt });
+    } catch {
+      setMessages((current) => current.filter((item) => item.id !== pending.id));
+      setText(clean);
+      setError("Message not sent. Confirm you are still friends and try again.");
+    } finally {
+      setSending(false);
+      inputRef.current?.focus();
+    }
   };
-  return <section aria-label={`Chat with ${friend.name}`} style={{ position: "fixed", right: 14, bottom: 14, zIndex: 80, width: "min(340px, calc(100vw - 28px))", height: "min(440px, calc(100vh - 110px))", display: "flex", flexDirection: "column", background: "var(--panel-bg)", color: "var(--page-text)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)" }}>
-    <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: 12, borderBottom: "1px solid var(--border)" }}>
-      <strong>{friend.name}{muted ? " · muted" : ""}</strong>
-      <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {onToggleMute && <Button variant="ghost" onClick={() => onToggleMute(friend.uid)}>{muted ? "Unmute" : "Mute"}</Button>}
-        {onBlock && <Button variant="danger" onClick={() => onBlock(friend)}>Block</Button>}
-        <Button variant="ghost" onClick={onClose}>Close</Button>
+  const ghost = { border: 0, background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 12, padding: "4px 6px" };
+  return <section aria-label={`Chat with ${friend.name}`} style={{ position: "fixed", right: 14, bottom: 14, zIndex: 90, width: "min(360px, calc(100vw - 28px))", height: "min(460px, calc(100vh - 96px))", display: "flex", flexDirection: "column", background: "var(--panel-bg)", color: "var(--page-text)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)" }}>
+    <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: "1px solid var(--border)" }}>
+      <strong style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{friend.name}{muted ? " · muted" : ""}</strong>
+      <span style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+        {onToggleMute && <button type="button" onClick={() => onToggleMute(friend.uid)} style={ghost}>{muted ? "Unmute" : "Mute"}</button>}
+        {onBlock && <button type="button" onClick={() => onBlock(friend)} style={{ ...ghost, color: "var(--danger)" }}>Block</button>}
+        <button type="button" onClick={onClose} style={ghost}>Close</button>
       </span>
     </header>
-    <div aria-live="polite" style={{ flex: 1, overflowY: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>{messages.map((message) => <div key={message.id} style={{ alignSelf: message.senderId === currentUser.uid ? "flex-end" : "flex-start", maxWidth: "85%", padding: "8px 10px", background: message.senderId === currentUser.uid ? "var(--panel-raised)" : "transparent", border: "1px solid var(--border)", whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontSize: 13 }}>{message.text}</div>)}{!messages.length && ready && <span style={{ color: "var(--text-muted)", fontSize: 13, padding: 8 }}>Start the conversation.</span>}</div>
+    <div ref={logRef} aria-live="polite" style={{ flex: 1, overflowY: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+      {messages.map((message) => (
+        <div key={message.id} style={{ alignSelf: message.senderId === currentUser.uid ? "flex-end" : "flex-start", maxWidth: "85%", padding: "8px 10px", background: message.senderId === currentUser.uid ? "var(--panel-raised)" : "transparent", border: "1px solid var(--border)", whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontSize: 13 }}>
+          {message.text}
+        </div>
+      ))}
+      {!messages.length && ready && <span style={{ color: "var(--text-muted)", fontSize: 13, padding: 8 }}>Start the conversation.</span>}
+      {!ready && !error && <span style={{ color: "var(--text-muted)", fontSize: 13, padding: 8 }}>Opening chat…</span>}
+    </div>
     {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 12, padding: "0 10px 8px" }}>{error}</div>}
-    <form onSubmit={send} style={{ display: "flex", gap: 6, padding: 10, borderTop: "1px solid var(--border)" }}><TextInput aria-label="Message" value={text} maxLength={1000} onChange={(event) => setText(event.target.value)} placeholder="Write a message" /><Button type="submit" disabled={!ready || !text.trim()}>Send</Button></form>
+    <form onSubmit={send} style={{ display: "flex", gap: 8, padding: 10, borderTop: "1px solid var(--border)", alignItems: "center" }}>
+      <TextInput ref={inputRef} aria-label="Message" value={text} maxLength={1000} onChange={(event) => setText(event.target.value)} placeholder="Write a message" autoComplete="off" style={{ flex: 1, minWidth: 0 }} />
+      <Button type="submit" disabled={!ready || sending || !text.trim()} style={{ flexShrink: 0 }}>Send</Button>
+    </form>
   </section>;
 }
 
@@ -3681,8 +3719,20 @@ const shellStyle = {
 };
 
 function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAccount, onEditProfile, dashboardRole, friendsPanel = null, playerTag = "" }) {
+  const location = useLocation();
+  const friendsMenu = useRef(null);
+  const accountMenu = useRef(null);
   const displayName = grindHandle(safeProfileName(user?.displayName), playerTag);
   const initials = (playerNameFromInput(safeProfileName(user?.displayName)).slice(0, 1) || "P").toUpperCase();
+  const closeOtherMenu = (keep) => {
+    [friendsMenu.current, accountMenu.current].forEach((node) => {
+      if (node && node !== keep) node.removeAttribute("open");
+    });
+  };
+  useEffect(() => {
+    friendsMenu.current?.removeAttribute("open");
+    accountMenu.current?.removeAttribute("open");
+  }, [location.pathname]);
 
   return (
     <div style={{ borderBottom: "1px solid var(--border)" }}>
@@ -3705,7 +3755,7 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAcc
           </div> : (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {friendsPanel ? (
-                <details style={{ position: "relative" }}>
+                <details ref={friendsMenu} style={{ position: "relative" }} onToggle={(event) => { if (event.currentTarget.open) closeOtherMenu(event.currentTarget); }}>
                   <summary
                     aria-label="Friends"
                     style={{ listStyle: "none", cursor: "pointer", color: "var(--page-text)", border: "1px solid var(--border)", background: "var(--panel-bg)", padding: "8px 12px", fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase" }}
@@ -3717,7 +3767,7 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAcc
                   </div>
                 </details>
               ) : null}
-              <details style={{ position: "relative" }}>
+              <details ref={accountMenu} style={{ position: "relative" }} onToggle={(event) => { if (event.currentTarget.open) closeOtherMenu(event.currentTarget); }}>
                 <summary
                   aria-label="Account menu"
                   style={{ listStyle: "none", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "var(--page-text)", border: "1px solid var(--border)", background: "var(--panel-bg)", padding: "6px 9px", fontFamily: "'Inter', sans-serif", fontSize: 12 }}

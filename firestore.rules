@@ -610,6 +610,10 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    function isEpochMs(value) {
+      return (value is int || value is float) && value > 1000000000000 && value < 2000000000000;
+    }
+
     match /conversations/{conversationId} {
       function validConversation(data) {
         return data.keys().hasOnly(['participants', 'createdAt'])
@@ -620,13 +624,15 @@ service cloud.firestore {
           && conversationId == data.participants[0] + '_' + data.participants[1]
           && request.auth.uid in data.participants
           && isAcceptedFriend(data.participants[0], data.participants[1])
-          && data.createdAt is int;
+          && isEpochMs(data.createdAt);
       }
-      allow get: if isActiveSiteUser()
-        && (!exists(/databases/$(database)/documents/conversations/$(conversationId))
-            || (request.auth.uid in resource.data.participants && isAcceptedFriend(resource.data.participants[0], resource.data.participants[1])));
+      allow get: if isActiveSiteUser() && (
+        resource == null
+        || (request.auth.uid in resource.data.participants
+            && !isBlocked(resource.data.participants[0], resource.data.participants[1]))
+      );
       allow list: if isActiveSiteUser() && request.auth.uid in resource.data.participants
-        && isAcceptedFriend(resource.data.participants[0], resource.data.participants[1]);
+        && !isBlocked(resource.data.participants[0], resource.data.participants[1]);
       allow create: if isActiveSiteUser() && validConversation(request.resource.data);
       allow update, delete: if false;
 
@@ -637,17 +643,17 @@ service cloud.firestore {
         allow get, list: if isActiveSiteUser()
           && exists(/databases/$(database)/documents/conversations/$(conversationId))
           && request.auth.uid in parentConversation().participants
-          && isAcceptedFriend(parentConversation().participants[0], parentConversation().participants[1]);
+          && !isBlocked(parentConversation().participants[0], parentConversation().participants[1]);
         allow create: if isActiveSiteUser()
           && exists(/databases/$(database)/documents/conversations/$(conversationId))
           && request.auth.uid in parentConversation().participants
-          && isAcceptedFriend(parentConversation().participants[0], parentConversation().participants[1])
+          && !isBlocked(parentConversation().participants[0], parentConversation().participants[1])
           && request.resource.data.keys().hasOnly(['senderId', 'text', 'createdAt'])
           && request.resource.data.keys().hasAll(['senderId', 'text', 'createdAt'])
           && request.resource.data.senderId == request.auth.uid
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000
-          && request.resource.data.createdAt is int;
+          && isEpochMs(request.resource.data.createdAt);
         allow update, delete: if false;
       }
     }

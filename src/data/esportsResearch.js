@@ -21,12 +21,16 @@ export function editionsNewestFirst(editions = []) {
 }
 
 export function yearlyStatsFromEditions(editions = []) {
-  return editionsNewestFirst(editions).map((edition) => ({
-    year: edition.year,
-    tournamentCount: 1,
-    circuit: edition.event || "",
-    region: /paris/i.test(edition.event || "") ? "Europe" : /riyadh|gamers8/i.test(edition.event || "") ? "Middle East" : "Global",
-  }));
+  const byYear = new Map();
+  editionsNewestFirst(editions).forEach((edition) => {
+    const year = edition.year;
+    const region = /paris/i.test(edition.event || "") ? "Europe" : /riyadh|gamers8/i.test(edition.event || "") ? "Middle East" : "Global";
+    const current = byYear.get(year) || { year, tournamentCount: 0, circuit: "", region };
+    current.tournamentCount += 1;
+    if (!current.circuit) current.circuit = edition.event || "";
+    byYear.set(year, current);
+  });
+  return [...byYear.values()];
 }
 
 function slideScope(editions = []) {

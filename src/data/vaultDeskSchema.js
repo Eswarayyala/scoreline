@@ -116,8 +116,7 @@ function stagesFromPayouts(edition, format) {
       teams: "",
       kickedOff: payoutName(row),
     }));
-  const defaults = format.stages.map((name) => ({ name, teams: "", kickedOff: "" }));
-  if (!extras.length) return defaults;
+  if (!extras.length) return [];
   return extras;
 }
 

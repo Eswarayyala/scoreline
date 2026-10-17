@@ -52,17 +52,17 @@ export const PRE_EWC_HISTORY = [
         "year": 2015,
         "event": "ESL One Cologne 2015 (Cologne)",
         "champion": "Fnatic",
-        "runnerUp": "Team En",
+        "runnerUp": "Team EnVyUs",
         "prizePool": "$250,000",
-        "highlight": "Vy Us Back-to-back Major titles for Fnatic's Swedish dynasty."
+        "highlight": "Back-to-back Major titles for Fnatic's Swedish dynasty."
       },
       {
         "year": 2015,
         "event": "DreamHack Cluj-Napoca 2015 (Romania)",
-        "champion": "Team En",
-        "runnerUp": "Vy",
+        "champion": "Team EnVyUs",
+        "runnerUp": "Natus Vincere",
         "prizePool": "$250,000",
-        "highlight": "Us Natus Vincere KennyS delivered a legendary AWP performance."
+        "highlight": "KennyS delivered a legendary AWP performance."
       },
       {
         "year": 2016,
@@ -100,9 +100,9 @@ export const PRE_EWC_HISTORY = [
         "year": 2018,
         "event": "ELEAGUE Boston 2018 (Boston)",
         "champion": "Cloud9",
-        "runnerUp": "Fa",
+        "runnerUp": "FaZe Clan",
         "prizePool": "$1,000,000",
-        "highlight": "Ze Clan Stewie2K & Tarik achieved North America's first Major."
+        "highlight": "Stewie2K & Tarik achieved North America's first Major."
       },
       {
         "year": 2018,
@@ -156,9 +156,9 @@ export const PRE_EWC_HISTORY = [
         "year": 2023,
         "event": "BLAST.tv Paris Major 2023 (Paris)",
         "champion": "Team Vitality",
-        "runnerUp": "Gamer",
+        "runnerUp": "GamerLegion",
         "prizePool": "$1,250,000",
-        "highlight": "Legion ZywOo won the final official CS:GO Major on home soil."
+        "highlight": "ZywOo won the final official CS:GO Major on home soil."
       },
       {
         "year": 2024,
@@ -180,9 +180,9 @@ export const PRE_EWC_HISTORY = [
         "year": 2025,
         "event": "BLAST.tv Austin Major 2025 (Austin)",
         "champion": "Team Vitality",
-        "runnerUp": "The Mongol",
+        "runnerUp": "The MongolZ",
         "prizePool": "$1,250,000",
-        "highlight": "Z Vitality swept finals; The MongolZ reached Asia's first final."
+        "highlight": "Vitality swept finals; The MongolZ reached Asia's first final."
       },
       {
         "year": 2025,
@@ -221,10 +221,10 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2012,
         "event": "TI2 (Seattle, USA)",
-        "champion": "Invictus Gaming (i",
-        "runnerUp": "G)",
+        "champion": "Invictus Gaming (iG)",
+        "runnerUp": "Natus Vincere",
         "prizePool": "$1,600,000",
-        "highlight": "Natus Vincere Ferrari_430 & ChuaN brought China its first Aegis of Champions."
+        "highlight": "Ferrari_430 & ChuaN brought China its first Aegis of Champions."
       },
       {
         "year": 2013,
@@ -335,10 +335,10 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2011,
         "event": "Season 1 Championship (Sweden)",
-        "champion": "Fnatica",
-        "runnerUp": "Aa",
+        "champion": "Fnatic",
+        "runnerUp": "",
         "prizePool": "$100,000",
-        "highlight": "xPeke brought Europe the inaugural world title."
+        "highlight": "aAa xPeke brought Europe the inaugural world title."
       },
       {
         "year": 2012,
@@ -391,10 +391,10 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2018,
         "event": "2018 World Championship (Incheon)",
-        "champion": "Invictus Gaming (i",
-        "runnerUp": "G)",
+        "champion": "Invictus Gaming (iG)",
+        "runnerUp": "Fnatic",
         "prizePool": "$6,450,000",
-        "highlight": "Fnatic Rookie & TheShy brought China (LPL) its first Worlds title."
+        "highlight": "Rookie & TheShy brought China (LPL) its first Worlds title."
       },
       {
         "year": 2019,
@@ -474,9 +474,9 @@ export const PRE_EWC_HISTORY = [
         "year": 2022,
         "event": "VCT Champions 2022 (Istanbul)",
         "champion": "LOUD",
-        "runnerUp": "Op",
+        "runnerUp": "OpTic Gaming",
         "prizePool": "$1,000,000",
-        "highlight": "Tic Gaming aspas and Sacy brought Brazil its first Valorant title."
+        "highlight": "aspas and Sacy brought Brazil its first Valorant title."
       },
       {
         "year": 2023,
@@ -524,9 +524,9 @@ export const PRE_EWC_HISTORY = [
         "year": 2019,
         "event": "PGC 2019 (Oakland/LA)",
         "champion": "Gen.G Esports",
-        "runnerUp": "Fa",
+        "runnerUp": "FaZe Clan",
         "prizePool": "$6,000,000",
-        "highlight": "Ze Clan Gen.G's Pio clutched a final 4v4 on Miramar to seal the title."
+        "highlight": "Gen.G's Pio clutched a final 4v4 on Miramar to seal the title."
       },
       {
         "year": 2021,
@@ -539,26 +539,26 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2021,
         "event": "PGC 2021 (Incheon)",
-        "champion": "New",
-        "runnerUp": "Happy",
+        "champion": "NewHappy",
+        "runnerUp": "Heroic",
         "prizePool": "$4,300,000",
-        "highlight": "Heroic Chinese squad NewHappy won by 4 points in a 15-match thriller."
+        "highlight": "Chinese squad NewHappy won by 4 points in a 15-match thriller."
       },
       {
         "year": 2022,
         "event": "PGC 2022 (Dubai)",
         "champion": "Natus Vincere (NaVi)",
-        "runnerUp": "17 Gaming",
+        "runnerUp": "",
         "prizePool": "$3,300,000",
-        "highlight": "NaVi recorded 3 Chicken Dinners on the final day to pull ahead."
+        "highlight": "17 Gaming NaVi recorded 3 Chicken Dinners on the final day to pull ahead."
       },
       {
         "year": 2023,
         "event": "PGC 2023 (Bangkok)",
-        "champion": "Danawa e",
-        "runnerUp": "Sports17 Gaming",
+        "champion": "Danawa eSports",
+        "runnerUp": "",
         "prizePool": "$2,000,000",
-        "highlight": "Danawa broke Korea's 4-year title drought on home soil."
+        "highlight": "17 Gaming Danawa broke Korea's 4-year title drought on home soil."
       },
       {
         "year": 2024,
@@ -605,10 +605,10 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2022,
         "event": "PMGC 2022 (Jakarta)",
-        "champion": "S2",
-        "runnerUp": "G Esports",
+        "champion": "S2G Esports",
+        "runnerUp": "DRS Gaming",
         "prizePool": "$4,000,000",
-        "highlight": "DRS Gaming Turkish squad S2G brought Europe its first PMGC World Championship."
+        "highlight": "Turkish squad S2G brought Europe its first PMGC World Championship."
       },
       {
         "year": 2023,
@@ -647,34 +647,34 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2016,
         "event": "RLCS Season 1 (Hollywood)",
-        "champion": "i",
-        "runnerUp": "BUYPOWER Cosmic",
+        "champion": "iBUYPOWER Cosmic",
+        "runnerUp": "FlipSid3 Tactics",
         "prizePool": "$55,000",
-        "highlight": "Flip Sid3 Tactics Kronovi, Lachinio, & Over Zero won the first RLCS title."
+        "highlight": "Kronovi, Lachinio, & Over Zero won the first RLCS title."
       },
       {
         "year": 2016,
         "event": "RLCS Season 2 (Amsterdam)",
-        "champion": "Flip",
-        "runnerUp": "Sid3 Tactics",
+        "champion": "FlipSid3 Tactics",
+        "runnerUp": "Mock-It eSports",
         "prizePool": "$125,000",
-        "highlight": "Mock-It e Sports Kuxir97 & Markydooda redeemed their Season 1 runner-up finish."
+        "highlight": "Kuxir97 & Markydooda redeemed their Season 1 runner-up finish."
       },
       {
         "year": 2017,
         "event": "RLCS Season 3 (LA)",
         "champion": "Northern Gaming",
-        "runnerUp": "Mock-It e",
+        "runnerUp": "Mock-It eSports",
         "prizePool": "$150,000",
-        "highlight": "Sports Deevo and Turbopolsa (sub) won after a lower bracket run."
+        "highlight": "Deevo and Turbopolsa (sub) won after a lower bracket run."
       },
       {
         "year": 2017,
         "event": "RLCS Season 4 (Washington D.C.)",
-        "champion": "Gale Force e",
-        "runnerUp": "Sports",
+        "champion": "Gale Force eSports",
+        "runnerUp": "Method",
         "prizePool": "$150,000",
-        "highlight": "Method Kaydop, ViolentPanda, & Turbopolsa established their dynasty."
+        "highlight": "Kaydop, ViolentPanda, & Turbopolsa established their dynasty."
       },
       {
         "year": 2018,
@@ -711,8 +711,8 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2022,
         "event": "RLCS 2021-22 (Fort Worth)",
-        "champion": "Team BDSG2 Esports",
-        "runnerUp": "",
+        "champion": "Team BDS",
+        "runnerUp": "G2 Esports",
         "prizePool": "$2,085,000",
         "highlight": "Extra, Seikoo, & Monkey Moon returned EU to top standing."
       },
@@ -727,8 +727,8 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2024,
         "event": "RLCS 2024 (Fort Worth)",
-        "champion": "Team BDSG2 Stride",
-        "runnerUp": "",
+        "champion": "Team BDS",
+        "runnerUp": "G2 Stride",
         "prizePool": "$5,000,000",
         "highlight": "dralii and MM swept G2 in a 4-2 grand final reset."
       },
@@ -754,9 +754,9 @@ export const PRE_EWC_HISTORY = [
         "year": 2017,
         "event": "SI 2017 (Montreal)",
         "champion": "Continuum",
-        "runnerUp": "Era e",
+        "runnerUp": "Era eSports",
         "prizePool": "$100,000",
-        "highlight": "Sports Canadian & Necrox won the first-ever R6 Siege World Title."
+        "highlight": "Canadian & Necrox won the first-ever R6 Siege World Title."
       },
       {
         "year": 2018,
@@ -777,10 +777,10 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2020,
         "event": "SI 2020 (Montreal)",
-        "champion": "Space",
-        "runnerUp": "Station Gaming",
+        "champion": "SpaceStation Gaming",
+        "runnerUp": "Spacestation",
         "prizePool": "$3,000,000",
-        "highlight": "Spacestation Canadian led SSG to a 3-2 reverse sweep from lower bracket."
+        "highlight": "Canadian led SSG to a 3-2 reverse sweep from lower bracket."
       },
       {
         "year": 2021,
@@ -810,9 +810,9 @@ export const PRE_EWC_HISTORY = [
         "year": 2024,
         "event": "SI 2024 (São Paulo)",
         "champion": "W7m Esports",
-        "runnerUp": "Fa",
+        "runnerUp": "FaZe Clan",
         "prizePool": "$3,000,000",
-        "highlight": "Ze Clan HerdsZ and FelipoX won a 3-2 final in front of a home crowd."
+        "highlight": "HerdsZ and FelipoX won a 3-2 final in front of a home crowd."
       },
       {
         "year": 2025,
@@ -883,10 +883,10 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2025,
         "event": "M7 World Championship (Jakarta)",
-        "champion": "Team Liquid",
-        "runnerUp": "PH",
+        "champion": "Team Liquid PH",
+        "runnerUp": "Selangor Red Giants",
         "prizePool": "$1,000,000",
-        "highlight": "Selangor Red Giants KarlTzy captured his 3rd World Title in a 4-2 final."
+        "highlight": "KarlTzy captured his 3rd World Title in a 4-2 final."
       }
     ]
   },
@@ -925,18 +925,18 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2016,
         "event": "Capcom Cup 2016 (Anaheim)",
-        "champion": "Nuckle",
-        "runnerUp": "Du",
+        "champion": "NuckleDu",
+        "runnerUp": "Guile / R. Mika",
         "prizePool": "$350,000",
-        "highlight": "Guile / R. Mika NuckleDu became the first American Capcom Cup champion."
+        "highlight": "NuckleDu became the first American Capcom Cup champion."
       },
       {
         "year": 2017,
         "event": "Capcom Cup 2017 (Anaheim)",
-        "champion": "Mena",
-        "runnerUp": "RD",
+        "champion": "MenaRD",
+        "runnerUp": "Birdie",
         "prizePool": "$370,000",
-        "highlight": "Birdie 18-year-old MenaRD reset the bracket against Tokido."
+        "highlight": "18-year-old MenaRD reset the bracket against Tokido."
       },
       {
         "year": 2018,
@@ -949,18 +949,18 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2019,
         "event": "Capcom Cup 2019 (Los Angeles)",
-        "champion": "i",
-        "runnerUp": "Dom",
+        "champion": "iDom",
+        "runnerUp": "Laura / Poison",
         "prizePool": "$250,000",
-        "highlight": "Laura / Poison iDom won from the lower bracket with Laura/Poison."
+        "highlight": "iDom won from the lower bracket with Laura/Poison."
       },
       {
         "year": 2023,
         "event": "Capcom Cup IX (Los Angeles)",
-        "champion": "Mena",
-        "runnerUp": "RD",
+        "champion": "MenaRD",
+        "runnerUp": "Luke / Birdie",
         "prizePool": "$300,000",
-        "highlight": "Luke / Birdie MenaRD became the first two-time Capcom Cup Champion."
+        "highlight": "MenaRD became the first two-time Capcom Cup Champion."
       },
       {
         "year": 2024,
@@ -1039,10 +1039,10 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2025,
         "event": "TWT Finals 2025 (Seoul)",
-        "champion": "Low",
-        "runnerUp": "High",
+        "champion": "LowHigh",
+        "runnerUp": "Shaheen / Bryan",
         "prizePool": "$300,000",
-        "highlight": "Shaheen / Bryan LowHigh clutched a 3-2 victory over Mangja for his first TWT title."
+        "highlight": "LowHigh clutched a 3-2 victory over Mangja for his first TWT title."
       }
     ]
   },
@@ -1065,34 +1065,34 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2022,
         "event": "ALGS Championship 2022 (Raleigh)",
-        "champion": "Dark",
-        "runnerUp": "Zero Esports",
+        "champion": "DarkZero Esports",
+        "runnerUp": "Genburten, Zer0, Sharky",
         "prizePool": "$2,000,000",
-        "highlight": "Genburten, Zer0, Sharky Zer0 led DarkZero to back-to-back LAN titles on match point."
+        "highlight": "Zer0 led DarkZero to back-to-back LAN titles on match point."
       },
       {
         "year": 2023,
         "event": "ALGS Championship 2023 (Birmingham)",
         "champion": "TSM",
-        "runnerUp": "Imperial",
+        "runnerUp": "ImperialHal, Reps, Verhulst",
         "prizePool": "$2,000,000",
-        "highlight": "Hal, Reps, Verhulst TSM won 3 consecutive matches on match point to secure the crown."
+        "highlight": "TSM won 3 consecutive matches on match point to secure the crown."
       },
       {
         "year": 2024,
         "event": "ALGS Championship 2024 (Sapporo)",
-        "champion": "Go",
-        "runnerUp": "Next Esportsk4sen, etc.",
+        "champion": "GoNext Esports",
+        "runnerUp": "",
         "prizePool": "$2,000,000",
-        "highlight": "GoNext won game nine to take Europe's first ALGS crown."
+        "highlight": "k4sen, etc. GoNext won game nine to take Europe's first ALGS crown."
       },
       {
         "year": 2025,
         "event": "ALGS Championship 2025 (Tokyo)",
         "champion": "Team Falcons",
-        "runnerUp": "Imperial",
+        "runnerUp": "ImperialHal, Zer0, Genburten",
         "prizePool": "$2,000,000",
-        "highlight": "Hal, Zer0, Genburten The 'God Trio' finally converted match point for their first ALGS world title."
+        "highlight": "The 'God Trio' finally converted match point for their first ALGS world title."
       }
     ]
   },
@@ -1107,64 +1107,64 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2015,
         "event": "FIWC 2015 (Munich)",
-        "champion": "Abdulaziz Alshehri",
-        "runnerUp": "Play",
+        "champion": "Abdulaziz AlshehriPlayStation (Saudi Arabia)",
+        "runnerUp": "",
         "prizePool": "$26,000",
-        "highlight": "Station (Saudi Arabia) Alshehri brought Saudi Arabia its first virtual football world title."
+        "highlight": "Alshehri brought Saudi Arabia its first virtual football world title."
       },
       {
         "year": 2016,
         "event": "FIWC 2016 (New York)",
-        "champion": "Mohamad Al-Bacha",
-        "runnerUp": "Xbox/PS (Denmark)",
+        "champion": "Mohamad Al-BachaXbox/PS (Denmark)",
+        "runnerUp": "",
         "prizePool": "$20,000",
         "highlight": "Al-Bacha won on away-goals in a dramatic 89th-minute comeback."
       },
       {
         "year": 2017,
         "event": "FIWC 2017 (London)",
-        "champion": "Spencer \"Gorilla\" Ealing",
-        "runnerUp": "Xbox/PS (UK)",
+        "champion": "Spencer \"Gorilla\" EalingXbox/PS (UK)",
+        "runnerUp": "",
         "prizePool": "$268,000",
         "highlight": "Gorilla dominated the tournament using heavy skill-move canceling."
       },
       {
         "year": 2018,
         "event": "FIFAe World Cup 2018 (London)",
-        "champion": "Mosaad \"MSdossary\" Aldossary",
-        "runnerUp": "Xbox/PS (Rogue)",
+        "champion": "Mosaad \"MSdossary\" AldossaryXbox/PS (Rogue)",
+        "runnerUp": "",
         "prizePool": "$400,000",
         "highlight": "MSdossary went undefeated across the entire finals bracket."
       },
       {
         "year": 2019,
         "event": "FIFAe World Cup 2019 (London)",
-        "champion": "Mohammed \"Mo",
-        "runnerUp": "Auba\" Harkous",
+        "champion": "Mohammed \"MoAuba\" HarkousPS4 (VfL Wolfsburg)",
+        "runnerUp": "",
         "prizePool": "$500,000",
-        "highlight": "PS4 (Vf L Wolfsburg) MoAuba became the first German player to lift the trophy."
+        "highlight": "MoAuba became the first German player to lift the trophy."
       },
       {
         "year": 2022,
         "event": "FIFAe World Cup 2022 (Copenhagen)",
-        "champion": "Umberto \"Matias\" Giulizzoni",
-        "runnerUp": "PS5 (Compleito)",
+        "champion": "Umberto \"Matias\" GiulizzoniPS5 (Compleito)",
+        "runnerUp": "",
         "prizePool": "$500,000",
         "highlight": "Matias won Argentina's first FIFAe World Championship."
       },
       {
         "year": 2023,
         "event": "FIFAe World Cup 2023 (Riyadh)",
-        "champion": "Manuel \"Manu",
-        "runnerUp": "Bachoore\" Bachoore",
+        "champion": "Manuel \"ManuBachoore\" BachoorePS5 (Team Liquid)",
+        "runnerUp": "",
         "prizePool": "$500,000",
-        "highlight": "PS5 (Team Liquid) ManuBachoore won a tense penalty shootout in the grand finals."
+        "highlight": "ManuBachoore won a tense penalty shootout in the grand finals."
       },
       {
         "year": 2024,
         "event": "FC Pro World Championship 2024 (Dallas)",
-        "champion": "Veerse",
-        "runnerUp": "PS5 (RBL ZELD)",
+        "champion": "VeersePS5 (RBL ZELD)",
+        "runnerUp": "",
         "prizePool": "$1,000,000",
         "highlight": "16-year-old Veerse won the inaugural FC Pro Era World Championship."
       }
@@ -1182,17 +1182,17 @@ export const PRE_EWC_HISTORY = [
         "year": 2013,
         "event": "Black Ops II (LA)",
         "champion": "Fariko Impact",
-        "runnerUp": "Karma, Killa, Parasite, MI",
+        "runnerUp": "Karma, Killa, Parasite, MIRx",
         "prizePool": "$1,000,000",
-        "highlight": "Rx Fariko Impact established the first true CoD dynasty."
+        "highlight": "Fariko Impact established the first true CoD dynasty."
       },
       {
         "year": 2014,
         "event": "Ghosts (LA)",
         "champion": "Complexity Gaming",
-        "runnerUp": "ACHES, Tee",
+        "runnerUp": "ACHES, TeePee, Crimson, Karma",
         "prizePool": "$1,000,000",
-        "highlight": "Pee, Crimson, Karma Karma became the first 2x CoD World Champion."
+        "highlight": "Karma became the first 2x CoD World Champion."
       },
       {
         "year": 2015,
@@ -1205,18 +1205,18 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2016,
         "event": "Black Ops III (LA)",
-        "champion": "Team En",
-        "runnerUp": "Vy",
+        "champion": "Team EnVyUs",
+        "runnerUp": "JKap, SlasheR, John, Apathy",
         "prizePool": "$2,000,000",
-        "highlight": "Us JKap, Slashe R, John, Apathy JKap became a back-to-back world champion."
+        "highlight": "JKap became a back-to-back world champion."
       },
       {
         "year": 2017,
         "event": "Infinite Warfare (Orlando)",
-        "champion": "Op",
-        "runnerUp": "Tic Gaming",
+        "champion": "OpTic Gaming",
+        "runnerUp": "Scump, Formal, Crimson, Karma",
         "prizePool": "$1,500,000",
-        "highlight": "Scump, Formal, Crimson, Karma The 'OpTic Dynasty' finally secured their elusive ring."
+        "highlight": "The 'OpTic Dynasty' finally secured their elusive ring."
       },
       {
         "year": 2018,
@@ -1229,26 +1229,26 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2019,
         "event": "Black Ops 4 (LA)",
-        "champion": "e",
-        "runnerUp": "United",
+        "champion": "eUnitedClayster, aBeZy, Simp, Arcitys, Prestige",
+        "runnerUp": "",
         "prizePool": "$2,000,000",
-        "highlight": "Clayster, a Be Zy, Simp, Arcitys, Prestige Simp won Finals MVP in his rookie debut season."
+        "highlight": "Simp won Finals MVP in his rookie debut season."
       },
       {
         "year": 2020,
         "event": "MW 2019 (Online)",
         "champion": "Dallas Empire",
-        "runnerUp": "Clayster, Crimson, Shotzzy, i",
+        "runnerUp": "Clayster, Crimson, Shotzzy, iLLeY, Huke",
         "prizePool": "$4,600,000",
-        "highlight": "LLe Y, Huke Crimson became the first 3x CoD World Champion."
+        "highlight": "Crimson became the first 3x CoD World Champion."
       },
       {
         "year": 2021,
         "event": "Cold War (LA)",
-        "champion": "Atlanta Fa",
-        "runnerUp": "Zea",
+        "champion": "Atlanta FaZe",
+        "runnerUp": "",
         "prizePool": "$2,500,000",
-        "highlight": "Be Zy, Simp, Cellium, Arcitys FaZe dominated the season with an 88% match win rate."
+        "highlight": "aBeZy, Simp, Cellium, Arcitys FaZe dominated the season with an 88% match win rate."
       },
       {
         "year": 2022,
@@ -1269,18 +1269,18 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2024,
         "event": "MWIII (Allen, TX)",
-        "champion": "Op",
-        "runnerUp": "Tic Texas",
+        "champion": "OpTic Texas",
+        "runnerUp": "Shotzzy, Dashy, Kenny, Pred",
         "prizePool": "$2,380,000",
-        "highlight": "Shotzzy, Dashy, Kenny, Pred OpTic Texas brought the franchise its first ring since 2017."
+        "highlight": "OpTic Texas brought the franchise its first ring since 2017."
       },
       {
         "year": 2025,
         "event": "Black Ops 6 (Kitchener)",
-        "champion": "Atlanta Fa",
-        "runnerUp": "Zea",
+        "champion": "Atlanta FaZe",
+        "runnerUp": "",
         "prizePool": "$2,500,000",
-        "highlight": "Be Zy, Simp, Cellium, Drazah FaZe reclaimed the CDL crown in a 5-3 grand final."
+        "highlight": "aBeZy, Simp, Cellium, Drazah FaZe reclaimed the CDL crown in a 5-3 grand final."
       }
     ]
   },
@@ -1295,10 +1295,10 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2022,
         "event": "KIC 2022 (Shenzhen / Seoul)",
-        "champion": "e",
-        "runnerUp": "Star Pro",
+        "champion": "eStar Pro",
+        "runnerUp": "Wuhan eStar",
         "prizePool": "$10,000,000",
-        "highlight": "Wuhan e Star eStar Pro won the inaugural $10M global edition 4-2."
+        "highlight": "eStar Pro won the inaugural $10M global edition 4-2."
       },
       {
         "year": 2023,
@@ -1329,66 +1329,66 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2006,
         "event": "ESWC 2006 (Paris)",
-        "champion": "Carl Jr. (Initial Debut Era)",
-        "runnerUp": "Individual (Canada)",
+        "champion": "Carl Jr.",
+        "runnerUp": "",
         "prizePool": "",
-        "highlight": "Carl Jr. launched Canada's historic dominance in time-trial racing."
+        "highlight": "(Initial Debut Era)Individual (Canada)Carl Jr. launched Canada's historic dominance in time-trial racing."
       },
       {
         "year": 2013,
         "event": "ESWC 2013 (Paris)",
-        "champion": "Carl Jr.Team Dignitas",
-        "runnerUp": "Carl Jr. won his first official world championship title.",
+        "champion": "Carl Jr.",
+        "runnerUp": "Team Dignitas",
         "prizePool": "",
-        "highlight": ""
+        "highlight": "Carl Jr. won his first official world championship title."
       },
       {
         "year": 2014,
         "event": "ESWC 2014 (Paris)",
-        "champion": "Carl Jr.Team Dignitas",
-        "runnerUp": "Back-to-back world championship titles for Carl Jr.",
+        "champion": "Carl Jr.",
+        "runnerUp": "Team Dignitas",
         "prizePool": "",
-        "highlight": ""
+        "highlight": "Back-to-back world championship titles for Carl Jr."
       },
       {
         "year": 2015,
         "event": "ESWC 2015 (Paris)",
-        "champion": "Carl Jr.Team Dignitas",
-        "runnerUp": "Completed the legendary 3-peat in time-trial racing history.",
+        "champion": "Carl Jr.",
+        "runnerUp": "Team Dignitas",
         "prizePool": "",
-        "highlight": ""
+        "highlight": "Completed the legendary 3-peat in time-trial racing history."
       },
       {
         "year": 2020,
         "event": "TMGL Winter 2020 (Online)",
         "champion": "Gwen",
-        "runnerUp": "Game",
+        "runnerUp": "GameWard15-year-old French prodigy Gwen won his first major senior title.",
         "prizePool": "",
-        "highlight": "Ward15-year-old French prodigy Gwen won his first major senior title."
+        "highlight": ""
       },
       {
         "year": 2021,
         "event": "Trackmania World Cup 2021",
-        "champion": "Carl Jr.Solary",
-        "runnerUp": "Carl Jr. captured his 4th individual World Championship trophy.",
+        "champion": "Carl Jr.",
+        "runnerUp": "SolaryCarl Jr. captured his 4th individual World Championship trophy.",
         "prizePool": "",
         "highlight": ""
       },
       {
         "year": 2022,
         "event": "Trackmania World Cup 2022",
-        "champion": "Carl Jr.Solary",
-        "runnerUp": "Carl Jr. set the record with 5 individual World Championship titles.",
+        "champion": "Carl Jr.",
+        "runnerUp": "SolaryCarl Jr. set the record with 5 individual World Championship titles.",
         "prizePool": "",
         "highlight": ""
       },
       {
         "year": 2023,
         "event": "World Tour Finals 2023 (Montpellier)",
-        "champion": "Alliance (Carl Jr. & Pac)",
-        "runnerUp": "Alliance",
+        "champion": "Alliance",
+        "runnerUp": "",
         "prizePool": "",
-        "highlight": "Won the inaugural 2v2 Duo Team World Championship."
+        "highlight": "(Carl Jr. & Pac)AllianceWon the inaugural 2v2 Duo Team World Championship."
       },
       {
         "year": 2024,
@@ -1509,42 +1509,42 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2023,
         "event": "ESL R1 Spring Major 2023 (Katowice)",
-        "champion": "Marcell Csincsik (R8",
-        "runnerUp": "G)",
+        "champion": "Marcell Csincsik (R8G)BMW M Team RedlineCsincsik won the inaugural driver's championship in Katowice.",
+        "runnerUp": "",
         "prizePool": "",
-        "highlight": "BMW M Team Redline Csincsik won the inaugural driver's championship in Katowice."
+        "highlight": ""
       },
       {
         "year": 2023,
         "event": "ESL R1 Fall Major 2023 (Jönköping)",
-        "champion": "Jiri Toman (R8",
-        "runnerUp": "G)",
+        "champion": "Jiri Toman (R8G)Porsche Coanda EsportsPorsche Coanda took the team crown with superior pit stops.",
+        "runnerUp": "",
         "prizePool": "",
-        "highlight": "Porsche Coanda Esports Porsche Coanda took the team crown with superior pit stops."
+        "highlight": ""
       },
       {
         "year": 2024,
         "event": "ESL R1 Spring Major 2024 (Riyadh)",
-        "champion": "Kevin Siggy (Redline)",
-        "runnerUp": "BMW M Team Redline",
+        "champion": "Kevin Siggy (Redline)BMW M Team RedlineSiggy won back-to-back sprint races to secure the title.",
+        "runnerUp": "",
         "prizePool": "",
-        "highlight": "Siggy won back-to-back sprint races to secure the title."
+        "highlight": ""
       },
       {
         "year": 2024,
         "event": "ESL R1 Fall Major 2024 (Munich)",
-        "champion": "Luke Bennett (Redline)",
-        "runnerUp": "BMW M Team Redline",
+        "champion": "Luke Bennett (Redline)BMW M Team RedlineBennett dominated pole positions and set track records.",
+        "runnerUp": "",
         "prizePool": "",
-        "highlight": "Bennett dominated pole positions and set track records."
+        "highlight": ""
       },
       {
         "year": 2025,
         "event": "ESL R1 World Championship 2025",
-        "champion": "Luke Bennett (Redline)",
-        "runnerUp": "Red Bull Sim Racing",
+        "champion": "Luke Bennett (Redline)Red Bull Sim RacingBennett defended his world title across Sprint and Endurance formats.",
+        "runnerUp": "",
         "prizePool": "",
-        "highlight": "Bennett defended his world title across Sprint and Endurance formats."
+        "highlight": ""
       }
     ]
   },
@@ -1568,49 +1568,49 @@ export const PRE_EWC_HISTORY = [
         "year": 2021,
         "event": "Fates Championship (Set 4)",
         "champion": "8ascend (8833)",
-        "runnerUp": "China",
+        "runnerUp": "ChinaChina captured its first TFT World Title behind 3-star 4-cost play.",
         "prizePool": "",
-        "highlight": "China captured its first TFT World Title behind 3-star 4-cost play."
+        "highlight": ""
       },
       {
         "year": 2021,
         "event": "Reckoning Championship (Set 5)",
         "champion": "Huanmie",
-        "runnerUp": "China",
+        "runnerUp": "ChinaHuanmie won Checkmate format on game 5.",
         "prizePool": "",
-        "highlight": "Huanmie won Checkmate format on game 5."
+        "highlight": ""
       },
       {
         "year": 2022,
         "event": "Neon Nights Championship (Set 6)",
-        "champion": "Xun",
-        "runnerUp": "Ge",
+        "champion": "XunGe",
+        "runnerUp": "ChinaBack-to-back Chinese world championships.",
         "prizePool": "",
-        "highlight": "China Back-to-back Chinese world championships."
+        "highlight": ""
       },
       {
         "year": 2022,
         "event": "Dragonlands Championship (Set 7)",
-        "champion": "Title",
-        "runnerUp": "Japan",
+        "champion": "TitleJapanTitle brought Japan its first global TFT championship.",
+        "runnerUp": "",
         "prizePool": "",
-        "highlight": "Title brought Japan its first global TFT championship."
+        "highlight": ""
       },
       {
         "year": 2023,
         "event": "Monsters Attack! Championship (Set 8)",
         "champion": "Rereplay",
-        "runnerUp": "North America",
+        "runnerUp": "North AmericaRereplay brought North America its first TFT world trophy.",
         "prizePool": "",
-        "highlight": "Rereplay brought North America its first TFT world trophy."
+        "highlight": ""
       },
       {
         "year": 2023,
         "event": "Runeterra Reforged (Set 9)",
-        "champion": "Title",
-        "runnerUp": "Japan",
+        "champion": "TitleJapanTitle became the first 2-time TFT World Champion in history.",
+        "runnerUp": "",
         "prizePool": "",
-        "highlight": "Title became the first 2-time TFT World Champion in history."
+        "highlight": ""
       },
       {
         "year": 2024,
@@ -1624,17 +1624,17 @@ export const PRE_EWC_HISTORY = [
         "year": 2024,
         "event": "Inkborn Fables Championship (Set 11)",
         "champion": "Dishsoap",
-        "runnerUp": "North America",
+        "runnerUp": "North AmericaDishsoap achieved NA's back-to-back championship run.",
         "prizePool": "",
-        "highlight": "Dishsoap achieved NA's back-to-back championship run."
+        "highlight": ""
       },
       {
         "year": 2025,
         "event": "Magic N' Mayhem Championship (Set 12)",
-        "champion": "Li",
-        "runnerUp": "Shao",
+        "champion": "LiShao",
+        "runnerUp": "ChinaLiShao claimed China's 5th overall TFT World Title.",
         "prizePool": "",
-        "highlight": "China Li Shao claimed China's 5th overall TFT World Title."
+        "highlight": ""
       }
     ]
   },
@@ -1707,8 +1707,8 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2022,
         "event": "SWT Finals 2022 (Online)",
-        "champion": "ZJZKOF XV (Kula / Krohnen)",
-        "runnerUp": "ZJZ dominated the inaugural KOF XV global championship season.",
+        "champion": "ZJZ",
+        "runnerUp": "KOF XV (Kula / Krohnen)ZJZ dominated the inaugural KOF XV global championship season.",
         "prizePool": "",
         "highlight": ""
       },
@@ -1724,25 +1724,25 @@ export const PRE_EWC_HISTORY = [
         "year": 2024,
         "event": "SWT Finals 2024 (San Jose)",
         "champion": "Xiao Hai",
-        "runnerUp": "KOF XV (Isla / Geese)",
+        "runnerUp": "KOF XV (Isla / Geese)Xiao Hai captured back-to-back SNK World Tour titles.",
         "prizePool": "",
-        "highlight": "Xiao Hai captured back-to-back SNK World Tour titles."
+        "highlight": ""
       },
       {
         "year": 2025,
         "event": "SNK World Championship 2025",
         "champion": "Laghar",
-        "runnerUp": "Fatal Fury (Rock Howard)",
+        "runnerUp": "Fatal Fury (Rock Howard)Laghar won the inaugural major title for Fatal Fury: City of the Wolves.",
         "prizePool": "",
-        "highlight": "Laghar won the inaugural major title for Fatal Fury: City of the Wolves."
+        "highlight": ""
       },
       {
         "year": 2026,
         "event": "SWT Finals 2026 (Tokyo)",
         "champion": "Xiao Hai",
-        "runnerUp": "Fatal Fury (Terry / Mai)",
+        "runnerUp": "Fatal Fury (Terry / Mai)Xiao Hai added another SNK world title to his legendary career.",
         "prizePool": "",
-        "highlight": "Xiao Hai added another SNK world title to his legendary career."
+        "highlight": ""
       }
     ]
   },
@@ -1758,7 +1758,7 @@ export const PRE_EWC_HISTORY = [
         "year": 2020,
         "event": "24 Hours of Le Mans Virtual",
         "champion": "Rebellion Williams Esports",
-        "runnerUp": "Nikodem Wisniewski, Jakub Brzezinski Factor2 / LMP",
+        "runnerUp": "Nikodem Wisniewski, Jakub BrzezinskiFactor2 / LMP",
         "prizePool": "",
         "highlight": ""
       },
@@ -1766,7 +1766,7 @@ export const PRE_EWC_HISTORY = [
         "year": 2021,
         "event": "24 Hours of Le Mans Virtual",
         "champion": "Realteam Hydrogen Redline",
-        "runnerUp": "Jeffrey Rietveld, Michal Smidl Factor2 / LMP",
+        "runnerUp": "Jeffrey Rietveld, Michal SmidlFactor2 / LMP",
         "prizePool": "",
         "highlight": ""
       },
@@ -1774,7 +1774,7 @@ export const PRE_EWC_HISTORY = [
         "year": 2022,
         "event": "SRO Esports GT Finals",
         "champion": "BMW M Team Redline",
-        "runnerUp": "James Baldwin ACC / GT3",
+        "runnerUp": "James BaldwinACC / GT3",
         "prizePool": "",
         "highlight": ""
       },
@@ -1782,23 +1782,23 @@ export const PRE_EWC_HISTORY = [
         "year": 2023,
         "event": "GT World Challenge Esports",
         "champion": "Ferrari Esports Team",
-        "runnerUp": "Jordan Sherratt ACC / GT3",
+        "runnerUp": "Jordan SherrattACC / GT3",
         "prizePool": "",
         "highlight": ""
       },
       {
         "year": 2024,
-        "event": "i",
-        "champion": "Racing World Championship",
-        "runnerUp": "Team Redline Luke Bennett, Maximilian Beneckei Racing / GTP",
+        "event": "iRacing World Championship",
+        "champion": "Team Redline",
+        "runnerUp": "Luke Bennett, Maximilian BeneckeiRacing / GTP",
         "prizePool": "",
         "highlight": ""
       },
       {
         "year": 2025,
-        "event": "FIF",
-        "champion": "Ae World Cup Sim Racing",
-        "runnerUp": "Red Bull Sim Racing Sebastian Job Sim Racing / GT",
+        "event": "FIFAe World Cup Sim Racing",
+        "champion": "Red Bull Sim Racing",
+        "runnerUp": "Sebastian JobSim Racing / GT",
         "prizePool": "",
         "highlight": ""
       }
@@ -1823,18 +1823,18 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2023,
         "event": "Split 1 Playoff Major (London)",
-        "champion": "TSMNRG",
-        "runnerUp": "",
+        "champion": "TSM",
+        "runnerUp": "NRG",
         "prizePool": "$1,000,000",
         "highlight": "ImperialHal clutched match point with 5 endgame kills on World's Edge."
       },
       {
         "year": 2023,
         "event": "Split 2 Playoff Major (London)",
-        "champion": "Dark",
-        "runnerUp": "Zero Esports",
+        "champion": "DarkZero Esports",
+        "runnerUp": "TSM",
         "prizePool": "$1,000,000",
-        "highlight": "TSM Zer0 secured DarkZero's 3rd overall LAN Major title."
+        "highlight": "Zer0 secured DarkZero's 3rd overall LAN Major title."
       },
       {
         "year": 2024,
@@ -1890,9 +1890,9 @@ export const PRE_EWC_HISTORY = [
         "year": 2015,
         "event": "ESL One Cologne 2015",
         "champion": "Fnatic",
-        "runnerUp": "Team En",
+        "runnerUp": "Team EnVyUs",
         "prizePool": "$250,000",
-        "highlight": "Vy Us Fnatic's 4-AWP dust2 play solidified their Swedish dynasty."
+        "highlight": "Fnatic's 4-AWP dust2 play solidified their Swedish dynasty."
       },
       {
         "year": 2016,
@@ -2019,8 +2019,8 @@ export const PRE_EWC_HISTORY = [
       {
         "year": 2022,
         "event": "ESL One Stockholm 2022",
-        "champion": "OGTS M",
-        "runnerUp": "",
+        "champion": "OG",
+        "runnerUp": "TS M",
         "prizePool": "$500,000",
         "highlight": "Ceb returned as a stand-in on Windranger to lead OG to the title."
       },
@@ -2036,9 +2036,9 @@ export const PRE_EWC_HISTORY = [
         "year": 2024,
         "event": "ESL One Birmingham 2024",
         "champion": "Team Falcons",
-        "runnerUp": "Bet",
+        "runnerUp": "BetBoom Team",
         "prizePool": "$1,000,000",
-        "highlight": "Boom Team ATF & Malr1ne won their first European ESL One major title."
+        "highlight": "ATF & Malr1ne won their first European ESL One major title."
       },
       {
         "year": 2025,
@@ -2086,9 +2086,9 @@ export const PRE_EWC_HISTORY = [
         "year": 2018,
         "event": "MSI 2018 (Paris, France)",
         "champion": "Royal Never Give Up",
-        "runnerUp": "Kingzone Dragon",
+        "runnerUp": "Kingzone DragonX",
         "prizePool": "$1,370,000",
-        "highlight": "X Uzi delivered a masterclass on Kai'Sa to give the LPL the trophy."
+        "highlight": "Uzi delivered a masterclass on Kai'Sa to give the LPL the trophy."
       },
       {
         "year": 2019,

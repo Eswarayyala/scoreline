@@ -81,9 +81,9 @@ export const ESPORTS_RESEARCH = [
         "event": "BLAST.tv Austin Major 2025 (Austin)",
         "prizePool": "$1,250,000",
         "champion": "Team Vitality",
-        "runnerUp": "The Mongol",
+        "runnerUp": "The MongolZ",
         "eventScope": "region",
-        "clutchesAndRivalries": "Z Vitality swept finals; The MongolZ reached Asia's first final.",
+        "clutchesAndRivalries": "Vitality swept finals; The MongolZ reached Asia's first final.",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -93,7 +93,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "The Mongol",
+            "team": "The MongolZ",
             "player": "",
             "prize": ""
           }
@@ -297,9 +297,9 @@ export const ESPORTS_RESEARCH = [
         "event": "BLAST.tv Paris Major 2023 (Paris)",
         "prizePool": "$1,250,000",
         "champion": "Team Vitality",
-        "runnerUp": "Gamer",
+        "runnerUp": "GamerLegion",
         "eventScope": "region",
-        "clutchesAndRivalries": "Legion ZywOo won the final official CS:GO Major on home soil.",
+        "clutchesAndRivalries": "ZywOo won the final official CS:GO Major on home soil.",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -309,7 +309,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Gamer",
+            "team": "GamerLegion",
             "player": "",
             "prize": ""
           }
@@ -566,9 +566,9 @@ export const ESPORTS_RESEARCH = [
         "event": "ELEAGUE Boston 2018 (Boston)",
         "prizePool": "$1,000,000",
         "champion": "Cloud9",
-        "runnerUp": "Fa",
+        "runnerUp": "FaZe Clan",
         "eventScope": "region",
-        "clutchesAndRivalries": "Ze Clan Stewie2K & Tarik achieved North America's first Major.",
+        "clutchesAndRivalries": "Stewie2K & Tarik achieved North America's first Major.",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -578,7 +578,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Fa",
+            "team": "FaZe Clan",
             "player": "",
             "prize": ""
           }
@@ -749,20 +749,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2015,
         "event": "DreamHack Cluj-Napoca 2015 (Romania)",
         "prizePool": "$250,000",
-        "champion": "Team En",
-        "runnerUp": "Vy",
+        "champion": "Team EnVyUs",
+        "runnerUp": "Natus Vincere",
         "eventScope": "region",
-        "clutchesAndRivalries": "Us Natus Vincere KennyS delivered a legendary AWP performance.",
+        "clutchesAndRivalries": "KennyS delivered a legendary AWP performance.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Team En",
+            "team": "Team EnVyUs",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Vy",
+            "team": "Natus Vincere",
             "player": "",
             "prize": ""
           }
@@ -773,9 +773,9 @@ export const ESPORTS_RESEARCH = [
         "event": "ESL One Cologne 2015 (Cologne)",
         "prizePool": "$250,000",
         "champion": "Fnatic",
-        "runnerUp": "Team En",
+        "runnerUp": "Team EnVyUs",
         "eventScope": "region",
-        "clutchesAndRivalries": "Vy Us Back-to-back Major titles for Fnatic's Swedish dynasty.",
+        "clutchesAndRivalries": "Back-to-back Major titles for Fnatic's Swedish dynasty.",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -785,7 +785,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Team En",
+            "team": "Team EnVyUs",
             "player": "",
             "prize": ""
           }
@@ -1069,9 +1069,9 @@ export const ESPORTS_RESEARCH = [
         "event": "VCT Champions 2022 (Istanbul)",
         "prizePool": "$1,000,000",
         "champion": "LOUD",
-        "runnerUp": "Op",
+        "runnerUp": "OpTic Gaming",
         "eventScope": "region",
-        "clutchesAndRivalries": "Tic Gaming aspas and Sacy brought Brazil its first Valorant title.",
+        "clutchesAndRivalries": "aspas and Sacy brought Brazil its first Valorant title.",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -1081,7 +1081,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Op",
+            "team": "OpTic Gaming",
             "player": "",
             "prize": ""
           }
@@ -1389,9 +1389,9 @@ export const ESPORTS_RESEARCH = [
         "event": "SI 2024 (São Paulo)",
         "prizePool": "$3,000,000",
         "champion": "W7m Esports",
-        "runnerUp": "Fa",
+        "runnerUp": "FaZe Clan",
         "eventScope": "region",
-        "clutchesAndRivalries": "Ze Clan HerdsZ and FelipoX won a 3-2 final in front of a home crowd.",
+        "clutchesAndRivalries": "HerdsZ and FelipoX won a 3-2 final in front of a home crowd.",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -1401,7 +1401,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Fa",
+            "team": "FaZe Clan",
             "player": "",
             "prize": ""
           }
@@ -1519,20 +1519,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2020,
         "event": "SI 2020 (Montreal)",
         "prizePool": "$3,000,000",
-        "champion": "Space",
-        "runnerUp": "Station Gaming",
+        "champion": "SpaceStation Gaming",
+        "runnerUp": "Spacestation",
         "eventScope": "region",
-        "clutchesAndRivalries": "Spacestation Canadian led SSG to a 3-2 reverse sweep from lower bracket.",
+        "clutchesAndRivalries": "Canadian led SSG to a 3-2 reverse sweep from lower bracket.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Space",
+            "team": "SpaceStation Gaming",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Station Gaming",
+            "team": "Spacestation",
             "player": "",
             "prize": ""
           }
@@ -1589,9 +1589,9 @@ export const ESPORTS_RESEARCH = [
         "event": "SI 2017 (Montreal)",
         "prizePool": "$100,000",
         "champion": "Continuum",
-        "runnerUp": "Era e",
+        "runnerUp": "Era eSports",
         "eventScope": "region",
-        "clutchesAndRivalries": "Sports Canadian & Necrox won the first-ever R6 Siege World Title.",
+        "clutchesAndRivalries": "Canadian & Necrox won the first-ever R6 Siege World Title.",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -1601,7 +1601,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Era e",
+            "team": "Era eSports",
             "player": "",
             "prize": ""
           }
@@ -1680,9 +1680,9 @@ export const ESPORTS_RESEARCH = [
         "event": "ALGS Championship 2025 (Tokyo)",
         "prizePool": "$2,000,000",
         "champion": "Team Falcons",
-        "runnerUp": "Imperial",
+        "runnerUp": "ImperialHal, Zer0, Genburten",
         "eventScope": "region",
-        "clutchesAndRivalries": "Hal, Zer0, Genburten The 'God Trio' finally converted match point for their first ALGS world title.",
+        "clutchesAndRivalries": "The 'God Trio' finally converted match point for their first ALGS world title.",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -1692,7 +1692,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Imperial",
+            "team": "ImperialHal, Zer0, Genburten",
             "player": "",
             "prize": ""
           }
@@ -1759,20 +1759,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2024,
         "event": "ALGS Championship 2024 (Sapporo)",
         "prizePool": "$2,000,000",
-        "champion": "Go",
-        "runnerUp": "Next Esportsk4sen, etc.",
+        "champion": "GoNext Esports",
+        "runnerUp": "",
         "eventScope": "region",
-        "clutchesAndRivalries": "GoNext won game nine to take Europe's first ALGS crown.",
+        "clutchesAndRivalries": "k4sen, etc. GoNext won game nine to take Europe's first ALGS crown.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Go",
+            "team": "GoNext Esports",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Next Esportsk4sen, etc.",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -1863,9 +1863,9 @@ export const ESPORTS_RESEARCH = [
         "event": "ALGS Championship 2023 (Birmingham)",
         "prizePool": "$2,000,000",
         "champion": "TSM",
-        "runnerUp": "Imperial",
+        "runnerUp": "ImperialHal, Reps, Verhulst",
         "eventScope": "region",
-        "clutchesAndRivalries": "Hal, Reps, Verhulst TSM won 3 consecutive matches on match point to secure the crown.",
+        "clutchesAndRivalries": "TSM won 3 consecutive matches on match point to secure the crown.",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -1875,7 +1875,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Imperial",
+            "team": "ImperialHal, Reps, Verhulst",
             "player": "",
             "prize": ""
           }
@@ -1885,20 +1885,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2023,
         "event": "Split 1 Playoff Major (London)",
         "prizePool": "$1,000,000",
-        "champion": "TSMNRG",
-        "runnerUp": "",
+        "champion": "TSM",
+        "runnerUp": "NRG",
         "eventScope": "region",
         "clutchesAndRivalries": "ImperialHal clutched match point with 5 endgame kills on World's Edge.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "TSMNRG",
+            "team": "TSM",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "",
+            "team": "NRG",
             "player": "",
             "prize": ""
           }
@@ -1908,20 +1908,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2023,
         "event": "Split 2 Playoff Major (London)",
         "prizePool": "$1,000,000",
-        "champion": "Dark",
-        "runnerUp": "Zero Esports",
+        "champion": "DarkZero Esports",
+        "runnerUp": "TSM",
         "eventScope": "region",
-        "clutchesAndRivalries": "TSM Zer0 secured DarkZero's 3rd overall LAN Major title.",
+        "clutchesAndRivalries": "Zer0 secured DarkZero's 3rd overall LAN Major title.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Dark",
+            "team": "DarkZero Esports",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Zero Esports",
+            "team": "TSM",
             "player": "",
             "prize": ""
           }
@@ -1931,20 +1931,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2022,
         "event": "ALGS Championship 2022 (Raleigh)",
         "prizePool": "$2,000,000",
-        "champion": "Dark",
-        "runnerUp": "Zero Esports",
+        "champion": "DarkZero Esports",
+        "runnerUp": "Genburten, Zer0, Sharky",
         "eventScope": "region",
-        "clutchesAndRivalries": "Genburten, Zer0, Sharky Zer0 led DarkZero to back-to-back LAN titles on match point.",
+        "clutchesAndRivalries": "Zer0 led DarkZero to back-to-back LAN titles on match point.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Dark",
+            "team": "DarkZero Esports",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Zero Esports",
+            "team": "Genburten, Zer0, Sharky",
             "player": "",
             "prize": ""
           }
@@ -2125,20 +2125,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2023,
         "event": "PGC 2023 (Bangkok)",
         "prizePool": "$2,000,000",
-        "champion": "Danawa e",
-        "runnerUp": "Sports17 Gaming",
+        "champion": "Danawa eSports",
+        "runnerUp": "",
         "eventScope": "region",
-        "clutchesAndRivalries": "Danawa broke Korea's 4-year title drought on home soil.",
+        "clutchesAndRivalries": "17 Gaming Danawa broke Korea's 4-year title drought on home soil.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Danawa e",
+            "team": "Danawa eSports",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Sports17 Gaming",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -2149,9 +2149,9 @@ export const ESPORTS_RESEARCH = [
         "event": "PGC 2022 (Dubai)",
         "prizePool": "$3,300,000",
         "champion": "Natus Vincere (NaVi)",
-        "runnerUp": "17 Gaming",
+        "runnerUp": "",
         "eventScope": "region",
-        "clutchesAndRivalries": "NaVi recorded 3 Chicken Dinners on the final day to pull ahead.",
+        "clutchesAndRivalries": "17 Gaming NaVi recorded 3 Chicken Dinners on the final day to pull ahead.",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -2161,7 +2161,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "17 Gaming",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -2171,20 +2171,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2021,
         "event": "PGC 2021 (Incheon)",
         "prizePool": "$4,300,000",
-        "champion": "New",
-        "runnerUp": "Happy",
+        "champion": "NewHappy",
+        "runnerUp": "Heroic",
         "eventScope": "region",
-        "clutchesAndRivalries": "Heroic Chinese squad NewHappy won by 4 points in a 15-match thriller.",
+        "clutchesAndRivalries": "Chinese squad NewHappy won by 4 points in a 15-match thriller.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "New",
+            "team": "NewHappy",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Happy",
+            "team": "Heroic",
             "player": "",
             "prize": ""
           }
@@ -2218,9 +2218,9 @@ export const ESPORTS_RESEARCH = [
         "event": "PGC 2019 (Oakland/LA)",
         "prizePool": "$6,000,000",
         "champion": "Gen.G Esports",
-        "runnerUp": "Fa",
+        "runnerUp": "FaZe Clan",
         "eventScope": "region",
-        "clutchesAndRivalries": "Ze Clan Gen.G's Pio clutched a final 4v4 on Miramar to seal the title.",
+        "clutchesAndRivalries": "Gen.G's Pio clutched a final 4v4 on Miramar to seal the title.",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -2230,7 +2230,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Fa",
+            "team": "FaZe Clan",
             "player": "",
             "prize": ""
           }
@@ -2479,20 +2479,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2022,
         "event": "PMGC 2022 (Jakarta)",
         "prizePool": "$4,000,000",
-        "champion": "S2",
-        "runnerUp": "G Esports",
+        "champion": "S2G Esports",
+        "runnerUp": "DRS Gaming",
         "eventScope": "region",
-        "clutchesAndRivalries": "DRS Gaming Turkish squad S2G brought Europe its first PMGC World Championship.",
+        "clutchesAndRivalries": "Turkish squad S2G brought Europe its first PMGC World Championship.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "S2",
+            "team": "S2G Esports",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "G Esports",
+            "team": "DRS Gaming",
             "player": "",
             "prize": ""
           }
@@ -2960,20 +2960,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2018,
         "event": "2018 World Championship (Incheon)",
         "prizePool": "$6,450,000",
-        "champion": "Invictus Gaming (i",
-        "runnerUp": "G)",
+        "champion": "Invictus Gaming (iG)",
+        "runnerUp": "Fnatic",
         "eventScope": "region",
-        "clutchesAndRivalries": "Fnatic Rookie & TheShy brought China (LPL) its first Worlds title.",
+        "clutchesAndRivalries": "Rookie & TheShy brought China (LPL) its first Worlds title.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Invictus Gaming (i",
+            "team": "Invictus Gaming (iG)",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "G)",
+            "team": "Fnatic",
             "player": "",
             "prize": ""
           }
@@ -2984,9 +2984,9 @@ export const ESPORTS_RESEARCH = [
         "event": "MSI 2018 (Paris, France)",
         "prizePool": "$1,370,000",
         "champion": "Royal Never Give Up",
-        "runnerUp": "Kingzone Dragon",
+        "runnerUp": "Kingzone DragonX",
         "eventScope": "region",
-        "clutchesAndRivalries": "X Uzi delivered a masterclass on Kai'Sa to give the LPL the trophy.",
+        "clutchesAndRivalries": "Uzi delivered a masterclass on Kai'Sa to give the LPL the trophy.",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -2996,7 +2996,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Kingzone Dragon",
+            "team": "Kingzone DragonX",
             "player": "",
             "prize": ""
           }
@@ -3213,20 +3213,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2011,
         "event": "Season 1 Championship (Sweden)",
         "prizePool": "$100,000",
-        "champion": "Fnatica",
-        "runnerUp": "Aa",
+        "champion": "Fnatic",
+        "runnerUp": "",
         "eventScope": "region",
-        "clutchesAndRivalries": "xPeke brought Europe the inaugural world title.",
+        "clutchesAndRivalries": "aAa xPeke brought Europe the inaugural world title.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Fnatica",
+            "team": "Fnatic",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Aa",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -3362,9 +3362,9 @@ export const ESPORTS_RESEARCH = [
         "event": "ESL One Birmingham 2024",
         "prizePool": "$1,000,000",
         "champion": "Team Falcons",
-        "runnerUp": "Bet",
+        "runnerUp": "BetBoom Team",
         "eventScope": "region",
-        "clutchesAndRivalries": "Boom Team ATF & Malr1ne won their first European ESL One major title.",
+        "clutchesAndRivalries": "ATF & Malr1ne won their first European ESL One major title.",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -3374,7 +3374,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Bet",
+            "team": "BetBoom Team",
             "player": "",
             "prize": ""
           }
@@ -3526,20 +3526,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2022,
         "event": "ESL One Stockholm 2022",
         "prizePool": "$500,000",
-        "champion": "OGTS M",
-        "runnerUp": "",
+        "champion": "OG",
+        "runnerUp": "TS M",
         "eventScope": "region",
         "clutchesAndRivalries": "Ceb returned as a stand-in on Windranger to lead OG to the title.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "OGTS M",
+            "team": "OG",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "",
+            "team": "TS M",
             "player": "",
             "prize": ""
           }
@@ -3871,20 +3871,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2012,
         "event": "TI2 (Seattle, USA)",
         "prizePool": "$1,600,000",
-        "champion": "Invictus Gaming (i",
-        "runnerUp": "G)",
+        "champion": "Invictus Gaming (iG)",
+        "runnerUp": "Natus Vincere",
         "eventScope": "region",
-        "clutchesAndRivalries": "Natus Vincere Ferrari_430 & ChuaN brought China its first Aegis of Champions.",
+        "clutchesAndRivalries": "Ferrari_430 & ChuaN brought China its first Aegis of Champions.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Invictus Gaming (i",
+            "team": "Invictus Gaming (iG)",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "G)",
+            "team": "Natus Vincere",
             "player": "",
             "prize": ""
           }
@@ -3996,20 +3996,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2025,
         "event": "M7 World Championship (Jakarta)",
         "prizePool": "$1,000,000",
-        "champion": "Team Liquid",
-        "runnerUp": "PH",
+        "champion": "Team Liquid PH",
+        "runnerUp": "Selangor Red Giants",
         "eventScope": "region",
-        "clutchesAndRivalries": "Selangor Red Giants KarlTzy captured his 3rd World Title in a 4-2 final.",
+        "clutchesAndRivalries": "KarlTzy captured his 3rd World Title in a 4-2 final.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Team Liquid",
+            "team": "Team Liquid PH",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "PH",
+            "team": "Selangor Red Giants",
             "player": "",
             "prize": ""
           }
@@ -4345,20 +4345,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2022,
         "event": "KIC 2022 (Shenzhen / Seoul)",
         "prizePool": "$10,000,000",
-        "champion": "e",
-        "runnerUp": "Star Pro",
+        "champion": "eStar Pro",
+        "runnerUp": "Wuhan eStar",
         "eventScope": "region",
-        "clutchesAndRivalries": "Wuhan e Star eStar Pro won the inaugural $10M global edition 4-2.",
+        "clutchesAndRivalries": "eStar Pro won the inaugural $10M global edition 4-2.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "e",
+            "team": "eStar Pro",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Star Pro",
+            "team": "Wuhan eStar",
             "player": "",
             "prize": ""
           }
@@ -4681,21 +4681,21 @@ export const ESPORTS_RESEARCH = [
         "year": 2023,
         "event": "Capcom Cup IX (Los Angeles)",
         "prizePool": "$300,000",
-        "champion": "Mena",
-        "runnerUp": "RD",
+        "champion": "MenaRD",
+        "runnerUp": "Luke / Birdie",
         "eventScope": "region",
-        "clutchesAndRivalries": "Luke / Birdie MenaRD became the first two-time Capcom Cup Champion.",
+        "clutchesAndRivalries": "MenaRD became the first two-time Capcom Cup Champion.",
         "payouts": [
           {
             "rank": "1st (Champion)",
             "team": "",
-            "player": "Mena",
+            "player": "MenaRD",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
-            "player": "RD",
+            "player": "Luke / Birdie",
             "prize": ""
           }
         ]
@@ -4784,21 +4784,21 @@ export const ESPORTS_RESEARCH = [
         "year": 2019,
         "event": "Capcom Cup 2019 (Los Angeles)",
         "prizePool": "$250,000",
-        "champion": "i",
-        "runnerUp": "Dom",
+        "champion": "iDom",
+        "runnerUp": "Laura / Poison",
         "eventScope": "region",
-        "clutchesAndRivalries": "Laura / Poison iDom won from the lower bracket with Laura/Poison.",
+        "clutchesAndRivalries": "iDom won from the lower bracket with Laura/Poison.",
         "payouts": [
           {
             "rank": "1st (Champion)",
             "team": "",
-            "player": "i",
+            "player": "iDom",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
-            "player": "Dom",
+            "player": "Laura / Poison",
             "prize": ""
           }
         ]
@@ -4876,21 +4876,21 @@ export const ESPORTS_RESEARCH = [
         "year": 2017,
         "event": "Capcom Cup 2017 (Anaheim)",
         "prizePool": "$370,000",
-        "champion": "Mena",
-        "runnerUp": "RD",
+        "champion": "MenaRD",
+        "runnerUp": "Birdie",
         "eventScope": "region",
-        "clutchesAndRivalries": "Birdie 18-year-old MenaRD reset the bracket against Tokido.",
+        "clutchesAndRivalries": "18-year-old MenaRD reset the bracket against Tokido.",
         "payouts": [
           {
             "rank": "1st (Champion)",
             "team": "",
-            "player": "Mena",
+            "player": "MenaRD",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
-            "player": "RD",
+            "player": "Birdie",
             "prize": ""
           }
         ]
@@ -4899,21 +4899,21 @@ export const ESPORTS_RESEARCH = [
         "year": 2016,
         "event": "Capcom Cup 2016 (Anaheim)",
         "prizePool": "$350,000",
-        "champion": "Nuckle",
-        "runnerUp": "Du",
+        "champion": "NuckleDu",
+        "runnerUp": "Guile / R. Mika",
         "eventScope": "region",
-        "clutchesAndRivalries": "Guile / R. Mika NuckleDu became the first American Capcom Cup champion.",
+        "clutchesAndRivalries": "NuckleDu became the first American Capcom Cup champion.",
         "payouts": [
           {
             "rank": "1st (Champion)",
             "team": "",
-            "player": "Nuckle",
+            "player": "NuckleDu",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
-            "player": "Du",
+            "player": "Guile / R. Mika",
             "prize": ""
           }
         ]
@@ -5093,21 +5093,21 @@ export const ESPORTS_RESEARCH = [
         "year": 2025,
         "event": "TWT Finals 2025 (Seoul)",
         "prizePool": "$300,000",
-        "champion": "Low",
-        "runnerUp": "High",
+        "champion": "LowHigh",
+        "runnerUp": "Shaheen / Bryan",
         "eventScope": "region",
-        "clutchesAndRivalries": "Shaheen / Bryan LowHigh clutched a 3-2 victory over Mangja for his first TWT title.",
+        "clutchesAndRivalries": "LowHigh clutched a 3-2 victory over Mangja for his first TWT title.",
         "payouts": [
           {
             "rank": "1st (Champion)",
             "team": "",
-            "player": "Low",
+            "player": "LowHigh",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
-            "player": "High",
+            "player": "Shaheen / Bryan",
             "prize": ""
           }
         ]
@@ -5506,20 +5506,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2024,
         "event": "FC Pro World Championship 2024 (Dallas)",
         "prizePool": "$1,000,000",
-        "champion": "Veerse",
-        "runnerUp": "PS5 (RBL ZELD)",
+        "champion": "VeersePS5 (RBL ZELD)",
+        "runnerUp": "",
         "eventScope": "region",
         "clutchesAndRivalries": "16-year-old Veerse won the inaugural FC Pro Era World Championship.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Veerse",
+            "team": "VeersePS5 (RBL ZELD)",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "PS5 (RBL ZELD)",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -5529,20 +5529,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2023,
         "event": "FIFAe World Cup 2023 (Riyadh)",
         "prizePool": "$500,000",
-        "champion": "Manuel \"Manu",
-        "runnerUp": "Bachoore\" Bachoore",
+        "champion": "Manuel \"ManuBachoore\" BachoorePS5 (Team Liquid)",
+        "runnerUp": "",
         "eventScope": "region",
-        "clutchesAndRivalries": "PS5 (Team Liquid) ManuBachoore won a tense penalty shootout in the grand finals.",
+        "clutchesAndRivalries": "ManuBachoore won a tense penalty shootout in the grand finals.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Manuel \"Manu",
+            "team": "Manuel \"ManuBachoore\" BachoorePS5 (Team Liquid)",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Bachoore\" Bachoore",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -5552,20 +5552,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2022,
         "event": "FIFAe World Cup 2022 (Copenhagen)",
         "prizePool": "$500,000",
-        "champion": "Umberto \"Matias\" Giulizzoni",
-        "runnerUp": "PS5 (Compleito)",
+        "champion": "Umberto \"Matias\" GiulizzoniPS5 (Compleito)",
+        "runnerUp": "",
         "eventScope": "region",
         "clutchesAndRivalries": "Matias won Argentina's first FIFAe World Championship.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Umberto \"Matias\" Giulizzoni",
+            "team": "Umberto \"Matias\" GiulizzoniPS5 (Compleito)",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "PS5 (Compleito)",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -5575,20 +5575,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2019,
         "event": "FIFAe World Cup 2019 (London)",
         "prizePool": "$500,000",
-        "champion": "Mohammed \"Mo",
-        "runnerUp": "Auba\" Harkous",
+        "champion": "Mohammed \"MoAuba\" HarkousPS4 (VfL Wolfsburg)",
+        "runnerUp": "",
         "eventScope": "region",
-        "clutchesAndRivalries": "PS4 (Vf L Wolfsburg) MoAuba became the first German player to lift the trophy.",
+        "clutchesAndRivalries": "MoAuba became the first German player to lift the trophy.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Mohammed \"Mo",
+            "team": "Mohammed \"MoAuba\" HarkousPS4 (VfL Wolfsburg)",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Auba\" Harkous",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -5598,20 +5598,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2018,
         "event": "FIFAe World Cup 2018 (London)",
         "prizePool": "$400,000",
-        "champion": "Mosaad \"MSdossary\" Aldossary",
-        "runnerUp": "Xbox/PS (Rogue)",
+        "champion": "Mosaad \"MSdossary\" AldossaryXbox/PS (Rogue)",
+        "runnerUp": "",
         "eventScope": "region",
         "clutchesAndRivalries": "MSdossary went undefeated across the entire finals bracket.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Mosaad \"MSdossary\" Aldossary",
+            "team": "Mosaad \"MSdossary\" AldossaryXbox/PS (Rogue)",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Xbox/PS (Rogue)",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -5621,20 +5621,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2017,
         "event": "FIWC 2017 (London)",
         "prizePool": "$268,000",
-        "champion": "Spencer \"Gorilla\" Ealing",
-        "runnerUp": "Xbox/PS (UK)",
+        "champion": "Spencer \"Gorilla\" EalingXbox/PS (UK)",
+        "runnerUp": "",
         "eventScope": "region",
         "clutchesAndRivalries": "Gorilla dominated the tournament using heavy skill-move canceling.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Spencer \"Gorilla\" Ealing",
+            "team": "Spencer \"Gorilla\" EalingXbox/PS (UK)",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Xbox/PS (UK)",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -5644,20 +5644,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2016,
         "event": "FIWC 2016 (New York)",
         "prizePool": "$20,000",
-        "champion": "Mohamad Al-Bacha",
-        "runnerUp": "Xbox/PS (Denmark)",
+        "champion": "Mohamad Al-BachaXbox/PS (Denmark)",
+        "runnerUp": "",
         "eventScope": "region",
         "clutchesAndRivalries": "Al-Bacha won on away-goals in a dramatic 89th-minute comeback.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Mohamad Al-Bacha",
+            "team": "Mohamad Al-BachaXbox/PS (Denmark)",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Xbox/PS (Denmark)",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -5667,20 +5667,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2015,
         "event": "FIWC 2015 (Munich)",
         "prizePool": "$26,000",
-        "champion": "Abdulaziz Alshehri",
-        "runnerUp": "Play",
+        "champion": "Abdulaziz AlshehriPlayStation (Saudi Arabia)",
+        "runnerUp": "",
         "eventScope": "region",
-        "clutchesAndRivalries": "Station (Saudi Arabia) Alshehri brought Saudi Arabia its first virtual football world title.",
+        "clutchesAndRivalries": "Alshehri brought Saudi Arabia its first virtual football world title.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Abdulaziz Alshehri",
+            "team": "Abdulaziz AlshehriPlayStation (Saudi Arabia)",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Play",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -5821,20 +5821,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2024,
         "event": "RLCS 2024 (Fort Worth)",
         "prizePool": "$5,000,000",
-        "champion": "Team BDSG2 Stride",
-        "runnerUp": "",
+        "champion": "Team BDS",
+        "runnerUp": "G2 Stride",
         "eventScope": "region",
         "clutchesAndRivalries": "dralii and MM swept G2 in a 4-2 grand final reset.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Team BDSG2 Stride",
+            "team": "Team BDS",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "",
+            "team": "G2 Stride",
             "player": "",
             "prize": ""
           }
@@ -5901,20 +5901,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2022,
         "event": "RLCS 2021-22 (Fort Worth)",
         "prizePool": "$2,085,000",
-        "champion": "Team BDSG2 Esports",
-        "runnerUp": "",
+        "champion": "Team BDS",
+        "runnerUp": "G2 Esports",
         "eventScope": "region",
         "clutchesAndRivalries": "Extra, Seikoo, & Monkey Moon returned EU to top standing.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Team BDSG2 Esports",
+            "team": "Team BDS",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "",
+            "team": "G2 Esports",
             "player": "",
             "prize": ""
           }
@@ -6017,9 +6017,9 @@ export const ESPORTS_RESEARCH = [
         "event": "RLCS Season 3 (LA)",
         "prizePool": "$150,000",
         "champion": "Northern Gaming",
-        "runnerUp": "Mock-It e",
+        "runnerUp": "Mock-It eSports",
         "eventScope": "region",
-        "clutchesAndRivalries": "Sports Deevo and Turbopolsa (sub) won after a lower bracket run.",
+        "clutchesAndRivalries": "Deevo and Turbopolsa (sub) won after a lower bracket run.",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -6029,7 +6029,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Mock-It e",
+            "team": "Mock-It eSports",
             "player": "",
             "prize": ""
           }
@@ -6039,20 +6039,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2017,
         "event": "RLCS Season 4 (Washington D.C.)",
         "prizePool": "$150,000",
-        "champion": "Gale Force e",
-        "runnerUp": "Sports",
+        "champion": "Gale Force eSports",
+        "runnerUp": "Method",
         "eventScope": "region",
-        "clutchesAndRivalries": "Method Kaydop, ViolentPanda, & Turbopolsa established their dynasty.",
+        "clutchesAndRivalries": "Kaydop, ViolentPanda, & Turbopolsa established their dynasty.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Gale Force e",
+            "team": "Gale Force eSports",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Sports",
+            "team": "Method",
             "player": "",
             "prize": ""
           }
@@ -6062,20 +6062,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2016,
         "event": "RLCS Season 1 (Hollywood)",
         "prizePool": "$55,000",
-        "champion": "i",
-        "runnerUp": "BUYPOWER Cosmic",
+        "champion": "iBUYPOWER Cosmic",
+        "runnerUp": "FlipSid3 Tactics",
         "eventScope": "region",
-        "clutchesAndRivalries": "Flip Sid3 Tactics Kronovi, Lachinio, & Over Zero won the first RLCS title.",
+        "clutchesAndRivalries": "Kronovi, Lachinio, & Over Zero won the first RLCS title.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "i",
+            "team": "iBUYPOWER Cosmic",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "BUYPOWER Cosmic",
+            "team": "FlipSid3 Tactics",
             "player": "",
             "prize": ""
           }
@@ -6085,20 +6085,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2016,
         "event": "RLCS Season 2 (Amsterdam)",
         "prizePool": "$125,000",
-        "champion": "Flip",
-        "runnerUp": "Sid3 Tactics",
+        "champion": "FlipSid3 Tactics",
+        "runnerUp": "Mock-It eSports",
         "eventScope": "region",
-        "clutchesAndRivalries": "Mock-It e Sports Kuxir97 & Markydooda redeemed their Season 1 runner-up finish.",
+        "clutchesAndRivalries": "Kuxir97 & Markydooda redeemed their Season 1 runner-up finish.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Flip",
+            "team": "FlipSid3 Tactics",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Sid3 Tactics",
+            "team": "Mock-It eSports",
             "player": "",
             "prize": ""
           }
@@ -6187,20 +6187,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2025,
         "event": "Magic N' Mayhem Championship (Set 12)",
         "prizePool": "",
-        "champion": "Li",
-        "runnerUp": "Shao",
+        "champion": "LiShao",
+        "runnerUp": "ChinaLiShao claimed China's 5th overall TFT World Title.",
         "eventScope": "region",
-        "clutchesAndRivalries": "China Li Shao claimed China's 5th overall TFT World Title.",
+        "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Li",
+            "team": "LiShao",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Shao",
+            "team": "ChinaLiShao claimed China's 5th overall TFT World Title.",
             "player": "",
             "prize": ""
           }
@@ -6245,9 +6245,9 @@ export const ESPORTS_RESEARCH = [
         "event": "Inkborn Fables Championship (Set 11)",
         "prizePool": "",
         "champion": "Dishsoap",
-        "runnerUp": "North America",
+        "runnerUp": "North AmericaDishsoap achieved NA's back-to-back championship run.",
         "eventScope": "region",
-        "clutchesAndRivalries": "Dishsoap achieved NA's back-to-back championship run.",
+        "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -6257,7 +6257,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "North America",
+            "team": "North AmericaDishsoap achieved NA's back-to-back championship run.",
             "player": "",
             "prize": ""
           }
@@ -6291,9 +6291,9 @@ export const ESPORTS_RESEARCH = [
         "event": "Monsters Attack! Championship (Set 8)",
         "prizePool": "",
         "champion": "Rereplay",
-        "runnerUp": "North America",
+        "runnerUp": "North AmericaRereplay brought North America its first TFT world trophy.",
         "eventScope": "region",
-        "clutchesAndRivalries": "Rereplay brought North America its first TFT world trophy.",
+        "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -6303,7 +6303,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "North America",
+            "team": "North AmericaRereplay brought North America its first TFT world trophy.",
             "player": "",
             "prize": ""
           }
@@ -6313,20 +6313,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2023,
         "event": "Runeterra Reforged (Set 9)",
         "prizePool": "",
-        "champion": "Title",
-        "runnerUp": "Japan",
+        "champion": "TitleJapanTitle became the first 2-time TFT World Champion in history.",
+        "runnerUp": "",
         "eventScope": "region",
-        "clutchesAndRivalries": "Title became the first 2-time TFT World Champion in history.",
+        "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Title",
+            "team": "TitleJapanTitle became the first 2-time TFT World Champion in history.",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Japan",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -6336,20 +6336,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2022,
         "event": "Dragonlands Championship (Set 7)",
         "prizePool": "",
-        "champion": "Title",
-        "runnerUp": "Japan",
+        "champion": "TitleJapanTitle brought Japan its first global TFT championship.",
+        "runnerUp": "",
         "eventScope": "region",
-        "clutchesAndRivalries": "Title brought Japan its first global TFT championship.",
+        "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Title",
+            "team": "TitleJapanTitle brought Japan its first global TFT championship.",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Japan",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -6359,20 +6359,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2022,
         "event": "Neon Nights Championship (Set 6)",
         "prizePool": "",
-        "champion": "Xun",
-        "runnerUp": "Ge",
+        "champion": "XunGe",
+        "runnerUp": "ChinaBack-to-back Chinese world championships.",
         "eventScope": "region",
-        "clutchesAndRivalries": "China Back-to-back Chinese world championships.",
+        "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Xun",
+            "team": "XunGe",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Ge",
+            "team": "ChinaBack-to-back Chinese world championships.",
             "player": "",
             "prize": ""
           }
@@ -6383,9 +6383,9 @@ export const ESPORTS_RESEARCH = [
         "event": "Fates Championship (Set 4)",
         "prizePool": "",
         "champion": "8ascend (8833)",
-        "runnerUp": "China",
+        "runnerUp": "ChinaChina captured its first TFT World Title behind 3-star 4-cost play.",
         "eventScope": "region",
-        "clutchesAndRivalries": "China captured its first TFT World Title behind 3-star 4-cost play.",
+        "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -6395,7 +6395,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "China",
+            "team": "ChinaChina captured its first TFT World Title behind 3-star 4-cost play.",
             "player": "",
             "prize": ""
           }
@@ -6406,9 +6406,9 @@ export const ESPORTS_RESEARCH = [
         "event": "Reckoning Championship (Set 5)",
         "prizePool": "",
         "champion": "Huanmie",
-        "runnerUp": "China",
+        "runnerUp": "ChinaHuanmie won Checkmate format on game 5.",
         "eventScope": "region",
-        "clutchesAndRivalries": "Huanmie won Checkmate format on game 5.",
+        "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -6418,7 +6418,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "China",
+            "team": "ChinaHuanmie won Checkmate format on game 5.",
             "player": "",
             "prize": ""
           }
@@ -6746,20 +6746,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2025,
         "event": "ESL R1 World Championship 2025",
         "prizePool": "",
-        "champion": "Luke Bennett (Redline)",
-        "runnerUp": "Red Bull Sim Racing",
+        "champion": "Luke Bennett (Redline)Red Bull Sim RacingBennett defended his world title across Sprint and Endurance formats.",
+        "runnerUp": "",
         "eventScope": "region",
-        "clutchesAndRivalries": "Bennett defended his world title across Sprint and Endurance formats.",
+        "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Luke Bennett (Redline)",
+            "team": "Luke Bennett (Redline)Red Bull Sim RacingBennett defended his world title across Sprint and Endurance formats.",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Red Bull Sim Racing",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -6803,20 +6803,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2024,
         "event": "ESL R1 Fall Major 2024 (Munich)",
         "prizePool": "",
-        "champion": "Luke Bennett (Redline)",
-        "runnerUp": "BMW M Team Redline",
+        "champion": "Luke Bennett (Redline)BMW M Team RedlineBennett dominated pole positions and set track records.",
+        "runnerUp": "",
         "eventScope": "region",
-        "clutchesAndRivalries": "Bennett dominated pole positions and set track records.",
+        "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Luke Bennett (Redline)",
+            "team": "Luke Bennett (Redline)BMW M Team RedlineBennett dominated pole positions and set track records.",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "BMW M Team Redline",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -6826,20 +6826,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2024,
         "event": "ESL R1 Spring Major 2024 (Riyadh)",
         "prizePool": "",
-        "champion": "Kevin Siggy (Redline)",
-        "runnerUp": "BMW M Team Redline",
+        "champion": "Kevin Siggy (Redline)BMW M Team RedlineSiggy won back-to-back sprint races to secure the title.",
+        "runnerUp": "",
         "eventScope": "region",
-        "clutchesAndRivalries": "Siggy won back-to-back sprint races to secure the title.",
+        "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Kevin Siggy (Redline)",
+            "team": "Kevin Siggy (Redline)BMW M Team RedlineSiggy won back-to-back sprint races to secure the title.",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "BMW M Team Redline",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -6883,20 +6883,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2023,
         "event": "ESL R1 Fall Major 2023 (Jönköping)",
         "prizePool": "",
-        "champion": "Jiri Toman (R8",
-        "runnerUp": "G)",
+        "champion": "Jiri Toman (R8G)Porsche Coanda EsportsPorsche Coanda took the team crown with superior pit stops.",
+        "runnerUp": "",
         "eventScope": "region",
-        "clutchesAndRivalries": "Porsche Coanda Esports Porsche Coanda took the team crown with superior pit stops.",
+        "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Jiri Toman (R8",
+            "team": "Jiri Toman (R8G)Porsche Coanda EsportsPorsche Coanda took the team crown with superior pit stops.",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "G)",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -6906,20 +6906,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2023,
         "event": "ESL R1 Spring Major 2023 (Katowice)",
         "prizePool": "",
-        "champion": "Marcell Csincsik (R8",
-        "runnerUp": "G)",
+        "champion": "Marcell Csincsik (R8G)BMW M Team RedlineCsincsik won the inaugural driver's championship in Katowice.",
+        "runnerUp": "",
         "eventScope": "region",
-        "clutchesAndRivalries": "BMW M Team Redline Csincsik won the inaugural driver's championship in Katowice.",
+        "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Marcell Csincsik (R8",
+            "team": "Marcell Csincsik (R8G)BMW M Team RedlineCsincsik won the inaugural driver's championship in Katowice.",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "G)",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -7121,20 +7121,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2025,
         "event": "Black Ops 6 (Kitchener)",
         "prizePool": "$2,500,000",
-        "champion": "Atlanta Fa",
-        "runnerUp": "Zea",
+        "champion": "Atlanta FaZe",
+        "runnerUp": "",
         "eventScope": "region",
-        "clutchesAndRivalries": "Be Zy, Simp, Cellium, Drazah FaZe reclaimed the CDL crown in a 5-3 grand final.",
+        "clutchesAndRivalries": "aBeZy, Simp, Cellium, Drazah FaZe reclaimed the CDL crown in a 5-3 grand final.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Atlanta Fa",
+            "team": "Atlanta FaZe",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Zea",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -7212,20 +7212,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2024,
         "event": "MWIII (Allen, TX)",
         "prizePool": "$2,380,000",
-        "champion": "Op",
-        "runnerUp": "Tic Texas",
+        "champion": "OpTic Texas",
+        "runnerUp": "Shotzzy, Dashy, Kenny, Pred",
         "eventScope": "region",
-        "clutchesAndRivalries": "Shotzzy, Dashy, Kenny, Pred OpTic Texas brought the franchise its first ring since 2017.",
+        "clutchesAndRivalries": "OpTic Texas brought the franchise its first ring since 2017.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Op",
+            "team": "OpTic Texas",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Tic Texas",
+            "team": "Shotzzy, Dashy, Kenny, Pred",
             "player": "",
             "prize": ""
           }
@@ -7281,20 +7281,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2021,
         "event": "Cold War (LA)",
         "prizePool": "$2,500,000",
-        "champion": "Atlanta Fa",
-        "runnerUp": "Zea",
+        "champion": "Atlanta FaZe",
+        "runnerUp": "",
         "eventScope": "region",
-        "clutchesAndRivalries": "Be Zy, Simp, Cellium, Arcitys FaZe dominated the season with an 88% match win rate.",
+        "clutchesAndRivalries": "aBeZy, Simp, Cellium, Arcitys FaZe dominated the season with an 88% match win rate.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Atlanta Fa",
+            "team": "Atlanta FaZe",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Zea",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -7305,9 +7305,9 @@ export const ESPORTS_RESEARCH = [
         "event": "MW 2019 (Online)",
         "prizePool": "$4,600,000",
         "champion": "Dallas Empire",
-        "runnerUp": "Clayster, Crimson, Shotzzy, i",
+        "runnerUp": "Clayster, Crimson, Shotzzy, iLLeY, Huke",
         "eventScope": "region",
-        "clutchesAndRivalries": "LLe Y, Huke Crimson became the first 3x CoD World Champion.",
+        "clutchesAndRivalries": "Crimson became the first 3x CoD World Champion.",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -7317,7 +7317,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Clayster, Crimson, Shotzzy, i",
+            "team": "Clayster, Crimson, Shotzzy, iLLeY, Huke",
             "player": "",
             "prize": ""
           }
@@ -7327,20 +7327,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2019,
         "event": "Black Ops 4 (LA)",
         "prizePool": "$2,000,000",
-        "champion": "e",
-        "runnerUp": "United",
+        "champion": "eUnitedClayster, aBeZy, Simp, Arcitys, Prestige",
+        "runnerUp": "",
         "eventScope": "region",
-        "clutchesAndRivalries": "Clayster, a Be Zy, Simp, Arcitys, Prestige Simp won Finals MVP in his rookie debut season.",
+        "clutchesAndRivalries": "Simp won Finals MVP in his rookie debut season.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "e",
+            "team": "eUnitedClayster, aBeZy, Simp, Arcitys, Prestige",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "United",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -7373,20 +7373,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2017,
         "event": "Infinite Warfare (Orlando)",
         "prizePool": "$1,500,000",
-        "champion": "Op",
-        "runnerUp": "Tic Gaming",
+        "champion": "OpTic Gaming",
+        "runnerUp": "Scump, Formal, Crimson, Karma",
         "eventScope": "region",
-        "clutchesAndRivalries": "Scump, Formal, Crimson, Karma The 'OpTic Dynasty' finally secured their elusive ring.",
+        "clutchesAndRivalries": "The 'OpTic Dynasty' finally secured their elusive ring.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Op",
+            "team": "OpTic Gaming",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Tic Gaming",
+            "team": "Scump, Formal, Crimson, Karma",
             "player": "",
             "prize": ""
           }
@@ -7396,20 +7396,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2016,
         "event": "Black Ops III (LA)",
         "prizePool": "$2,000,000",
-        "champion": "Team En",
-        "runnerUp": "Vy",
+        "champion": "Team EnVyUs",
+        "runnerUp": "JKap, SlasheR, John, Apathy",
         "eventScope": "region",
-        "clutchesAndRivalries": "Us JKap, Slashe R, John, Apathy JKap became a back-to-back world champion.",
+        "clutchesAndRivalries": "JKap became a back-to-back world champion.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Team En",
+            "team": "Team EnVyUs",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Vy",
+            "team": "JKap, SlasheR, John, Apathy",
             "player": "",
             "prize": ""
           }
@@ -7443,9 +7443,9 @@ export const ESPORTS_RESEARCH = [
         "event": "Ghosts (LA)",
         "prizePool": "$1,000,000",
         "champion": "Complexity Gaming",
-        "runnerUp": "ACHES, Tee",
+        "runnerUp": "ACHES, TeePee, Crimson, Karma",
         "eventScope": "region",
-        "clutchesAndRivalries": "Pee, Crimson, Karma Karma became the first 2x CoD World Champion.",
+        "clutchesAndRivalries": "Karma became the first 2x CoD World Champion.",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -7455,7 +7455,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "ACHES, Tee",
+            "team": "ACHES, TeePee, Crimson, Karma",
             "player": "",
             "prize": ""
           }
@@ -7466,9 +7466,9 @@ export const ESPORTS_RESEARCH = [
         "event": "Black Ops II (LA)",
         "prizePool": "$1,000,000",
         "champion": "Fariko Impact",
-        "runnerUp": "Karma, Killa, Parasite, MI",
+        "runnerUp": "Karma, Killa, Parasite, MIRx",
         "eventScope": "region",
-        "clutchesAndRivalries": "Rx Fariko Impact established the first true CoD dynasty.",
+        "clutchesAndRivalries": "Fariko Impact established the first true CoD dynasty.",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -7478,7 +7478,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Karma, Killa, Parasite, MI",
+            "team": "Karma, Killa, Parasite, MIRx",
             "player": "",
             "prize": ""
           }
@@ -7840,20 +7840,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2023,
         "event": "World Tour Finals 2023 (Montpellier)",
         "prizePool": "",
-        "champion": "Alliance (Carl Jr. & Pac)",
-        "runnerUp": "Alliance",
+        "champion": "Alliance",
+        "runnerUp": "",
         "eventScope": "region",
-        "clutchesAndRivalries": "Won the inaugural 2v2 Duo Team World Championship.",
+        "clutchesAndRivalries": "(Carl Jr. & Pac)AllianceWon the inaugural 2v2 Duo Team World Championship.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Alliance (Carl Jr. & Pac)",
+            "team": "Alliance",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Alliance",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -7863,20 +7863,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2022,
         "event": "Trackmania World Cup 2022",
         "prizePool": "",
-        "champion": "Carl Jr.Solary",
-        "runnerUp": "Carl Jr. set the record with 5 individual World Championship titles.",
+        "champion": "Carl Jr.",
+        "runnerUp": "SolaryCarl Jr. set the record with 5 individual World Championship titles.",
         "eventScope": "region",
         "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Carl Jr.Solary",
+            "team": "Carl Jr.",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Carl Jr. set the record with 5 individual World Championship titles.",
+            "team": "SolaryCarl Jr. set the record with 5 individual World Championship titles.",
             "player": "",
             "prize": ""
           }
@@ -7886,20 +7886,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2021,
         "event": "Trackmania World Cup 2021",
         "prizePool": "",
-        "champion": "Carl Jr.Solary",
-        "runnerUp": "Carl Jr. captured his 4th individual World Championship trophy.",
+        "champion": "Carl Jr.",
+        "runnerUp": "SolaryCarl Jr. captured his 4th individual World Championship trophy.",
         "eventScope": "region",
         "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Carl Jr.Solary",
+            "team": "Carl Jr.",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Carl Jr. captured his 4th individual World Championship trophy.",
+            "team": "SolaryCarl Jr. captured his 4th individual World Championship trophy.",
             "player": "",
             "prize": ""
           }
@@ -7910,9 +7910,9 @@ export const ESPORTS_RESEARCH = [
         "event": "TMGL Winter 2020 (Online)",
         "prizePool": "",
         "champion": "Gwen",
-        "runnerUp": "Game",
+        "runnerUp": "GameWard15-year-old French prodigy Gwen won his first major senior title.",
         "eventScope": "region",
-        "clutchesAndRivalries": "Ward15-year-old French prodigy Gwen won his first major senior title.",
+        "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -7922,7 +7922,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Game",
+            "team": "GameWard15-year-old French prodigy Gwen won his first major senior title.",
             "player": "",
             "prize": ""
           }
@@ -7932,20 +7932,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2015,
         "event": "ESWC 2015 (Paris)",
         "prizePool": "",
-        "champion": "Carl Jr.Team Dignitas",
-        "runnerUp": "Completed the legendary 3-peat in time-trial racing history.",
+        "champion": "Carl Jr.",
+        "runnerUp": "Team Dignitas",
         "eventScope": "region",
-        "clutchesAndRivalries": "",
+        "clutchesAndRivalries": "Completed the legendary 3-peat in time-trial racing history.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Carl Jr.Team Dignitas",
+            "team": "Carl Jr.",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Completed the legendary 3-peat in time-trial racing history.",
+            "team": "Team Dignitas",
             "player": "",
             "prize": ""
           }
@@ -7955,20 +7955,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2014,
         "event": "ESWC 2014 (Paris)",
         "prizePool": "",
-        "champion": "Carl Jr.Team Dignitas",
-        "runnerUp": "Back-to-back world championship titles for Carl Jr.",
+        "champion": "Carl Jr.",
+        "runnerUp": "Team Dignitas",
         "eventScope": "region",
-        "clutchesAndRivalries": "",
+        "clutchesAndRivalries": "Back-to-back world championship titles for Carl Jr.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Carl Jr.Team Dignitas",
+            "team": "Carl Jr.",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Back-to-back world championship titles for Carl Jr.",
+            "team": "Team Dignitas",
             "player": "",
             "prize": ""
           }
@@ -7978,20 +7978,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2013,
         "event": "ESWC 2013 (Paris)",
         "prizePool": "",
-        "champion": "Carl Jr.Team Dignitas",
-        "runnerUp": "Carl Jr. won his first official world championship title.",
+        "champion": "Carl Jr.",
+        "runnerUp": "Team Dignitas",
         "eventScope": "region",
-        "clutchesAndRivalries": "",
+        "clutchesAndRivalries": "Carl Jr. won his first official world championship title.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Carl Jr.Team Dignitas",
+            "team": "Carl Jr.",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Carl Jr. won his first official world championship title.",
+            "team": "Team Dignitas",
             "player": "",
             "prize": ""
           }
@@ -8001,20 +8001,20 @@ export const ESPORTS_RESEARCH = [
         "year": 2006,
         "event": "ESWC 2006 (Paris)",
         "prizePool": "",
-        "champion": "Carl Jr. (Initial Debut Era)",
-        "runnerUp": "Individual (Canada)",
+        "champion": "Carl Jr.",
+        "runnerUp": "",
         "eventScope": "region",
-        "clutchesAndRivalries": "Carl Jr. launched Canada's historic dominance in time-trial racing.",
+        "clutchesAndRivalries": "(Initial Debut Era)Individual (Canada)Carl Jr. launched Canada's historic dominance in time-trial racing.",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Carl Jr. (Initial Debut Era)",
+            "team": "Carl Jr.",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Individual (Canada)",
+            "team": "",
             "player": "",
             "prize": ""
           }
@@ -8345,9 +8345,9 @@ export const ESPORTS_RESEARCH = [
         "event": "SWT Finals 2026 (Tokyo)",
         "prizePool": "",
         "champion": "Xiao Hai",
-        "runnerUp": "Fatal Fury (Terry / Mai)",
+        "runnerUp": "Fatal Fury (Terry / Mai)Xiao Hai added another SNK world title to his legendary career.",
         "eventScope": "region",
-        "clutchesAndRivalries": "Xiao Hai added another SNK world title to his legendary career.",
+        "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -8358,7 +8358,7 @@ export const ESPORTS_RESEARCH = [
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
-            "player": "Fatal Fury (Terry / Mai)",
+            "player": "Fatal Fury (Terry / Mai)Xiao Hai added another SNK world title to his legendary career.",
             "prize": ""
           }
         ]
@@ -8368,9 +8368,9 @@ export const ESPORTS_RESEARCH = [
         "event": "SNK World Championship 2025",
         "prizePool": "",
         "champion": "Laghar",
-        "runnerUp": "Fatal Fury (Rock Howard)",
+        "runnerUp": "Fatal Fury (Rock Howard)Laghar won the inaugural major title for Fatal Fury: City of the Wolves.",
         "eventScope": "region",
-        "clutchesAndRivalries": "Laghar won the inaugural major title for Fatal Fury: City of the Wolves.",
+        "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -8381,7 +8381,7 @@ export const ESPORTS_RESEARCH = [
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
-            "player": "Fatal Fury (Rock Howard)",
+            "player": "Fatal Fury (Rock Howard)Laghar won the inaugural major title for Fatal Fury: City of the Wolves.",
             "prize": ""
           }
         ]
@@ -8391,9 +8391,9 @@ export const ESPORTS_RESEARCH = [
         "event": "SWT Finals 2024 (San Jose)",
         "prizePool": "",
         "champion": "Xiao Hai",
-        "runnerUp": "KOF XV (Isla / Geese)",
+        "runnerUp": "KOF XV (Isla / Geese)Xiao Hai captured back-to-back SNK World Tour titles.",
         "eventScope": "region",
-        "clutchesAndRivalries": "Xiao Hai captured back-to-back SNK World Tour titles.",
+        "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
@@ -8404,7 +8404,7 @@ export const ESPORTS_RESEARCH = [
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
-            "player": "KOF XV (Isla / Geese)",
+            "player": "KOF XV (Isla / Geese)Xiao Hai captured back-to-back SNK World Tour titles.",
             "prize": ""
           }
         ]
@@ -8436,21 +8436,21 @@ export const ESPORTS_RESEARCH = [
         "year": 2022,
         "event": "SWT Finals 2022 (Online)",
         "prizePool": "",
-        "champion": "ZJZKOF XV (Kula / Krohnen)",
-        "runnerUp": "ZJZ dominated the inaugural KOF XV global championship season.",
+        "champion": "ZJZ",
+        "runnerUp": "KOF XV (Kula / Krohnen)ZJZ dominated the inaugural KOF XV global championship season.",
         "eventScope": "region",
         "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
             "team": "",
-            "player": "ZJZKOF XV (Kula / Krohnen)",
+            "player": "ZJZ",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
-            "player": "ZJZ dominated the inaugural KOF XV global championship season.",
+            "player": "KOF XV (Kula / Krohnen)ZJZ dominated the inaugural KOF XV global championship season.",
             "prize": ""
           }
         ]
@@ -8468,22 +8468,22 @@ export const ESPORTS_RESEARCH = [
     "editions": [
       {
         "year": 2025,
-        "event": "FIF",
+        "event": "FIFAe World Cup Sim Racing",
         "prizePool": "",
-        "champion": "Ae World Cup Sim Racing",
-        "runnerUp": "Red Bull Sim Racing Sebastian Job Sim Racing / GT",
+        "champion": "Red Bull Sim Racing",
+        "runnerUp": "Sebastian JobSim Racing / GT",
         "eventScope": "region",
         "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Ae World Cup Sim Racing",
+            "team": "Red Bull Sim Racing",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Red Bull Sim Racing Sebastian Job Sim Racing / GT",
+            "team": "Sebastian JobSim Racing / GT",
             "player": "",
             "prize": ""
           }
@@ -8491,22 +8491,22 @@ export const ESPORTS_RESEARCH = [
       },
       {
         "year": 2024,
-        "event": "i",
+        "event": "iRacing World Championship",
         "prizePool": "",
-        "champion": "Racing World Championship",
-        "runnerUp": "Team Redline Luke Bennett, Maximilian Beneckei Racing / GTP",
+        "champion": "Team Redline",
+        "runnerUp": "Luke Bennett, Maximilian BeneckeiRacing / GTP",
         "eventScope": "region",
         "clutchesAndRivalries": "",
         "payouts": [
           {
             "rank": "1st (Champion)",
-            "team": "Racing World Championship",
+            "team": "Team Redline",
             "player": "",
             "prize": ""
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Team Redline Luke Bennett, Maximilian Beneckei Racing / GTP",
+            "team": "Luke Bennett, Maximilian BeneckeiRacing / GTP",
             "player": "",
             "prize": ""
           }
@@ -8517,7 +8517,7 @@ export const ESPORTS_RESEARCH = [
         "event": "GT World Challenge Esports",
         "prizePool": "",
         "champion": "Ferrari Esports Team",
-        "runnerUp": "Jordan Sherratt ACC / GT3",
+        "runnerUp": "Jordan SherrattACC / GT3",
         "eventScope": "region",
         "clutchesAndRivalries": "",
         "payouts": [
@@ -8529,7 +8529,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Jordan Sherratt ACC / GT3",
+            "team": "Jordan SherrattACC / GT3",
             "player": "",
             "prize": ""
           }
@@ -8540,7 +8540,7 @@ export const ESPORTS_RESEARCH = [
         "event": "SRO Esports GT Finals",
         "prizePool": "",
         "champion": "BMW M Team Redline",
-        "runnerUp": "James Baldwin ACC / GT3",
+        "runnerUp": "James BaldwinACC / GT3",
         "eventScope": "region",
         "clutchesAndRivalries": "",
         "payouts": [
@@ -8552,7 +8552,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "James Baldwin ACC / GT3",
+            "team": "James BaldwinACC / GT3",
             "player": "",
             "prize": ""
           }
@@ -8563,7 +8563,7 @@ export const ESPORTS_RESEARCH = [
         "event": "24 Hours of Le Mans Virtual",
         "prizePool": "",
         "champion": "Realteam Hydrogen Redline",
-        "runnerUp": "Jeffrey Rietveld, Michal Smidl Factor2 / LMP",
+        "runnerUp": "Jeffrey Rietveld, Michal SmidlFactor2 / LMP",
         "eventScope": "region",
         "clutchesAndRivalries": "",
         "payouts": [
@@ -8575,7 +8575,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Jeffrey Rietveld, Michal Smidl Factor2 / LMP",
+            "team": "Jeffrey Rietveld, Michal SmidlFactor2 / LMP",
             "player": "",
             "prize": ""
           }
@@ -8586,7 +8586,7 @@ export const ESPORTS_RESEARCH = [
         "event": "24 Hours of Le Mans Virtual",
         "prizePool": "",
         "champion": "Rebellion Williams Esports",
-        "runnerUp": "Nikodem Wisniewski, Jakub Brzezinski Factor2 / LMP",
+        "runnerUp": "Nikodem Wisniewski, Jakub BrzezinskiFactor2 / LMP",
         "eventScope": "region",
         "clutchesAndRivalries": "",
         "payouts": [
@@ -8598,7 +8598,7 @@ export const ESPORTS_RESEARCH = [
           },
           {
             "rank": "2nd (Runner-Up)",
-            "team": "Nikodem Wisniewski, Jakub Brzezinski Factor2 / LMP",
+            "team": "Nikodem Wisniewski, Jakub BrzezinskiFactor2 / LMP",
             "player": "",
             "prize": ""
           }

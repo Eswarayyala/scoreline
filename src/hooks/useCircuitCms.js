@@ -8,7 +8,7 @@ import { buildFilterGames } from "../data/gameCatalog";
 import { mergeEwcEditions } from "../data/eventScope";
 import { normalizeEdition } from "../data/vaultDeskSchema";
 
-const STORAGE_KEY = "grindinfo-circuit-cms-v3";
+const STORAGE_KEY = "grindinfo-circuit-cms-v4";
 const CMS_COLLECTION = "circuitCms";
 
 function slugify(value) {

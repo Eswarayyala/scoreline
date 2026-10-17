@@ -64,9 +64,9 @@ export function mergeEwcEditions(seed = [], existing = []) {
       return;
     }
     byKey.set(key, {
-      ...prior,
       ...edition,
-      eventScope: edition.eventScope === "region" ? "region" : prior?.eventScope === "region" ? "region" : "ewc",
+      ...prior,
+      eventScope: prior.eventScope === "region" || edition.eventScope === "region" ? "region" : prior.eventScope || edition.eventScope || "ewc",
     });
   });
   return [...byKey.values()];

@@ -75,27 +75,41 @@ function slugify(value) {
 }
 
 const KNOWN_ORGS = [
-  "FunPlus Phoenix (FPX)",
-  "FunPlus Phoenix",
-  "Ninjas in Pyjamas",
-  "Natus Vincere (NaVi)",
-  "Natus Vincere",
-  "Evil Geniuses (EG)",
-  "Evil Geniuses",
-  "EDward Gaming (EDG)",
-  "EDward Gaming",
-  "Royal Never Give Up",
-  "SK Telecom T1 (T1)",
-  "SK Telecom T1",
-  "Counter Logic Gaming",
-  "Gaimin Gladiators",
-  "Team Liquid",
-  "Team Spirit",
-  "Team Vitality",
-  "Team Falcons",
-  "FaZe Clan",
-  "G2 Esports",
-];
+  "iBUYPOWER Cosmic", "FlipSid3 Tactics", "Northern Gaming", "Gale Force eSports", "Team Dignitas",
+  "Renault Vitality", "Karmine Corp", "Team BDS", "G2 Stride", "Mock-It eSports", "NRG Esports",
+  "GoNext Esports", "DarkZero Esports", "Spacestation Gaming", "SpaceStation Gaming", "Reject Winnity",
+  "Kungarna (SCARZ in EU)", "Kungarna", "Team Falcons", "OpTic Texas", "OpTic Gaming", "OpTic",
+  "Atlanta FaZe", "Los Angeles Thieves", "New York Subliners", "Dallas Empire", "Fariko Impact",
+  "Complexity Gaming", "Denial Esports", "FunPlus Phoenix (FPX)", "FunPlus Phoenix",
+  "Ninjas in Pyjamas", "Natus Vincere (NaVi)", "Natus Vincere", "Evil Geniuses (EG)", "Evil Geniuses",
+  "EDward Gaming (EDG)", "EDward Gaming", "Royal Never Give Up", "SK Telecom T1 (T1)", "SK Telecom T1",
+  "Counter Logic Gaming", "Gaimin Gladiators", "Team Liquid PH", "Team Liquid", "Team Spirit",
+  "Team Vitality", "FaZe Clan", "G2 Esports", "The MongolZ", "GamerLegion", "Luminosity Gaming",
+  "Team EnVyUs", "Team LDLC.com", "Gambit Esports", "Virtus.pro", "SK Gaming", "Cloud9", "Astralis",
+  "ENCE", "AVANGAR", "Heroic", "FURIA", "Immortals", "Outsiders (VP)", "Paper Rex", "Team Heretics",
+  "Acend", "LOUD", "PSG.LGD", "Invictus Gaming (iG)", "Invictus Gaming", "Wings Gaming", "Newbee",
+  "Alliance", "Tundra Esports", "PARIVISION", "Secret", "OG", "EHOME", "CDEC Gaming", "DC Esports",
+  "Vici Gaming", "Keen Gaming", "Mineski", "Azure Ray", "BetBoom Team", "TS M", "Taipei Assassins",
+  "Azubu Frost", "Samsung White", "Samsung Galaxy", "Royal Club", "Star Horn Royal", "KOO Tigers",
+  "DAMWON Gaming (DK)", "DAMWON Gaming", "DWG KIA", "Weibo Gaming", "Bilibili Gaming", "KT Rolster",
+  "Suning", "DRX", "T1", "Fnatic ONIC", "Fnatic", "JD Gaming", "Gen.G Esports", "Gen.G", "Kingzone DragonX",
+  "Nova Esports", "Klas Gaming", "Kaos Next Ruya", "S2G Esports", "DRS Gaming", "IHC Esports",
+  "Stalwart Esports", "Dplus KIA", "Regnum Carya Bra", "Alpha7 Esports", "ULF Esports",
+  "OMG (FPP) / Gen.G (TPP)", "Susquehanna Soniqs", "Soniqs", "Zenith Esports", "NewHappy", "Danawa eSports",
+  "Twisted Minds", "17 Gaming", "Team Liquid", "Continuum", "Era eSports", "PENTA Sports",
+  "W7m Esports", "EVOS Legends", "RRQ Hoshi", "Bren Esports", "Burmese Ghouls", "Blacklist International",
+  "ONIC PH", "ECHO", "AP.Bren", "ONIC Esports", "Selangor Red Giants", "eStar Pro", "Wuhan eStar",
+  "Chengdu AG Super Play", "KPL Dream Team", "LGD Gaming My", "Mouz", "MOUZ", "BIG", "Vitality",
+  "Reignite", "NRG", "UNLIMIT", "Oblivion", "SSG", "TSM", "Method", "iBUYPOWER", "Necessary",
+  "Streeteight", "Horizon", "Absolute", "REVIVAL Esports", "BMW M Team Redline", "Porsche Coanda Esports",
+  "Red Bull Sim Racing", "Rebellion Williams Esports", "Realteam Hydrogen Redline", "Ferrari Esports Team",
+  "Team Redline", "Carl Jr.", "Gwen", "Pac", "Magnus Carlsen", "Hikaru Nakamura", "Wesley So",
+  "Alireza Firouzja", "Denis Lazavik", "Maxime Vachier-Lagrave", "Nihal Sarin", "Double61", "8ascend (8833)",
+  "Huanmie", "XunGe", "Rereplay", "Dishsoap", "LiShao", "subservient", "MenaRD", "NuckleDu", "Gachikun",
+  "LowHigh", "Arslan Ash", "Atif Butt", "Qudans", "Rangchu", "Chikurin", "AngryBird", "Bonchan",
+  "Kawano", "Punk", "Leshar", "Ulsan", "Knee", "Xiao Hai", "ZJZ", "Laghar", "Sako", "Momochi",
+  "Kazunoko", "iDom", "UMA", "Kakeru", "Paper Rex", "Gambit Esports",
+].sort((a, b) => b.length - a.length);
 
 function splitGlued(blob) {
   const text = String(blob || "").replace(/\s+/g, " ").trim();
@@ -103,19 +117,14 @@ function splitGlued(blob) {
   const known = KNOWN_ORGS.find((name) => text.startsWith(name));
   if (known) {
     const rest = text.slice(known.length);
+    if (!rest) return { champion: known, runnerUp: "", leftover: "" };
+    if (!/^[A-Z(]/.test(rest)) return { champion: known, runnerUp: "", leftover: rest };
     const next = splitGlued(rest);
     return { champion: known, runnerUp: next.champion, leftover: [next.runnerUp, next.leftover].filter(Boolean).join(" ") };
   }
-  let parts = text.split(/(?<=[a-z0-9)])(?=[A-Z])|(?<=\.[a-z]{2,})(?=[A-Z])|(?<=[A-Z]{2})(?=[A-Z][a-z])/).map((part) => part.trim()).filter(Boolean);
-  if (parts.length === 1) {
-    const special = text.match(/^(OG)(PSG\.LGD)$/i) || text.match(/^(DRX)(T1)$/i) || text.match(/^([A-Z]{2,4})([A-Z]{2,}\.[A-Z]+)$/);
-    if (special) parts = [special[1], special[2]];
-  }
-  return {
-    champion: parts[0] || text,
-    runnerUp: parts[1] || "",
-    leftover: parts.slice(2).join(" "),
-  };
+  const special = text.match(/^(OG)(PSG\.LGD)(.*)$/i) || text.match(/^(DRX)(T1)(.*)$/i);
+  if (special) return { champion: special[1], runnerUp: special[2], leftover: special[3] || "" };
+  return { champion: text, runnerUp: "", leftover: "" };
 }
 
 function splitRows(table) {
@@ -142,6 +151,11 @@ function parseEventAndNames(rest) {
   if (glued && glued[2] !== undefined) return { event: glued[1].trim(), names: rest.slice(glued[1].length).trim() };
   const camel = splitGlued(rest);
   if (camel.runnerUp) return { event: camel.champion, names: `${camel.runnerUp}${camel.leftover}` };
+  const org = KNOWN_ORGS.find((name) => rest.includes(name));
+  if (org) {
+    const at = rest.indexOf(org);
+    if (at > 0) return { event: rest.slice(0, at).trim(), names: rest.slice(at).trim() };
+  }
   return { event: rest, names: "" };
 }
 

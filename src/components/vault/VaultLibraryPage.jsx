@@ -24,7 +24,16 @@ export default function VaultLibraryPage({ slides = VAULT_SLIDES, children }) {
   const items = slides.length ? slides : VAULT_SLIDES;
   const [game, setGame] = useState("all");
   const [scope, setScope] = useState("all");
-  const games = useMemo(() => [...new Set(items.map((slide) => slide.game).filter(Boolean))].sort(), [items]);
+  const games = useMemo(() => {
+    const seen = new Set();
+    return items.map((slide) => slide.game).filter((name) => {
+      const game = String(name || "").trim();
+      const key = game.toLowerCase();
+      if (!game || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).sort((a, b) => a.localeCompare(b));
+  }, [items]);
   const visible = items.filter((slide) => {
     const gameOk = game === "all" || slide.game === game;
     if (scope === "all") return gameOk;

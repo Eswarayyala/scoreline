@@ -114,10 +114,14 @@ export default function VaultDetailPage({ liveEntries = [], slug, slides = VAULT
                 {editionsNewestFirst(slide.editions).map((edition) => {
                   const format = formatForGame(slide.game, edition.structureId);
                   const finalsRows = (edition.finalsTable || []).filter((row) => Object.values(row).some((value) => String(value || "").trim()));
-                  const stages = (edition.stages || []).filter((row) => row.name || row.kickedOff || row.teams);
+                  const stages = (edition.stages || []).filter((row) => row.kickedOff || row.teams);
+                  const yearLabel = [...new Set([edition.season, edition.year].filter((value) => String(value || "").trim()).map(String))];
+                  const payouts = (edition.payouts || []).filter((row) => row.rank || row.team || row.player || row.prize);
+                  const showPrizes = payouts.some((row) => String(row.prize || "").trim());
+                  const showPayouts = payouts.some((row) => !/^1st|^2nd/i.test(String(row.rank || "")) || showPrizes);
                   return (
-                  <section key={`${edition.year}-${edition.event}`} className="border-t border-white/10 pt-6">
-                    <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-volt">{[edition.season, edition.year].filter(Boolean).join(" · ")}</p>
+                  <section key={`${edition.year}-${edition.event}-${edition.eventScope || ""}`} className="border-t border-white/10 pt-6">
+                    <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-volt">{yearLabel.join(" · ")}</p>
                     <h2 className="font-display text-3xl text-white">{edition.event}</h2>
                     <p className="mt-1 text-sm text-slate-400">{[edition.prizePool && `Prize pool ${edition.prizePool}`, edition.totalTeams && `${edition.totalTeams} teams groups to finals`].filter(Boolean).join(" · ")}</p>
                     {(edition.champion || edition.runnerUp || edition.mvp || edition.bestIgl) && (
@@ -177,27 +181,27 @@ export default function VaultDetailPage({ liveEntries = [], slug, slides = VAULT
                         </table>
                       </div>
                     )}
-                    {!!edition.payouts?.length && (
+                    {showPayouts && (
                       <table className="mt-4 w-full text-left text-sm text-slate-300">
                         <thead>
                           <tr className="text-slate-500">
                             <th className="py-1 pr-3 font-mono text-[10px] uppercase tracking-widest">Place</th>
                             <th className="py-1 pr-3 font-mono text-[10px] uppercase tracking-widest">
-                              {edition.payouts.some((row) => row.team) && edition.payouts.some((row) => row.player)
+                              {payouts.some((row) => row.team) && payouts.some((row) => row.player)
                                 ? "Team / player"
-                                : edition.payouts.some((row) => row.player)
+                                : payouts.some((row) => row.player)
                                   ? "Player"
                                   : "Team"}
                             </th>
-                            <th className="py-1 font-mono text-[10px] uppercase tracking-widest">Prize</th>
+                            {showPrizes && <th className="py-1 font-mono text-[10px] uppercase tracking-widest">Prize</th>}
                           </tr>
                         </thead>
                         <tbody>
-                          {edition.payouts.map((row) => (
-                            <tr key={`${edition.year}-${row.rank}`} className="border-t border-white/5">
+                          {payouts.map((row, index) => (
+                            <tr key={`${edition.year}-${row.rank}-${index}`} className="border-t border-white/5">
                               <td className="py-2 pr-3">{row.rank}</td>
                               <td className="py-2 pr-3">{row.team || row.player}</td>
-                              <td className="py-2">{row.prize}</td>
+                              {showPrizes && <td className="py-2">{row.prize}</td>}
                             </tr>
                           ))}
                         </tbody>
