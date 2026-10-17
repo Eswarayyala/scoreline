@@ -65,6 +65,11 @@ function mergeWithSeed(remote = []) {
       yearlyStats: existing.yearlyStats?.length ? existing.yearlyStats : item.yearlyStats,
       relatedTournaments: existing.relatedTournaments?.length ? existing.relatedTournaments : item.relatedTournaments,
       region: existing.region || item.region,
+      flyers: existing.flyers?.length ? existing.flyers : item.flyers,
+      avatar: existing.avatar || item.avatar,
+      poster: ["upload", "url"].includes(existing.posterSource) ? existing.poster : (existing.poster || item.poster),
+      posterSource: existing.posterSource || item.posterSource,
+      posterIndex: existing.posterIndex ?? item.posterIndex ?? 0,
     });
   });
   if (![...byId.values()].some((item) => item.surface === "vault")) {
@@ -108,6 +113,9 @@ export function emptyCircuitEvent(surface) {
     summary: "",
     poster: "",
     posterSource: "preset",
+    flyers: [],
+    avatar: "",
+    posterIndex: 0,
     winners: "",
     runnerUps: "",
     secondRunnerUps: "",

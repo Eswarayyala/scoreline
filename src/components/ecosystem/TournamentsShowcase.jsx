@@ -21,8 +21,8 @@ export default function TournamentsShowcase({ tournaments = [], onOpenTournament
     <section className="rounded-3xl border border-white/10 bg-slate-950/60 p-5 backdrop-blur-md">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-flare">Tournaments</p>
-          <h2 className="font-display text-3xl text-white">Live / upcoming brackets</h2>
+          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-flare">Scrims</p>
+          <h2 className="font-display text-3xl text-white">Live / upcoming scrims</h2>
         </div>
         <button type="button" onClick={onBrowseAll} className="font-mono text-[11px] uppercase tracking-widest text-neon">Open desk</button>
       </div>

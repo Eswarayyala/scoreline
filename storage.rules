@@ -1,0 +1,34 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isSiteOwner() {
+      return signedIn()
+        && firestore.get(/databases/(default)/documents/siteRoles/$(request.auth.uid)).data.role == 'owner'
+        && firestore.get(/databases/(default)/documents/siteRoles/$(request.auth.uid)).data.enabled == true;
+    }
+    function isTournamentAdmin(tid) {
+      let t = firestore.get(/databases/(default)/documents/tournaments/$(tid)).data;
+      return signedIn() && (
+        request.auth.uid == t.adminUserId
+        || (t.coAdminUserIds is list && request.auth.uid in t.coAdminUserIds)
+      );
+    }
+    function isImage() {
+      return request.resource == null
+        || request.resource.contentType.matches('image/.*');
+    }
+
+    match /media/site/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSiteOwner() && isImage();
+    }
+
+    match /media/tournaments/{tid}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isImage() && (isSiteOwner() || isTournamentAdmin(tid));
+    }
+  }
+}

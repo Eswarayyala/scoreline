@@ -50,19 +50,36 @@ const GAME_RAWG_SLUGS = {
   Trackmania: "trackmania",
   Chess: "chess",
   "Chess (EWC Invitational)": "chess",
+  "Fatal Fury": "fatal-fury-city-of-the-wolves",
+  "Sim Racing": "assetto-corsa",
 };
 
 export async function fetchGamePoster(game) {
-  if (!RAWG_API_KEY) return "";
+  const pack = await fetchGameArtPack(game);
+  return pack.poster || "";
+}
+
+export async function fetchGameArtPack(game) {
+  if (!RAWG_API_KEY) return { poster: "", avatar: "", flyers: [] };
   const slug = GAME_RAWG_SLUGS[game];
-  if (!slug) return "";
+  if (!slug) return { poster: "", avatar: "", flyers: [] };
   try {
-    const response = await fetch(`${RAWG_BASE}/${encodeURIComponent(slug)}?key=${encodeURIComponent(RAWG_API_KEY)}`);
-    if (!response.ok) return "";
-    const data = await response.json();
-    return String(data.background_image || data.background_image_additional || "");
+    const [detailRes, shotRes] = await Promise.all([
+      fetch(`${RAWG_BASE}/${encodeURIComponent(slug)}?key=${encodeURIComponent(RAWG_API_KEY)}`),
+      fetch(`${RAWG_BASE}/${encodeURIComponent(slug)}/screenshots?key=${encodeURIComponent(RAWG_API_KEY)}`),
+    ]);
+    const detail = detailRes.ok ? await detailRes.json() : {};
+    const shots = shotRes.ok ? await shotRes.json() : { results: [] };
+    const poster = String(detail.background_image || detail.background_image_additional || "");
+    const extra = (shots.results || []).map((item) => String(item.image || "")).filter(Boolean);
+    const flyers = [...new Set([poster, String(detail.background_image_additional || ""), ...extra].filter(Boolean))].slice(0, 6);
+    return {
+      poster,
+      avatar: poster,
+      flyers,
+    };
   } catch {
-    return "";
+    return { poster: "", avatar: "", flyers: [] };
   }
 }
 

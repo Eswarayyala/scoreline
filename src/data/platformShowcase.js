@@ -36,6 +36,8 @@ export const GAME_BANNERS = {
   Trackmania: "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&w=1600&q=80",
   Chess: "https://images.unsplash.com/photo-1529699211952-734e80c4d42b?auto=format&fit=crop&w=1600&q=80",
   "Chess (EWC Invitational)": "https://images.unsplash.com/photo-1529699211952-734e80c4d42b?auto=format&fit=crop&w=1600&q=80",
+  "Fatal Fury": "https://images.unsplash.com/photo-1511882150382-421056c8eccc?auto=format&fit=crop&w=1600&q=80",
+  "Sim Racing": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1600&q=80",
 };
 
 export const GAME_AVATARS = {
@@ -76,6 +78,8 @@ export const GAME_AVATARS = {
   Trackmania: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&h=256&q=80",
   Chess: "https://images.unsplash.com/photo-1529699211952-734e80c4d42b?auto=format&fit=crop&w=256&h=256&q=80",
   "Chess (EWC Invitational)": "https://images.unsplash.com/photo-1529699211952-734e80c4d42b?auto=format&fit=crop&w=256&h=256&q=80",
+  "Fatal Fury": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=256&h=256&q=80",
+  "Sim Racing": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&h=256&q=80",
 };
 
 const fallbackBanner = "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1600&q=80";
@@ -85,20 +89,50 @@ function isHttpUrl(value) {
   return typeof value === "string" && /^https?:\/\//i.test(value.trim());
 }
 
+export function isImageSrc(value) {
+  const raw = String(value || "").trim();
+  return /^https?:\/\//i.test(raw) || raw.startsWith("data:image/") || raw.startsWith("/media/");
+}
+
 export function bannerForGame(game) {
   return GAME_BANNERS[game] || fallbackBanner;
 }
 
+const FLYER_POOL = [
+  "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1600&q=80",
+  "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1600&q=80",
+  "https://images.unsplash.com/photo-1542751110-97427bbecf20?auto=format&fit=crop&w=1600&q=80",
+  "https://images.unsplash.com/photo-1511882150382-421056c8eccc?auto=format&fit=crop&w=1600&q=80",
+  "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?auto=format&fit=crop&w=1600&q=80",
+  "https://images.unsplash.com/photo-1574375927938-d5a150dd51b0?auto=format&fit=crop&w=1600&q=80",
+  "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1600&q=80",
+  "https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?auto=format&fit=crop&w=1600&q=80",
+];
+
+export function flyersForGame(game, extras = []) {
+  const primary = bannerForGame(game);
+  const hash = [...String(game || "")].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const rotated = FLYER_POOL.map((_, index) => FLYER_POOL[(hash + index) % FLYER_POOL.length]);
+  const imported = (Array.isArray(extras) ? extras : []).filter(isImageSrc);
+  return [...new Set([primary, ...imported, ...rotated].filter(isImageSrc))].slice(0, 6);
+}
+
+export function avatarForGame(game) {
+  return GAME_AVATARS[game] || fallbackAvatar;
+}
+
 export function avatarForGamer(player = {}) {
-  if (isHttpUrl(player.photoURL)) return player.photoURL;
-  if (isHttpUrl(player.avatar)) return player.avatar;
+  if (isImageSrc(player.photoURL)) return player.photoURL;
+  if (isImageSrc(player.avatar)) return player.avatar;
   const games = Array.isArray(player.games) ? player.games : [player.game];
   const game = games.find((name) => GAME_AVATARS[name]);
   return (game && GAME_AVATARS[game]) || fallbackAvatar;
 }
 
 export function flyerForEvent(item = {}) {
-  const url = [item.posterUrl, item.flyer, item.poster, item.banner, item.cover, item.artwork].find(isHttpUrl);
+  const pack = flyersForGame(item.game, item.flyers || item.images);
+  const chosen = pack[Number(item.posterIndex) || 0];
+  const url = [item.posterUrl, item.flyer, item.poster, chosen, item.banner, item.cover, item.artwork].find(isImageSrc);
   if (url) return url;
   return bannerForGame(item.game);
 }

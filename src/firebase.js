@@ -9,6 +9,7 @@ import {
   browserLocalPersistence,
 } from "firebase/auth";
 import { getDatabase } from "firebase/database";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBlQWnHSz_ennegidtyrwiap6Oe_YtNtqI",
@@ -24,6 +25,7 @@ const GOOGLE_NONCE_KEY = "grindinfo-google-nonce";
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 export const realtimeDb = import.meta.env.VITE_FIREBASE_DATABASE_URL
   ? getDatabase(app, import.meta.env.VITE_FIREBASE_DATABASE_URL)
   : null;

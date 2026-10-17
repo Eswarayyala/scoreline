@@ -72,7 +72,7 @@ export default function VaultLibraryPage({ slides = VAULT_SLIDES, children }) {
       {floating.length > 0 && (
         <>
           <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Floating windows</h2>
-          <div className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mb-10 grid grid-cols-1 gap-4 md:grid-cols-2">
             {floating.map((slide) => <SlideCard key={slide.slug || slide.id} slide={slide} />)}
           </div>
         </>
@@ -80,7 +80,7 @@ export default function VaultLibraryPage({ slides = VAULT_SLIDES, children }) {
       {research.length > 0 && (
         <>
           <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Game vaults</h2>
-          <div className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mb-10 grid grid-cols-1 gap-4 md:grid-cols-2">
             {research.map((slide) => <SlideCard key={slide.slug || slide.id} slide={slide} />)}
           </div>
         </>
@@ -89,7 +89,7 @@ export default function VaultLibraryPage({ slides = VAULT_SLIDES, children }) {
       {blogs.length === 0 ? (
         <p className="text-sm text-stone-400">No published recaps in The Vault yet.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {blogs.map((slide) => <SlideCard key={slide.slug || slide.id} slide={slide} />)}
         </div>
       )}

@@ -33,7 +33,8 @@ import VaultLibraryPage from "./components/vault/VaultLibraryPage";
 import EwcDirectoryPage from "./components/vault/EwcDirectoryPage";
 import PreEwcHistoryPage from "./components/vault/PreEwcHistoryPage";
 import VaultResearchDesk from "./components/cms/VaultResearchDesk";
-import { avatarForGamer, bannerForGame, flyerForEvent } from "./data/platformShowcase";
+import { avatarForGamer, bannerForGame, flyerForEvent, flyersForGame } from "./data/platformShowcase";
+import { readImageFile } from "./lib/readImageFile";
 import CircuitCmsDesk from "./components/cms/CircuitCmsDesk";
 import FloatingWindowsDesk from "./components/cms/FloatingWindowsDesk";
 import SupportChangeQueue from "./components/cms/SupportChangeQueue";
@@ -43,6 +44,17 @@ import { assembleFloatingSlides, floatingPolicyFromRecords, mergeEwcWindows } fr
 import { useEsportsMedia } from "./hooks/useEsportsMedia";
 import { fetchGamePoster, mergeVaultMedia } from "./services/esportsMedia";
 import { FILTER_GAMES } from "./data/gameCatalog";
+import {
+  canViewScrimRoom,
+  canViewScrimStats,
+  isApprovedRegistrant,
+  isPublicScrim,
+  scrimAccessLabel,
+} from "./data/scrimAccess";
+import { useGameBanner, useMediaArt } from "./hooks/useMediaLibrary";
+import CollectionPicker from "./components/cms/CollectionPicker";
+import MediaLibraryDesk from "./components/cms/MediaLibraryDesk";
+import { BLOG_ANALYSIS_TYPES, analysisTypeLabel, isHttpsUrl } from "./data/blogAnalysis";
 import { ewcFloatingSlides } from "./data/esportsResearch";
 import { EVENT_SCOPES, applyEventToVault, findGameVault, inferEventScope, normalizeGameKey, publicScopeKicker } from "./data/eventScope";
 import { getFunctions, httpsCallable } from "firebase/functions";
@@ -461,14 +473,17 @@ function Eyebrow({ children, color = "var(--accent)" }) {
   );
 }
 
-function GameIcon({ game, size = 30 }) {
+function GameIcon({ game, size = 30, src }) {
+  const { covers } = useMediaArt();
+  const banner = useGameBanner(game, bannerForGame(game));
+  const live = src || covers?.[game]?.avatar || banner;
   return (
     <span
       aria-hidden="true"
       className="inline-grid shrink-0 overflow-hidden rounded-md border border-white/10"
       style={{ width: size, height: size }}
     >
-      <img src={bannerForGame(game)} alt="" className="aspect-square h-full w-full object-cover" />
+      <img src={live} alt="" className="aspect-square h-full w-full object-cover" />
     </span>
   );
 }
@@ -873,7 +888,28 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
           <div style={{ background: "var(--panel-raised)", border: "1px solid var(--border)", padding: 14 }}>
             <Eyebrow>Profile ideas</Eyebrow>
             <div style={{ fontSize: 13, color: "var(--text-muted)", margin: "6px 0 10px" }}>
-              Pick a quick avatar and try a starter bio or game. You can change these any time.
+              Pick a library avatar for your GrindInfo ID, or use a quick emoji. Avatars come from each game&apos;s Avatar pack.
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: "50%",
+                  overflow: "hidden",
+                  border: "1px solid var(--border)",
+                  display: "inline-grid",
+                  placeItems: "center",
+                  fontSize: 24,
+                  background: "var(--panel-bg)",
+                }}
+              >
+                {/^https?:\/\//i.test(avatar) || String(avatar).startsWith("/media/") || String(avatar).startsWith("data:image/")
+                  ? <img src={avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  : avatar}
+              </span>
+              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>This shows on your player ID and teammate search.</div>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
               {PLAYER_AVATARS.map((option) => (
@@ -898,6 +934,33 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
                 </button>
               ))}
             </div>
+            {games[0] ? (
+              <div style={{ marginBottom: 12 }}>
+                <CollectionPicker
+                  game={games[0]}
+                  kinds={["avatar"]}
+                  value={avatar}
+                  onSelect={setAvatar}
+                  heading={`Avatars · ${games[0]}`}
+                />
+                {games.length > 1 && (
+                  <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+                    {games.slice(1, 4).map((gameName) => (
+                      <CollectionPicker
+                        key={gameName}
+                        game={gameName}
+                        kinds={["avatar"]}
+                        value={avatar}
+                        onSelect={setAvatar}
+                        heading={`Avatars · ${gameName}`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 12 }}>Select a game below to browse that title&apos;s avatar pack.</p>
+            )}
             <div style={{ fontSize: 11, color: "var(--text-dim)", marginBottom: 6 }}>QUICK GAME PICKS</div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
               {QUICK_PICK_GAMES.map((game) => (
@@ -1367,16 +1430,16 @@ function RegistrationPanel({ tournament, requests, currentUserId, currentUserNam
   return (
     <section style={{ marginTop: isAdmin ? 0 : 20, padding: isAdmin ? 0 : 16, background: isAdmin ? "transparent" : "var(--panel-bg)", border: isAdmin ? "none" : "1px solid var(--border)" }}>
       {isAdmin ? (
-        <Eyebrow>{openJoin ? "Free join" : "Request to join"} · {slotLabel}</Eyebrow>
+        <Eyebrow>{openJoin ? "Public registration" : "Private · request to join"} · {slotLabel}</Eyebrow>
       ) : (
-        <Eyebrow>{mine ? `Your place · ${mine.status}` : joiningOpen ? "Enter this tournament" : "Registration"}</Eyebrow>
+        <Eyebrow>{mine ? `Your place · ${mine.status}` : joiningOpen ? (openJoin ? "Enter this public scrim" : "Request this private scrim") : "Registration"}</Eyebrow>
       )}
       <div style={{ fontSize: 13, color: "var(--text-muted)", margin: "8px 0 12px" }}>
-        {full ? "This tournament is full." : mine ? `Your request is ${mine.status}.` : currentUserId
+        {full ? "This scrim is full." : mine ? `Your request is ${mine.status}.` : currentUserId
           ? (isAdmin
-            ? (openJoin ? "Join now. No host approval needed." : "Request a place. The tournament host or co-host must approve it.")
-            : "Join if you want a place. The host decides how entries work.")
-          : "Sign in to take a place in this tournament."}
+            ? (openJoin ? "Public join — no host approval needed. Room and stats can show to signed-in visitors." : "Private — players request a place. Room ID stays hidden until you approve them.")
+            : (openJoin ? "Public scrim. Join to play; room codes show when signed in after the host posts them." : "Private scrim. Register and wait for approval to see the room ID and match details."))
+          : "Sign in to take a place in this scrim."}
       </div>
       {!currentUserId && joiningOpen && <Button onClick={onSignIn}>Sign in to join</Button>}
       {currentUserId && !isAdmin && !mine && joiningOpen && <Button onClick={() => { setShowJoinDisclaimer(true); onDisclaimerVisibilityChange(true); }}>Join</Button>}
@@ -1395,11 +1458,11 @@ function RegistrationPanel({ tournament, requests, currentUserId, currentUserNam
       {showJoinDisclaimer && <div role="dialog" aria-modal="true" aria-labelledby="join-disclaimer-title" style={{ position: "fixed", inset: 0, zIndex: 90, background: "rgba(0,0,0,.72)", display: "grid", placeItems: "center", padding: 18 }}>
         <section style={{ width: "min(100%, 480px)", padding: 22, background: "var(--panel-bg)", color: "var(--page-text)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)" }}>
           <Eyebrow color="var(--danger)">Before you request</Eyebrow>
-          <h2 id="join-disclaimer-title" style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, margin: "6px 0" }}>{disclaimer?.title || "Tournament safety disclaimer"}</h2>
-          <p style={{ color: "var(--text-muted)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{disclaimer?.message || "Join only tournaments hosted by people you trust. Verify the details directly with the host, never send money or account credentials, and report suspicious activity. GrindInfo cannot guarantee a host's conduct."}</p>
+          <h2 id="join-disclaimer-title" style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, margin: "6px 0" }}>{disclaimer?.title || "Scrim safety disclaimer"}</h2>
+          <p style={{ color: "var(--text-muted)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{disclaimer?.message || "Join only scrims hosted by people you trust. Verify the details directly with the host, never send money or account credentials, and report suspicious activity. GrindInfo cannot guarantee a host's conduct."}</p>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
             <Button variant="ghost" onClick={() => { setShowJoinDisclaimer(false); onDisclaimerVisibilityChange(false); }}>Cancel</Button>
-            <Button onClick={() => { setShowJoinDisclaimer(false); onDisclaimerVisibilityChange(false); onRequest({ playerId: currentUserId, displayName: currentUserName }); }}>{openJoin ? "Join this tournament" : "Continue to request"}</Button>
+            <Button onClick={() => { setShowJoinDisclaimer(false); onDisclaimerVisibilityChange(false); onRequest({ playerId: currentUserId, displayName: currentUserName }); }}>{openJoin ? "Join this scrim" : "Continue to request"}</Button>
           </div>
         </section>
       </div>}
@@ -1790,8 +1853,12 @@ function slidesFromBlogs(posts = []) {
       authorName: post.authorName,
       source: post.source,
       eventScope: post.eventScope,
-      kicker: publicScopeKicker(post) || "Blog",
-      poster: bannerForGame(post.game),
+      kicker: [analysisTypeLabel(post.analysisType), publicScopeKicker(post) || "Blog"].filter(Boolean).join(" · "),
+      poster: post.coverUrl || bannerForGame(post.game),
+      analysisType: post.analysisType || "event",
+      analysisSubject: post.analysisSubject || "",
+      youtubeUrl: post.youtubeUrl || "",
+      docsUrl: post.docsUrl || "",
       blog: true,
       surface: "blog",
       createdAt: post.createdAt,
@@ -1968,15 +2035,16 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
       <Eyebrow>{isOwner ? "Owner controls · protected" : "Support workspace · restricted"}</Eyebrow>
       <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 18px" }}>{isOwner ? "Owner dashboard" : "Support dashboard"}</h1>
       <div role="tablist" aria-label="Dashboard sections" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-        {["overview", "windows", "tournaments", "vault", "blogs", "reports", ...(isOwner ? ["support changes", "activity log", "popups", "support access"] : ["my requests"])].map((name) => <Button key={name} variant={tab === name ? "primary" : "ghost"} onClick={() => setTab(name)}>{name === "vault" ? "The Vault" : name[0].toUpperCase() + name.slice(1)}</Button>)}
+        {["overview", "windows", "library", "tournaments", "vault", "blogs", "reports", ...(isOwner ? ["support changes", "activity log", "popups", "support access"] : ["my requests"])].map((name) => <Button key={name} variant={tab === name ? "primary" : "ghost"} onClick={() => setTab(name)}>{name === "vault" ? "The Vault" : name === "tournaments" ? "Scrims" : name[0].toUpperCase() + name.slice(1)}</Button>)}
       </div>
       {tab === "overview" && <>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 18 }}>
-          {[["Open reports", activeReports, "reports"], ["Pending blogs", pendingBlogs, "blogs"], ["Vault requests", pendingArchiveRequests, "vault"], ["Support changes", pendingSupportChanges, isOwner ? "support changes" : "my requests"], ["Active tournaments", activeTournaments, "tournaments"], ["Vault records", archiveEntries.length, "vault"]].map(([label, value, next]) => <button key={label} type="button" onClick={() => setTab(next)} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)", textAlign: "left", cursor: "pointer", color: "inherit" }}><Eyebrow>{label}</Eyebrow><strong style={{ display: "block", fontSize: 25, marginTop: 8 }}>{value}</strong></button>)}
+          {[["Open reports", activeReports, "reports"], ["Pending blogs", pendingBlogs, "blogs"], ["Vault requests", pendingArchiveRequests, "vault"], ["Support changes", pendingSupportChanges, isOwner ? "support changes" : "my requests"], ["Active scrims", activeTournaments, "tournaments"], ["Vault records", archiveEntries.length, "vault"]].map(([label, value, next]) => <button key={label} type="button" onClick={() => setTab(next)} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)", textAlign: "left", cursor: "pointer", color: "inherit" }}><Eyebrow>{label}</Eyebrow><strong style={{ display: "block", fontSize: 25, marginTop: 8 }}>{value}</strong></button>)}
         </div>
         <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Monitor tournaments, The Vault, and the community blog from the tabs above{isOwner ? ". Owner-only tools for popups and support access stay in this desk. Support edits wait here for your accept or deny." : ". Desk edits go to the owner for approval."}</p>
       </>}
       {tab === "windows" && <FloatingWindowsDesk records={circuitRecords} ewcWindows={ewcWindows} blogSlides={blogSlides} role={role} onSave={onSaveCircuit} />}
+      {tab === "library" && <MediaLibraryDesk games={filterGames} canManage={isOwner} />}
       {(tab === "support changes" || tab === "my requests") && <SupportChangeQueue requests={supportChanges} role={role} onReview={onReviewSupportChange} />}
       {tab === "reports" && <ReportsInbox reports={reports} onStatusChange={onStatusChange} bans={bans} role={role} onSetPlayerAccess={onSetPlayerAccess} />}
       {tab === "tournaments" && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="tournament" records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} games={filterGames} /><TournamentMonitor tournaments={tournaments} onOpen={onOpenTournament} /></div>}
@@ -2168,32 +2236,170 @@ function LoadingScreen({ label }) {
   return <div role="status" aria-live="polite" style={{ minHeight: "60vh", display: "grid", placeItems: "center", background: "var(--page-bg-solid, #101820)", color: "var(--page-text, #EDF1F4)", fontFamily: "'Inter',sans-serif" }}><div style={{ textAlign: "center" }}><div className="grind-loader" aria-hidden="true"><span>G</span></div><div style={{ marginTop: 16 }}>{label}…</div><style>{`.grind-loader{width:68px;height:68px;margin:auto;border:2px solid var(--border,#314);border-top-color:var(--accent,#08f);border-right-color:var(--accent-secondary,#0dc);border-radius:50%;display:grid;place-items:center;animation:grind-spin 1.2s linear infinite}.grind-loader span{font-family:'Bebas Neue',sans-serif;font-size:30px;animation:grind-spin 1.2s linear infinite reverse}@keyframes grind-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.grind-loader,.grind-loader span{animation:none}}`}</style></div></div>;
 }
 
+function blogLinkError(source, youtubeUrl, docsUrl) {
+  if ((source || "").trim() && !isHttpsUrl(source)) return "Use a secure https source link.";
+  if ((youtubeUrl || "").trim() && !isHttpsUrl(youtubeUrl)) return "Use a secure https YouTube link.";
+  if ((docsUrl || "").trim() && !isHttpsUrl(docsUrl)) return "Use a secure https docs link.";
+  return "";
+}
+
 function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDelete, onSignIn, embedded = false, manageInDrawer = false }) {
   const [title, setTitle] = useState("");
   const [game, setGame] = useState("");
   const [eventScope, setEventScope] = useState("random");
+  const [analysisType, setAnalysisType] = useState("event");
+  const [analysisSubject, setAnalysisSubject] = useState("");
   const [content, setContent] = useState("");
   const [source, setSource] = useState("");
+  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [docsUrl, setDocsUrl] = useState("");
+  const [coverUrl, setCoverUrl] = useState("");
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState("");
   const [manageOpen, setManageOpen] = useState(false);
-  const [draft, setDraft] = useState({ title: "", game: "", content: "", source: "", eventScope: "random" });
+  const [draft, setDraft] = useState({ title: "", game: "", content: "", source: "", eventScope: "random", analysisType: "event", analysisSubject: "", youtubeUrl: "", docsUrl: "", coverUrl: "" });
   const visible = posts.filter((post) => post.status === "published" || (user && post.authorId === user.uid) || (isModerator && post.status === "pending"));
   const submit = async () => {
     if (!title.trim() || !game.trim() || !content.trim()) { setError("Add a title, game, and post text."); return; }
-    if (source.trim() && !/^https:\/\//i.test(source.trim())) { setError("Use a secure https source link."); return; }
-    try { await onSubmit({ title: title.trim(), game: game.trim(), content: content.trim(), source: source.trim(), eventScope }); setTitle(""); setGame(""); setEventScope("random"); setContent(""); setSource(""); setError(""); }
+    const linkError = blogLinkError(source, youtubeUrl, docsUrl);
+    if (linkError) { setError(linkError); return; }
+    try {
+      await onSubmit({
+        title: title.trim(),
+        game: game.trim(),
+        content: content.trim(),
+        source: source.trim(),
+        eventScope,
+        analysisType,
+        analysisSubject: analysisSubject.trim(),
+        youtubeUrl: youtubeUrl.trim(),
+        docsUrl: docsUrl.trim(),
+        coverUrl: coverUrl.trim(),
+      });
+      setTitle(""); setGame(""); setEventScope("random"); setAnalysisType("event"); setAnalysisSubject(""); setContent(""); setSource(""); setYoutubeUrl(""); setDocsUrl(""); setCoverUrl(""); setError("");
+    }
     catch { setError("Could not submit this post. Please try again."); }
   };
-  const startEdit = (post) => { setEditingId(post.id); setDraft({ title: post.title || "", game: post.game || "", content: post.content || "", source: post.source || "", eventScope: post.eventScope || "random" }); setError(""); };
+  const startEdit = (post) => { setEditingId(post.id); setDraft({ title: post.title || "", game: post.game || "", content: post.content || "", source: post.source || "", eventScope: post.eventScope || "random", analysisType: post.analysisType || "event", analysisSubject: post.analysisSubject || "", youtubeUrl: post.youtubeUrl || "", docsUrl: post.docsUrl || "", coverUrl: post.coverUrl || "" }); setError(""); };
   const saveEdit = async (post) => {
     if (!draft.title.trim() || !draft.game.trim() || !draft.content.trim()) { setError("Add a title, game, and post text."); return; }
-    if (draft.source.trim() && !/^https:\/\//i.test(draft.source.trim())) { setError("Use a secure https source link."); return; }
-    try { await onEdit(post, { title: draft.title.trim(), game: draft.game.trim(), content: draft.content.trim(), source: draft.source.trim(), eventScope: draft.eventScope || "random" }); setEditingId(""); setError(""); }
+    const linkError = blogLinkError(draft.source, draft.youtubeUrl, draft.docsUrl);
+    if (linkError) { setError(linkError); return; }
+    try { await onEdit(post, { title: draft.title.trim(), game: draft.game.trim(), content: draft.content.trim(), source: draft.source.trim(), eventScope: draft.eventScope || "random", analysisType: draft.analysisType || "event", analysisSubject: (draft.analysisSubject || "").trim(), youtubeUrl: (draft.youtubeUrl || "").trim(), docsUrl: (draft.docsUrl || "").trim(), coverUrl: (draft.coverUrl || "").trim() }); setEditingId(""); setError(""); }
     catch { setError("Could not save this post. Please try again."); }
   };
-  const compose = user ? <section style={{ display: "grid", gap: 10, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)", maxWidth: 680 }}><p style={{ color: "var(--text-muted)", fontSize: 13, margin: 0 }}>Send a tournament recap or esports story to the GrindInfo owner for review.</p><Field label="Post title"><TextInput value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} /></Field><Field label="Game"><TextInput value={game} maxLength={60} onChange={(e) => setGame(e.target.value)} placeholder="e.g. Valorant" /></Field><Field label="Event type"><Select value={eventScope} onChange={(e) => setEventScope(e.target.value)}>{EVENT_SCOPES.map((scope) => <option key={scope.id} value={scope.id}>{scope.label}</option>)}</Select></Field><Field label="Story or tournament update"><textarea value={content} maxLength={6000} onChange={(e) => setContent(e.target.value)} rows={6} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput value={source} maxLength={500} onChange={(e) => setSource(e.target.value)} placeholder="https://" /></Field>{error && !editingId && <span role="alert" style={{ color: "var(--danger)" }}>{error}</span>}<Button onClick={submit}>Request publication</Button></section> : <section style={{ maxWidth: 680, padding: 16, marginTop: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 10 }}>Sign in to request that a blog post be published.</div><Button onClick={onSignIn}>Sign in to request a post</Button></section>;
-  return <div style={{ paddingTop: embedded ? 16 : 32, paddingBottom: manageInDrawer ? 88 : 0 }}>{!embedded && <><Eyebrow>Community stories</Eyebrow><h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42 }}>Esports blog</h1><p style={{ color: "var(--text-muted)" }}>Read community stories, tournament recaps, and esports updates.</p></>}{embedded && <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, margin: "0 0 12px" }}>Community blog</h2>}{!manageInDrawer && compose}<div style={{ display: "grid", gap: 12, marginTop: 20 }}>{visible.map((post) => <article key={post.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}{post.eventScope ? ` · ${post.eventScope}` : ""}</Eyebrow>{editingId === post.id ? <div style={{ display: "grid", gap: 8, marginTop: 8 }}><Field label="Post title"><TextInput maxLength={120} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /></Field><Field label="Game"><TextInput maxLength={60} value={draft.game} onChange={(e) => setDraft({ ...draft, game: e.target.value })} /></Field><Field label="Event type"><Select value={draft.eventScope || "random"} onChange={(e) => setDraft({ ...draft, eventScope: e.target.value })}>{EVENT_SCOPES.map((scope) => <option key={scope.id} value={scope.id}>{scope.label}</option>)}</Select></Field><Field label="Story"><textarea maxLength={6000} rows={6} value={draft.content} onChange={(e) => setDraft({ ...draft, content: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} /></Field><Field label="Source link (optional)"><TextInput maxLength={500} value={draft.source} onChange={(e) => setDraft({ ...draft, source: e.target.value })} /></Field><div style={{ display: "flex", gap: 8 }}><Button onClick={() => saveEdit(post)}>Save changes</Button><Button variant="ghost" onClick={() => setEditingId("")}>Cancel</Button></div></div> : <><h2 style={{ fontFamily: "'Bebas Neue',sans-serif" }}>{post.title}</h2><div style={{ color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{post.content}</div><div style={{ marginTop: 8, fontSize: 12 }}>By {post.authorName || "Player"}</div>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{isModerator && post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button onClick={() => onReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onReview(post.id, "rejected")}>Decline</Button></div>}{(user && post.authorId === user.uid || isModerator) && <div style={{ display: "flex", gap: 8, marginTop: 12 }}><Button variant="ghost" onClick={() => startEdit(post)}>Edit post</Button><Button variant="danger" onClick={() => { if (window.confirm("Delete this blog post? This cannot be undone.")) onDelete(post); }}>Delete post</Button></div>}{user && post.authorId === user.uid && post.status === "published" && <small style={{ display: "block", marginTop: 8, color: "var(--text-muted)" }}>Saving an edit sends the post back for review.</small>}</>}{error && editingId === post.id && <div role="alert" style={{ color: "var(--danger)", marginTop: 8 }}>{error}</div>}</article>)}</div>{manageInDrawer && <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#17110f]/95 backdrop-blur-md"><button type="button" onClick={() => setManageOpen((open) => !open)} className="flex w-full items-center justify-between px-5 py-3 font-mono text-[11px] uppercase tracking-[0.22em] text-amber-300"><span>Manage Posts</span><span aria-hidden="true">{manageOpen ? "−" : "+"}</span></button>{manageOpen && <div className="max-h-[48vh] overflow-y-auto border-t border-white/10 px-5 py-4">{compose}</div>}</div>}</div>;
+  const compose = user ? (
+    <section style={{ display: "grid", gap: 10, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)", maxWidth: 680 }}>
+      <p style={{ color: "var(--text-muted)", fontSize: 13, margin: 0 }}>Send a tournament recap or esports story to the GrindInfo owner for review.</p>
+      <Field label="Post title"><TextInput value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} /></Field>
+      <Field label="Game"><TextInput value={game} maxLength={60} onChange={(e) => setGame(e.target.value)} placeholder="e.g. Valorant" /></Field>
+      <Field label="Event type"><Select value={eventScope} onChange={(e) => setEventScope(e.target.value)}>{EVENT_SCOPES.map((scope) => <option key={scope.id} value={scope.id}>{scope.label}</option>)}</Select></Field>
+      <Field label="Analysis of"><Select value={analysisType} onChange={(e) => setAnalysisType(e.target.value)}>{BLOG_ANALYSIS_TYPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</Select></Field>
+      <Field label="Subject (event, team, game, or match)"><TextInput value={analysisSubject} maxLength={80} onChange={(e) => setAnalysisSubject(e.target.value)} placeholder="EWC 2025 Final · Team Liquid · map 3" /></Field>
+      <Field label="Story or tournament update"><textarea value={content} maxLength={6000} onChange={(e) => setContent(e.target.value)} rows={6} style={{ ...inputStyle, resize: "vertical" }} /></Field>
+      {game.trim() && (
+        <Field label="Cover from library">
+          {coverUrl ? <img src={coverUrl} alt="" style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 10, marginBottom: 8 }} /> : null}
+          <CollectionPicker
+            game={game.trim()}
+            kinds={["post", "flyer", "poster", "event", "background"]}
+            value={coverUrl}
+            onSelect={setCoverUrl}
+            heading="Post / flyer / poster packs"
+          />
+        </Field>
+      )}
+      <Field label="YouTube (optional)"><TextInput value={youtubeUrl} maxLength={500} onChange={(e) => setYoutubeUrl(e.target.value)} placeholder="https://youtube.com/..." /></Field>
+      <Field label="Docs (optional)"><TextInput value={docsUrl} maxLength={500} onChange={(e) => setDocsUrl(e.target.value)} placeholder="https://docs.google.com/..." /></Field>
+      <Field label="Source link (optional)"><TextInput value={source} maxLength={500} onChange={(e) => setSource(e.target.value)} placeholder="https://" /></Field>
+      {error && !editingId && <span role="alert" style={{ color: "var(--danger)" }}>{error}</span>}
+      <Button onClick={submit}>Request publication</Button>
+    </section>
+  ) : (
+    <section style={{ maxWidth: 680, padding: 16, marginTop: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+      <div style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 10 }}>Sign in to request that a blog post be published.</div>
+      <Button onClick={onSignIn}>Sign in to request a post</Button>
+    </section>
+  );
+  return (
+    <div style={{ paddingTop: embedded ? 16 : 32, paddingBottom: manageInDrawer ? 88 : 0 }}>
+      {!embedded && (<><Eyebrow>Community stories</Eyebrow><h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42 }}>Esports blog</h1><p style={{ color: "var(--text-muted)" }}>Read community stories, tournament recaps, and esports updates.</p></>)}
+      {embedded && <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, margin: "0 0 12px" }}>Community blog</h2>}
+      {!manageInDrawer && compose}
+      <div style={{ display: "grid", gap: 12, marginTop: 20 }}>
+        {visible.map((post) => (
+          <article key={post.id} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+            <Eyebrow>{post.game} · {post.status}{post.eventScope ? ` · ${post.eventScope}` : ""}{post.analysisType ? ` · ${analysisTypeLabel(post.analysisType)}` : ""}{post.analysisSubject ? ` · ${post.analysisSubject}` : ""}</Eyebrow>
+            {editingId === post.id ? (
+              <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+                <Field label="Post title"><TextInput maxLength={120} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /></Field>
+                <Field label="Game"><TextInput maxLength={60} value={draft.game} onChange={(e) => setDraft({ ...draft, game: e.target.value })} /></Field>
+                <Field label="Event type"><Select value={draft.eventScope || "random"} onChange={(e) => setDraft({ ...draft, eventScope: e.target.value })}>{EVENT_SCOPES.map((scope) => <option key={scope.id} value={scope.id}>{scope.label}</option>)}</Select></Field>
+                <Field label="Analysis of"><Select value={draft.analysisType || "event"} onChange={(e) => setDraft({ ...draft, analysisType: e.target.value })}>{BLOG_ANALYSIS_TYPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</Select></Field>
+                <Field label="Subject"><TextInput maxLength={80} value={draft.analysisSubject || ""} onChange={(e) => setDraft({ ...draft, analysisSubject: e.target.value })} /></Field>
+                <Field label="Story"><textarea maxLength={6000} rows={6} value={draft.content} onChange={(e) => setDraft({ ...draft, content: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} /></Field>
+                {draft.game?.trim() && (
+                  <Field label="Cover from library">
+                    {draft.coverUrl ? <img src={draft.coverUrl} alt="" style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 10, marginBottom: 8 }} /> : null}
+                    <CollectionPicker
+                      game={draft.game.trim()}
+                      kinds={["post", "flyer", "poster", "event", "background"]}
+                      value={draft.coverUrl || ""}
+                      onSelect={(url) => setDraft({ ...draft, coverUrl: url })}
+                      heading="Post / flyer / poster packs"
+                    />
+                  </Field>
+                )}
+                <Field label="YouTube (optional)"><TextInput maxLength={500} value={draft.youtubeUrl || ""} onChange={(e) => setDraft({ ...draft, youtubeUrl: e.target.value })} /></Field>
+                <Field label="Docs (optional)"><TextInput maxLength={500} value={draft.docsUrl || ""} onChange={(e) => setDraft({ ...draft, docsUrl: e.target.value })} /></Field>
+                <Field label="Source link (optional)"><TextInput maxLength={500} value={draft.source} onChange={(e) => setDraft({ ...draft, source: e.target.value })} /></Field>
+                <div style={{ display: "flex", gap: 8 }}><Button onClick={() => saveEdit(post)}>Save changes</Button><Button variant="ghost" onClick={() => setEditingId("")}>Cancel</Button></div>
+              </div>
+            ) : (
+              <>
+                {(post.coverUrl || bannerForGame(post.game)) && (
+                  <img src={post.coverUrl || bannerForGame(post.game)} alt="" style={{ width: "100%", height: 160, objectFit: "cover", borderRadius: 10, marginTop: 8 }} />
+                )}
+                <h2 style={{ fontFamily: "'Bebas Neue',sans-serif" }}>{post.title}</h2>
+                <div style={{ color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{post.content}</div>
+                <div style={{ marginTop: 8, fontSize: 12 }}>By {post.authorName || "Player"}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 8 }}>
+                  {post.youtubeUrl && <a href={post.youtubeUrl} target="_blank" rel="noopener noreferrer">YouTube</a>}
+                  {post.docsUrl && <a href={post.docsUrl} target="_blank" rel="noopener noreferrer">Docs</a>}
+                  {post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}
+                </div>
+                {isModerator && post.status === "pending" && (
+                  <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                    <Button onClick={() => onReview(post.id, "published")}>Publish</Button>
+                    <Button variant="danger" onClick={() => onReview(post.id, "rejected")}>Decline</Button>
+                  </div>
+                )}
+                {(user && post.authorId === user.uid || isModerator) && (
+                  <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                    <Button variant="ghost" onClick={() => startEdit(post)}>Edit post</Button>
+                    <Button variant="danger" onClick={() => { if (window.confirm("Delete this blog post? This cannot be undone.")) onDelete(post); }}>Delete post</Button>
+                  </div>
+                )}
+                {user && post.authorId === user.uid && post.status === "published" && (
+                  <small style={{ display: "block", marginTop: 8, color: "var(--text-muted)" }}>Saving an edit sends the post back for review.</small>
+                )}
+              </>
+            )}
+            {error && editingId === post.id && <div role="alert" style={{ color: "var(--danger)", marginTop: 8 }}>{error}</div>}
+          </article>
+        ))}
+      </div>
+      {manageInDrawer && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#17110f]/95 backdrop-blur-md">
+          <button type="button" onClick={() => setManageOpen((open) => !open)} className="flex w-full items-center justify-between px-5 py-3 font-mono text-[11px] uppercase tracking-[0.22em] text-amber-300">
+            <span>Manage Posts</span>
+            <span aria-hidden="true">{manageOpen ? "−" : "+"}</span>
+          </button>
+          {manageOpen && <div className="max-h-[48vh] overflow-y-auto border-t border-white/10 px-5 py-4">{compose}</div>}
+        </div>
+      )}
+    </div>
+  );
 }
 
 
@@ -2693,14 +2899,20 @@ export default function App() {
       return;
     }
     const unsubs = [
-      onSnapshot(teamsCollectionRef(selectedId), (snap) =>
-        setSelectedTeams(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      onSnapshot(
+        teamsCollectionRef(selectedId),
+        (snap) => setSelectedTeams(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+        () => setSelectedTeams([]),
       ),
-      onSnapshot(matchesCollectionRef(selectedId), (snap) =>
-        setSelectedMatches(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      onSnapshot(
+        matchesCollectionRef(selectedId),
+        (snap) => setSelectedMatches(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+        () => setSelectedMatches([]),
       ),
-      onSnapshot(statsCollectionRef(selectedId), (snap) =>
-        setSelectedStats(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      onSnapshot(
+        statsCollectionRef(selectedId),
+        (snap) => setSelectedStats(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+        () => setSelectedStats([]),
       ),
     ];
     return () => unsubs.forEach((u) => u());
@@ -2797,9 +3009,10 @@ export default function App() {
         status: event.status || "upcoming",
         kind: event.kind || (event.format === "Custom room" ? "custom_room" : "bracket"),
         joinMode: event.joinMode === "open" ? "open" : "request",
+        publicStats: event.publicStats === true,
         maxSlots: Math.max(0, Math.min(256, Math.trunc(Number(event.maxSlots) || 0))),
         blurb: String(event.blurb || "").slice(0, 400),
-        posterUrl: String(event.posterUrl || "").slice(0, 500),
+        posterUrl: String(event.posterUrl || "").slice(0, 500000),
         isLegacyImport: false,
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -2809,7 +3022,7 @@ export default function App() {
       if (nextRoom && nextPassword) {
         await setDoc(lobbyCredentialsRef(created.id), { roomId: nextRoom.slice(0, 40), roomPassword: nextPassword.slice(0, 40), updatedAt: Date.now() });
       }
-      showToast("Tournament created");
+      showToast("Scrim created");
       setShowNewTournament(false);
     } catch (e) {
       showToast(e?.message || "Couldn't create tournament — try again");
@@ -2962,9 +3175,9 @@ export default function App() {
       const next = { ...patch, updatedAt: Date.now() };
       if (next.maxSlots != null) next.maxSlots = Math.max(0, Math.min(256, Math.trunc(Number(next.maxSlots) || 0)));
       await updateDoc(tournamentDocRef(tournamentId), next);
-      showToast("Tournament settings saved");
+      showToast("Scrim settings saved");
     } catch (e) {
-      showToast("Couldn't update tournament settings. Check Firestore rules.");
+      showToast("Couldn't update scrim settings. Check Firestore rules.");
     }
   };
 
@@ -3070,7 +3283,9 @@ export default function App() {
       roomPassword: String(credentials.roomPassword || "").trim().slice(0, 40),
       updatedAt: Date.now(),
     });
-    showToast("Room details shared with approved players");
+    showToast(isPublicScrim(tournaments.find((item) => item.id === tournamentId))
+      ? "Room details shared with public scrim viewers"
+      : "Room details shared with approved players");
   };
 
   const addCoAdminByPlayerTag = async (tournament, input) => {
@@ -3651,7 +3866,7 @@ export default function App() {
                     onAddStat={(s) => addStat(selected.id, s)}
                     onDeleteStat={(statId) => deleteStat(selected.id, statId)}
                   />
-                ) : <EmptyState title="Tournament not found" body="This event is missing or was removed." actionLabel="Back to tournaments" onAction={() => navigate("/tournaments")} />} />
+                ) : <EmptyState title="Scrim not found" body="This event is missing or was removed." actionLabel="Back to scrims" onAction={() => navigate("/tournaments")} />} />
                 <Route path="/find-players" element={user ? (
                   <FindPlayersPage gamesList={circuitCms.filterGames} currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid, player.displayName)} onFriendDecision={decideFriendRequest} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} onEditProfile={() => setShowProfileModal(true)} />
                 ) : (
@@ -3669,7 +3884,7 @@ export default function App() {
                     <div className="mt-4 flex flex-wrap gap-3">
                       <Link to="/" className="font-mono text-xs uppercase tracking-wider text-amber-300">Home</Link>
                       <Link to="/find-players" className="font-mono text-xs uppercase tracking-wider text-amber-300">Find players</Link>
-                      <Link to="/tournaments" className="font-mono text-xs uppercase tracking-wider text-amber-300">Tournaments</Link>
+                      <Link to="/tournaments" className="font-mono text-xs uppercase tracking-wider text-amber-300">Scrims</Link>
                       <Link to="/blog" className="font-mono text-xs uppercase tracking-wider text-amber-300">Community blog</Link>
                     </div>
                   </div>
@@ -3680,7 +3895,7 @@ export default function App() {
         )}
 
       {user && showNewTournament && (
-        <NewTournamentModal slides={vaultSlides} gamesList={circuitCms.filterGames} onClose={() => setShowNewTournament(false)} onCreate={addTournament} />
+        <NewTournamentModal slides={vaultSlides} gameArt={circuitCms.records} gamesList={circuitCms.filterGames} onClose={() => setShowNewTournament(false)} onCreate={addTournament} />
       )}
 
       {showProfileModal && (
@@ -3773,7 +3988,7 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAcc
                   style={{ listStyle: "none", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "var(--page-text)", border: "1px solid var(--border)", background: "var(--panel-bg)", padding: "6px 9px", fontFamily: "'Inter', sans-serif", fontSize: 12 }}
                 >
                   {user?.photoURL ? (
-                    <img src={avatarForGamer({ photoURL: user.photoURL, displayName })} alt="" className="aspect-square h-[30px] w-[30px] rounded-full object-cover" />
+                    <img src={avatarForGamer({ photoURL: user.photoURL, avatar: myProfile?.avatar, games: myProfile?.games, displayName })} alt="" className="aspect-square h-[30px] w-[30px] rounded-full object-cover" />
                   ) : (
                     <span aria-hidden="true" style={{ width: 30, height: 30, borderRadius: "50%", display: "grid", placeItems: "center", background: "var(--accent)", color: "var(--accent-contrast)", fontWeight: 700 }}>
                       {initials}
@@ -3803,9 +4018,15 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAcc
 }
 function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, onNew, onSignIn, pendingInvites = [], onInviteDecision, embedded = false, hideCreate = false, archivedView, onArchivedView }) {
   const [localArchived, setLocalArchived] = useState(false);
+  const [accessFilter, setAccessFilter] = useState("all");
   const showArchived = archivedView ?? localArchived;
   const setShowArchived = onArchivedView ?? setLocalArchived;
-  const visibleTournaments = tournaments.filter((t) => isTournamentArchived(t) === showArchived);
+  const visibleTournaments = tournaments.filter((t) => {
+    if (isTournamentArchived(t) !== showArchived) return false;
+    if (accessFilter === "public") return isPublicScrim(t);
+    if (accessFilter === "private") return !isPublicScrim(t);
+    return true;
+  });
   return (
     <div>
       <div
@@ -3828,19 +4049,26 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
               letterSpacing: "0.01em",
             }}
           >
-            Tournaments
+            Scrims
           </h1>
         </div>
-        {currentUserId && !hideCreate && <Button onClick={onNew}>+ New tournament</Button>}
+        {currentUserId && !hideCreate && <Button onClick={onNew}>+ New scrim</Button>}
       </div>
 
       {!hideCreate && <div style={{ display: "flex", gap: 8, marginBottom: 14 }}><Button variant={showArchived ? "ghost" : "primary"} onClick={() => setShowArchived(false)}>Active</Button><Button variant={showArchived ? "primary" : "ghost"} onClick={() => setShowArchived(true)}>Archive</Button></div>}
-      {!showArchived && pendingInvites.length > 0 && <section style={{ display: "grid", gap: 8, marginBottom: 18 }}><Eyebrow>Tournament invites</Eyebrow>{pendingInvites.map((invite) => <article key={invite.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, padding: 12, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><span>{invite.inviterName || "A friend"} invited you to <strong>{invite.tournamentName}</strong> · {invite.game}</span><span style={{ display: "flex", gap: 6 }}><Button onClick={() => onOpen(invite.tournamentId)}>View tournament</Button><Button variant="ghost" onClick={() => onInviteDecision(invite.id, "accepted")}>Accept</Button><Button variant="danger" onClick={() => onInviteDecision(invite.id, "declined")}>Decline</Button></span></article>)}</section>}
+      {!showArchived && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+          <Button variant={accessFilter === "all" ? "primary" : "ghost"} onClick={() => setAccessFilter("all")}>All</Button>
+          <Button variant={accessFilter === "public" ? "primary" : "ghost"} onClick={() => setAccessFilter("public")}>Public</Button>
+          <Button variant={accessFilter === "private" ? "primary" : "ghost"} onClick={() => setAccessFilter("private")}>Private</Button>
+        </div>
+      )}
+      {!showArchived && pendingInvites.length > 0 && <section style={{ display: "grid", gap: 8, marginBottom: 18 }}><Eyebrow>Scrim invites</Eyebrow>{pendingInvites.map((invite) => <article key={invite.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, padding: 12, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><span>{invite.inviterName || "A friend"} invited you to <strong>{invite.tournamentName}</strong> · {invite.game}</span><span style={{ display: "flex", gap: 6 }}><Button onClick={() => onOpen(invite.tournamentId)}>View scrim</Button><Button variant="ghost" onClick={() => onInviteDecision(invite.id, "accepted")}>Accept</Button><Button variant="danger" onClick={() => onInviteDecision(invite.id, "declined")}>Decline</Button></span></article>)}</section>}
       {visibleTournaments.length === 0 ? (
         <EmptyState
-          title={showArchived ? "No archived tournaments" : "No active tournaments"}
-          body={showArchived ? "Completed or older tournaments will appear here with their results." : currentUserId ? "Create your first tournament to start tracking teams, matches, and player stats." : "Public tournaments and their details will appear here."}
-          actionLabel={!hideCreate && currentUserId ? "+ New tournament" : undefined}
+          title={showArchived ? "No archived scrims" : accessFilter === "public" ? "No public scrims" : accessFilter === "private" ? "No private scrims" : "No active scrims"}
+          body={showArchived ? "Completed or older scrims will appear here with their results." : currentUserId ? "Create your first scrim to start tracking teams, matches, and player stats." : "Public and private scrims will appear here."}
+          actionLabel={!hideCreate && currentUserId ? "+ New scrim" : undefined}
           onAction={!hideCreate ? onNew : undefined}
         />
       ) : (
@@ -3875,7 +4103,7 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
                 onBlur={(e) => (e.currentTarget.style.outline = "none")}
               >
                 <Eyebrow color="var(--text-dim)">
-                  Hosted by {t.adminDisplayName || (t.adminUserId === currentUserId ? currentUserName : "Tournament host")}
+                  Hosted by {t.adminDisplayName || (t.adminUserId === currentUserId ? currentUserName : "Scrim host")}
                 </Eyebrow>
                 <div className="aspect-video my-3 overflow-hidden border border-white/10">
                   <img src={flyerForEvent(t)} alt="" className="h-full w-full object-cover" />
@@ -3894,6 +4122,9 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
                 >
                   {t.name}
                 </div>
+                <div style={{ display: "inline-block", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: isPublicScrim(t) ? "var(--accent-secondary)" : "var(--text-muted)", border: "1px solid var(--border)", padding: "3px 8px", marginBottom: 6 }}>
+                  {scrimAccessLabel(t)}
+                </div>
                 {t.isLegacyImport && (
                   <div
                     style={{
@@ -3908,7 +4139,7 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
                 )}
                 <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-dim)" }}>
                   {(t.status || "upcoming").toUpperCase()}
-                  {managesTournament(t, currentUserId) ? ` · ${t.joinMode === "open" ? "Free join" : "Request to join"}${Number(t.maxSlots) > 0 ? ` · ${t.maxSlots} slots` : ""}` : ""}
+                  {managesTournament(t, currentUserId) ? ` · ${isPublicScrim(t) ? "Public registration" : "Private · registration required"}${Number(t.maxSlots) > 0 ? ` · ${t.maxSlots} slots` : ""}` : ` · ${isPublicScrim(t) ? "Public" : "Private"}`}
                 </div>
                 <div style={{ marginTop: 6, fontSize: 12, color: "var(--text-dim)" }}>
                   {fmtDate(t.startDate)} {t.endDate ? `– ${fmtDate(t.endDate)}` : ""}
@@ -3922,12 +4153,13 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
   );
 }
 
-function NewTournamentModal({ onClose, onCreate, slides = [], gamesList = FILTER_GAMES }) {
+function NewTournamentModal({ onClose, onCreate, slides = [], gameArt = [], gamesList = FILTER_GAMES }) {
   const [name, setName] = useState("");
   const [game, setGame] = useState(gamesList[0]);
   const [kind, setKind] = useState("bracket");
   const [format, setFormat] = useState(FORMATS[0]);
   const [joinMode, setJoinMode] = useState("open");
+  const [publicStats, setPublicStats] = useState(false);
   const [maxSlots, setMaxSlots] = useState("16");
   const [blurb, setBlurb] = useState("");
   const [roomId, setRoomId] = useState("");
@@ -3935,21 +4167,32 @@ function NewTournamentModal({ onClose, onCreate, slides = [], gamesList = FILTER
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [posterUrl, setPosterUrl] = useState("");
+  const [posterLocked, setPosterLocked] = useState(false);
+  const [posterDraft, setPosterDraft] = useState("");
   const [prizeAmount, setPrizeAmount] = useState("0");
   const [customPrize, setCustomPrize] = useState("");
   const [error, setError] = useState("");
+  const gameKey = String(game || "").toLowerCase();
+  const catalogArt = gameArt.find((item) => String(item.game || "").toLowerCase() === gameKey);
+  const vaultSlide = slides.find((slide) => String(slide.game || "").toLowerCase() === gameKey);
+  const posterPack = flyersForGame(game, [catalogArt?.poster, vaultSlide?.poster, ...(catalogArt?.flyers || []), ...(vaultSlide?.flyers || [])]);
 
   useEffect(() => {
-    const fromVault = slides.find((slide) => String(slide.game || "").toLowerCase() === game.toLowerCase())?.poster;
-    setPosterUrl(fromVault || bannerForGame(game));
+    setPosterLocked(false);
+  }, [game]);
+
+  useEffect(() => {
+    if (posterLocked) return;
+    const fromDesk = catalogArt?.poster || vaultSlide?.poster;
+    setPosterUrl(fromDesk || bannerForGame(game));
     let active = true;
-    fetchGamePoster(game).then((url) => { if (active && url) setPosterUrl(url); });
+    fetchGamePoster(game).then((url) => { if (active && !posterLocked && url) setPosterUrl(url); });
     return () => { active = false; };
-  }, [game, slides]);
+  }, [game, catalogArt?.poster, vaultSlide?.poster, posterLocked]);
 
   const submit = () => {
     if (!name.trim()) {
-      setError("Enter a tournament name first");
+      setError("Enter a scrim name first");
       return;
     }
     if ((roomId.trim() && !roomPassword.trim()) || (!roomId.trim() && roomPassword.trim())) {
@@ -3966,6 +4209,7 @@ function NewTournamentModal({ onClose, onCreate, slides = [], gamesList = FILTER
       kind: nextKind,
       format: nextKind === "custom_room" ? "Custom room" : format,
       joinMode,
+      publicStats: joinMode === "open" ? true : publicStats === true,
       maxSlots: slots,
       blurb: blurb.trim().slice(0, 400),
       posterUrl,
@@ -4008,18 +4252,18 @@ function NewTournamentModal({ onClose, onCreate, slides = [], gamesList = FILTER
       >
         <Eyebrow>New entry</Eyebrow>
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, margin: "4px 0 8px" }}>
-          Create tournament
+          Create scrim
         </div>
-        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-muted)" }}>No flyer upload. Set join type, team cap, and optional room codes here. Card art comes from the game.</p>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-muted)" }}>Pick or upload a poster. Choose public or private registration, team cap, and optional room codes.</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <Field label="Tournament name">
+          <Field label="Scrim name">
             <TextInput
               value={name}
               onChange={(e) => {
                 setName(e.target.value);
                 if (error) setError("");
               }}
-              placeholder="Winter Invitational 2026"
+              placeholder="Friday night custom room"
               autoFocus
             />
           </Field>
@@ -4028,7 +4272,7 @@ function NewTournamentModal({ onClose, onCreate, slides = [], gamesList = FILTER
             <div style={{ flex: 1 }}>
               <Field label="Game">
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <GameIcon game={game} size={38} />
+                  <GameIcon game={game} src={posterUrl} size={38} />
                   <Select value={game} onChange={(e) => setGame(e.target.value)} style={{ flex: 1 }}>
                     {gamesList.map((g) => (
                       <option key={g} value={g}>
@@ -4048,6 +4292,68 @@ function NewTournamentModal({ onClose, onCreate, slides = [], gamesList = FILTER
               </Field>
             </div>
           </div>
+          <Field label="Game / event poster">
+            <div style={{ display: "grid", gap: 8 }}>
+              {posterUrl && <img src={posterUrl} alt="" style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 12 }} />}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                {posterPack.slice(0, 3).map((src) => (
+                  <button
+                    key={src}
+                    type="button"
+                    onClick={() => { setPosterUrl(src); setPosterLocked(true); }}
+                    style={{ padding: 0, border: posterUrl === src ? "1px solid var(--accent, #08f)" : "1px solid var(--border)", borderRadius: 10, overflow: "hidden", background: "transparent", cursor: "pointer" }}
+                  >
+                    <img src={src} alt="" style={{ width: "100%", height: 56, objectFit: "cover", display: "block" }} />
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <TextInput
+                  value={posterDraft}
+                  onChange={(e) => setPosterDraft(e.target.value)}
+                  placeholder="https:// image URL"
+                />
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    const url = posterDraft.trim();
+                    if (!/^https:\/\//i.test(url) && !url.startsWith("data:image/")) {
+                      setError("Use a secure https poster URL.");
+                      return;
+                    }
+                    setPosterUrl(url);
+                    setPosterLocked(true);
+                    setPosterDraft("");
+                    if (error) setError("");
+                  }}
+                >
+                  Use URL
+                </Button>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
+                  Upload image
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    style={{ display: "none" }}
+                    onChange={(event) => {
+                      readImageFile(event.target.files?.[0], (dataUrl) => {
+                        setPosterUrl(dataUrl);
+                        setPosterLocked(true);
+                        if (error) setError("");
+                      }, setError, { maxChars: 450000 });
+                    }}
+                  />
+                </label>
+              </div>
+              <CollectionPicker
+                game={game}
+                kinds={["poster", "flyer", "event", "post", "background"]}
+                value={posterUrl}
+                onSelect={(url) => { setPosterUrl(url); setPosterLocked(true); }}
+                heading="Game posters & flyers"
+              />
+            </div>
+          </Field>
           {kind === "bracket" && (
             <Field label="Format">
               <Select value={format} onChange={(e) => setFormat(e.target.value)}>
@@ -4060,10 +4366,10 @@ function NewTournamentModal({ onClose, onCreate, slides = [], gamesList = FILTER
           <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.08em", color: "var(--accent-secondary)", textTransform: "uppercase" }}>Host setup</div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 150 }}>
-              <Field label="Who can enter">
+              <Field label="Access">
                 <Select value={joinMode} onChange={(e) => setJoinMode(e.target.value)}>
-                  <option value="open">Free join — anyone signed in can enter</option>
-                  <option value="request">Request to join — host approves each player</option>
+                  <option value="open">Public — free join, room + stats visible when signed in</option>
+                  <option value="request">Private — registration required, host approves each player</option>
                 </Select>
               </Field>
             </div>
@@ -4073,6 +4379,12 @@ function NewTournamentModal({ onClose, onCreate, slides = [], gamesList = FILTER
               </Field>
             </div>
           </div>
+          {joinMode === "request" && (
+            <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: "var(--text-muted)" }}>
+              <input type="checkbox" checked={publicStats} onChange={(e) => setPublicStats(e.target.checked)} style={{ marginTop: 3 }} />
+              <span>Allow public view of stats (teams, matches, leaderboard) without joining. Room ID stays private until approved.</span>
+            </label>
+          )}
           <div style={{ display: "grid", gap: 10 }}>
             <Field label="Room ID (optional)">
               <TextInput value={roomId} onChange={(e) => setRoomId(e.target.value)} maxLength={40} placeholder="In-game room ID" />
@@ -4080,7 +4392,11 @@ function NewTournamentModal({ onClose, onCreate, slides = [], gamesList = FILTER
             <Field label="Room password (optional)">
               <TextInput value={roomPassword} onChange={(e) => setRoomPassword(e.target.value)} maxLength={40} placeholder="In-game password" />
             </Field>
-            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Only approved or free-joined players will see these. You can add them later if you skip now.</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+              {joinMode === "open"
+                ? "Public scrims can show room codes to signed-in visitors. You can add them later if you skip now."
+                : "Private scrims hide room codes until a player is approved. You can add them later if you skip now."}
+            </div>
           </div>
           <Field label="Basic info for players">
             <textarea value={blurb} maxLength={400} rows={3} onChange={(e) => setBlurb(e.target.value)} style={{ ...inputStyle, resize: "vertical" }} placeholder="Server region, start time, rules, or what to bring." />
@@ -4212,19 +4528,20 @@ function TournamentInvitePanel({ tournament, friends, invites, onInvite }) {
   const [friendUid, setFriendUid] = useState("");
   const selectedFriend = friends.find((friend) => friend.uid === friendUid);
   const existing = invites.find((invite) => invite.tournamentId === tournament.id && invite.inviteeUid === friendUid);
-  if (tournament.registrationOpen === false || isTournamentArchived(tournament)) return <section style={{ marginTop: 16, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>Invite a friend</Eyebrow><div style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 7 }}>Invites are closed for this tournament.</div></section>;
+  if (tournament.registrationOpen === false || isTournamentArchived(tournament)) return <section style={{ marginTop: 16, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>Invite a friend</Eyebrow><div style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 7 }}>Invites are closed for this scrim.</div></section>;
   return <section style={{ marginTop: 16, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
     <Eyebrow>Invite a friend</Eyebrow>
-    <div style={{ color: "var(--text-muted)", fontSize: 12, margin: "7px 0 10px" }}>Invite an accepted friend to view this tournament. They will still need to send a join request, with the safety disclaimer shown first.</div>
+    <div style={{ color: "var(--text-muted)", fontSize: 12, margin: "7px 0 10px" }}>Invite an accepted friend to view this scrim. They still need to join (and get approved on private scrims) before room codes unlock.</div>
     {friends.length === 0 ? <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Add a friend first, then you can invite them here.</div> : <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
       <Select aria-label="Choose friend to invite" value={friendUid} onChange={(event) => setFriendUid(event.target.value)}><option value="">Choose a friend</option>{friends.map((friend) => <option key={friend.uid} value={friend.uid}>{friend.name}{friend.playerTag ? ` · #${friend.playerTag}` : ""}</option>)}</Select>
-      <Button disabled={!selectedFriend || existing?.status === "pending" || existing?.status === "accepted"} onClick={() => selectedFriend && onInvite(selectedFriend)}>{existing?.status === "pending" ? "Invite pending" : existing?.status === "accepted" ? "Invite accepted" : existing?.status === "declined" ? "Send invite again" : "Send tournament invite"}</Button>
+      <Button disabled={!selectedFriend || existing?.status === "pending" || existing?.status === "accepted"} onClick={() => selectedFriend && onInvite(selectedFriend)}>{existing?.status === "pending" ? "Invite pending" : existing?.status === "accepted" ? "Invite accepted" : existing?.status === "declined" ? "Send invite again" : "Send scrim invite"}</Button>
     </div>}
   </section>;
 }
 
 function HostControls({ tournament, requests, lobby, onUpdateSettings, onCloseTournament, onSaveLobby }) {
   const [joinMode, setJoinMode] = useState(tournament.joinMode === "open" ? "open" : "request");
+  const [publicStats, setPublicStats] = useState(tournament.publicStats === true);
   const [maxSlots, setMaxSlots] = useState(String(tournament.maxSlots ?? 0));
   const [blurb, setBlurb] = useState(tournament.blurb || "");
   const [kind, setKind] = useState(isCustomRoomEvent(tournament) ? "custom_room" : "bracket");
@@ -4234,16 +4551,18 @@ function HostControls({ tournament, requests, lobby, onUpdateSettings, onCloseTo
   const [roomBusy, setRoomBusy] = useState(false);
   useEffect(() => {
     setJoinMode(tournament.joinMode === "open" ? "open" : "request");
+    setPublicStats(tournament.publicStats === true);
     setMaxSlots(String(tournament.maxSlots ?? 0));
     setBlurb(tournament.blurb || "");
     setKind(isCustomRoomEvent(tournament) ? "custom_room" : "bracket");
-  }, [tournament.joinMode, tournament.maxSlots, tournament.blurb, tournament.kind, tournament.format]);
+  }, [tournament.joinMode, tournament.publicStats, tournament.maxSlots, tournament.blurb, tournament.kind, tournament.format]);
   useEffect(() => {
     setRoomId(lobby?.roomId || "");
     setRoomPassword(lobby?.roomPassword || "");
   }, [lobby?.roomId, lobby?.roomPassword]);
   const save = () => onUpdateSettings({
     joinMode,
+    publicStats: joinMode === "open" ? true : publicStats === true,
     maxSlots: Math.max(0, Math.min(256, Math.trunc(Number(maxSlots) || 0))),
     blurb: blurb.trim().slice(0, 400),
     kind,
@@ -4264,7 +4583,7 @@ function HostControls({ tournament, requests, lobby, onUpdateSettings, onCloseTo
   const setUpcoming = () => onUpdateSettings({ status: "upcoming", archived: false });
   return (
     <div>
-      <div style={{ fontSize: 12, color: "var(--text-muted)", margin: "0 0 12px" }}>Join type, team cap, live/closed, and room codes live here. Visitors only see what you post.</div>
+      <div style={{ fontSize: 12, color: "var(--text-muted)", margin: "0 0 12px" }}>Public/private access, team cap, live/closed, and room codes live here. Private room codes stay hidden until a player is approved.</div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
         <Button variant={tournament.status === "upcoming" ? "primary" : "ghost"} onClick={setUpcoming}>Upcoming</Button>
         <Button variant={tournament.status === "live" ? "primary" : "ghost"} onClick={setLive}>Live</Button>
@@ -4276,21 +4595,37 @@ function HostControls({ tournament, requests, lobby, onUpdateSettings, onCloseTo
       <div style={{ display: "grid", gap: 10, maxWidth: 520 }}>
         <Field label="Event type">
           <Select value={kind} onChange={(event) => setKind(event.target.value)}>
-            <option value="bracket">Full tournament</option>
+            <option value="bracket">Full scrim / bracket</option>
             <option value="custom_room">Custom room only</option>
           </Select>
         </Field>
-        <Field label="Who can enter">
+        <Field label="Access">
           <Select value={joinMode} onChange={(event) => setJoinMode(event.target.value)}>
-            <option value="open">Free join — anyone signed in can enter</option>
-            <option value="request">Request to join — host approves each player</option>
+            <option value="open">Public — free join, room + stats visible when signed in</option>
+            <option value="request">Private — registration required, host approves each player</option>
           </Select>
         </Field>
+        {joinMode === "request" && (
+          <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: "var(--text-muted)" }}>
+            <input type="checkbox" checked={publicStats} onChange={(event) => setPublicStats(event.target.checked)} style={{ marginTop: 3 }} />
+            <span>Allow public view of stats without joining. Room ID stays private until approved.</span>
+          </label>
+        )}
         <Field label="Max teams / players (0 = unlimited)">
           <TextInput type="number" min="0" max="256" value={maxSlots} onChange={(event) => setMaxSlots(event.target.value)} />
         </Field>
         <Field label="Basic info">
           <textarea value={blurb} maxLength={400} rows={3} onChange={(event) => setBlurb(event.target.value)} style={{ ...inputStyle, resize: "vertical" }} />
+        </Field>
+        <Field label="Poster from collections">
+          <MediaLibraryDesk
+            compact
+            canManage
+            tournamentId={tournament.id}
+            game={tournament.game}
+            currentPoster={tournament.posterUrl}
+            onPickPoster={(url) => onUpdateSettings({ posterUrl: url })}
+          />
         </Field>
         <Field label="Room ID">
           <TextInput value={roomId} onChange={(event) => setRoomId(event.target.value)} maxLength={40} placeholder="In-game room ID" />
@@ -4300,7 +4635,12 @@ function HostControls({ tournament, requests, lobby, onUpdateSettings, onCloseTo
         </Field>
       </div>
       {roomError && <div role="alert" style={{ color: "var(--danger)", fontSize: 13, marginTop: 8 }}>{roomError}</div>}
-      <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-dim)" }}>{approvedCount(requests)} currently approved. Room codes stay hidden until you post them and a player is approved.</div>
+      <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-dim)" }}>
+        {approvedCount(requests)} currently approved.
+        {joinMode === "open"
+          ? " Public scrims can show posted room codes to signed-in visitors."
+          : " Private room codes stay hidden until you post them and a player is approved."}
+      </div>
       <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
         <Button onClick={save}>Save host settings</Button>
         <Button variant="ghost" disabled={roomBusy} onClick={saveRoom}>{roomBusy ? "Sharing…" : postedRoom ? "Update room codes" : "Post room codes"}</Button>
@@ -4347,6 +4687,12 @@ function TournamentDetail(props) {
     onDeleteStat,
   } = props;
 
+  const accessOpts = { uid: currentUserId, registrations: registrations || [], isAdmin };
+  const showRoom = canViewScrimRoom(tournament, accessOpts);
+  const showDetails = canViewScrimStats(tournament, accessOpts);
+  const approved = isApprovedRegistrant(registrations || [], currentUserId);
+  const privateLocked = !isAdmin && !isPublicScrim(tournament) && !approved;
+
   return (
     <div style={{ paddingTop: 24 }}>
       <button
@@ -4366,19 +4712,19 @@ function TournamentDetail(props) {
           marginBottom: 18,
         }}
       >
-        ← Back to all tournaments
+        ← Back to all scrims
       </button>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
         <div>
           <Eyebrow color="var(--text-dim)">
-            Hosted by {tournament.adminDisplayName || (tournament.adminUserId === currentUserId ? currentUserName : "Tournament host")}
+            Hosted by {tournament.adminDisplayName || (tournament.adminUserId === currentUserId ? currentUserName : "Scrim host")}
           </Eyebrow>
           <div className="mb-3 aspect-video max-w-sm overflow-hidden rounded-xl border border-white/10">
             <img src={flyerForEvent(tournament)} alt="" className="h-full w-full object-cover" />
           </div>
           <Eyebrow color="var(--text-muted)">
-            {tournament.game} · {tournament.format} · {tournament.status || "upcoming"}
+            {tournament.game} · {tournament.format} · {tournament.status || "upcoming"} · {scrimAccessLabel(tournament)}
           </Eyebrow>
           <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 38, margin: "4px 0 6px" }}>
             {tournament.name}
@@ -4387,7 +4733,7 @@ function TournamentDetail(props) {
             {fmtDate(tournament.startDate)} {tournament.endDate ? `– ${fmtDate(tournament.endDate)}` : ""}
           </div>
           <div style={{ fontSize: 13, color: "var(--accent-secondary)", marginTop: 7 }}>
-            {Number(tournament.prizeAmount) > 0 ? `Prize information: ${tournament.prizeCurrency || "INR"} ${Number(tournament.prizeAmount).toLocaleString()}` : "Free tournament"}
+            {Number(tournament.prizeAmount) > 0 ? `Prize information: ${tournament.prizeCurrency || "INR"} ${Number(tournament.prizeAmount).toLocaleString()}` : "Free scrim"}
           </div>
           {isAdmin && (
             <div
@@ -4402,14 +4748,14 @@ function TournamentDetail(props) {
                 padding: "4px 10px",
               }}
             >
-              {isOwner ? "HOST · You manage this tournament" : "CO-HOST · You manage this tournament"}
+              {isOwner ? "HOST · You manage this scrim" : "CO-HOST · You manage this scrim"}
             </div>
           )}
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {isAdmin && !isTournamentArchived(tournament) && <Button variant="ghost" onClick={onCloseTournament}>Close tournament</Button>}
-          {currentUserId && <Button variant="ghost" onClick={onShare}>Share tournament</Button>}
-          {currentUserId ? <Button variant="danger" onClick={onReport}>Report tournament</Button> : <Button variant="ghost" onClick={onSignIn}>Sign in to report</Button>}
+          {isAdmin && !isTournamentArchived(tournament) && <Button variant="ghost" onClick={onCloseTournament}>Close scrim</Button>}
+          {currentUserId && <Button variant="ghost" onClick={onShare}>Share scrim</Button>}
+          {currentUserId ? <Button variant="danger" onClick={onReport}>Report scrim</Button> : <Button variant="ghost" onClick={onSignIn}>Sign in to report</Button>}
           {currentUserId && !isOwner && <Button variant="ghost" onClick={onRequestFriend}>Request host as friend</Button>}
         {isOwner && (
           <Button
@@ -4418,7 +4764,7 @@ function TournamentDetail(props) {
               if (window.confirm(`Delete "${tournament.name}" and all its teams, matches, and stats?`)) onDelete();
             }}
           >
-            Delete tournament
+            Delete scrim
           </Button>
         )}
         </div>
@@ -4426,7 +4772,7 @@ function TournamentDetail(props) {
 
       {tournament.blurb && <p style={{ marginTop: 14, color: "var(--text-muted)", whiteSpace: "pre-wrap", maxWidth: 680 }}>{tournament.blurb}</p>}
       {isAdmin && (
-        <DeskFold title="Host desk · join type, cap, room codes" defaultOpen>
+        <DeskFold title="Host desk · access, cap, room codes" defaultOpen>
           <HostControls tournament={tournament} requests={registrations || []} lobby={lobby} onUpdateSettings={onUpdateSettings} onCloseTournament={onCloseTournament} onSaveLobby={onSaveLobby} />
           <div style={{ marginTop: 18 }}>
             <RegistrationPanel tournament={tournament} requests={registrations || []} currentUserId={currentUserId} currentUserName={currentUserName} isAdmin={isAdmin} onRequest={onRequestRegistration} onDecision={onRegistrationDecision} disclaimer={props.registrationDisclaimer} onDisclaimerVisibilityChange={props.onJoinDisclaimerVisibilityChange} onSignIn={onSignIn} />
@@ -4436,14 +4782,23 @@ function TournamentDetail(props) {
       {!isAdmin && (
         <RegistrationPanel tournament={tournament} requests={registrations || []} currentUserId={currentUserId} currentUserName={currentUserName} isAdmin={isAdmin} onRequest={onRequestRegistration} onDecision={onRegistrationDecision} disclaimer={props.registrationDisclaimer} onDisclaimerVisibilityChange={props.onJoinDisclaimerVisibilityChange} onSignIn={onSignIn} />
       )}
-      <RoomLobbyPanel isAdmin={isAdmin} canSee={!isAdmin && (registrations || []).some((request) => request.playerId === currentUserId && request.status === "approved")} lobby={lobby} />
+      <RoomLobbyPanel isAdmin={isAdmin} canSee={!isAdmin && showRoom} lobby={lobby} />
+      {privateLocked && (
+        <section style={{ marginTop: 16, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+          <Eyebrow>Private scrim</Eyebrow>
+          <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
+            Room ID and match details stay hidden until you register and the host approves you
+            {tournament.publicStats === true ? ". The host allowed public stats — they appear below when available." : "."}
+          </p>
+        </section>
+      )}
       {currentUserId && <TournamentInvitePanel tournament={tournament} friends={friends} invites={tournamentInvites} onInvite={(friend) => onInviteFriend(tournament, friend)} />}
       {isOwner && (
         <DeskFold title="Co-host">
           <CoAdminPanel tournament={tournament} isOwner={isOwner} onChange={(ids, tags) => onCoAdminsChange(ids, tags)} onAddByPlayerId={(playerTag) => onAddCoAdmin(tournament, playerTag)} />
         </DeskFold>
       )}
-      {!isCustomRoomEvent(tournament) && (isAdmin || hasPostedResults(tournament)) && (
+      {!isCustomRoomEvent(tournament) && showDetails && (isAdmin || hasPostedResults(tournament)) && (
         isAdmin ? (
           <DeskFold title="Final results">
             <TournamentResults results={tournament.results} isAdmin={isAdmin} onSave={onSaveResults} />
@@ -4453,7 +4808,7 @@ function TournamentDetail(props) {
         )
       )}
 
-      {!isCustomRoomEvent(tournament) && (isAdmin || teams.length > 0 || matches.length > 0 || stats.length > 0) && (
+      {!isCustomRoomEvent(tournament) && showDetails && (isAdmin || teams.length > 0 || matches.length > 0 || stats.length > 0) && (
         isAdmin ? (
           <>
             <DeskFold title={`Teams (${teams.length})`}>

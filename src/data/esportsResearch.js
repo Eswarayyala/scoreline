@@ -1,4 +1,4 @@
-import { bannerForGame } from "./platformShowcase";
+import { avatarForGame, bannerForGame, flyersForGame } from "./platformShowcase";
 import { isEwcEdition } from "./eventScope";
 import { normalizeEdition } from "./vaultDeskSchema";
 import { ESPORTS_RESEARCH } from "./vaultResearchSeed";
@@ -129,6 +129,9 @@ export function researchVaultSlides() {
         season: firstYear === lastYear ? String(lastYear || "") : `${lastYear || ""}–${firstYear || ""}`,
         summary: game.overview,
         poster: bannerForGame(game.game),
+        flyers: flyersForGame(game.game),
+        avatar: avatarForGame(game.game),
+        posterIndex: 0,
         eventStatus: "completed",
         surface: "research",
         research: true,

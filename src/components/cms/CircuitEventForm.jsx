@@ -79,7 +79,14 @@ export default function CircuitEventForm({ surface, initial, canWrite, onSave, o
         Summary
         <textarea rows={3} className={inputClass} value={form.summary || ""} onChange={(e) => patch("summary", e.target.value)} />
       </label>
-      <PosterPicker game={form.game} value={form.poster} onChange={(patchIn) => setForm((current) => ({ ...current, ...patchIn }))} />
+      <PosterPicker
+        game={form.game}
+        value={form.poster}
+        avatar={form.avatar}
+        flyers={form.flyers}
+        posterIndex={form.posterIndex}
+        onChange={(patchIn) => setForm((current) => ({ ...current, ...patchIn }))}
+      />
       <EventStatusFields form={form} setForm={setForm} />
       {error && <p className="text-sm text-rose-400">{error}</p>}
       <div className="flex gap-2">

@@ -1,9 +1,10 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Layers3, Newspaper, Trophy, Users, X } from "lucide-react";
+import { ImagePlus, Layers3, Newspaper, Trophy, Users, X } from "lucide-react";
 
 const OPTIONS = [
+  { id: "library", label: "Image collections", copy: "Add or delete game backgrounds, event flyers, posts, and tournament posters.", icon: ImagePlus },
   { id: "vault", label: "Manage Vault Slides", copy: "Stage posters, paste results, and review Vault requests.", icon: Layers3 },
-  { id: "tournaments", label: "Edit Tournaments", copy: "Open brackets, flyers, registrations, and live ops.", icon: Trophy },
+  { id: "tournaments", label: "Edit Scrims", copy: "Open brackets, flyers, registrations, and live ops.", icon: Trophy },
   { id: "players", label: "Moderate Players", copy: "Safety reports, bans, and discovery profiles.", icon: Users },
   { id: "blogs", label: "Publish Blogs", copy: "Approve recaps and tactical guides for the public feed.", icon: Newspaper },
 ];

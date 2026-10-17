@@ -107,7 +107,8 @@ service cloud.firestore {
              && data.bio is string
              && data.bio.size() <= 200
              && data.avatar is string
-             && data.avatar.size() <= 16
+             && data.avatar.size() > 0
+             && data.avatar.size() <= 2000
              && data.discoverable is bool
              && data.updatedAt is int
              && (!data.keys().hasAny(['playerTag']) || (data.playerTag is string && data.playerTag.matches('^[0-9]{4}$|^[0-9]{8}$')))
@@ -139,9 +140,9 @@ service cloud.firestore {
 
     function validBlogPost(data) {
       return data.keys().hasOnly([
-
                'title', 'game', 'content', 'source', 'authorId', 'authorName',
-               'status', 'createdAt', 'updatedAt', 'reviewedAt', 'reviewedBy', 'eventScope'
+               'status', 'createdAt', 'updatedAt', 'reviewedAt', 'reviewedBy', 'eventScope',
+               'analysisType', 'analysisSubject', 'youtubeUrl', 'docsUrl', 'coverUrl'
              ])
              && data.keys().hasAll([
                'title', 'game', 'content', 'source', 'authorId', 'authorName',
@@ -159,7 +160,12 @@ service cloud.firestore {
              && (!data.keys().hasAny(['updatedAt']) || data.updatedAt is int)
              && (!data.keys().hasAny(['reviewedAt']) || data.reviewedAt is int)
              && (!data.keys().hasAny(['reviewedBy']) || data.reviewedBy is string)
-             && (!data.keys().hasAny(['eventScope']) || data.eventScope in ['ewc', 'region', 'random']);
+             && (!data.keys().hasAny(['eventScope']) || data.eventScope in ['ewc', 'region', 'random'])
+             && (!data.keys().hasAny(['analysisType']) || data.analysisType in ['event', 'team', 'game', 'match'])
+             && (!data.keys().hasAny(['analysisSubject']) || (data.analysisSubject is string && data.analysisSubject.size() <= 80))
+             && (!data.keys().hasAny(['youtubeUrl']) || (data.youtubeUrl is string && data.youtubeUrl.size() <= 500 && (data.youtubeUrl.size() == 0 || data.youtubeUrl.matches('^https://.*'))))
+             && (!data.keys().hasAny(['docsUrl']) || (data.docsUrl is string && data.docsUrl.size() <= 500 && (data.docsUrl.size() == 0 || data.docsUrl.matches('^https://.*'))))
+             && (!data.keys().hasAny(['coverUrl']) || (data.coverUrl is string && data.coverUrl.size() <= 2000));
     }
 
     function validArchiveSubmission(data) {
@@ -240,7 +246,7 @@ service cloud.firestore {
                'prizeAmount', 'prizeCurrency', 'registrationOpen',
                'adminUserId', 'adminDisplayName', 'coAdminUserIds', 'coAdminPlayerTags', 'status',
                'isLegacyImport', 'createdAt', 'updatedAt', 'results', 'archived', 'archivedAt',
-               'kind', 'joinMode', 'maxSlots', 'blurb', 'posterUrl'
+               'kind', 'joinMode', 'maxSlots', 'blurb', 'posterUrl', 'publicStats'
              ]))
              && data.name is string && data.name.size() > 0 && data.name.size() <= 120
              && data.game is string && data.game.size() <= 60
@@ -258,7 +264,8 @@ service cloud.firestore {
              && (!data.keys().hasAny(['joinMode']) || data.joinMode in ['request', 'open'])
              && (!data.keys().hasAny(['maxSlots']) || (data.maxSlots is int && data.maxSlots >= 0 && data.maxSlots <= 256))
              && (!data.keys().hasAny(['blurb']) || (data.blurb is string && data.blurb.size() <= 400))
-             && (!data.keys().hasAny(['posterUrl']) || (data.posterUrl is string && data.posterUrl.size() <= 500))
+             && (!data.keys().hasAny(['posterUrl']) || (data.posterUrl is string && data.posterUrl.size() <= 500000))
+             && (!data.keys().hasAny(['publicStats']) || data.publicStats is bool)
              && (!data.keys().hasAny(['isLegacyImport']) || data.isLegacyImport is bool)
              && (!data.keys().hasAny(['createdAt']) || data.createdAt is int)
              && (!data.keys().hasAny(['updatedAt']) || data.updatedAt is int)
@@ -277,6 +284,27 @@ service cloud.firestore {
                      && data.results.mvp is string && data.results.mvp.size() <= 80
                      && data.results.runnerUp is string && data.results.runnerUp.size() <= 80
                      && data.results.secondRunnerUp is string && data.results.secondRunnerUp.size() <= 80));
+    }
+
+    function isApprovedOnTournament(tid) {
+      return isActiveSiteUser()
+             && exists(/databases/$(database)/documents/tournaments/$(tid)/registrations/$(request.auth.uid))
+             && get(/databases/$(database)/documents/tournaments/$(tid)/registrations/$(request.auth.uid)).data.status == 'approved';
+    }
+
+    function canReadScrimDetails(tid) {
+      let t = parent(tid);
+      return isAdmin(t)
+             || (t.keys().hasAny(['joinMode']) && t.joinMode == 'open')
+             || (t.keys().hasAny(['publicStats']) && t.publicStats == true)
+             || isApprovedOnTournament(tid);
+    }
+
+    function canReadScrimLobby(tid) {
+      let t = parent(tid);
+      return isAdmin(t)
+             || (isActiveSiteUser() && t.keys().hasAny(['joinMode']) && t.joinMode == 'open')
+             || isApprovedOnTournament(tid);
     }
 
     function validTeam(data) {
@@ -326,20 +354,20 @@ service cloud.firestore {
                     && (request.resource.data.coAdminUserIds == resource.data.coAdminUserIds
                         || isOwner(resource.data))
                     && request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['coAdminUserIds', 'coAdminPlayerTags', 'updatedAt', 'results', 'status', 'registrationOpen', 'archived', 'archivedAt', 'joinMode', 'maxSlots', 'kind', 'blurb', 'posterUrl'])
+                         .hasOnly(['coAdminUserIds', 'coAdminPlayerTags', 'updatedAt', 'results', 'status', 'registrationOpen', 'archived', 'archivedAt', 'joinMode', 'maxSlots', 'kind', 'blurb', 'posterUrl', 'publicStats'])
                     && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['coAdminPlayerTags']) || isOwner(resource.data))
                     && validTournament(request.resource.data, false);
 
       allow delete: if isOwner(resource.data);
 
       match /teams/{id} {
-        allow read: if canBrowsePublicData();
+        allow read: if canBrowsePublicData() && canReadScrimDetails(tid);
         allow create: if isAdmin(parent(tid)) && validTeam(request.resource.data);
         allow update: if isAdmin(parent(tid)) && validTeam(request.resource.data);
         allow delete: if isAdmin(parent(tid));
       }
       match /matches/{id} {
-        allow read: if canBrowsePublicData();
+        allow read: if canBrowsePublicData() && canReadScrimDetails(tid);
         allow create: if isAdmin(parent(tid)) && validMatch(request.resource.data);
         allow update: if isAdmin(parent(tid))
                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scoreA', 'scoreB', 'status'])
@@ -351,7 +379,7 @@ service cloud.firestore {
         allow delete: if isAdmin(parent(tid));
       }
       match /stats/{id} {
-        allow read: if canBrowsePublicData();
+        allow read: if canBrowsePublicData() && canReadScrimDetails(tid);
         allow create: if isAdmin(parent(tid)) && validStat(request.resource.data);
         allow update: if isAdmin(parent(tid)) && validStat(request.resource.data);
         allow delete: if isAdmin(parent(tid));
@@ -359,10 +387,7 @@ service cloud.firestore {
 
 
       match /lobby/{docId} {
-        allow read: if isAdmin(parent(tid))
-                    || (isActiveSiteUser()
-                        && exists(/databases/$(database)/documents/tournaments/$(tid)/registrations/$(request.auth.uid))
-                        && get(/databases/$(database)/documents/tournaments/$(tid)/registrations/$(request.auth.uid)).data.status == 'approved');
+        allow read: if canReadScrimLobby(tid);
         allow create, update: if docId == 'credentials'
                               && isAdmin(parent(tid))
                               && request.resource.data.keys().hasOnly(['roomId', 'roomPassword', 'updatedAt'])
@@ -454,14 +479,16 @@ service cloud.firestore {
                     && (
                       (request.auth.uid == resource.data.authorId
                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-                            'title', 'game', 'content', 'source', 'status', 'updatedAt', 'reviewedAt', 'reviewedBy'
+                            'title', 'game', 'content', 'source', 'status', 'updatedAt', 'reviewedAt', 'reviewedBy',
+                            'eventScope', 'analysisType', 'analysisSubject', 'youtubeUrl', 'docsUrl', 'coverUrl'
                           ])
                        && request.resource.data.status == 'pending')
                       ||
                       ((isSiteStaff() || isModerator())
                        && request.resource.data.status == 'pending'
                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-                            'title', 'game', 'content', 'source', 'status', 'updatedAt', 'reviewedAt', 'reviewedBy'
+                            'title', 'game', 'content', 'source', 'status', 'updatedAt', 'reviewedAt', 'reviewedBy',
+                            'eventScope', 'analysisType', 'analysisSubject', 'youtubeUrl', 'docsUrl', 'coverUrl'
                           ]))
                       ||
                       ((isSiteStaff() || isModerator())
@@ -719,6 +746,69 @@ service cloud.firestore {
     match /circuitCms/{recordId} {
       allow get, list: if canBrowsePublicData();
       allow create, update, delete: if isSiteOwner();
+    }
+
+    function validMediaCollection(data) {
+      return data.keys().hasOnly([
+               'scope', 'kind', 'game', 'tournamentId', 'title', 'defaultUrl',
+               'coverUrl', 'createdAt', 'updatedAt', 'createdBy', 'hiddenAssetIds', 'generated'
+             ])
+             && data.scope in ['site', 'tournament']
+             && data.kind in ['background', 'avatar', 'event', 'flyer', 'post', 'poster']
+             && data.game is string && data.game.size() <= 60
+             && data.tournamentId is string && data.tournamentId.size() <= 128
+             && data.title is string && data.title.size() > 0 && data.title.size() <= 80
+             && data.createdBy is string
+             && data.createdAt is int
+             && data.updatedAt is int
+             && (!data.keys().hasAny(['defaultUrl']) || data.defaultUrl is string)
+             && (!data.keys().hasAny(['coverUrl']) || data.coverUrl is string)
+             && (!data.keys().hasAny(['generated']) || data.generated is bool)
+             && (!data.keys().hasAny(['hiddenAssetIds'])
+                 || (data.hiddenAssetIds is list && data.hiddenAssetIds.size() <= 64))
+             && (data.scope == 'site' || data.tournamentId.size() > 0);
+    }
+
+    function canManageMediaCollection(data) {
+      return isSiteOwner()
+             || (data.scope == 'tournament'
+                 && data.tournamentId.size() > 0
+                 && exists(/databases/$(database)/documents/tournaments/$(data.tournamentId))
+                 && isAdmin(get(/databases/$(database)/documents/tournaments/$(data.tournamentId)).data));
+    }
+
+    function validMediaAsset(data) {
+      return data.keys().hasOnly(['url', 'path', 'name', 'contentType', 'bytes', 'createdAt', 'createdBy', 'isDefault'])
+             && data.url is string && data.url.size() > 0 && data.url.size() <= 500000
+             && data.path is string && data.path.size() > 0 && data.path.size() <= 800
+             && data.name is string && data.name.size() <= 200
+             && data.createdAt is int
+             && data.createdBy is string
+             && (!data.keys().hasAny(['contentType']) || data.contentType is string)
+             && (!data.keys().hasAny(['bytes']) || data.bytes is int || data.bytes is float)
+             && (!data.keys().hasAny(['isDefault']) || data.isDefault is bool);
+    }
+
+    match /mediaCollections/{collectionId} {
+      allow get, list: if canBrowsePublicData();
+      allow create: if validMediaCollection(request.resource.data)
+                    && request.resource.data.createdBy == request.auth.uid
+                    && canManageMediaCollection(request.resource.data);
+      allow update: if validMediaCollection(request.resource.data)
+                    && request.resource.data.createdAt == resource.data.createdAt
+                    && request.resource.data.createdBy == resource.data.createdBy
+                    && request.resource.data.scope == resource.data.scope
+                    && request.resource.data.tournamentId == resource.data.tournamentId
+                    && canManageMediaCollection(resource.data);
+      allow delete: if canManageMediaCollection(resource.data);
+
+      match /assets/{assetId} {
+        allow get, list: if canBrowsePublicData();
+        allow create: if validMediaAsset(request.resource.data)
+                      && request.resource.data.createdBy == request.auth.uid
+                      && canManageMediaCollection(get(/databases/$(database)/documents/mediaCollections/$(collectionId)).data);
+        allow update, delete: if canManageMediaCollection(get(/databases/$(database)/documents/mediaCollections/$(collectionId)).data);
+      }
     }
 
     match /staffChangeRequests/{requestId} {

@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 
 const SECTIONS = [
   { to: "/find-players", kicker: "Matchmaking", label: "Find Players", copy: "Search similar grinders and send a connect request." },
-  { to: "/tournaments", kicker: "Live desk", label: "Tournaments", copy: "Brackets, flyers, and events on a dedicated page." },
+  { to: "/tournaments", kicker: "Live desk", label: "Scrims", copy: "Public and private scrims, flyers, and room codes on a dedicated page." },
   { to: "/blog", kicker: "Community", label: "Community Blog", copy: "Guides, recaps, and stories from the circuit." },
 ];
 

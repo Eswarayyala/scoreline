@@ -148,6 +148,9 @@ export function emptyEdition(game = "", structureId) {
     stages: format.stages.map((name) => ({ name, teams: "", kickedOff: "" })),
     finalsTable: [emptyFinalsRow(format)],
     payouts: [{ rank: "1st (Champion)", team: "", player: "", prize: "" }],
+    poster: "",
+    posterSource: "",
+    images: [],
   };
 }
 
@@ -179,6 +182,9 @@ export function normalizeEdition(edition = {}, game = "") {
     stages: stagesFromPayouts(edition, format),
     finalsTable: edition.finalsTable?.length ? edition.finalsTable : [emptyFinalsRow(format)],
     payouts: payouts.length ? payouts : emptyEdition(game).payouts,
+    poster: edition.poster || "",
+    posterSource: edition.posterSource || "",
+    images: Array.isArray(edition.images) ? edition.images.filter(Boolean).slice(0, 6) : [],
   };
 }
 

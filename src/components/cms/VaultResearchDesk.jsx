@@ -3,6 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { canWriteCircuitContent } from "../../lib/staffAccess";
 import { FILTER_GAMES } from "../../data/gameCatalog";
+import PosterPicker from "./PosterPicker";
+import { ensureGameCollections } from "../../services/mediaLibrary";
+import EventImagePicker from "./EventImagePicker";
 import { emptyCircuitEvent } from "../../hooks/useCircuitCms";
 import EventScopeField from "./EventScopeField";
 import { emptyEdition, emptyFinalsRow, formatForGame, normalizeEdition, serializeEdition, VAULT_FORMATS } from "../../data/vaultDeskSchema";
@@ -45,6 +48,18 @@ function EditionCard({ edition, game, onChange, onRemove }) {
         <Field label="Teams from groups to finals"><input className={inputClass} value={edition.totalTeams || ""} onChange={(e) => patch("totalTeams", e.target.value)} /></Field>
         <EventScopeField value={edition.eventScope} onChange={(value) => patch("eventScope", value)} />
       </div>
+      <EventImagePicker
+        game={game}
+        poster={edition.poster}
+        images={edition.images}
+        heading="This event's poster and photos"
+        onChange={(patchIn) => onChange({
+          ...edition,
+          poster: patchIn.poster ?? edition.poster,
+          posterSource: patchIn.posterSource || edition.posterSource,
+          images: patchIn.images ?? edition.images,
+        })}
+      />
       <details className="rounded-lg border border-white/10 p-3">
         <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-widest text-slate-500">Structure category</summary>
         <select
@@ -158,6 +173,7 @@ function ResearchForm({ initial, canWrite, games, onSave, onCancel }) {
         yearlyStats: (form.yearlyStats || []).filter((row) => row.year),
         relatedTournaments: (form.relatedTournaments || []).filter((row) => row.name),
       });
+      ensureGameCollections(form.game).catch(() => {});
     } catch (issue) {
       setError(issue.message || "Could not save this game vault.");
     }
@@ -192,6 +208,17 @@ function ResearchForm({ initial, canWrite, games, onSave, onCancel }) {
         </div>
       </details>
       <Field label="Overview"><textarea rows={3} className={inputClass} value={form.summary || ""} onChange={(e) => patch("summary", e.target.value)} /></Field>
+      <div>
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">Avatars, flyers, and posters</p>
+        <PosterPicker
+          game={form.game}
+          value={form.poster}
+          avatar={form.avatar}
+          flyers={form.flyers}
+          posterIndex={form.posterIndex}
+          onChange={(patchIn) => setForm((current) => ({ ...current, ...patchIn }))}
+        />
+      </div>
       <div>
         <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">Tournaments held by year</p>
         {rows.map((row, index) => (
@@ -243,32 +270,57 @@ function ResearchForm({ initial, canWrite, games, onSave, onCancel }) {
 function CatalogDesk({ records, role, games, onSave, onDelete }) {
   const canWrite = canWriteCircuitContent(role);
   const [name, setName] = useState("");
+  const [media, setMedia] = useState({ poster: "", flyers: [], avatar: "" });
   const extras = records.filter((item) => item.surface === "catalog");
   return (
     <section className="space-y-3 rounded-2xl border border-white/10 p-4">
       <h3 className="font-display text-2xl text-white">Filter catalog</h3>
-      <p className="text-sm text-slate-400">These names power Find players, create-tournament, and CMS dropdowns. Vault research games are already included.</p>
+      <p className="text-sm text-slate-400">These names power Find players, create-tournament, and CMS dropdowns. Attach posters for games you add by hand.</p>
       <p className="text-xs text-slate-500">{games.join(" · ")}</p>
       {canWrite && (
-        <div className="flex gap-2">
-          <input className={inputClass} placeholder="Add a game to filters" value={name} onChange={(e) => setName(e.target.value)} />
-          <button
-            type="button"
-            className="shrink-0 rounded-full bg-neon px-3 text-sm font-semibold text-slate-950"
-            onClick={() => {
-              const game = name.trim();
-              if (!game) return;
-              onSave({ surface: "catalog", title: game, game, inFilters: true, kicker: "Filter list" });
-              setName("");
-            }}
-          >
-            Add
-          </button>
+        <div className="grid gap-3">
+          <div className="flex gap-2">
+            <input className={inputClass} placeholder="Add a game to filters" value={name} onChange={(e) => setName(e.target.value)} />
+            <button
+              type="button"
+              className="shrink-0 rounded-full bg-neon px-3 text-sm font-semibold text-slate-950"
+              onClick={() => {
+                const game = name.trim();
+                if (!game) return;
+                onSave({
+                  surface: "catalog",
+                  title: game,
+                  game,
+                  inFilters: true,
+                  kicker: "Filter list",
+                  poster: media.poster,
+                  flyers: media.flyers,
+                  avatar: media.avatar,
+                  posterSource: media.posterSource || "upload",
+                });
+                ensureGameCollections(game).catch(() => {});
+                setName("");
+                setMedia({ poster: "", flyers: [], avatar: "" });
+              }}
+            >
+              Add
+            </button>
+          </div>
+          <PosterPicker
+            game={name || "Other"}
+            value={media.poster}
+            avatar={media.avatar}
+            flyers={media.flyers}
+            onChange={(patchIn) => setMedia((current) => ({ ...current, ...patchIn }))}
+          />
         </div>
       )}
       {extras.map((item) => (
-        <div key={item.id} className="flex items-center justify-between text-sm text-slate-300">
-          <span>{item.game}</span>
+        <div key={item.id} className="flex items-center justify-between gap-3 text-sm text-slate-300">
+          <span className="flex items-center gap-2">
+            {(item.poster || item.avatar) && <img src={item.poster || item.avatar} alt="" className="h-8 w-8 rounded object-cover" />}
+            {item.game}
+          </span>
           {canWrite && <button type="button" className="text-rose-400" onClick={() => onDelete(item.id)}>Remove</button>}
         </div>
       ))}
