@@ -32,10 +32,16 @@ export function mergeEwcWindows(generated = [], records = []) {
   return generated.map((slide) => {
     const overlay = overlayForWindow(slide, records);
     if (!overlay) return slide;
+    const championship =
+      overlay.championship?.games?.length
+        ? overlay.championship
+        : slide.championship?.games?.length
+          ? slide.championship
+          : overlay.championship || slide.championship;
     return {
       ...slide,
       ...overlay,
-      championship: overlay.championship || slide.championship,
+      championship,
       slug: slide.slug,
       surface: "ewc-window",
       eventScope: "ewc",

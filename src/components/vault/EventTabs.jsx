@@ -249,6 +249,9 @@ export default function EventTabs({ editions = [], game, fallbackPoster, onSelec
   const eventParam = searchParams.get("event") || "";
   const compareParam = searchParams.get("compare") || "";
   const [picked, setPicked] = useState([]);
+  const [expanded, setExpanded] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const initialVisible = 8;
 
   const activeIndex = useMemo(() => {
     if (!ordered.length) return -1;
@@ -285,6 +288,22 @@ export default function EventTabs({ editions = [], game, fallbackPoster, onSelec
     if (!current || !onSelectPoster) return;
     onSelectPoster(eventPoster(current, fallbackPoster, game));
   }, [current, fallbackPoster, game, onSelectPoster]);
+
+  useEffect(() => {
+    setPreviewIndex(0);
+    setExpanded(false);
+  }, [ordered]);
+
+  const needsCollapse = ordered.length > initialVisible;
+  const safePreview = ordered.length ? Math.min(previewIndex, ordered.length - 1) : 0;
+  const preview = ordered[safePreview];
+  const visibleIndexes = useMemo(() => {
+    if (!ordered.length) return [];
+    if (expanded || !needsCollapse) return ordered.map((_, index) => index);
+    const head = Array.from({ length: initialVisible }, (_, index) => index);
+    if (safePreview >= initialVisible) return [...head.slice(0, initialVisible - 1), safePreview];
+    return head;
+  }, [ordered, expanded, needsCollapse, safePreview]);
 
   const openEvent = (index) => {
     const edition = ordered[index];
@@ -382,7 +401,7 @@ export default function EventTabs({ editions = [], game, fallbackPoster, onSelec
     <section className="mt-8">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
-          Events · open one, or pick 2–3 to compare
+          Events · pick a year tab, or select 2–3 to compare
         </p>
         {picked.length >= 2 && (
           <button
@@ -394,42 +413,77 @@ export default function EventTabs({ editions = [], game, fallbackPoster, onSelec
           </button>
         )}
       </div>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {ordered.map((edition, index) => {
-          const poster = eventPoster(edition, fallbackPoster, game);
+      <div className="flex flex-wrap items-center gap-1 border-b border-white/10">
+        {visibleIndexes.map((index) => {
+          const edition = ordered[index];
           const key = eventKey(edition, index);
+          const on = index === safePreview;
           const selected = picked.includes(key);
           return (
-            <div key={key} className="relative overflow-hidden rounded-xl border border-white/10 bg-slate-950/40">
-              <button type="button" onClick={() => openEvent(index)} className="relative block w-full px-3 py-3 pr-20 text-left">
-                {poster && <img src={poster} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />}
-                <span className="relative block font-mono text-[10px] uppercase tracking-widest text-neon">
-                  {edition.year || edition.season}
-                </span>
-                <span className="relative block truncate text-sm text-white">{edition.event || "Event"}</span>
+            <div key={key} className="flex items-center">
+              <button
+                type="button"
+                onClick={() => setPreviewIndex(index)}
+                className={`px-2.5 py-2 font-mono text-[10px] uppercase tracking-wider ${
+                  on ? "border-b border-amber-400 text-white" : "border-b border-transparent text-slate-500 hover:text-slate-300"
+                }`}
+              >
+                {edition.year || edition.season || "Event"}
               </button>
-              <div className="absolute right-2 top-2 z-10 flex gap-1">
-                <button
-                  type="button"
-                  aria-label={selected ? "Remove from compare" : "Add to compare"}
-                  onClick={() => togglePick(index)}
-                  className="rounded-full border border-white/15 bg-slate-950/80 p-1.5 text-neon"
-                >
-                  {selected ? <CheckSquare size={12} /> : <Square size={12} />}
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Open ${edition.event || "event"} in new tab`}
-                  onClick={() => openInNewTab(index)}
-                  className="rounded-full border border-white/15 bg-slate-950/80 p-1.5 text-amber-300"
-                >
-                  <ExternalLink size={12} />
-                </button>
-              </div>
+              <button
+                type="button"
+                aria-label={selected ? "Remove from compare" : "Add to compare"}
+                onClick={() => togglePick(index)}
+                className={`px-1 py-2 ${selected ? "text-neon" : "text-slate-600 hover:text-slate-400"}`}
+              >
+                {selected ? <CheckSquare size={11} /> : <Square size={11} />}
+              </button>
             </div>
           );
         })}
+        {needsCollapse && (
+          <button
+            type="button"
+            onClick={() => setExpanded((value) => !value)}
+            className="px-2 py-2 font-mono text-[10px] uppercase tracking-widest text-neon"
+          >
+            {expanded ? "Less" : `More (+${ordered.length - initialVisible})`}
+          </button>
+        )}
       </div>
+      {preview && (
+        <div className="mt-4 space-y-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-neon">
+            {[preview.year || preview.season, preview.eventScope].filter(Boolean).join(" · ")}
+          </p>
+          <h3 className="font-display text-3xl text-white">{preview.event || "Event"}</h3>
+          <p className="text-sm text-slate-400">
+            {[
+              preview.champion && `Champion ${preview.champion}`,
+              preview.prizePool,
+              preview.totalTeams && `${preview.totalTeams} teams`,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => openEvent(safePreview)}
+              className="font-mono text-[10px] uppercase tracking-widest text-amber-300"
+            >
+              Open event
+            </button>
+            <button
+              type="button"
+              onClick={() => openInNewTab(safePreview)}
+              className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-slate-400"
+            >
+              <ExternalLink size={12} /> New tab
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

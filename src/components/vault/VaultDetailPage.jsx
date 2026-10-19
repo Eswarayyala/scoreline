@@ -6,6 +6,7 @@ import { bannerForGame, flyersForGame, VAULT_SLIDES } from "../../data/platformS
 import { analysisTypeLabel } from "../../data/blogAnalysis";
 import { publicScopeKicker } from "../../data/eventScope";
 import EventTabs from "./EventTabs";
+import ChampionshipGameTabs from "./ChampionshipGameTabs";
 import WatchNextRail from "./WatchNextRail";
 import StreamEmbed from "../shared/StreamEmbed";
 import { useGameBanner } from "../../hooks/useMediaLibrary";
@@ -89,28 +90,7 @@ export default function VaultDetailPage({
               {slide.blog ? slide.fullContent || slide.summary : slide.summary}
             </p>
             {!!slide.championship?.games?.length && (
-              <section className="mt-8">
-                <h2 className="font-display text-3xl text-white">Titles in this championship</h2>
-                <ul className="mt-3 space-y-2 text-sm text-slate-300">
-                  {slide.championship.games.map((edition) => (
-                    <li key={`${edition.game}-${edition.year}-${edition.event}`} className="border-t border-white/5 pt-2">
-                      {edition.slug ? (
-                        <Link to={`/vault/${edition.slug}`} className="text-white no-underline hover:text-neon">
-                          {edition.game}
-                        </Link>
-                      ) : (
-                        <strong className="text-white">{edition.game}</strong>
-                      )}
-                      <span className="text-slate-400">
-                        {" "}
-                        · {[edition.event, edition.champion && `Champion ${edition.champion}`, edition.prizePool]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
+              <ChampionshipGameTabs games={slide.championship.games} heading="Titles in this championship" />
             )}
             {slide.blog && slide.authorName && (
               <p className="mt-3 text-sm text-slate-400">
