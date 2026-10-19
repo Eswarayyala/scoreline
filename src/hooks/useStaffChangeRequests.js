@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { addDoc, collection, onSnapshot, orderBy, query, updateDoc, doc, where } from "firebase/firestore";
 import { db } from "../firebase";
+import { isAllowedSupportAction, sanitizeSupportChangePayload } from "../lib/staffAccess";
 
 const COLLECTION = collection(db, "staffChangeRequests");
 
@@ -35,14 +36,18 @@ export function useStaffChangeRequests({ role, user } = {}) {
 
   const submit = useCallback(async ({ action, targetType, targetId, targetLabel, summary, payload }) => {
     if (role !== "support" || !user) throw new Error("Support access is required to propose a change.");
+    const nextAction = String(action || "cms_upsert").slice(0, 40);
+    if (!isAllowedSupportAction(nextAction)) {
+      throw new Error("That support action is not allowed.");
+    }
     const record = {
       status: "pending",
-      action: String(action || "cms_upsert").slice(0, 40),
+      action: nextAction,
       targetType: String(targetType || "circuitCms").slice(0, 40),
       targetId: String(targetId || "new").slice(0, 128),
       targetLabel: String(targetLabel || summary || "Support change").slice(0, 120),
       summary: String(summary || "Support change").slice(0, 240),
-      payload: payload && typeof payload === "object" ? payload : {},
+      payload: sanitizeSupportChangePayload(nextAction, payload && typeof payload === "object" ? payload : {}),
       actorUid: user.uid,
       actorName: String(user.displayName || "Support").slice(0, 40),
       createdAt: Date.now(),

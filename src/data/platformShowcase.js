@@ -109,12 +109,43 @@ const FLYER_POOL = [
   "https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?auto=format&fit=crop&w=1600&q=80",
 ];
 
+function hashSeed(value = "") {
+  let hash = 0;
+  const raw = String(value || "");
+  for (let index = 0; index < raw.length; index += 1) {
+    hash = (hash * 31 + raw.charCodeAt(index)) >>> 0;
+  }
+  return hash;
+}
+
+export function eventPosterSeed(item = {}) {
+  return [item.game, item.year, item.season, item.event, item.id, item.slug]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .join("|");
+}
+
+/** Stable unique default when staff has not set a poster for this event. */
+export function defaultPosterForEvent(item = {}) {
+  const seed = eventPosterSeed(item) || String(item.game || "event");
+  const hash = hashSeed(seed);
+  if (FLYER_POOL.length) return FLYER_POOL[hash % FLYER_POOL.length];
+  return bannerForGame(item.game);
+}
+
 export function flyersForGame(game, extras = []) {
   const primary = bannerForGame(game);
-  const hash = [...String(game || "")].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const hash = hashSeed(game);
   const rotated = FLYER_POOL.map((_, index) => FLYER_POOL[(hash + index) % FLYER_POOL.length]);
   const imported = (Array.isArray(extras) ? extras : []).filter(isImageSrc);
   return [...new Set([primary, ...imported, ...rotated].filter(isImageSrc))].slice(0, 6);
+}
+
+/** Preset strip for an event: unique default first, then game pack variants. */
+export function flyersForEvent(item = {}, extras = []) {
+  const unique = defaultPosterForEvent(item);
+  const pack = flyersForGame(item.game, [...(Array.isArray(extras) ? extras : []), ...(item.flyers || item.images || [])]);
+  return [...new Set([unique, ...pack].filter(isImageSrc))].slice(0, 6);
 }
 
 export function avatarForGame(game) {
@@ -130,11 +161,12 @@ export function avatarForGamer(player = {}) {
 }
 
 export function flyerForEvent(item = {}) {
-  const pack = flyersForGame(item.game, item.flyers || item.images);
-  const chosen = pack[Number(item.posterIndex) || 0];
+  const pack = flyersForEvent(item, item.flyers || item.images);
+  const index = Number(item.posterIndex);
+  const chosen = Number.isFinite(index) && index > 0 ? pack[index] : undefined;
   const url = [item.posterUrl, item.flyer, item.poster, chosen, item.banner, item.cover, item.artwork].find(isImageSrc);
   if (url) return url;
-  return bannerForGame(item.game);
+  return defaultPosterForEvent(item) || bannerForGame(item.game);
 }
 
 export const VAULT_SLIDES = [

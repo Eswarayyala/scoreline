@@ -68,6 +68,7 @@ import { BLOG_ANALYSIS_TYPES, analysisTypeLabel, isHttpsUrl } from "./data/blogA
 import { POSTER_PRESETS } from "./data/posterPresets";
 import { ewcFloatingSlides } from "./data/esportsResearch";
 import { EVENT_SCOPES, applyEventToVault, findGameVault, inferEventScope, normalizeGameKey, publicScopeKicker } from "./data/eventScope";
+import { canManageMediaLibrary, isAllowedSupportAction } from "./lib/staffAccess";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { onValue, ref as databaseRef, onDisconnect, serverTimestamp, set as setDatabaseValue } from "firebase/database";
 
@@ -2215,10 +2216,15 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 18 }}>
           {[["Open reports", activeReports, "reports"], ["Pending blogs", pendingBlogs, "blogs"], ["Vault requests", pendingArchiveRequests, "vault"], ["Support changes", pendingSupportChanges, isOwner ? "support changes" : "my requests"], ["Active scrims", activeTournaments, "tournaments"], ["Vault records", archiveEntries.length, "vault"]].map(([label, value, next]) => <button key={label} type="button" onClick={() => setTab(next)} style={{ padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)", textAlign: "left", cursor: "pointer", color: "inherit" }}><Eyebrow>{label}</Eyebrow><strong style={{ display: "block", fontSize: 25, marginTop: 8 }}>{value}</strong></button>)}
         </div>
-        <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Monitor tournaments, The Vault, and the community blog from the tabs above{isOwner ? ". Owner-only tools for popups and support access stay in this desk. Support edits wait here for your accept or deny." : ". Desk edits go to the owner for approval."}</p>
+        <p style={{ color: "var(--text-muted)", fontSize: 13 }}>
+          Monitor tournaments, The Vault, and the community blog from the tabs above
+          {isOwner
+            ? ". Owner-only: media library manage, popups, support access, bans/restricts, and the activity log. Support may propose vault/event poster and desk edits — you accept or deny them."
+            : ". You can edit vault event posters and desk records; those changes wait for owner approval. You cannot manage the media library, popups, support access, bans, or the activity log."}
+        </p>
       </>}
       {tab === "windows" && <FloatingWindowsDesk records={circuitRecords} ewcWindows={ewcWindows} blogSlides={blogSlides} role={role} onSave={onSaveCircuit} />}
-      {tab === "library" && <MediaLibraryDesk games={filterGames} canManage={isOwner} />}
+      {tab === "library" && <MediaLibraryDesk games={filterGames} canManage={canManageMediaLibrary(role)} />}
       {(tab === "support changes" || tab === "my requests") && <SupportChangeQueue requests={supportChanges} role={role} onReview={onReviewSupportChange} />}
       {tab === "reports" && <ReportsInbox reports={reports} onStatusChange={onStatusChange} bans={bans} role={role} onSetPlayerAccess={onSetPlayerAccess} />}
       {tab === "tournaments" && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="tournament" records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} games={filterGames} /><TournamentMonitor tournaments={tournaments} onOpen={onOpenTournament} /></div>}
@@ -3839,19 +3845,22 @@ export default function App() {
     if (siteRole !== "owner" || !item?.id) return;
     try {
       if (status === "approved") {
+        if (!isAllowedSupportAction(item.action)) {
+          showToast("Unknown support action — denied for safety. Ask support to resubmit with a known action.");
+          await staffChanges.review(item.id, "denied", "Blocked: action not on allowlist");
+          return;
+        }
         if (item.action === "cms_upsert" && item.payload) await circuitCms.upsert(item.payload);
-        if (item.action === "cms_delete") await circuitCms.remove(item.payload?.id || item.targetId);
-        if (item.action === "blog_review" && item.payload?.postId) {
+        else if (item.action === "cms_delete") await circuitCms.remove(item.payload?.id || item.targetId);
+        else if (item.action === "blog_review" && item.payload?.postId) {
           const next = item.payload.status;
           const batch = writeBatch(db);
           batch.update(doc(BLOG_POSTS_COLLECTION, item.payload.postId), { status: next, reviewedAt: Date.now(), reviewedBy: user.uid });
           appendStaffAction(batch, next === "published" ? "blog_published" : "blog_declined", "blog", item.payload.postId, `Blog ${next}: ${item.payload.postId}`);
           await batch.commit();
-        }
-        if (item.action === "archive_decision" && item.payload?.requestId) {
+        } else if (item.action === "archive_decision" && item.payload?.requestId) {
           await decideArchiveSubmission(item.payload.requestId, item.payload.status);
-        }
-        if (item.action === "blog_promote" && item.payload?.post) {
+        } else if (item.action === "blog_promote" && item.payload?.post) {
           await promoteBlogToArchive(item.payload.post, item.payload.fields || {});
         }
       }

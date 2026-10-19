@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { canWriteCircuitContent } from "../../lib/staffAccess";
+import { canProposeCmsDelete, canWriteCircuitContent, isSiteSupportRole } from "../../lib/staffAccess";
 import { FILTER_GAMES } from "../../data/gameCatalog";
 import { emptyCircuitEvent } from "../../hooks/useCircuitCms";
 import CircuitEventForm from "./CircuitEventForm";
 
 export default function CircuitCmsDesk({ surface, records, role, onSave, onDelete, games = FILTER_GAMES }) {
   const canWrite = canWriteCircuitContent(role);
+  const canRemove = canProposeCmsDelete(role);
   const [editing, setEditing] = useState(null);
   const items = useMemo(() => records.filter((item) => item.surface === surface), [records, surface]);
 
@@ -48,7 +49,11 @@ export default function CircuitCmsDesk({ surface, records, role, onSave, onDelet
             {canWrite && (
               <div className="flex flex-col justify-center gap-2 p-3">
                 <button type="button" onClick={() => setEditing(item)} className="inline-flex items-center gap-1 text-xs text-neon"><Pencil size={12} /> Edit</button>
-                <button type="button" onClick={() => onDelete(item.id)} className="inline-flex items-center gap-1 text-xs text-rose-400"><Trash2 size={12} /> Remove</button>
+                {canRemove && (
+                  <button type="button" onClick={() => onDelete(item.id)} className="inline-flex items-center gap-1 text-xs text-rose-400">
+                    <Trash2 size={12} /> {isSiteSupportRole(role) ? "Request remove" : "Remove"}
+                  </button>
+                )}
               </div>
             )}
           </article>

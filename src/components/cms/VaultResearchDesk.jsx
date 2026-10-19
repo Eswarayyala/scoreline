@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { canWriteCircuitContent } from "../../lib/staffAccess";
+import { canProposeCmsDelete, canWriteCircuitContent, isSiteSupportRole } from "../../lib/staffAccess";
 import { FILTER_GAMES } from "../../data/gameCatalog";
 import PosterPicker from "./PosterPicker";
 import { ensureGameCollections } from "../../services/mediaLibrary";
@@ -21,7 +21,7 @@ function Field({ label, children }) {
   );
 }
 
-function EditionCard({ edition, game, onChange, onRemove }) {
+function EditionCard({ edition, game, role, onChange, onRemove }) {
   const format = formatForGame(game, edition.structureId);
   const patch = (key, value) => onChange({ ...edition, [key]: value });
   const payouts = edition.payouts?.length ? edition.payouts : [{ rank: "", team: "", player: "", prize: "" }];
@@ -50,8 +50,12 @@ function EditionCard({ edition, game, onChange, onRemove }) {
       </div>
       <EventImagePicker
         game={game}
+        year={edition.year}
+        season={edition.season}
+        event={edition.event}
         poster={edition.poster}
         images={edition.images}
+        role={role}
         heading="This event's poster and photos"
         onChange={(patchIn) => onChange({
           ...edition,
@@ -151,7 +155,7 @@ function EditionCard({ edition, game, onChange, onRemove }) {
   );
 }
 
-function ResearchForm({ initial, canWrite, games, onSave, onCancel }) {
+function ResearchForm({ initial, canWrite, role, games, onSave, onCancel }) {
   const [form, setForm] = useState(() => {
     const base = { ...emptyCircuitEvent("research"), ...initial, surface: "research", research: true };
     const editions = (initial.editions || []).map((edition) => normalizeEdition(edition, initial.game || base.game));
@@ -253,12 +257,16 @@ function ResearchForm({ initial, canWrite, games, onSave, onCancel }) {
             key={index}
             edition={edition}
             game={form.game}
+            role={role}
             onChange={(next) => patch("editions", editions.map((item, i) => i === index ? next : item))}
             onRemove={() => patch("editions", editions.filter((_, i) => i !== index))}
           />
         ))}
       </div>
       {error && <p className="text-sm text-rose-400">{error}</p>}
+      {isSiteSupportRole(role) && (
+        <p className="text-xs text-amber-300/90">Support saves (including event posters) wait for owner approval.</p>
+      )}
       <div className="flex gap-2">
         <button type="submit" disabled={!canWrite} className="rounded-full bg-neon px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-40">Save game vault</button>
         <button type="button" onClick={onCancel} className="rounded-full border border-white/15 px-4 py-2 text-sm text-slate-200">Cancel</button>
@@ -269,6 +277,7 @@ function ResearchForm({ initial, canWrite, games, onSave, onCancel }) {
 
 function CatalogDesk({ records, role, games, onSave, onDelete }) {
   const canWrite = canWriteCircuitContent(role);
+  const canRemove = canProposeCmsDelete(role);
   const [name, setName] = useState("");
   const [media, setMedia] = useState({ poster: "", flyers: [], avatar: "" });
   const extras = records.filter((item) => item.surface === "catalog");
@@ -276,6 +285,9 @@ function CatalogDesk({ records, role, games, onSave, onDelete }) {
     <section className="space-y-3 rounded-2xl border border-white/10 p-4">
       <h3 className="font-display text-2xl text-white">Filter catalog</h3>
       <p className="text-sm text-slate-400">These names power Find players, create-tournament, and CMS dropdowns. Attach posters for games you add by hand.</p>
+      {isSiteSupportRole(role) && (
+        <p className="text-xs text-amber-300/90">Catalog edits and removals go to the owner queue — support never writes live.</p>
+      )}
       <p className="text-xs text-slate-500">{games.join(" · ")}</p>
       {canWrite && (
         <div className="grid gap-3">
@@ -321,7 +333,7 @@ function CatalogDesk({ records, role, games, onSave, onDelete }) {
             {(item.poster || item.avatar) && <img src={item.poster || item.avatar} alt="" className="h-8 w-8 rounded object-cover" />}
             {item.game}
           </span>
-          {canWrite && <button type="button" className="text-rose-400" onClick={() => onDelete(item.id)}>Remove</button>}
+          {canRemove && <button type="button" className="text-rose-400" onClick={() => onDelete(item.id)}>Remove</button>}
         </div>
       ))}
     </section>
@@ -331,6 +343,7 @@ function CatalogDesk({ records, role, games, onSave, onDelete }) {
 export default function VaultResearchDesk({ records, role, onSave, onDelete, filterGames = FILTER_GAMES, focusId }) {
   const navigate = useNavigate();
   const canWrite = canWriteCircuitContent(role);
+  const canRemove = canProposeCmsDelete(role);
   const items = useMemo(() => records.filter((item) => item.surface === "research" || item.research), [records]);
 
   if (focusId) {
@@ -347,6 +360,7 @@ export default function VaultResearchDesk({ records, role, onSave, onDelete, fil
           <ResearchForm
             initial={initial}
             canWrite={canWrite}
+            role={role}
             games={filterGames}
             onSave={async (draft) => {
               const saved = await onSave(draft);
@@ -365,7 +379,10 @@ export default function VaultResearchDesk({ records, role, onSave, onDelete, fil
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-neon">Shared research desk</p>
           <h2 className="font-display text-3xl text-white">Game vaults</h2>
-          <p className="mt-1 text-sm text-slate-400">Open a game in a new tab to edit. The rest of the list stays on this desk.</p>
+          <p className="mt-1 text-sm text-slate-400">
+            Open a game in a new tab to edit. Event posters stay available for owner and support
+            {isSiteSupportRole(role) ? " (support publishes only after owner approval)" : ""}.
+          </p>
         </div>
         {canWrite && (
           <a href="/admin/portal/vault/new" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full bg-neon px-4 py-2 text-sm font-semibold text-slate-950 no-underline">
@@ -384,7 +401,11 @@ export default function VaultResearchDesk({ records, role, onSave, onDelete, fil
             {canWrite && (
               <div className="flex gap-3">
                 <a href={`/admin/portal/vault/${item.id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-neon no-underline"><Pencil size={12} /> Edit</a>
-                <button type="button" onClick={() => onDelete(item.id)} className="inline-flex items-center gap-1 text-xs text-rose-400"><Trash2 size={12} /> Remove</button>
+                {canRemove && (
+                  <button type="button" onClick={() => onDelete(item.id)} className="inline-flex items-center gap-1 text-xs text-rose-400">
+                    <Trash2 size={12} /> {isSiteSupportRole(role) ? "Request remove" : "Remove"}
+                  </button>
+                )}
               </div>
             )}
           </article>

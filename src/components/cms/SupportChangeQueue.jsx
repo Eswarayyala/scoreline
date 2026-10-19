@@ -10,8 +10,8 @@ export default function SupportChangeQueue({ requests = [], role, onReview }) {
         <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, margin: "4px 0 8px" }}>{isOwner ? "Approve or deny support changes" : "Changes waiting for the owner"}</h2>
         <p style={{ color: "var(--text-muted)", fontSize: 13, margin: 0 }}>
           {isOwner
-            ? "Support cannot publish Vault, floating-window, blog, or tournament desk edits until you accept them here."
-            : "Your edits stay in this queue until the owner accepts or denies them."}
+            ? "Allowed support proposals: vault/CMS upsert or delete, blog review, archive decisions, blog promote. Unknown actions are blocked. Support never gets live media-library, popup, ban, or access-grant powers."
+            : "Your vault event posters and desk edits stay here until the owner accepts or denies them. Oversized data-URL posters are rejected — prefer https or library assets."}
         </p>
       </div>
       {pending.length === 0 ? (

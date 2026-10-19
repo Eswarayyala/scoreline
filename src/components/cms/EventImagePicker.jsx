@@ -1,16 +1,30 @@
 import { useState } from "react";
 import { ImagePlus, Trash2 } from "lucide-react";
 import { readImageFile } from "../../lib/readImageFile";
-import { flyersForGame } from "../../data/platformShowcase";
+import { defaultPosterForEvent, flyersForEvent } from "../../data/platformShowcase";
 import CollectionPicker from "./CollectionPicker";
 
 const inputClass = "w-full rounded-lg border border-white/15 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none focus:border-neon";
 
-export default function EventImagePicker({ game, poster = "", images = [], onChange, heading = "Event poster and photos" }) {
+export default function EventImagePicker({
+  game,
+  year = "",
+  season = "",
+  event = "",
+  poster = "",
+  images = [],
+  onChange,
+  heading = "Event poster and photos",
+  role = "",
+}) {
   const [urlDraft, setUrlDraft] = useState("");
   const [error, setError] = useState("");
   const extras = (images || []).filter(Boolean).slice(0, 6);
-  const presets = flyersForGame(game).slice(0, 3);
+  const eventKey = { game, year, season, event };
+  const uniqueDefault = defaultPosterForEvent(eventKey);
+  const presets = flyersForEvent(eventKey, extras).slice(0, 4);
+  const effectivePoster = poster || uniqueDefault;
+  const supportQueued = String(role || "").toLowerCase() === "support";
 
   const applyPoster = (src, source = "upload") => {
     setError("");
@@ -27,13 +41,19 @@ export default function EventImagePicker({ game, poster = "", images = [], onCha
   return (
     <div className="space-y-3 rounded-xl border border-white/10 p-3">
       <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">{heading}</p>
-      <div className="grid grid-cols-3 gap-2">
+      {supportQueued && (
+        <p className="text-xs text-amber-300/90">Support changes wait for owner approval before going live.</p>
+      )}
+      <p className="text-[11px] text-slate-500">
+        Default for this event is unique until you pick a poster. Staff can override with a URL, upload, or library image.
+      </p>
+      <div className="grid grid-cols-4 gap-2">
         {presets.map((src, index) => (
           <button
             key={`${src}-${index}`}
             type="button"
-            onClick={() => applyPoster(src, "preset")}
-            className={`overflow-hidden rounded-lg border ${poster === src ? "border-neon" : "border-white/10"}`}
+            onClick={() => applyPoster(src, index === 0 ? "event-default" : "preset")}
+            className={`overflow-hidden rounded-lg border ${effectivePoster === src ? "border-neon" : "border-white/10"}`}
           >
             <img src={src} alt="" className="h-16 w-full object-cover" />
           </button>
@@ -87,7 +107,7 @@ export default function EventImagePicker({ game, poster = "", images = [], onCha
           />
         </label>
       </div>
-      {poster && <img src={poster} alt="" className="h-28 w-full rounded-xl object-cover" />}
+      <img src={effectivePoster} alt="" className="h-28 w-full rounded-xl object-cover" />
       {!!extras.length && (
         <div className="flex flex-wrap gap-2">
           {extras.map((src) => (

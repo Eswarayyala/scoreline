@@ -864,9 +864,7 @@ service cloud.firestore {
                     && request.resource.data.actorUid == request.auth.uid
                     && request.resource.data.actorName is string
                     && request.resource.data.actorName.size() <= 40
-                    && request.resource.data.action is string
-                    && request.resource.data.action.size() > 0
-                    && request.resource.data.action.size() <= 40
+                    && request.resource.data.action in ['cms_upsert', 'cms_delete', 'blog_review', 'archive_decision', 'blog_promote']
                     && request.resource.data.summary is string
                     && request.resource.data.summary.size() > 0
                     && request.resource.data.summary.size() <= 240
