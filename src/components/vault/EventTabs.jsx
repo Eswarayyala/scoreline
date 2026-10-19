@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import { editionsNewestFirst, researchHighlightLabels } from "../../data/esportsResearch";
 import { formatForGame } from "../../data/vaultDeskSchema";
 import { flyerForEvent } from "../../data/platformShowcase";
@@ -27,12 +29,12 @@ function EventBody({ edition, game }) {
   const photos = (edition.images || []).filter(Boolean);
 
   return (
-    <div className="relative overflow-hidden rounded-b-2xl border border-t-0 border-white/10">
+    <div className="relative overflow-hidden rounded-2xl border border-white/10">
       <img src={eventPoster(edition, "", game)} alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />
       <div className="absolute inset-0 bg-slate-950/80" />
       <div className="relative p-5 md:p-6">
         <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-volt">{yearLabel.join(" · ")}</p>
-        <h2 className="font-display text-3xl text-white">{edition.event}</h2>
+        <h2 className="font-display text-3xl text-white md:text-4xl">{edition.event}</h2>
         <p className="mt-1 text-sm text-slate-400">{[edition.prizePool && `Prize pool ${edition.prizePool}`, edition.totalTeams && `${edition.totalTeams} teams groups to finals`].filter(Boolean).join(" · ")}</p>
         {(edition.champion || edition.runnerUp || edition.mvp || edition.bestIgl) && (
           <dl className="mt-4 grid gap-2 text-sm text-slate-300 sm:grid-cols-2">
@@ -142,47 +144,104 @@ function EventBody({ edition, game }) {
 }
 
 export default function EventTabs({ editions = [], game, fallbackPoster, onSelectPoster }) {
-  const ordered = editionsNewestFirst(editions);
-  const [active, setActive] = useState(0);
-  const current = ordered[active] || ordered[0];
-
-  useEffect(() => {
-    setActive(0);
-  }, [game, ordered.length]);
+  const ordered = useMemo(() => editionsNewestFirst(editions), [editions]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const eventParam = searchParams.get("event") || "";
+  const activeIndex = useMemo(() => {
+    if (!ordered.length) return -1;
+    const fromParam = ordered.findIndex((edition, index) => eventKey(edition, index) === eventParam);
+    return fromParam >= 0 ? fromParam : -1;
+  }, [eventParam, ordered]);
+  const focused = activeIndex >= 0;
+  const current = focused ? ordered[activeIndex] : null;
 
   useEffect(() => {
     if (!current || !onSelectPoster) return;
     onSelectPoster(eventPoster(current, fallbackPoster, game));
-  }, [active, current, fallbackPoster, game, onSelectPoster]);
+  }, [current, fallbackPoster, game, onSelectPoster]);
+
+  const openEvent = (index) => {
+    const edition = ordered[index];
+    if (!edition) return;
+    const next = new URLSearchParams(searchParams);
+    next.set("event", eventKey(edition, index));
+    setSearchParams(next, { replace: false });
+  };
+
+  const closeEvent = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("event");
+    setSearchParams(next, { replace: false });
+  };
+
+  const openInNewTab = (index) => {
+    const edition = ordered[index];
+    if (!edition) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("event", eventKey(edition, index));
+    window.open(url.toString(), "_blank", "noopener,noreferrer");
+  };
 
   if (!ordered.length) return null;
 
+  if (focused && current) {
+    return (
+      <section className="mt-8 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={closeEvent}
+            className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-neon"
+          >
+            <ArrowLeft size={14} /> All events
+          </button>
+          <button
+            type="button"
+            onClick={() => openInNewTab(activeIndex)}
+            className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-amber-300"
+          >
+            <ExternalLink size={14} /> Open in new tab
+          </button>
+        </div>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+          Event {activeIndex + 1} of {ordered.length}
+        </p>
+        <EventBody edition={current} game={game} />
+      </section>
+    );
+  }
+
   return (
     <section className="mt-8">
-      <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-slate-500">Events · edit each one from the owner Vault desk</p>
+      <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-slate-500">
+        Events · pick one to open full details (other events hide)
+      </p>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {ordered.map((edition, index) => {
-          const selected = index === active;
           const poster = eventPoster(edition, fallbackPoster, game);
           return (
-            <button
-              key={eventKey(edition, index)}
-              type="button"
-              onClick={() => setActive(index)}
-              className={`relative overflow-hidden rounded-xl border px-3 py-3 text-left ${selected ? "border-neon bg-slate-950" : "border-white/10 bg-slate-950/40 text-slate-400"}`}
-            >
-              {poster && <img src={poster} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />}
-              <span className="relative block font-mono text-[10px] uppercase tracking-widest text-neon">{edition.year || edition.season}</span>
-              <span className="relative block truncate text-sm text-white">{edition.event || "Event"}</span>
-            </button>
+            <div key={eventKey(edition, index)} className="relative overflow-hidden rounded-xl border border-white/10 bg-slate-950/40">
+              <button
+                type="button"
+                onClick={() => openEvent(index)}
+                className="relative block w-full px-3 py-3 text-left"
+              >
+                {poster && <img src={poster} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />}
+                <span className="relative block font-mono text-[10px] uppercase tracking-widest text-neon">{edition.year || edition.season}</span>
+                <span className="relative block truncate text-sm text-white">{edition.event || "Event"}</span>
+              </button>
+              <button
+                type="button"
+                aria-label={`Open ${edition.event || "event"} in new tab`}
+                onClick={() => openInNewTab(index)}
+                className="absolute right-2 top-2 z-10 rounded-full border border-white/15 bg-slate-950/80 p-1.5 text-amber-300"
+              >
+                <ExternalLink size={12} />
+              </button>
+            </div>
           );
         })}
       </div>
-      {current && (
-        <div className="mt-3">
-          <EventBody edition={current} game={game} />
-        </div>
-      )}
     </section>
   );
 }
