@@ -211,10 +211,10 @@ function randomPlayerTag() {
 async function claimUniqueHandle(user, displayName, currentTag = "") {
   const name = playerNameFromInput(displayName);
   if (!user?.uid || !isValidPlayerName(name)) throw new Error("Choose a valid player name first.");
-  const email = user.email || "";
   const tryClaim = async (tag) => {
     const handle = `${name.toLowerCase()}#${tag}`;
-    await setDoc(handleDocRef(handle), { uid: user.uid, email, handle, createdAt: Date.now() });
+    // Do not store email on public handle docs (prevents ID→email scraping).
+    await setDoc(handleDocRef(handle), { uid: user.uid, handle, createdAt: Date.now() });
     return { tag, handle };
   };
   if (currentTag && PLAYER_TAG_PATTERN.test(currentTag)) {
@@ -725,10 +725,10 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowse
             </Field>
           ) : (
             <>
-            <Field label="GrindInfo ID or email">
-              <TextInput value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="email or Name#1234" autoComplete="username" required />
+            <Field label="Account email">
+              <TextInput value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="you@email.com" autoComplete="username" required />
             </Field>
-            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -6 }}>Use your Name#1234 ID and password, or the email you registered.</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -6 }}>Password accounts sign in with email. Main accounts should Continue with Google.</div>
             </>
           )}
           <Field label="Password">
@@ -2453,11 +2453,59 @@ export default function App() {
   const [knownAccounts, setKnownAccounts] = useState(() => readKnownAccounts());
 
   useEffect(() => {
-    let unsub = () => {};
     let cancelled = false;
+    let loadingCleared = false;
+    const applyAuthUser = (u) => {
+      if (cancelled) return;
+      setUser(u || null);
+      const returningGuest = !u && sessionStorage.getItem("grindinfo-guest-mode") === "true";
+      setGuestMode(returningGuest);
+      setAuthDialogOpen(!u && !returningGuest);
+      if (!u) {
+        setView("list");
+        setShowNewTournament(false);
+        setReportTarget(null);
+      }
+      if (u) {
+        sessionStorage.removeItem("grindinfo-guest-mode");
+        rememberKnownAccount({
+          uid: u.uid,
+          email: u.email || "",
+          handle: u.displayName && String(u.displayName).includes("#") ? String(u.displayName).toLowerCase() : "",
+          label: u.displayName || u.email || "Player",
+          provider: u.providerData?.some((item) => item.providerId === "google.com") ? "google" : "password",
+        });
+        setKnownAccounts(readKnownAccounts());
+      }
+      if (!loadingCleared) {
+        loadingCleared = true;
+        setAuthLoading(false);
+      }
+    };
+
+    // Never block the UI on Auth/IndexedDB. Paint within 1.5s even if Auth never answers.
+    const unsub = onAuthStateChanged(auth, (u) => applyAuthUser(u));
+    const failSafe = window.setTimeout(() => {
+      if (!loadingCleared) applyAuthUser(auth.currentUser || null);
+    }, 1500);
+
+    if (typeof auth.authStateReady === "function") {
+      Promise.race([
+        auth.authStateReady(),
+        new Promise((resolve) => window.setTimeout(resolve, 1200)),
+      ]).then(() => {
+        if (!loadingCleared) applyAuthUser(auth.currentUser || null);
+      }).catch(() => {
+        if (!loadingCleared) applyAuthUser(null);
+      });
+    }
+
     (async () => {
       try {
-        await completeGoogleSignInReturn();
+        await Promise.race([
+          completeGoogleSignInReturn(),
+          new Promise((resolve) => window.setTimeout(resolve, 2500)),
+        ]);
       } catch (e) {
         if (!cancelled) {
           setAuthError(e.code === "auth/unauthorized-domain"
@@ -2465,36 +2513,49 @@ export default function App() {
             : "Couldn't finish Google sign-in — try email instead.");
         }
       }
-      if (cancelled) return;
-      unsub = onAuthStateChanged(auth, (u) => {
-        setUser(u);
-        const returningGuest = !u && sessionStorage.getItem("grindinfo-guest-mode") === "true";
-        setGuestMode(returningGuest);
-        setAuthDialogOpen(!u && !returningGuest);
-        if (!u) {
-          setView("list");
-          setShowNewTournament(false);
-          setReportTarget(null);
-        }
-        if (u) {
-          sessionStorage.removeItem("grindinfo-guest-mode");
-          rememberKnownAccount({
-            uid: u.uid,
-            email: u.email || "",
-            handle: u.displayName && String(u.displayName).includes("#") ? String(u.displayName).toLowerCase() : "",
-            label: u.displayName || u.email || "Player",
-            provider: u.providerData?.some((item) => item.providerId === "google.com") ? "google" : "password",
-          });
-          setKnownAccounts(readKnownAccounts());
-        }
-        setAuthLoading(false);
-      });
     })();
+
     return () => {
       cancelled = true;
+      window.clearTimeout(failSafe);
       unsub();
     };
   }, []);
+
+  // Soft session hygiene on Spark: idle signed-in tabs re-auth after 12 hours without activity.
+  useEffect(() => {
+    if (!user) return undefined;
+    const KEY = "grindinfo-last-active";
+    const IDLE_MS = 12 * 60 * 60 * 1000;
+    const touch = () => {
+      try { localStorage.setItem(KEY, String(Date.now())); } catch { /* private mode */ }
+    };
+    const last = Number(localStorage.getItem(KEY) || 0);
+    if (last > 0 && Date.now() - last > IDLE_MS) {
+      sessionStorage.removeItem("grindinfo-guest-mode");
+      signOut(auth);
+      setAuthDialogOpen(true);
+      setAuthError("Signed out after idle time. Sign in again to continue.");
+      return undefined;
+    }
+    touch();
+    const onActivity = () => touch();
+    const events = ["pointerdown", "keydown", "visibilitychange"];
+    events.forEach((name) => window.addEventListener(name, onActivity, { passive: true }));
+    const tick = window.setInterval(() => {
+      const stamped = Number(localStorage.getItem(KEY) || 0);
+      if (stamped > 0 && Date.now() - stamped > IDLE_MS) {
+        sessionStorage.removeItem("grindinfo-guest-mode");
+        signOut(auth);
+        setAuthDialogOpen(true);
+        setAuthError("Signed out after idle time. Sign in again to continue.");
+      }
+    }, 60 * 1000);
+    return () => {
+      events.forEach((name) => window.removeEventListener(name, onActivity));
+      window.clearInterval(tick);
+    };
+  }, [user]);
 
   const handleGoogleSignIn = useCallback(async () => {
     setAuthError("");
@@ -2526,25 +2587,11 @@ export default function App() {
         await updateProfile(cred.user, { displayName: playerNameFromInput(name) });
       } else {
         const identifier = String(email || "").trim();
-        const handle = normalizeHandle(identifier);
-        let accountEmail = identifier;
-        if (handle) {
-          try {
-            const snapshot = await getDoc(handleDocRef(handle));
-            const mapped = snapshot.data()?.email;
-            if (snapshot.exists() && mapped) accountEmail = mapped;
-            else if (!isEmailLike(identifier)) {
-              setAuthError("That GrindInfo ID is not linked yet. Use the email for that account, or Continue with Google for your main login.");
-              return;
-            }
-          } catch {
-            if (!isEmailLike(identifier)) {
-              setAuthError("Couldn't look up that GrindInfo ID. Use the account email, or Continue with Google.");
-              return;
-            }
-          }
+        if (!isEmailLike(identifier)) {
+          setAuthError("Sign in with the account email (or Continue with Google). GrindInfo IDs are public labels and no longer map to emails.");
+          return;
         }
-        await signInWithEmailAndPassword(auth, accountEmail, password);
+        await signInWithEmailAndPassword(auth, identifier, password);
       }
     } catch (e) {
       const messages = {
@@ -3763,6 +3810,7 @@ export default function App() {
               onEditProfile={() => setShowProfileModal(true)}
               dashboardRole={dashboardRole}
               playerTag={myProfile?.playerTag}
+              profile={myProfile}
               friendsPanel={user ? (
                 <FriendDock
                   placement="header"
@@ -3933,12 +3981,18 @@ const shellStyle = {
   fontFamily: "'Inter', sans-serif",
 };
 
-function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAccount, onEditProfile, dashboardRole, friendsPanel = null, playerTag = "" }) {
+function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAccount, onEditProfile, dashboardRole, friendsPanel = null, playerTag = "", profile = null }) {
   const location = useLocation();
   const friendsMenu = useRef(null);
   const accountMenu = useRef(null);
   const displayName = grindHandle(safeProfileName(user?.displayName), playerTag);
   const initials = (playerNameFromInput(safeProfileName(user?.displayName)).slice(0, 1) || "P").toUpperCase();
+  const avatarSrc = avatarForGamer({
+    photoURL: user?.photoURL,
+    avatar: profile?.avatar,
+    games: profile?.games,
+    displayName,
+  });
   const closeOtherMenu = (keep) => {
     [friendsMenu.current, accountMenu.current].forEach((node) => {
       if (node && node !== keep) node.removeAttribute("open");
@@ -3987,8 +4041,8 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAcc
                   aria-label="Account menu"
                   style={{ listStyle: "none", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "var(--page-text)", border: "1px solid var(--border)", background: "var(--panel-bg)", padding: "6px 9px", fontFamily: "'Inter', sans-serif", fontSize: 12 }}
                 >
-                  {user?.photoURL ? (
-                    <img src={avatarForGamer({ photoURL: user.photoURL, avatar: myProfile?.avatar, games: myProfile?.games, displayName })} alt="" className="aspect-square h-[30px] w-[30px] rounded-full object-cover" />
+                  {user?.photoURL || (profile?.avatar && String(profile.avatar).length > 2) ? (
+                    <img src={avatarSrc} alt="" className="aspect-square h-[30px] w-[30px] rounded-full object-cover" />
                   ) : (
                     <span aria-hidden="true" style={{ width: 30, height: 30, borderRadius: "50%", display: "grid", placeItems: "center", background: "var(--accent)", color: "var(--accent-contrast)", fontWeight: 700 }}>
                       {initials}

@@ -16,19 +16,24 @@ service firebase.storage {
         || (t.coAdminUserIds is list && request.auth.uid in t.coAdminUserIds)
       );
     }
-    function isImage() {
-      return request.resource == null
-        || request.resource.contentType.matches('image/.*');
+    function isSafeImageUpload() {
+      return request.resource != null
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/jpeg|image/png|image/webp|image/gif');
     }
 
     match /media/site/{allPaths=**} {
       allow read: if true;
-      allow write: if isSiteOwner() && isImage();
+      allow write: if isSiteOwner() && isSafeImageUpload();
     }
 
     match /media/tournaments/{tid}/{allPaths=**} {
       allow read: if true;
-      allow write: if isImage() && (isSiteOwner() || isTournamentAdmin(tid));
+      allow write: if isSafeImageUpload() && (isSiteOwner() || isTournamentAdmin(tid));
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }

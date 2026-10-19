@@ -53,6 +53,33 @@ service cloud.firestore {
     function canBrowsePublicData() {
       return request.auth == null || !isSiteBanned();
     }
+    // Soft anti-spam on Spark (no Cloud Functions): new accounts wait briefly before posting.
+    function accountAgeSeconds() {
+      return request.time.toMillis() / 1000 - request.auth.token.auth_time;
+    }
+    function accountSettled() {
+      return request.auth != null && accountAgeSeconds() >= 20;
+    }
+    function freshClientTimestamp(value) {
+      return value is int
+             && value <= request.time.toMillis() + 120000
+             && value >= request.time.toMillis() - 300000;
+    }
+    function isSafeImageUrl(value, maxSize) {
+      return value is string
+             && value.size() > 0
+             && value.size() <= maxSize
+             && (value.matches('^https://.*')
+                 || value.matches('^/media/.*')
+                 || value.matches('^data:image/(png|jpeg|jpg|webp|gif);base64,.*'));
+    }
+    function isSafeAvatar(value) {
+      return value is string
+             && value.size() > 0
+             && value.size() <= 2000
+             && (value.size() <= 16
+                 || isSafeImageUrl(value, 2000));
+    }
     function isBlocked(firstUid, secondUid) {
       return exists(/databases/$(database)/documents/userBlocks/$(firstUid + '_' + secondUid))
         || exists(/databases/$(database)/documents/userBlocks/$(secondUid + '_' + firstUid));
@@ -106,11 +133,10 @@ service cloud.firestore {
              && (!data.keys().hasAny(['rank']) || (data.rank is string && data.rank.size() <= 40))
              && data.bio is string
              && data.bio.size() <= 200
-             && data.avatar is string
-             && data.avatar.size() > 0
-             && data.avatar.size() <= 2000
+             && isSafeAvatar(data.avatar)
              && data.discoverable is bool
              && data.updatedAt is int
+             && freshClientTimestamp(data.updatedAt)
              && (!data.keys().hasAny(['playerTag']) || (data.playerTag is string && data.playerTag.matches('^[0-9]{4}$|^[0-9]{8}$')))
              && (!data.keys().hasAny(['handle'])
                  || (data.handle is string
@@ -165,7 +191,9 @@ service cloud.firestore {
              && (!data.keys().hasAny(['analysisSubject']) || (data.analysisSubject is string && data.analysisSubject.size() <= 80))
              && (!data.keys().hasAny(['youtubeUrl']) || (data.youtubeUrl is string && data.youtubeUrl.size() <= 500 && (data.youtubeUrl.size() == 0 || data.youtubeUrl.matches('^https://.*'))))
              && (!data.keys().hasAny(['docsUrl']) || (data.docsUrl is string && data.docsUrl.size() <= 500 && (data.docsUrl.size() == 0 || data.docsUrl.matches('^https://.*'))))
-             && (!data.keys().hasAny(['coverUrl']) || (data.coverUrl is string && data.coverUrl.size() <= 2000));
+             && (!data.keys().hasAny(['coverUrl'])
+                 || data.coverUrl.size() == 0
+                 || isSafeImageUrl(data.coverUrl, 2000));
     }
 
     function validArchiveSubmission(data) {
@@ -264,7 +292,9 @@ service cloud.firestore {
              && (!data.keys().hasAny(['joinMode']) || data.joinMode in ['request', 'open'])
              && (!data.keys().hasAny(['maxSlots']) || (data.maxSlots is int && data.maxSlots >= 0 && data.maxSlots <= 256))
              && (!data.keys().hasAny(['blurb']) || (data.blurb is string && data.blurb.size() <= 400))
-             && (!data.keys().hasAny(['posterUrl']) || (data.posterUrl is string && data.posterUrl.size() <= 500000))
+             && (!data.keys().hasAny(['posterUrl'])
+                 || data.posterUrl.size() == 0
+                 || isSafeImageUrl(data.posterUrl, 450000))
              && (!data.keys().hasAny(['publicStats']) || data.publicStats is bool)
              && (!data.keys().hasAny(['isLegacyImport']) || data.isLegacyImport is bool)
              && (!data.keys().hasAny(['createdAt']) || data.createdAt is int)
@@ -343,6 +373,7 @@ service cloud.firestore {
       allow read: if canBrowsePublicData();
 
       allow create: if isActiveSiteUser()
+                    && accountSettled()
                     && !isSiteRestricted()
                     && request.resource.data.adminUserId == request.auth.uid
                     && request.resource.data.coAdminUserIds is list
@@ -468,9 +499,11 @@ service cloud.firestore {
                            && (resource.data.authorId == request.auth.uid
                                || isSiteStaff() || isModerator()));
       allow create: if isActiveSiteUser()
+                    && accountSettled()
                     && request.resource.data.authorId == request.auth.uid
                     && request.resource.data.status == 'pending'
-                    && validBlogPost(request.resource.data);
+                    && validBlogPost(request.resource.data)
+                    && freshClientTimestamp(request.resource.data.createdAt);
       allow update: if isActiveSiteUser()
                     && validBlogPost(request.resource.data)
                     && request.resource.data.authorId == resource.data.authorId
@@ -505,10 +538,11 @@ service cloud.firestore {
       allow get, list: if isSiteStaff()
                        || (isActiveSiteUser() && resource.data.submitterId == request.auth.uid);
       allow create: if isActiveSiteUser()
-
+                    && accountSettled()
                     && request.resource.data.submitterId == request.auth.uid
                     && request.resource.data.status == 'pending'
-                    && validArchiveSubmission(request.resource.data);
+                    && validArchiveSubmission(request.resource.data)
+                    && freshClientTimestamp(request.resource.data.createdAt);
       allow update: if isSiteStaff()
                     && resource.data.status == 'pending'
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt', 'reviewedBy', 'archiveEntryId'])
@@ -532,7 +566,9 @@ service cloud.firestore {
 
     match /reports/{reportId} {
       allow create: if isActiveSiteUser()
+                    && accountSettled()
                     && validReport(request.resource.data)
+                    && freshClientTimestamp(request.resource.data.createdAt)
                     && reportId == request.auth.uid + '_' + request.resource.data.targetType
                          + '_' + request.resource.data.targetId;
       allow get, list: if isSiteStaff();
@@ -549,6 +585,7 @@ service cloud.firestore {
                   && (resource.data.requesterId == request.auth.uid
                       || resource.data.recipientId == request.auth.uid);
       allow create: if isActiveSiteUser()
+                    && accountSettled()
                     && request.resource.data.keys().hasOnly(['requesterId', 'requesterName', 'recipientId', 'recipientName', 'status', 'createdAt'])
                     && request.resource.data.requesterId == request.auth.uid
                     && request.resource.data.recipientId is string
@@ -557,11 +594,10 @@ service cloud.firestore {
                     && request.resource.data.requesterName is string
                     && request.resource.data.requesterName.size() <= 40
                     && (!request.resource.data.keys().hasAny(['recipientName']) || (request.resource.data.recipientName is string && request.resource.data.recipientName.size() <= 40))
-
                     && request.resource.data.status == 'pending'
                     && !isSiteRestricted()
                     && !isBlocked(request.auth.uid, request.resource.data.recipientId)
-                    && request.resource.data.createdAt is int;
+                    && freshClientTimestamp(request.resource.data.createdAt);
       allow update: if isActiveSiteUser()
                     && (
                       (resource.data.recipientId == request.auth.uid
@@ -680,7 +716,8 @@ service cloud.firestore {
           && request.resource.data.senderId == request.auth.uid
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000
-          && isEpochMs(request.resource.data.createdAt);
+          && isEpochMs(request.resource.data.createdAt)
+          && freshClientTimestamp(request.resource.data.createdAt);
         allow update, delete: if false;
       }
     }
@@ -700,19 +737,18 @@ service cloud.firestore {
     }
 
     match /handles/{handleId} {
+      // Public get is for ID uniqueness only — never store emails on new handle docs.
       allow get: if canBrowsePublicData();
       allow list: if false;
       allow create: if isActiveSiteUser()
                     && request.resource.data.uid == request.auth.uid
-                    && request.resource.data.keys().hasOnly(['uid', 'email', 'handle', 'createdAt'])
+                    && request.resource.data.keys().hasOnly(['uid', 'handle', 'createdAt'])
                     && request.resource.data.uid == request.auth.uid
-                    && request.resource.data.email is string
-                    && request.resource.data.email.size() <= 320
                     && request.resource.data.handle is string
                     && request.resource.data.handle.matches('^[a-z0-9_]{3,16}#[0-9]{4}$|^[a-z0-9_]{3,16}#[0-9]{8}$')
                     && handleId.matches('^[a-z0-9_]{3,16}::[0-9]{4}$|^[a-z0-9_]{3,16}::[0-9]{8}$')
                     && request.resource.data.handle == handleId.replace('::', '#')
-                    && request.resource.data.createdAt is int;
+                    && freshClientTimestamp(request.resource.data.createdAt);
       allow update: if false;
       allow delete: if isActiveSiteUser() && resource.data.uid == request.auth.uid;
     }
@@ -761,8 +797,12 @@ service cloud.firestore {
              && data.createdBy is string
              && data.createdAt is int
              && data.updatedAt is int
-             && (!data.keys().hasAny(['defaultUrl']) || data.defaultUrl is string)
-             && (!data.keys().hasAny(['coverUrl']) || data.coverUrl is string)
+             && (!data.keys().hasAny(['defaultUrl'])
+                 || data.defaultUrl.size() == 0
+                 || isSafeImageUrl(data.defaultUrl, 2000))
+             && (!data.keys().hasAny(['coverUrl'])
+                 || data.coverUrl.size() == 0
+                 || isSafeImageUrl(data.coverUrl, 450000))
              && (!data.keys().hasAny(['generated']) || data.generated is bool)
              && (!data.keys().hasAny(['hiddenAssetIds'])
                  || (data.hiddenAssetIds is list && data.hiddenAssetIds.size() <= 64))
@@ -779,13 +819,14 @@ service cloud.firestore {
 
     function validMediaAsset(data) {
       return data.keys().hasOnly(['url', 'path', 'name', 'contentType', 'bytes', 'createdAt', 'createdBy', 'isDefault'])
-             && data.url is string && data.url.size() > 0 && data.url.size() <= 500000
+             && isSafeImageUrl(data.url, 500000)
              && data.path is string && data.path.size() > 0 && data.path.size() <= 800
              && data.name is string && data.name.size() <= 200
-             && data.createdAt is int
+             && freshClientTimestamp(data.createdAt)
              && data.createdBy is string
-             && (!data.keys().hasAny(['contentType']) || data.contentType is string)
-             && (!data.keys().hasAny(['bytes']) || data.bytes is int || data.bytes is float)
+             && data.contentType is string
+             && data.contentType.matches('image/.*')
+             && (!data.keys().hasAny(['bytes']) || ((data.bytes is int || data.bytes is float) && data.bytes >= 0 && data.bytes <= 5000000))
              && (!data.keys().hasAny(['isDefault']) || data.isDefault is bool);
     }
 

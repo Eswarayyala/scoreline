@@ -4,13 +4,48 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
     <title>GrindInfo</title>
+    <style>
+      html, body { margin: 0; min-height: 100%; background: #17110f; color: #fff1e6; }
+      #root:empty {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: Inter, system-ui, sans-serif;
+      }
+      #root:empty::before {
+        content: "Loading GrindInfo…";
+        opacity: 0.8;
+        font-size: 14px;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <p style="font-family: sans-serif; padding: 2rem; color: #eee; background: #17110f; min-height: 100vh;">
+        GrindInfo needs JavaScript enabled. Open this site in Chrome or Edge, then reload.
+      </p>
+    </noscript>
+    <script>
+      // If the app module never mounts, show a recovery screen (empty #root in DevTools).
+      window.setTimeout(function () {
+        var root = document.getElementById("root");
+        if (!root || root.childElementCount > 0) return;
+        root.innerHTML =
+          '<div style="min-height:100vh;display:grid;place-items:center;padding:24px;text-align:center;font-family:Inter,system-ui,sans-serif;background:#17110f;color:#fff1e6">' +
+          '<div style="max-width:420px">' +
+          '<div style="font-family:Bebas Neue,sans-serif;font-size:42px;letter-spacing:0.04em">GrindInfo</div>' +
+          '<p style="color:#c3aa9a;line-height:1.5;margin:12px 0 20px">The app script did not start in this browser session. This is usually a stuck cache or a blocked module script.</p>' +
+          '<a href="/?recover=1" style="display:inline-block;padding:10px 16px;background:#ff8a24;color:#23120b;text-decoration:none;font-weight:700;border-radius:8px">Reload clean</a>' +
+          '<p style="margin-top:16px;font-size:12px;color:#967d70">Or open an Incognito/Private window → www.grindinfo.xyz</p>' +
+          "</div></div>";
+      }, 4000);
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

@@ -11,6 +11,7 @@ import {
 import { getDatabase } from "firebase/database";
 import { getStorage } from "firebase/storage";
 
+// Firebase web config is public by design (protected by Auth + security rules, not by hiding the key).
 const firebaseConfig = {
   apiKey: "AIzaSyBlQWnHSz_ennegidtyrwiap6Oe_YtNtqI",
   authDomain: "scoreliner.firebaseapp.com",
