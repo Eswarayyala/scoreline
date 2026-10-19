@@ -1,0 +1,196 @@
+/** Canonical franchise / org names used to classify vault competitors. Longest-first for matching. */
+export const KNOWN_FRANCHISES = [
+  "iBUYPOWER Cosmic",
+  "FlipSid3 Tactics",
+  "Northern Gaming",
+  "Gale Force eSports",
+  "Team Dignitas",
+  "Renault Vitality",
+  "Karmine Corp",
+  "Team BDS",
+  "G2 Stride",
+  "Mock-It eSports",
+  "NRG Esports",
+  "GoNext Esports",
+  "DarkZero Esports",
+  "Spacestation Gaming",
+  "SpaceStation Gaming",
+  "Reject Winnity",
+  "Team Falcons",
+  "OpTic Texas",
+  "OpTic Gaming",
+  "Atlanta FaZe",
+  "Los Angeles Thieves",
+  "New York Subliners",
+  "Dallas Empire",
+  "Fariko Impact",
+  "Complexity Gaming",
+  "Denial Esports",
+  "FunPlus Phoenix (FPX)",
+  "FunPlus Phoenix",
+  "Ninjas in Pyjamas",
+  "Natus Vincere (NaVi)",
+  "Natus Vincere",
+  "Evil Geniuses (EG)",
+  "Evil Geniuses",
+  "EDward Gaming (EDG)",
+  "EDward Gaming",
+  "Royal Never Give Up",
+  "SK Telecom T1 (T1)",
+  "SK Telecom T1",
+  "Counter Logic Gaming",
+  "Gaimin Gladiators",
+  "Team Liquid PH",
+  "Team Liquid",
+  "Team Spirit",
+  "Team Vitality",
+  "FaZe Clan",
+  "G2 Esports",
+  "The MongolZ",
+  "GamerLegion",
+  "Luminosity Gaming",
+  "Team EnVyUs",
+  "Team LDLC.com",
+  "Gambit Esports",
+  "Virtus.pro",
+  "SK Gaming",
+  "Cloud9",
+  "Astralis",
+  "ENCE",
+  "AVANGAR",
+  "Heroic",
+  "FURIA",
+  "Immortals",
+  "Outsiders (VP)",
+  "Paper Rex",
+  "Team Heretics",
+  "Acend",
+  "LOUD",
+  "PSG.LGD",
+  "Invictus Gaming (iG)",
+  "Invictus Gaming",
+  "Wings Gaming",
+  "Newbee",
+  "Alliance",
+  "Tundra Esports",
+  "PARIVISION",
+  "EHOME",
+  "CDEC Gaming",
+  "DC Esports",
+  "Vici Gaming",
+  "Keen Gaming",
+  "Mineski",
+  "Azure Ray",
+  "BetBoom Team",
+  "Taipei Assassins",
+  "Azubu Frost",
+  "Samsung White",
+  "Samsung Galaxy",
+  "Royal Club",
+  "Star Horn Royal",
+  "KOO Tigers",
+  "DAMWON Gaming (DK)",
+  "DAMWON Gaming",
+  "DWG KIA",
+  "Weibo Gaming",
+  "Bilibili Gaming",
+  "KT Rolster",
+  "Suning",
+  "DRX",
+  "Fnatic ONIC",
+  "Fnatic",
+  "JD Gaming",
+  "Gen.G Esports",
+  "Gen.G",
+  "Kingzone DragonX",
+  "Nova Esports",
+  "Klas Gaming",
+  "Kaos Next Ruya",
+  "S2G Esports",
+  "DRS Gaming",
+  "IHC Esports",
+  "Stalwart Esports",
+  "Dplus KIA",
+  "Alpha7 Esports",
+  "ULF Esports",
+  "Susquehanna Soniqs",
+  "Soniqs",
+  "Zenith Esports",
+  "NewHappy",
+  "Danawa eSports",
+  "Twisted Minds",
+  "17 Gaming",
+  "Era eSports",
+  "PENTA Sports",
+  "W7m Esports",
+  "EVOS Legends",
+  "RRQ Hoshi",
+  "Bren Esports",
+  "Burmese Ghouls",
+  "Blacklist International",
+  "ONIC PH",
+  "ONIC Esports",
+  "Selangor Red Giants",
+  "eStar Pro",
+  "Wuhan eStar",
+  "Chengdu AG Super Play",
+  "LGD Gaming My",
+  "MOUZ",
+  "Mouz",
+  "Vitality",
+  "NRG",
+  "SSG",
+  "TSM",
+  "OpTic",
+  "T1",
+  "BIG",
+  "OG",
+  "Secret",
+  "ECHO",
+  "AP.Bren",
+  "BMW M Team Redline",
+  "Porsche Coanda Esports",
+  "Red Bull Sim Racing",
+  "Rebellion Williams Esports",
+  "Realteam Hydrogen Redline",
+  "Ferrari Esports Team",
+  "Team Redline",
+  "REVIVAL Esports",
+].sort((a, b) => b.length - a.length);
+
+const ORG_PATTERN =
+  /\b(team|esports|e-sports|gaming|clan|org|organisation|organization|corp|academy|gladiators|ninjas|thieves|subliners|empire|phoenix|spirit|vitality|faze|liquid|falcons|heretics|gambit|luminosity|cloud9|astralis|fnatic|paper\s*rex|navi|natus|mouz|optic|gen\.?g|t1|drx|loud|acend|heroic|furia|ence|virtus|g2)\b/i;
+
+const PLACEHOLDER_PATTERN =
+  /contenders|quarterfinal|semifinal|deep playoff|group stage|tba|tbd|various|multiple|field|everyone|others|^and\b/i;
+
+export function isPlaceholderCompetitor(name = "") {
+  const text = String(name || "").trim();
+  if (!text || text.length < 2) return true;
+  if (/,/.test(text) && text.split(",").length > 2) return true;
+  if (/\//.test(text) && text.split("/").filter((part) => part.trim()).length > 2) return true;
+  if (PLACEHOLDER_PATTERN.test(text)) return true;
+  return false;
+}
+
+export function canonicalOrgName(name = "") {
+  const text = String(name || "").trim();
+  if (!text) return "";
+  const hit = KNOWN_FRANCHISES.find(
+    (org) => text.toLowerCase() === org.toLowerCase() || text.toLowerCase().startsWith(`${org.toLowerCase()} `),
+  );
+  return hit || text.replace(/\s*\([^)]*\)\s*$/, "").trim() || text;
+}
+
+export function looksLikeFranchiseName(name = "") {
+  const text = String(name || "").trim();
+  if (!text || isPlaceholderCompetitor(text)) return false;
+  // Real-name players often annotated with an org: "Magnus Carlsen (Team Liquid)"
+  if (/^[A-Z][a-z]+(?:\s+[A-Z][a-z.'-]+){0,3}\s*\([^)]+\)$/.test(text)) return false;
+  // Fighting tags with character notes: "Craime (Cammy / Luke)"
+  if (/\([^)]*\/[^)]*\)$/.test(text)) return false;
+  if (KNOWN_FRANCHISES.some((org) => text.toLowerCase() === org.toLowerCase())) return true;
+  if (/^team\s+/i.test(text)) return true;
+  if (ORG_PATTERN.test(text) && !/\(.+\/.+\)/.test(text)) return true;
+  return false;
+}

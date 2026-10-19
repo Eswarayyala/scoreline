@@ -1,17 +1,28 @@
 import { useNavigate } from "react-router-dom";
+import StaffSocialLinks from "./StaffSocialLinks";
 
 const PRIMARY = [
   { to: "/", label: "Home", end: true },
   { to: "/vault", label: "The Vault" },
+  { to: "/vault/franchises", label: "Franchises" },
+  { to: "/vault/players", label: "Players" },
 ];
 
-export default function PublicNav({ pathname = window.location.pathname }) {
+export default function PublicNav({
+  pathname = window.location.pathname,
+  ownerPresence = null,
+  supportPresence = null,
+}) {
   const navigate = useNavigate();
   return (
     <nav className="relative z-20 mx-auto max-w-6xl px-5">
       <div className="flex flex-nowrap gap-1 overflow-x-auto border-b border-white/10">
         {PRIMARY.map((link) => {
-          const on = link.end ? pathname === link.to : pathname === link.to || pathname.startsWith(`${link.to}/`);
+          const on = link.end
+            ? pathname === link.to
+            : link.to === "/vault"
+              ? pathname === "/vault"
+              : pathname === link.to || pathname.startsWith(`${link.to}/`);
           return (
             <button
               key={link.to}
@@ -24,6 +35,7 @@ export default function PublicNav({ pathname = window.location.pathname }) {
           );
         })}
       </div>
+      <StaffSocialLinks ownerProfile={ownerPresence} supportProfile={supportPresence} />
     </nav>
   );
 }

@@ -30,8 +30,13 @@ import PublicNav from "./components/layout/PublicNav";
 import TournamentOpsRail from "./components/layout/TournamentOpsRail";
 import VaultDetailPage from "./components/vault/VaultDetailPage";
 import VaultLibraryPage from "./components/vault/VaultLibraryPage";
+import CompetitorDossierPage from "./components/vault/CompetitorDossierPage";
+import CompetitorDirectoryPage from "./components/vault/CompetitorDirectoryPage";
 import EwcDirectoryPage from "./components/vault/EwcDirectoryPage";
 import PreEwcHistoryPage from "./components/vault/PreEwcHistoryPage";
+import SitePresenceDesk from "./components/cms/SitePresenceDesk";
+import { useGrindPrefs, useVaultBookmarks } from "./hooks/useVaultBookmarks";
+import { emptyPresenceProfile, normalizePresenceProfile, serializePresenceProfile } from "./data/sitePresence";
 import VaultResearchDesk from "./components/cms/VaultResearchDesk";
 import { avatarForGamer, bannerForGame, flyerForEvent, flyersForGame } from "./data/platformShowcase";
 import { readImageFile } from "./lib/readImageFile";
@@ -54,7 +59,13 @@ import {
 import { useGameBanner, useMediaArt } from "./hooks/useMediaLibrary";
 import CollectionPicker from "./components/cms/CollectionPicker";
 import MediaLibraryDesk from "./components/cms/MediaLibraryDesk";
+import LfgNoticeBoard from "./components/ecosystem/LfgNoticeBoard";
+import FindPlayersShowcase from "./components/ecosystem/FindPlayersShowcase";
+import Countdown from "./components/shared/Countdown";
+import DynamicPointsTable from "./components/shared/DynamicPointsTable";
+import AchievementBadges, { PlacementTrendGraph } from "./components/shared/AchievementBadges";
 import { BLOG_ANALYSIS_TYPES, analysisTypeLabel, isHttpsUrl } from "./data/blogAnalysis";
+import { POSTER_PRESETS } from "./data/posterPresets";
 import { ewcFloatingSlides } from "./data/esportsResearch";
 import { EVENT_SCOPES, applyEventToVault, findGameVault, inferEventScope, normalizeGameKey, publicScopeKicker } from "./data/eventScope";
 import { getFunctions, httpsCallable } from "firebase/functions";
@@ -82,6 +93,7 @@ const SITE_ROLES_COLLECTION = collection(db, "siteRoles");
 const SITE_BANS_COLLECTION = collection(db, "siteBans");
 const ARCHIVE_SUBMISSIONS_COLLECTION = collection(db, "archiveSubmissions");
 const STAFF_ACTIONS_COLLECTION = collection(db, "staffActions");
+const sitePresenceRef = (role) => doc(db, "sitePresence", role);
 const PRIZE_PRESETS = [0, 500, 1000, 2500, 5000, 10000];
 const REPORT_REASONS = ["Abuse or harassment", "Scam or fraud", "Inappropriate content", "Other"];
 
@@ -289,11 +301,14 @@ const LANGUAGES = [
 const PLAY_STYLES = [
   "IGL / Shotcaller",
   "Entry / Aggressive",
+  "Entry Fragger",
   "Support",
   "Sniper / Precision",
   "Flex / All-rounder",
+  "Casual",
+  "Competitive",
 ];
-const LOOKING_FOR = ["Duo", "Squad", "Ranked", "Casual", "Tournament"];
+const LOOKING_FOR = ["Duo", "Squad", "Ranked", "Casual", "Competitive", "Tournament"];
 const RANK_BANDS = ["Unranked", "Beginner", "Intermediate", "High rank", "Pro / scrim"];
 
 function normalizeLookingFor(list = []) {
@@ -817,6 +832,7 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
   const [lookingFor, setLookingFor] = useState(normalizeLookingFor(initialProfile?.lookingFor));
   const [rank, setRank] = useState(normalizeRank(initialProfile?.rank));
   const [bio, setBio] = useState(initialProfile?.bio || "");
+  const [discordHandle, setDiscordHandle] = useState(initialProfile?.discordHandle || "");
   const [avatar, setAvatar] = useState(initialProfile?.avatar || "🎮");
   const [discoverable, setDiscoverable] = useState(initialProfile?.discoverable === true);
   const [error, setError] = useState("");
@@ -844,6 +860,7 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
       lookingFor: normalizeLookingFor(lookingFor),
       rank: normalizeRank(rank),
       bio: bio.trim(),
+      discordHandle: String(discordHandle || "").trim().slice(0, 40),
       avatar,
       discoverable,
     });
@@ -881,7 +898,7 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
         </div>
         <div style={{ color: "var(--accent-secondary)", fontFamily: "'JetBrains Mono', monospace", fontSize: 12, marginTop: 8 }}>Your GrindInfo ID: {grindHandle(displayName, initialProfile?.playerTag || "••••")}</div>
         <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>
-          Your profile stays out of player search unless you choose to be discoverable. Use a gaming name and keep personal contact details private.
+          Your profile stays out of player search unless you choose to be discoverable. Use a gaming name. Optional Discord sync is for teammate LFG only — keep other personal contact private.
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -1044,6 +1061,14 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
               ))}
             </Select>
           </Field>
+          <Field label="Discord sync (optional)">
+            <TextInput
+              value={discordHandle}
+              maxLength={40}
+              onChange={(e) => setDiscordHandle(e.target.value)}
+              placeholder="username or name#0000"
+            />
+          </Field>
           <Field label="Bio (optional)">
             <textarea
               value={bio}
@@ -1134,11 +1159,17 @@ function PlayerCard({ player, currentUid, friendRequest, onFriendRequest, onFrie
           ))}
         </div>
       )}
+      <AchievementBadges player={player} />
       {matchReasons.length > 0 && (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
           {matchReasons.map((reason) => (
             <span key={reason} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, padding: "3px 8px", background: "var(--panel-raised)", color: "var(--accent-secondary)" }}>{reason}</span>
           ))}
+        </div>
+      )}
+      {player.discordHandle && (
+        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--accent-secondary)", marginTop: 8 }}>
+          Discord · {player.discordHandle}
         </div>
       )}
       {player.bio && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--page-text)", marginTop: 10 }}>{player.bio}</div>}
@@ -1272,6 +1303,20 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
         </div>
         {onEditProfile && <Button variant="ghost" onClick={onEditProfile}>{myProfile ? "Edit my profile" : "Set up my profile"}</Button>}
       </div>
+
+      <LfgNoticeBoard profile={myProfile} gamesList={gamesList} />
+      {myProfile && (
+        <div style={{ marginBottom: 18, display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+          <div style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
+            <Eyebrow>Your badges</Eyebrow>
+            <AchievementBadges player={myProfile} />
+            {!myProfile.style && !normalizeLookingFor(myProfile.lookingFor).length && (
+              <div style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 8 }}>Add a playstyle or Looking for tags to unlock badges.</div>
+            )}
+          </div>
+          <PlacementTrendGraph placements={myProfile.placementTrend} />
+        </div>
+      )}
 
       <form onSubmit={runSearch} style={{ marginBottom: 18, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
         <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--accent-secondary)", marginBottom: 10 }}>Manual search</div>
@@ -1486,11 +1531,16 @@ function RoomLobbyPanel({ isAdmin, canSee, lobby }) {
   if (!canSee) return null;
   return (
     <section style={{ marginTop: 16, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
-      <Eyebrow>Custom room</Eyebrow>
+      <Eyebrow>Live lobby</Eyebrow>
       {posted ? (
         <>
-          <div style={{ color: "var(--text-muted)", fontSize: 12, margin: "7px 0 12px" }}>Host posted the custom room. Copy these into the game.</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 12, margin: "7px 0 12px" }}>Host posted the custom room. One-click copy into the game.</div>
           <div style={{ display: "grid", gap: 10, maxWidth: 420 }}>
+            <Button
+              onClick={() => copyValue(`Room ID: ${lobby.roomId}\nPassword: ${lobby.roomPassword}`, "both")}
+            >
+              {copied === "both" ? "Copied room + password" : "One-click copy room + password"}
+            </Button>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", padding: 10, background: "var(--panel-raised)", border: "1px solid var(--border)" }}>
               <div><Eyebrow>Room ID</Eyebrow><div style={{ fontFamily: "'JetBrains Mono', monospace", marginTop: 4 }}>{lobby.roomId}</div></div>
               <Button variant="ghost" onClick={() => copyValue(lobby.roomId, "id")}>{copied === "id" ? "Copied" : "Copy"}</Button>
@@ -1982,7 +2032,7 @@ function SitePopup({ popup, onDismiss }) {
   );
 }
 
-function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerAccess, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], onSaveCircuit, onDeleteCircuit, onImportArchive, filterGames = FILTER_GAMES, ewcWindows = [], blogSlides = [], supportChanges = [], onReviewSupportChange }) {
+function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerAccess, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], onSaveCircuit, onDeleteCircuit, onImportArchive, filterGames = FILTER_GAMES, ewcWindows = [], blogSlides = [], supportChanges = [], onReviewSupportChange, ownerPresence = null, supportPresence = null, onSaveOwnerPresence, onSaveSupportPresence }) {
   const isOwner = role === "owner";
   const [tab, setTab] = useState(initialTab);
   const [editing, setEditing] = useState(null);
@@ -2035,7 +2085,7 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
       <Eyebrow>{isOwner ? "Owner controls · protected" : "Support workspace · restricted"}</Eyebrow>
       <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 18px" }}>{isOwner ? "Owner dashboard" : "Support dashboard"}</h1>
       <div role="tablist" aria-label="Dashboard sections" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-        {["overview", "windows", "library", "tournaments", "vault", "blogs", "reports", ...(isOwner ? ["support changes", "activity log", "popups", "support access"] : ["my requests"])].map((name) => <Button key={name} variant={tab === name ? "primary" : "ghost"} onClick={() => setTab(name)}>{name === "vault" ? "The Vault" : name === "tournaments" ? "Scrims" : name[0].toUpperCase() + name.slice(1)}</Button>)}
+        {["overview", "windows", "library", "tournaments", "vault", "blogs", "reports", "socials", ...(isOwner ? ["support changes", "activity log", "popups", "support access"] : ["my requests"])].map((name) => <Button key={name} variant={tab === name ? "primary" : "ghost"} onClick={() => setTab(name)}>{name === "vault" ? "The Vault" : name === "tournaments" ? "Scrims" : name === "socials" ? "Socials" : name[0].toUpperCase() + name.slice(1)}</Button>)}
       </div>
       {tab === "overview" && <>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 18 }}>
@@ -2049,6 +2099,15 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
       {tab === "reports" && <ReportsInbox reports={reports} onStatusChange={onStatusChange} bans={bans} role={role} onSetPlayerAccess={onSetPlayerAccess} />}
       {tab === "tournaments" && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="tournament" records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} games={filterGames} /><TournamentMonitor tournaments={tournaments} onOpen={onOpenTournament} /></div>}
       {tab === "vault" && <div style={{ display: "grid", gap: 28 }}><VaultResearchDesk records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} filterGames={filterGames} /><VaultMonitor submissions={archiveSubmissions} blogPosts={blogPosts} onDecision={onArchiveDecision} onPromote={onPromoteBlog} /></div>}
+      {tab === "socials" && (
+        <SitePresenceDesk
+          role={role}
+          ownerProfile={ownerPresence}
+          supportProfile={supportPresence}
+          onSaveOwner={onSaveOwnerPresence}
+          onSaveSupport={onSaveSupportPresence}
+        />
+      )}
       {tab === "activity log" && isOwner && <StaffActivityLog actions={auditLog} />}
       {tab === "blogs" && <section><p style={{ color: "var(--text-muted)", fontSize: 13 }}>Watch every community blog from this desk. Publish or decline pending posts, then promote a published story into The Vault from the Vault tab.</p><div style={{ display: "flex", gap: 16, margin: "0 0 14px", fontSize: 13, color: "var(--text-muted)" }}><span>Pending {pendingBlogs}</span><span>Published {blogPosts.filter((post) => post.status === "published").length}</span><span>Total {blogPosts.length}</span></div>{blogPosts.length === 0 ? <EmptyState title="No blog posts yet" body="Community submissions will appear here for preview." /> : <div style={{ display: "grid", gap: 10 }}>{[...blogPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 30).map((post) => <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}{post.eventScope ? ` · ${post.eventScope}` : ""} · by {post.authorName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{post.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{post.content}</p>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onBlogReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onBlogReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div>}</section>}
       {tab === "popups" && isOwner && <section>
@@ -2443,6 +2502,8 @@ export default function App() {
   const [currentPopup, setCurrentPopup] = useState(null);
   const [popupScanTick, setPopupScanTick] = useState(0);
   const [onlinePlayerCount, setOnlinePlayerCount] = useState(null);
+  const [ownerPresence, setOwnerPresence] = useState(() => emptyPresenceProfile("Owner"));
+  const [supportPresence, setSupportPresence] = useState(() => emptyPresenceProfile("Support"));
 
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -2451,6 +2512,8 @@ export default function App() {
   const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
   const [knownAccounts, setKnownAccounts] = useState(() => readKnownAccounts());
+  const vaultBookmarks = useVaultBookmarks(user?.uid);
+  const grindPrefs = useGrindPrefs(user?.uid);
 
   useEffect(() => {
     let cancelled = false;
@@ -2866,6 +2929,23 @@ export default function App() {
   }, [siteRole]);
 
   useEffect(() => {
+    const stopOwner = onSnapshot(
+      sitePresenceRef("owner"),
+      (snapshot) => setOwnerPresence(normalizePresenceProfile(snapshot.exists() ? snapshot.data() : {}, "Owner")),
+      () => setOwnerPresence(emptyPresenceProfile("Owner")),
+    );
+    const stopSupport = onSnapshot(
+      sitePresenceRef("support"),
+      (snapshot) => setSupportPresence(normalizePresenceProfile(snapshot.exists() ? snapshot.data() : {}, "Support")),
+      () => setSupportPresence(emptyPresenceProfile("Support")),
+    );
+    return () => {
+      stopOwner();
+      stopSupport();
+    };
+  }, []);
+
+  useEffect(() => {
     if (!user) return;
     const getKeys = (popup) => ({
       next: `grindinfo-popup-next:${user.uid}:${popup.id}:${popup.frequency || "random"}`,
@@ -3014,6 +3094,7 @@ export default function App() {
         lookingFor: normalizeLookingFor(fields.lookingFor),
         rank: normalizeRank(fields.rank),
         bio: String(fields.bio || "").slice(0, 200),
+        discordHandle: String(fields.discordHandle || "").trim().slice(0, 40),
         discoverable: fields.discoverable === true,
         updatedAt: Date.now(),
       };
@@ -3058,6 +3139,8 @@ export default function App() {
         joinMode: event.joinMode === "open" ? "open" : "request",
         publicStats: event.publicStats === true,
         maxSlots: Math.max(0, Math.min(256, Math.trunc(Number(event.maxSlots) || 0))),
+        region: REGIONS.includes(event.region) ? event.region : "",
+        rankBand: RANK_BANDS.includes(event.rankBand) ? event.rankBand : "",
         blurb: String(event.blurb || "").slice(0, 400),
         posterUrl: String(event.posterUrl || "").slice(0, 500000),
         isLegacyImport: false,
@@ -3493,6 +3576,18 @@ export default function App() {
     for (const next of merged.values()) await circuitCms.upsert(next);
   };
 
+  const saveOwnerPresence = async (profile) => {
+    if (siteRole !== "owner") throw new Error("Only the owner can publish owner socials.");
+    await setDoc(sitePresenceRef("owner"), serializePresenceProfile(profile, user?.uid), { merge: true });
+    showToast("Owner socials updated");
+  };
+
+  const saveSupportPresence = async (profile) => {
+    if (siteRole !== "owner" && siteRole !== "support") throw new Error("Staff access required.");
+    await setDoc(sitePresenceRef("support"), serializePresenceProfile(profile, user?.uid), { merge: true });
+    showToast("Support socials updated");
+  };
+
   const submitArchiveRequest = async (fields) => {
     const clean = {
       tournament: String(fields.tournament || "").trim().slice(0, 120),
@@ -3791,6 +3886,10 @@ export default function App() {
                   onOpenTournament={(id) => navigate(`/tournaments/${id}`)}
                   onImportArchive={importArchiveEntries}
                   filterGames={circuitCms.filterGames}
+                  ownerPresence={ownerPresence}
+                  supportPresence={supportPresence}
+                  onSaveOwnerPresence={saveOwnerPresence}
+                  onSaveSupportPresence={saveSupportPresence}
                 />
                 )}
               </div>
@@ -3830,18 +3929,47 @@ export default function App() {
                 />
               ) : null}
             />
-            <PublicNav pathname={routePath} />
+            <PublicNav pathname={routePath} ownerPresence={ownerPresence} supportPresence={supportPresence} />
             <div className={`mx-auto px-5 pb-24 ${routePath === "/" || routePath.startsWith("/vault") ? "max-w-6xl" : "max-w-5xl"}`}>
               <Routes location={windowLocation}>
                 <Route path="/" element={(
                   <PlatformHome slides={homeSlides}>
-                    <HubSections />
+                    <div className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+                      <HubSections />
+                      <FindPlayersShowcase
+                        onBrowseAll={() => (user ? navigate("/find-players") : setAuthDialogOpen(true))}
+                        onConnect={() => (user ? navigate("/find-players") : setAuthDialogOpen(true))}
+                      />
+                    </div>
                   </PlatformHome>
                 )} />
-                <Route path="/vault" element={<VaultLibraryPage slides={vaultSlides} />} />
+                <Route path="/vault" element={(
+                  <VaultLibraryPage
+                    slides={vaultSlides}
+                    bookmarkSlugs={vaultBookmarks.slugs}
+                    onToggleBookmark={vaultBookmarks.toggle}
+                    tournaments={tournaments}
+                    grindPrefs={grindPrefs.prefs}
+                    onGrindPrefsChange={grindPrefs.update}
+                  >
+                    <div>
+                      <p className="mb-2 font-mono text-[11px] uppercase tracking-widest text-amber-300">Contributor desk</p>
+                      <p className="mb-3 max-w-xl text-sm text-stone-400">Suggest a missing event or correction. Staff reviews every submission before it lands in The Vault.</p>
+                      <ArchiveRequestForm
+                        user={user}
+                        submissions={archiveSubmissions}
+                        onSubmit={submitArchiveRequest}
+                        onSignIn={() => setAuthDialogOpen(true)}
+                      />
+                    </div>
+                  </VaultLibraryPage>
+                )} />
                 <Route path="/vault/ewc" element={<EwcDirectoryPage slides={vaultSlides} liveEntries={archiveEntries} />} />
                 <Route path="/vault/legacy" element={<PreEwcHistoryPage />} />
-                <Route path="/vault/:slug" element={<VaultDetailPage slides={vaultSlides} slug={routePath.replace(/^\/vault\//, "").split("/")[0]} liveEntries={archiveEntries} />} />
+                <Route path="/vault/franchises" element={<CompetitorDirectoryPage slides={vaultSlides} kind="franchise" />} />
+                <Route path="/vault/players" element={<CompetitorDirectoryPage slides={vaultSlides} kind="player" />} />
+                <Route path="/vault/dossier/:name" element={<CompetitorDossierPage slides={vaultSlides} name={routePath.replace(/^\/vault\/dossier\//, "").split("/")[0] || ""} />} />
+                <Route path="/vault/:slug" element={<VaultDetailPage slides={vaultSlides} slug={routePath.replace(/^\/vault\//, "").split("/")[0]} liveEntries={archiveEntries} bookmarked={vaultBookmarks.has(routePath.replace(/^\/vault\//, "").split("/")[0])} onToggleBookmark={vaultBookmarks.toggle} />} />
                 <Route path="/tournaments" element={(
                   <>
                     <TournamentOpsRail
@@ -4073,12 +4201,28 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAcc
 function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, onNew, onSignIn, pendingInvites = [], onInviteDecision, embedded = false, hideCreate = false, archivedView, onArchivedView }) {
   const [localArchived, setLocalArchived] = useState(false);
   const [accessFilter, setAccessFilter] = useState("all");
+  const [regionFilter, setRegionFilter] = useState("all");
+  const [rankFilter, setRankFilter] = useState("all");
+  const [timeFilter, setTimeFilter] = useState("all");
+  const [openSlotsOnly, setOpenSlotsOnly] = useState(false);
   const showArchived = archivedView ?? localArchived;
   const setShowArchived = onArchivedView ?? setLocalArchived;
   const visibleTournaments = tournaments.filter((t) => {
     if (isTournamentArchived(t) !== showArchived) return false;
-    if (accessFilter === "public") return isPublicScrim(t);
-    if (accessFilter === "private") return !isPublicScrim(t);
+    if (accessFilter === "public" && !isPublicScrim(t)) return false;
+    if (accessFilter === "private" && isPublicScrim(t)) return false;
+    if (regionFilter !== "all" && String(t.region || "") !== regionFilter) return false;
+    if (rankFilter !== "all" && String(t.rankBand || "") !== rankFilter) return false;
+    if (openSlotsOnly && t.registrationOpen === false) return false;
+    if (timeFilter === "soon") {
+      const start = Date.parse(t.startDate || "") || 0;
+      if (!start) return false;
+      const delta = start - Date.now();
+      if (delta < -86400000 || delta > 7 * 86400000) return false;
+    } else if (timeFilter === "later") {
+      const start = Date.parse(t.startDate || "") || 0;
+      if (!start || start - Date.now() <= 7 * 86400000) return false;
+    }
     return true;
   });
   return (
@@ -4115,6 +4259,33 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
           <Button variant={accessFilter === "all" ? "primary" : "ghost"} onClick={() => setAccessFilter("all")}>All</Button>
           <Button variant={accessFilter === "public" ? "primary" : "ghost"} onClick={() => setAccessFilter("public")}>Public</Button>
           <Button variant={accessFilter === "private" ? "primary" : "ghost"} onClick={() => setAccessFilter("private")}>Private</Button>
+        </div>
+      )}
+      {!showArchived && (
+        <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
+          <label style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)" }}>
+            Region
+            <Select value={regionFilter} onChange={(e) => setRegionFilter(e.target.value)} style={{ marginLeft: 8, minWidth: 140 }}>
+              <option value="all">Any</option>
+              {REGIONS.map((region) => <option key={region} value={region}>{region}</option>)}
+            </Select>
+          </label>
+          <label style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)" }}>
+            Rank
+            <Select value={rankFilter} onChange={(e) => setRankFilter(e.target.value)} style={{ marginLeft: 8, minWidth: 140 }}>
+              <option value="all">Any</option>
+              {RANK_BANDS.map((band) => <option key={band} value={band}>{band}</option>)}
+            </Select>
+          </label>
+          <label style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)" }}>
+            When
+            <Select value={timeFilter} onChange={(e) => setTimeFilter(e.target.value)} style={{ marginLeft: 8, minWidth: 140 }}>
+              <option value="all">Any time</option>
+              <option value="soon">Next 7 days</option>
+              <option value="later">Later</option>
+            </Select>
+          </label>
+          <Button variant={openSlotsOnly ? "primary" : "ghost"} onClick={() => setOpenSlotsOnly((value) => !value)}>Open registration</Button>
         </div>
       )}
       {!showArchived && pendingInvites.length > 0 && <section style={{ display: "grid", gap: 8, marginBottom: 18 }}><Eyebrow>Scrim invites</Eyebrow>{pendingInvites.map((invite) => <article key={invite.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, padding: 12, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><span>{invite.inviterName || "A friend"} invited you to <strong>{invite.tournamentName}</strong> · {invite.game}</span><span style={{ display: "flex", gap: 6 }}><Button onClick={() => onOpen(invite.tournamentId)}>View scrim</Button><Button variant="ghost" onClick={() => onInviteDecision(invite.id, "accepted")}>Accept</Button><Button variant="danger" onClick={() => onInviteDecision(invite.id, "declined")}>Decline</Button></span></article>)}</section>}
@@ -4179,6 +4350,11 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
                 <div style={{ display: "inline-block", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: isPublicScrim(t) ? "var(--accent-secondary)" : "var(--text-muted)", border: "1px solid var(--border)", padding: "3px 8px", marginBottom: 6 }}>
                   {scrimAccessLabel(t)}
                 </div>
+                {(t.region || t.rankBand) && (
+                  <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>
+                    {[t.region, t.rankBand].filter(Boolean).join(" · ")}
+                  </div>
+                )}
                 {t.isLegacyImport && (
                   <div
                     style={{
@@ -4215,6 +4391,8 @@ function NewTournamentModal({ onClose, onCreate, slides = [], gameArt = [], game
   const [joinMode, setJoinMode] = useState("open");
   const [publicStats, setPublicStats] = useState(false);
   const [maxSlots, setMaxSlots] = useState("16");
+  const [region, setRegion] = useState("");
+  const [rankBand, setRankBand] = useState("");
   const [blurb, setBlurb] = useState("");
   const [roomId, setRoomId] = useState("");
   const [roomPassword, setRoomPassword] = useState("");
@@ -4265,6 +4443,8 @@ function NewTournamentModal({ onClose, onCreate, slides = [], gameArt = [], game
       joinMode,
       publicStats: joinMode === "open" ? true : publicStats === true,
       maxSlots: slots,
+      region: region || "",
+      rankBand: rankBand || "",
       blurb: blurb.trim().slice(0, 400),
       posterUrl,
       roomId: roomId.trim(),
@@ -4399,6 +4579,25 @@ function NewTournamentModal({ onClose, onCreate, slides = [], gameArt = [], game
                   />
                 </label>
               </div>
+              <Field label="Preset template library">
+                <Select
+                  value=""
+                  onChange={(e) => {
+                    const preset = POSTER_PRESETS.find((item) => item.id === e.target.value);
+                    if (!preset) return;
+                    setPosterUrl(preset.src);
+                    setPosterLocked(true);
+                    if (error) setError("");
+                  }}
+                >
+                  <option value="">Choose a preset poster…</option>
+                  {POSTER_PRESETS.filter((item) => String(item.game || "").toLowerCase() === gameKey || !gameKey)
+                    .slice(0, 24)
+                    .map((item) => (
+                      <option key={item.id} value={item.id}>{item.label}</option>
+                    ))}
+                </Select>
+              </Field>
               <CollectionPicker
                 game={game}
                 kinds={["poster", "flyer", "event", "post", "background"]}
@@ -4450,6 +4649,24 @@ function NewTournamentModal({ onClose, onCreate, slides = [], gameArt = [], game
               {joinMode === "open"
                 ? "Public scrims can show room codes to signed-in visitors. You can add them later if you skip now."
                 : "Private scrims hide room codes until a player is approved. You can add them later if you skip now."}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 150 }}>
+              <Field label="Region (for finder)">
+                <Select value={region} onChange={(e) => setRegion(e.target.value)}>
+                  <option value="">Any / unset</option>
+                  {REGIONS.map((item) => <option key={item} value={item}>{item}</option>)}
+                </Select>
+              </Field>
+            </div>
+            <div style={{ flex: 1, minWidth: 150 }}>
+              <Field label="Rank band">
+                <Select value={rankBand} onChange={(e) => setRankBand(e.target.value)}>
+                  <option value="">Any / unset</option>
+                  {RANK_BANDS.map((item) => <option key={item} value={item}>{item}</option>)}
+                </Select>
+              </Field>
             </div>
           </div>
           <Field label="Basic info for players">
@@ -4836,7 +5053,24 @@ function TournamentDetail(props) {
       {!isAdmin && (
         <RegistrationPanel tournament={tournament} requests={registrations || []} currentUserId={currentUserId} currentUserName={currentUserName} isAdmin={isAdmin} onRequest={onRequestRegistration} onDecision={onRegistrationDecision} disclaimer={props.registrationDisclaimer} onDisclaimerVisibilityChange={props.onJoinDisclaimerVisibilityChange} onSignIn={onSignIn} />
       )}
+      {(tournament.startDate || tournament.endDate) && (
+        <div style={{ marginTop: 12, maxWidth: 280 }}>
+          <Countdown target={tournament.startDate || tournament.endDate} label="Match countdown" />
+        </div>
+      )}
       <RoomLobbyPanel isAdmin={isAdmin} canSee={!isAdmin && showRoom} lobby={lobby} />
+      {isAdmin && (
+        <DeskFold title="Dynamic points table" defaultOpen>
+          <DynamicPointsTable
+            initialRows={(teams || []).slice(0, 8).map((team, index) => ({
+              id: team.id || `team-${index}`,
+              team: team.name || `Team ${index + 1}`,
+              placement: String(index + 1),
+              kills: "0",
+            }))}
+          />
+        </DeskFold>
+      )}
       {privateLocked && (
         <section style={{ marginTop: 16, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
           <Eyebrow>Private scrim</Eyebrow>

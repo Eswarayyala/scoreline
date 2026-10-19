@@ -111,7 +111,7 @@ service cloud.firestore {
       return data.keys().hasOnly([
                'displayName', 'games', 'region', 'language', 'style',
                'lookingFor', 'rank',
-               'bio', 'avatar', 'discoverable', 'updatedAt', 'playerTag', 'handle'
+               'bio', 'discordHandle', 'avatar', 'discoverable', 'updatedAt', 'playerTag', 'handle'
              ])
              && data.keys().hasAll([
                'displayName', 'games', 'region', 'language', 'style',
@@ -133,6 +133,7 @@ service cloud.firestore {
              && (!data.keys().hasAny(['rank']) || (data.rank is string && data.rank.size() <= 40))
              && data.bio is string
              && data.bio.size() <= 200
+             && (!data.keys().hasAny(['discordHandle']) || (data.discordHandle is string && data.discordHandle.size() <= 40))
              && isSafeAvatar(data.avatar)
              && data.discoverable is bool
              && data.updatedAt is int
@@ -274,7 +275,8 @@ service cloud.firestore {
                'prizeAmount', 'prizeCurrency', 'registrationOpen',
                'adminUserId', 'adminDisplayName', 'coAdminUserIds', 'coAdminPlayerTags', 'status',
                'isLegacyImport', 'createdAt', 'updatedAt', 'results', 'archived', 'archivedAt',
-               'kind', 'joinMode', 'maxSlots', 'blurb', 'posterUrl', 'publicStats'
+               'kind', 'joinMode', 'maxSlots', 'blurb', 'posterUrl', 'publicStats',
+               'region', 'rankBand'
              ]))
              && data.name is string && data.name.size() > 0 && data.name.size() <= 120
              && data.game is string && data.game.size() <= 60
@@ -292,6 +294,8 @@ service cloud.firestore {
              && (!data.keys().hasAny(['joinMode']) || data.joinMode in ['request', 'open'])
              && (!data.keys().hasAny(['maxSlots']) || (data.maxSlots is int && data.maxSlots >= 0 && data.maxSlots <= 256))
              && (!data.keys().hasAny(['blurb']) || (data.blurb is string && data.blurb.size() <= 400))
+             && (!data.keys().hasAny(['region']) || (data.region is string && data.region.size() <= 40))
+             && (!data.keys().hasAny(['rankBand']) || (data.rankBand is string && data.rankBand.size() <= 40))
              && (!data.keys().hasAny(['posterUrl'])
                  || data.posterUrl.size() == 0
                  || isSafeImageUrl(data.posterUrl, 450000))
@@ -385,7 +389,7 @@ service cloud.firestore {
                     && (request.resource.data.coAdminUserIds == resource.data.coAdminUserIds
                         || isOwner(resource.data))
                     && request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['coAdminUserIds', 'coAdminPlayerTags', 'updatedAt', 'results', 'status', 'registrationOpen', 'archived', 'archivedAt', 'joinMode', 'maxSlots', 'kind', 'blurb', 'posterUrl', 'publicStats'])
+                         .hasOnly(['coAdminUserIds', 'coAdminPlayerTags', 'updatedAt', 'results', 'status', 'registrationOpen', 'archived', 'archivedAt', 'joinMode', 'maxSlots', 'kind', 'blurb', 'posterUrl', 'publicStats', 'region', 'rankBand'])
                     && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['coAdminPlayerTags']) || isOwner(resource.data))
                     && validTournament(request.resource.data, false);
 
@@ -880,6 +884,65 @@ service cloud.firestore {
                     && request.resource.data.reviewedBy == request.auth.uid
                     && (!request.resource.data.keys().hasAny(['reviewNote']) || (request.resource.data.reviewNote is string && request.resource.data.reviewNote.size() <= 240));
       allow delete: if false;
+    }
+
+    function validSitePresenceProfile(data) {
+      return data.keys().hasOnly([
+               'label', 'instagram', 'twitter', 'youtube', 'discord', 'tiktok', 'twitch',
+               'updatedAt', 'updatedBy'
+             ])
+             && data.keys().hasAll(['label', 'updatedAt', 'updatedBy'])
+             && data.label is string && data.label.size() <= 60
+             && data.updatedAt is int
+             && data.updatedBy is string && data.updatedBy.size() <= 128
+             && (!data.keys().hasAny(['instagram']) || (data.instagram is string && data.instagram.size() <= 300
+                 && (data.instagram.size() == 0 || data.instagram.matches('^https://(www\\.)?instagram\\.com/.*'))))
+             && (!data.keys().hasAny(['twitter']) || (data.twitter is string && data.twitter.size() <= 300
+                 && (data.twitter.size() == 0 || data.twitter.matches('^https://(www\\.)?(x|twitter)\\.com/.*'))))
+             && (!data.keys().hasAny(['youtube']) || (data.youtube is string && data.youtube.size() <= 300
+                 && (data.youtube.size() == 0 || data.youtube.matches('^https://(www\\.)?(youtube\\.com|youtu\\.be)/.*'))))
+             && (!data.keys().hasAny(['discord']) || (data.discord is string && data.discord.size() <= 300
+                 && (data.discord.size() == 0 || data.discord.matches('^https://(www\\.)?(discord\\.gg|discord\\.com)/.*'))))
+             && (!data.keys().hasAny(['tiktok']) || (data.tiktok is string && data.tiktok.size() <= 300
+                 && (data.tiktok.size() == 0 || data.tiktok.matches('^https://(www\\.)?tiktok\\.com/.*'))))
+             && (!data.keys().hasAny(['twitch']) || (data.twitch is string && data.twitch.size() <= 300
+                 && (data.twitch.size() == 0 || data.twitch.matches('^https://(www\\.)?twitch\\.tv/.*'))));
+    }
+
+    match /sitePresence/{roleId} {
+      allow get, list: if canBrowsePublicData() && roleId in ['owner', 'support'];
+      allow create, update: if roleId in ['owner', 'support']
+                            && validSitePresenceProfile(request.resource.data)
+                            && request.resource.data.updatedBy == request.auth.uid
+                            && (
+                              isSiteOwner()
+                              || (isSiteSupport() && roleId == 'support')
+                            );
+      allow delete: if isSiteOwner() && roleId in ['owner', 'support'];
+    }
+
+    match /userVaultBookmarks/{userId} {
+      allow get: if isActiveSiteUser() && request.auth.uid == userId;
+      allow list: if false;
+      allow create, update: if isActiveSiteUser()
+                            && request.auth.uid == userId
+                            && request.resource.data.keys().hasOnly(['slugs', 'updatedAt'])
+                            && request.resource.data.slugs is list
+                            && request.resource.data.slugs.size() <= 80
+                            && request.resource.data.updatedAt is int;
+      allow delete: if isActiveSiteUser() && request.auth.uid == userId;
+    }
+
+    match /userPrefs/{userId} {
+      allow get: if isActiveSiteUser() && request.auth.uid == userId;
+      allow list: if false;
+      allow create, update: if isActiveSiteUser()
+                            && request.auth.uid == userId
+                            && request.resource.data.keys().hasOnly(['showWeeklyPanel', 'digestOptIn', 'updatedAt'])
+                            && request.resource.data.showWeeklyPanel is bool
+                            && request.resource.data.digestOptIn is bool
+                            && request.resource.data.updatedAt is int;
+      allow delete: if isActiveSiteUser() && request.auth.uid == userId;
     }
 
     match /scoreline/shared-data {

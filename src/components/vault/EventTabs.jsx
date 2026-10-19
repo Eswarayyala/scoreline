@@ -1,9 +1,11 @@
-import { useEffect, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { ArrowLeft, CheckSquare, ExternalLink, Square } from "lucide-react";
 import { editionsNewestFirst, researchHighlightLabels } from "../../data/esportsResearch";
 import { formatForGame } from "../../data/vaultDeskSchema";
 import { flyerForEvent } from "../../data/platformShowcase";
+import { dossierPath } from "../../data/competitorIndex";
+import ShareEventCard from "./ShareEventCard";
 
 function eventKey(edition, index) {
   return `${edition.year}-${edition.event}-${edition.eventScope || ""}-${index}`;
@@ -18,7 +20,17 @@ function eventPoster(edition, fallback, game) {
   }) || fallback;
 }
 
-function EventBody({ edition, game }) {
+function NameLink({ children }) {
+  const name = String(children || "").trim();
+  if (!name) return null;
+  return (
+    <Link to={dossierPath(name)} className="text-neon no-underline hover:underline">
+      {name}
+    </Link>
+  );
+}
+
+function EventBody({ edition, game, compact = false }) {
   const format = formatForGame(game, edition.structureId);
   const finalsRows = (edition.finalsTable || []).filter((row) => Object.values(row).some((value) => String(value || "").trim()));
   const stages = (edition.stages || []).filter((row) => row.kickedOff || row.teams);
@@ -29,32 +41,65 @@ function EventBody({ edition, game }) {
   const photos = (edition.images || []).filter(Boolean);
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/10">
+    <div className={`relative overflow-hidden rounded-2xl border border-white/10 ${compact ? "" : ""}`}>
       <img src={eventPoster(edition, "", game)} alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />
       <div className="absolute inset-0 bg-slate-950/80" />
-      <div className="relative p-5 md:p-6">
-        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-volt">{yearLabel.join(" · ")}</p>
-        <h2 className="font-display text-3xl text-white md:text-4xl">{edition.event}</h2>
-        <p className="mt-1 text-sm text-slate-400">{[edition.prizePool && `Prize pool ${edition.prizePool}`, edition.totalTeams && `${edition.totalTeams} teams groups to finals`].filter(Boolean).join(" · ")}</p>
+      <div className={`relative ${compact ? "p-4" : "p-5 md:p-6"}`}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-volt">{yearLabel.join(" · ")}</p>
+            <h2 className={`font-display text-white ${compact ? "text-2xl" : "text-3xl md:text-4xl"}`}>{edition.event}</h2>
+            <p className="mt-1 text-sm text-slate-400">
+              {[edition.prizePool && `Prize pool ${edition.prizePool}`, edition.totalTeams && `${edition.totalTeams} teams groups to finals`]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          </div>
+          {!compact && <ShareEventCard edition={edition} game={game} fallbackPoster="" />}
+        </div>
         {(edition.champion || edition.runnerUp || edition.mvp || edition.bestIgl) && (
-          <dl className="mt-4 grid gap-2 text-sm text-slate-300 sm:grid-cols-2">
-            {edition.champion && <div>Champion · {edition.champion}</div>}
-            {edition.runnerUp && <div>Runner-up · {edition.runnerUp}</div>}
-            {edition.third && <div>Third · {edition.third}</div>}
-            {edition.mvp && <div>MVP · {edition.mvp}</div>}
-            {edition.bestIgl && <div>Best IGL · {edition.bestIgl}</div>}
-            {edition.fanFavourite && <div>Fan favourite · {edition.fanFavourite}</div>}
+          <dl className={`mt-4 grid gap-2 text-sm text-slate-300 ${compact ? "" : "sm:grid-cols-2"}`}>
+            {edition.champion && (
+              <div>
+                Champion · <NameLink>{edition.champion}</NameLink>
+              </div>
+            )}
+            {edition.runnerUp && (
+              <div>
+                Runner-up · <NameLink>{edition.runnerUp}</NameLink>
+              </div>
+            )}
+            {edition.third && (
+              <div>
+                Third · <NameLink>{edition.third}</NameLink>
+              </div>
+            )}
+            {edition.mvp && (
+              <div>
+                MVP · <NameLink>{edition.mvp}</NameLink>
+              </div>
+            )}
+            {edition.bestIgl && (
+              <div>
+                Best IGL · <NameLink>{edition.bestIgl}</NameLink>
+              </div>
+            )}
+            {edition.fanFavourite && (
+              <div>
+                Fan favourite · <NameLink>{edition.fanFavourite}</NameLink>
+              </div>
+            )}
           </dl>
         )}
-        {edition.formatNotes && <p className="mt-3 text-sm text-slate-400">{edition.formatNotes}</p>}
-        {!!photos.length && (
+        {edition.formatNotes && !compact && <p className="mt-3 text-sm text-slate-400">{edition.formatNotes}</p>}
+        {!!photos.length && !compact && (
           <div className="mt-4 grid grid-cols-3 gap-2">
             {photos.map((src) => (
               <img key={src.slice(0, 40)} src={src} alt="" className="h-24 w-full rounded-xl object-cover ring-1 ring-white/10" />
             ))}
           </div>
         )}
-        {!!stages.length && (
+        {!!stages.length && !compact && (
           <div className="mt-4">
             <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Kicked off by stage</p>
             <table className="mt-2 w-full text-left text-sm text-slate-300">
@@ -77,14 +122,16 @@ function EventBody({ edition, game }) {
             </table>
           </div>
         )}
-        {!!finalsRows.length && (
+        {!!finalsRows.length && !compact && (
           <div className="mt-4">
             <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Finals</p>
             <table className="mt-2 w-full text-left text-sm text-slate-300">
               <thead>
                 <tr className="text-slate-500">
                   {format.finalsColumns.map((column) => (
-                    <th key={column.key} className="py-1 pr-3 font-mono text-[10px] uppercase tracking-widest">{column.label}</th>
+                    <th key={column.key} className="py-1 pr-3 font-mono text-[10px] uppercase tracking-widest">
+                      {column.label}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -92,7 +139,9 @@ function EventBody({ edition, game }) {
                 {finalsRows.map((row, index) => (
                   <tr key={`${edition.year}-finals-${index}`} className="border-t border-white/5">
                     {format.finalsColumns.map((column) => (
-                      <td key={column.key} className="py-2 pr-3">{row[column.key]}</td>
+                      <td key={column.key} className="py-2 pr-3">
+                        {row[column.key]}
+                      </td>
                     ))}
                   </tr>
                 ))}
@@ -100,7 +149,7 @@ function EventBody({ edition, game }) {
             </table>
           </div>
         )}
-        {showPayouts && (
+        {showPayouts && !compact && (
           <table className="mt-4 w-full text-left text-sm text-slate-300">
             <thead>
               <tr className="text-slate-500">
@@ -119,14 +168,16 @@ function EventBody({ edition, game }) {
               {payouts.map((row, index) => (
                 <tr key={`${edition.year}-${row.rank}-${index}`} className="border-t border-white/5">
                   <td className="py-2 pr-3">{row.rank}</td>
-                  <td className="py-2 pr-3">{row.team || row.player}</td>
+                  <td className="py-2 pr-3">
+                    <NameLink>{row.team || row.player}</NameLink>
+                  </td>
                   {showPrizes && <td className="py-2">{row.prize}</td>}
                 </tr>
               ))}
             </tbody>
           </table>
         )}
-        {edition.highlights && (
+        {edition.highlights && !compact && (
           <dl className="mt-4 grid gap-3 sm:grid-cols-2">
             {researchHighlightLabels().map(([key, label]) =>
               edition.highlights[key] ? (
@@ -143,16 +194,91 @@ function EventBody({ edition, game }) {
   );
 }
 
+function CompareTable({ editions, game }) {
+  const rows = [
+    ["Year", (e) => e.year || e.season],
+    ["Prize pool", (e) => e.prizePool],
+    ["Champion", (e) => e.champion],
+    ["Runner-up", (e) => e.runnerUp],
+    ["MVP", (e) => e.mvp],
+    ["Best IGL", (e) => e.bestIgl],
+    ["Teams", (e) => e.totalTeams],
+  ];
+  return (
+    <div className="overflow-x-auto rounded-2xl border border-white/10">
+      <table className="w-full min-w-[640px] text-left text-sm text-slate-300">
+        <thead>
+          <tr className="border-b border-white/10 text-slate-500">
+            <th className="p-3 font-mono text-[10px] uppercase tracking-widest">Field</th>
+            {editions.map((edition, index) => (
+              <th key={eventKey(edition, index)} className="p-3 font-mono text-[10px] uppercase tracking-widest text-white">
+                {edition.year || edition.season}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([label, getter]) => (
+            <tr key={label} className="border-t border-white/5">
+              <td className="p-3 font-mono text-[10px] uppercase tracking-widest text-slate-500">{label}</td>
+              {editions.map((edition, index) => {
+                const value = getter(edition);
+                const isName = ["Champion", "Runner-up", "MVP", "Best IGL"].includes(label);
+                return (
+                  <td key={`${label}-${eventKey(edition, index)}`} className="p-3">
+                    {isName && value ? <NameLink>{value}</NameLink> : value || "—"}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className={`grid gap-3 border-t border-white/10 p-3 ${editions.length > 2 ? "lg:grid-cols-3" : "md:grid-cols-2"}`}>
+        {editions.map((edition, index) => (
+          <EventBody key={eventKey(edition, index)} edition={edition} game={game} compact />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function EventTabs({ editions = [], game, fallbackPoster, onSelectPoster }) {
   const ordered = useMemo(() => editionsNewestFirst(editions), [editions]);
   const [searchParams, setSearchParams] = useSearchParams();
   const eventParam = searchParams.get("event") || "";
+  const compareParam = searchParams.get("compare") || "";
+  const [picked, setPicked] = useState([]);
+
   const activeIndex = useMemo(() => {
     if (!ordered.length) return -1;
     const fromParam = ordered.findIndex((edition, index) => eventKey(edition, index) === eventParam);
     return fromParam >= 0 ? fromParam : -1;
   }, [eventParam, ordered]);
-  const focused = activeIndex >= 0;
+
+  const compareKeys = useMemo(
+    () =>
+      compareParam
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, 3),
+    [compareParam],
+  );
+
+  const compareEditions = useMemo(
+    () =>
+      compareKeys
+        .map((key) => {
+          const index = ordered.findIndex((edition, i) => eventKey(edition, i) === key);
+          return index >= 0 ? ordered[index] : null;
+        })
+        .filter(Boolean),
+    [compareKeys, ordered],
+  );
+
+  const focused = activeIndex >= 0 && compareEditions.length === 0;
+  const comparing = compareEditions.length >= 2;
   const current = focused ? ordered[activeIndex] : null;
 
   useEffect(() => {
@@ -164,6 +290,7 @@ export default function EventTabs({ editions = [], game, fallbackPoster, onSelec
     const edition = ordered[index];
     if (!edition) return;
     const next = new URLSearchParams(searchParams);
+    next.delete("compare");
     next.set("event", eventKey(edition, index));
     setSearchParams(next, { replace: false });
   };
@@ -171,18 +298,58 @@ export default function EventTabs({ editions = [], game, fallbackPoster, onSelec
   const closeEvent = () => {
     const next = new URLSearchParams(searchParams);
     next.delete("event");
+    next.delete("compare");
     setSearchParams(next, { replace: false });
+    setPicked([]);
   };
 
   const openInNewTab = (index) => {
     const edition = ordered[index];
     if (!edition) return;
     const url = new URL(window.location.href);
+    url.searchParams.delete("compare");
     url.searchParams.set("event", eventKey(edition, index));
     window.open(url.toString(), "_blank", "noopener,noreferrer");
   };
 
+  const togglePick = (index) => {
+    const key = eventKey(ordered[index], index);
+    setPicked((currentPicks) => {
+      if (currentPicks.includes(key)) return currentPicks.filter((item) => item !== key);
+      if (currentPicks.length >= 3) return currentPicks;
+      return [...currentPicks, key];
+    });
+  };
+
+  const startCompare = () => {
+    if (picked.length < 2) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("event");
+    next.set("compare", picked.join(","));
+    setSearchParams(next, { replace: false });
+  };
+
   if (!ordered.length) return null;
+
+  if (comparing) {
+    return (
+      <section className="mt-8 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={closeEvent}
+            className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-neon"
+          >
+            <ArrowLeft size={14} /> All events
+          </button>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+            Comparing {compareEditions.length} editions
+          </p>
+        </div>
+        <CompareTable editions={compareEditions} game={game} />
+      </section>
+    );
+  }
 
   if (focused && current) {
     return (
@@ -213,31 +380,52 @@ export default function EventTabs({ editions = [], game, fallbackPoster, onSelec
 
   return (
     <section className="mt-8">
-      <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-slate-500">
-        Events · pick one to open full details (other events hide)
-      </p>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+          Events · open one, or pick 2–3 to compare
+        </p>
+        {picked.length >= 2 && (
+          <button
+            type="button"
+            onClick={startCompare}
+            className="font-mono text-[11px] uppercase tracking-widest text-amber-300"
+          >
+            Compare {picked.length} editions
+          </button>
+        )}
+      </div>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {ordered.map((edition, index) => {
           const poster = eventPoster(edition, fallbackPoster, game);
+          const key = eventKey(edition, index);
+          const selected = picked.includes(key);
           return (
-            <div key={eventKey(edition, index)} className="relative overflow-hidden rounded-xl border border-white/10 bg-slate-950/40">
-              <button
-                type="button"
-                onClick={() => openEvent(index)}
-                className="relative block w-full px-3 py-3 text-left"
-              >
+            <div key={key} className="relative overflow-hidden rounded-xl border border-white/10 bg-slate-950/40">
+              <button type="button" onClick={() => openEvent(index)} className="relative block w-full px-3 py-3 pr-20 text-left">
                 {poster && <img src={poster} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />}
-                <span className="relative block font-mono text-[10px] uppercase tracking-widest text-neon">{edition.year || edition.season}</span>
+                <span className="relative block font-mono text-[10px] uppercase tracking-widest text-neon">
+                  {edition.year || edition.season}
+                </span>
                 <span className="relative block truncate text-sm text-white">{edition.event || "Event"}</span>
               </button>
-              <button
-                type="button"
-                aria-label={`Open ${edition.event || "event"} in new tab`}
-                onClick={() => openInNewTab(index)}
-                className="absolute right-2 top-2 z-10 rounded-full border border-white/15 bg-slate-950/80 p-1.5 text-amber-300"
-              >
-                <ExternalLink size={12} />
-              </button>
+              <div className="absolute right-2 top-2 z-10 flex gap-1">
+                <button
+                  type="button"
+                  aria-label={selected ? "Remove from compare" : "Add to compare"}
+                  onClick={() => togglePick(index)}
+                  className="rounded-full border border-white/15 bg-slate-950/80 p-1.5 text-neon"
+                >
+                  {selected ? <CheckSquare size={12} /> : <Square size={12} />}
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Open ${edition.event || "event"} in new tab`}
+                  onClick={() => openInNewTab(index)}
+                  className="rounded-full border border-white/15 bg-slate-950/80 p-1.5 text-amber-300"
+                >
+                  <ExternalLink size={12} />
+                </button>
+              </div>
             </div>
           );
         })}

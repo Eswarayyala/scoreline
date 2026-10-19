@@ -56,6 +56,13 @@ export default function VaultCarousel({ slides = VAULT_SLIDES }) {
                 <div style={{ padding: "10px 12px 12px" }}>
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "var(--text-dim)", letterSpacing: "0.08em", textTransform: "uppercase" }}>{slide.game}</div>
                   <h3 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, margin: "4px 0 0", lineHeight: 1.1 }}>{slide.title}</h3>
+                  {!!(slide.flyers || []).length && (
+                    <div style={{ display: "flex", gap: 6, marginTop: 8, overflow: "hidden" }}>
+                      {(slide.flyers || []).slice(0, 3).map((src) => (
+                        <img key={src.slice(0, 48)} src={src} alt="" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} />
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </Link>
