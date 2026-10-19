@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowLeft, CheckSquare, ExternalLink, Square } from "lucide-react";
+import { ArrowLeft, CheckSquare, Square } from "lucide-react";
 import { editionsNewestFirst, researchHighlightLabels } from "../../data/esportsResearch";
 import { formatForGame } from "../../data/vaultDeskSchema";
 import { flyerForEvent } from "../../data/platformShowcase";
@@ -30,7 +30,7 @@ function NameLink({ children }) {
   );
 }
 
-function EventBody({ edition, game, compact = false }) {
+export function EventBody({ edition, game, compact = false }) {
   const format = formatForGame(game, edition.structureId);
   const finalsRows = (edition.finalsTable || []).filter((row) => Object.values(row).some((value) => String(value || "").trim()));
   const stages = (edition.stages || []).filter((row) => row.kickedOff || row.teams);
@@ -243,7 +243,7 @@ function CompareTable({ editions, game }) {
   );
 }
 
-export default function EventTabs({ editions = [], game, fallbackPoster, onSelectPoster }) {
+export default function EventTabs({ editions = [], game, heading = "", fallbackPoster, onSelectPoster }) {
   const ordered = useMemo(() => editionsNewestFirst(editions), [editions]);
   const [searchParams, setSearchParams] = useSearchParams();
   const eventParam = searchParams.get("event") || "";
@@ -254,9 +254,15 @@ export default function EventTabs({ editions = [], game, fallbackPoster, onSelec
   const initialVisible = 8;
 
   const activeIndex = useMemo(() => {
-    if (!ordered.length) return -1;
-    const fromParam = ordered.findIndex((edition, index) => eventKey(edition, index) === eventParam);
-    return fromParam >= 0 ? fromParam : -1;
+    if (!ordered.length || !eventParam) return -1;
+    const exact = ordered.findIndex((edition, index) => eventKey(edition, index) === eventParam);
+    if (exact >= 0) return exact;
+    // Championship → game vault deep links may omit a stable index.
+    const loose = ordered.findIndex((edition) => {
+      const base = `${edition.year}-${edition.event}-${edition.eventScope || ""}`;
+      return eventParam === base || eventParam.startsWith(`${base}-`);
+    });
+    return loose >= 0 ? loose : -1;
   }, [eventParam, ordered]);
 
   const compareKeys = useMemo(
@@ -322,15 +328,6 @@ export default function EventTabs({ editions = [], game, fallbackPoster, onSelec
     setPicked([]);
   };
 
-  const openInNewTab = (index) => {
-    const edition = ordered[index];
-    if (!edition) return;
-    const url = new URL(window.location.href);
-    url.searchParams.delete("compare");
-    url.searchParams.set("event", eventKey(edition, index));
-    window.open(url.toString(), "_blank", "noopener,noreferrer");
-  };
-
   const togglePick = (index) => {
     const key = eventKey(ordered[index], index);
     setPicked((currentPicks) => {
@@ -381,17 +378,10 @@ export default function EventTabs({ editions = [], game, fallbackPoster, onSelec
           >
             <ArrowLeft size={14} /> All events
           </button>
-          <button
-            type="button"
-            onClick={() => openInNewTab(activeIndex)}
-            className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-amber-300"
-          >
-            <ExternalLink size={14} /> Open in new tab
-          </button>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+            Event {activeIndex + 1} of {ordered.length}
+          </p>
         </div>
-        <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
-          Event {activeIndex + 1} of {ordered.length}
-        </p>
         <EventBody edition={current} game={game} />
       </section>
     );
@@ -399,9 +389,12 @@ export default function EventTabs({ editions = [], game, fallbackPoster, onSelec
 
   return (
     <section className="mt-8">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      {(heading || game) && (
+        <h2 className="font-display text-2xl text-white md:text-3xl">{heading || `All ${game} events`}</h2>
+      )}
+      <div className="mb-3 mt-2 flex flex-wrap items-center justify-between gap-3">
         <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
-          Events · pick a year tab, or select 2–3 to compare
+          Select a year for a preview, then click it for full details
         </p>
         {picked.length >= 2 && (
           <button
@@ -452,12 +445,16 @@ export default function EventTabs({ editions = [], game, fallbackPoster, onSelec
         )}
       </div>
       {preview && (
-        <div className="mt-4 space-y-3">
+        <button
+          type="button"
+          onClick={() => openEvent(safePreview)}
+          className="mt-4 w-full border border-white/10 bg-white/[0.03] p-4 text-left transition hover:border-amber-400/50 hover:bg-white/[0.05]"
+        >
           <p className="font-mono text-[10px] uppercase tracking-widest text-neon">
-            {[preview.year || preview.season, preview.eventScope].filter(Boolean).join(" · ")}
+            {[preview.year || preview.season, preview.eventScope].filter(Boolean).join(" · ")} · Preview
           </p>
-          <h3 className="font-display text-3xl text-white">{preview.event || "Event"}</h3>
-          <p className="text-sm text-slate-400">
+          <h3 className="mt-1 font-display text-3xl text-white">{preview.event || "Event"}</h3>
+          <p className="mt-2 text-sm text-slate-400">
             {[
               preview.champion && `Champion ${preview.champion}`,
               preview.prizePool,
@@ -466,23 +463,8 @@ export default function EventTabs({ editions = [], game, fallbackPoster, onSelec
               .filter(Boolean)
               .join(" · ")}
           </p>
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => openEvent(safePreview)}
-              className="font-mono text-[10px] uppercase tracking-widest text-amber-300"
-            >
-              Open event
-            </button>
-            <button
-              type="button"
-              onClick={() => openInNewTab(safePreview)}
-              className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-slate-400"
-            >
-              <ExternalLink size={12} /> New tab
-            </button>
-          </div>
-        </div>
+          <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-amber-300">Click for full event details</p>
+        </button>
       )}
     </section>
   );

@@ -45,7 +45,7 @@ export default function EwcDirectoryPage({ slides = [], liveEntries = [] }) {
               {championship.year} · {championship.games.length} games
             </p>
             <h2 className="mt-1 font-['Bebas_Neue',sans-serif] text-4xl text-white">{championship.title}</h2>
-            <ChampionshipGameTabs games={championship.games} heading="" />
+            <ChampionshipGameTabs games={championship.games} slides={slides} heading="" urlSync={false} />
           </section>
         ))}
       </div>

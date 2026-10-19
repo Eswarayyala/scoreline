@@ -2,12 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Bookmark, BookmarkCheck, ExternalLink, Trophy } from "lucide-react";
-import { bannerForGame, flyersForGame, VAULT_SLIDES } from "../../data/platformShowcase";
+import { bannerForGame, flyerForEvent, VAULT_SLIDES } from "../../data/platformShowcase";
 import { analysisTypeLabel } from "../../data/blogAnalysis";
 import { publicScopeKicker } from "../../data/eventScope";
 import EventTabs from "./EventTabs";
 import ChampionshipGameTabs from "./ChampionshipGameTabs";
-import WatchNextRail from "./WatchNextRail";
 import StreamEmbed from "../shared/StreamEmbed";
 import { useGameBanner } from "../../hooks/useMediaLibrary";
 
@@ -19,19 +18,25 @@ export default function VaultDetailPage({
   onToggleBookmark,
 }) {
   const slide = slides.find((item) => item.slug === slug) || VAULT_SLIDES.find((item) => item.slug === slug);
+  const isChampionship = !!slide?.championship?.games?.length || slide?.surface === "ewc-window";
   const related = useMemo(
-    () => liveEntries.filter((entry) => String(entry.game || "").toLowerCase() === String(slide?.game || "").toLowerCase()).slice(0, 6),
-    [liveEntries, slide],
+    () =>
+      isChampionship
+        ? []
+        : liveEntries
+            .filter((entry) => String(entry.game || "").toLowerCase() === String(slide?.game || "").toLowerCase())
+            .slice(0, 6),
+    [liveEntries, slide, isChampionship],
   );
   const gameBackground = useGameBanner(slide?.game, bannerForGame(slide?.game));
-  const flyers = useMemo(
-    () => flyersForGame(slide?.game, [gameBackground, ...(slide?.flyers || [])]).slice(0, 6),
-    [gameBackground, slide],
+  const defaultPoster = useMemo(
+    () => slide?.poster || flyerForEvent(slide || {}) || gameBackground || "",
+    [slide, gameBackground],
   );
-  const [activeFlyer, setActiveFlyer] = useState(slide?.poster || flyers[0] || "");
+  const [activeFlyer, setActiveFlyer] = useState(defaultPoster);
   useEffect(() => {
-    setActiveFlyer(slide?.poster || flyers[0] || "");
-  }, [slide, flyers]);
+    setActiveFlyer(defaultPoster);
+  }, [defaultPoster]);
 
   if (!slide) {
     return (
@@ -78,20 +83,27 @@ export default function VaultDetailPage({
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
             <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-neon">
-              {[publicScopeKicker(slide), slide.game].filter(Boolean).join(" · ")}
+              {[publicScopeKicker(slide), isChampionship ? "Championship" : slide.game].filter(Boolean).join(" · ")}
             </p>
             <h1 className="font-display text-5xl text-white md:text-7xl">{slide.title}</h1>
             <p className="mt-1 text-slate-300">{slide.season}</p>
           </div>
         </div>
-        <div className={`grid gap-8 p-6 md:p-8 ${slide.blog ? "" : "md:grid-cols-[1.4fr_0.8fr]"}`}>
+        <div className={`grid gap-8 p-6 md:p-8 ${slide.blog || isChampionship ? "" : "md:grid-cols-[1.4fr_0.8fr]"}`}>
           <div>
             <p className="whitespace-pre-wrap text-base leading-7 text-slate-200">
               {slide.blog ? slide.fullContent || slide.summary : slide.summary}
             </p>
+
             {!!slide.championship?.games?.length && (
-              <ChampionshipGameTabs games={slide.championship.games} heading="Titles in this championship" />
+              <ChampionshipGameTabs
+                games={slide.championship.games}
+                slides={slides}
+                heading="Titles in this championship"
+                onSelectPoster={(src) => src && setActiveFlyer(src)}
+              />
             )}
+
             {slide.blog && slide.authorName && (
               <p className="mt-3 text-sm text-slate-400">
                 By {slide.authorName}
@@ -119,28 +131,16 @@ export default function VaultDetailPage({
               </div>
             )}
             {slide.blog && <StreamEmbed url={slide.youtubeUrl} title="Match clip / stream" />}
-            {!slide.blog && flyers.length > 1 && (
-              <div className="mt-6 grid grid-cols-3 gap-2">
-                {flyers.slice(0, 3).map((src) => (
-                  <button
-                    key={src}
-                    type="button"
-                    onClick={() => setActiveFlyer(src)}
-                    className={`overflow-hidden rounded-xl border ${activeFlyer === src ? "border-neon" : "border-white/10"}`}
-                  >
-                    <img src={src} alt="" className="h-20 w-full object-cover" />
-                  </button>
-                ))}
-              </div>
-            )}
-            {(slide.fullName || slide.peakPrizePool || slide.region) && (
+
+            {!isChampionship && (slide.fullName || slide.peakPrizePool || slide.region) && (
               <p className="mt-3 text-sm text-slate-400">
                 {[slide.fullName, slide.region, slide.peakPrizePool && `Peak prize pool ${slide.peakPrizePool}`]
                   .filter(Boolean)
                   .join(" · ")}
               </p>
             )}
-            {!slide.blog && !!slide.yearlyStats?.length && (
+
+            {!slide.blog && !isChampionship && !!slide.yearlyStats?.length && (
               <section className="mt-8">
                 <h2 className="font-display text-3xl text-white">Tournaments by year</h2>
                 <table className="mt-3 w-full text-left text-sm text-slate-300">
@@ -165,28 +165,18 @@ export default function VaultDetailPage({
                 </table>
               </section>
             )}
-            {!slide.blog && !!slide.relatedTournaments?.length && (
-              <section className="mt-8">
-                <h2 className="font-display text-3xl text-white">Related past tournaments</h2>
-                <ul className="mt-3 space-y-2 text-sm text-slate-300">
-                  {slide.relatedTournaments.map((row) => (
-                    <li key={`${row.year}-${row.name}`} className="border-t border-white/5 pt-2">
-                      <strong className="text-white">{row.name}</strong>
-                      <span className="text-slate-400"> · {[row.year, row.region, row.result].filter(Boolean).join(" · ")}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-            {!slide.blog && !!slide.editions?.length && (
+
+            {!slide.blog && !isChampionship && !!slide.editions?.length && (
               <EventTabs
                 editions={slide.editions}
                 game={slide.game}
+                heading={`All ${slide.game} events`}
                 fallbackPoster={slide.poster}
                 onSelectPoster={setActiveFlyer}
               />
             )}
-            {slide.eventStatus === "completed" && !slide.editions?.length && (
+
+            {slide.eventStatus === "completed" && !slide.editions?.length && !isChampionship && (
               <dl className="mt-5 grid gap-2 text-sm text-slate-300">
                 {slide.winners && <div>Winners · {slide.winners}</div>}
                 {slide.runnerUps && <div>Runner-ups · {slide.runnerUps}</div>}
@@ -243,17 +233,14 @@ export default function VaultDetailPage({
                 )}
               </div>
             )}
-            <WatchNextRail slides={slides} current={slide} />
           </div>
-          {!slide.blog && (
+          {!slide.blog && !isChampionship && (
             <aside className="rounded-2xl border border-white/10 bg-white/5 p-4">
               <p className="mb-3 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-volt">
                 <Trophy size={14} /> Live Vault records
               </p>
               {related.length === 0 ? (
-                <p className="text-sm text-slate-400">
-                  No published results for {slide.game} yet.
-                </p>
+                <p className="text-sm text-slate-400">No published results for {slide.game} yet.</p>
               ) : (
                 related.map((entry) => (
                   <div key={entry.id} className="border-t border-white/10 py-3 first:border-t-0 first:pt-0">
