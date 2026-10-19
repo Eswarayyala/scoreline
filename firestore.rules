@@ -259,7 +259,8 @@ service cloud.firestore {
                'blog_published', 'blog_declined', 'blog_edited', 'blog_deleted',
                'archive_imported', 'archive_request_approved', 'archive_request_rejected',
                'blog_added_to_archive', 'report_reviewed', 'popup_saved', 'popup_deleted',
-             'support_granted', 'support_revoked', 'player_banned', 'player_unbanned',
+             'support_granted', 'support_revoked', 'support_permissions_updated',
+               'player_banned', 'player_unbanned',
                'player_restricted', 'player_unrestricted', 'support_change_approved', 'support_change_denied'
              ]
              && data.targetType in ['blog', 'archive', 'archiveSubmission', 'archiveEntry', 'report', 'popup', 'support', 'player', 'supportChange']
@@ -471,21 +472,78 @@ service cloud.firestore {
       allow list, create, update, delete: if false;
     }
 
+    function validSupportPermissions(data) {
+      return data is map
+             && data.keys().hasOnly([
+                  'vaultEdit', 'vaultDelete', 'blogReview', 'archiveDecide', 'blogPromote',
+                  'reportsTriage', 'supportSocials', 'libraryView', 'httpsPostersOnly'
+                ])
+             && data.keys().hasAll([
+                  'vaultEdit', 'vaultDelete', 'blogReview', 'archiveDecide', 'blogPromote',
+                  'reportsTriage', 'supportSocials', 'libraryView', 'httpsPostersOnly'
+                ])
+             && data.vaultEdit is bool
+             && data.vaultDelete is bool
+             && data.blogReview is bool
+             && data.archiveDecide is bool
+             && data.blogPromote is bool
+             && data.reportsTriage is bool
+             && data.supportSocials is bool
+             && data.libraryView is bool
+             && data.httpsPostersOnly is bool;
+    }
+
+    function supportPerm(uid, key) {
+      return exists(/databases/$(database)/documents/siteRoles/$(uid))
+             && get(/databases/$(database)/documents/siteRoles/$(uid)).data.role == 'support'
+             && get(/databases/$(database)/documents/siteRoles/$(uid)).data.enabled == true
+             && get(/databases/$(database)/documents/siteRoles/$(uid)).data.keys().hasAny(['permissions'])
+             && get(/databases/$(database)/documents/siteRoles/$(uid)).data.permissions[key] == true;
+    }
+
+    // Legacy support docs without permissions keep prior full propose access except deletes stay opt-in.
+    function supportCanAction(action) {
+      return isSiteSupport()
+             && (
+               (action == 'cms_upsert' && (
+                 !get(/databases/$(database)/documents/siteRoles/$(request.auth.uid)).data.keys().hasAny(['permissions'])
+                 || supportPerm(request.auth.uid, 'vaultEdit')
+               ))
+               || (action == 'cms_delete' && supportPerm(request.auth.uid, 'vaultDelete'))
+               || (action == 'blog_review' && (
+                 !get(/databases/$(database)/documents/siteRoles/$(request.auth.uid)).data.keys().hasAny(['permissions'])
+                 || supportPerm(request.auth.uid, 'blogReview')
+               ))
+               || (action == 'archive_decision' && (
+                 !get(/databases/$(database)/documents/siteRoles/$(request.auth.uid)).data.keys().hasAny(['permissions'])
+                 || supportPerm(request.auth.uid, 'archiveDecide')
+               ))
+               || (action == 'blog_promote' && (
+                 !get(/databases/$(database)/documents/siteRoles/$(request.auth.uid)).data.keys().hasAny(['permissions'])
+                 || supportPerm(request.auth.uid, 'blogPromote')
+               ))
+             );
+    }
+
     match /siteRoles/{userId} {
       allow get: if request.auth != null && (request.auth.uid == userId || isSiteOwner());
       allow list: if isSiteOwner();
       allow create: if isSiteOwner()
-                    && request.resource.data.keys().hasOnly(['role', 'enabled', 'updatedAt'])
-                    && request.resource.data.keys().hasAll(['role', 'enabled', 'updatedAt'])
+                    && request.resource.data.keys().hasOnly(['role', 'enabled', 'updatedAt', 'permissions'])
+                    && request.resource.data.keys().hasAll(['role', 'enabled', 'updatedAt', 'permissions'])
                     && request.resource.data.role == 'support'
                     && request.resource.data.enabled == true
-                    && request.resource.data.updatedAt is int;
+                    && request.resource.data.updatedAt is int
+                    && validSupportPermissions(request.resource.data.permissions);
       allow update: if isSiteOwner()
                     && resource.data.role == 'support'
-                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'enabled', 'updatedAt'])
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['role', 'enabled', 'updatedAt', 'permissions'])
                     && request.resource.data.role == 'support'
                     && request.resource.data.enabled is bool
-                    && request.resource.data.updatedAt is int;
+                    && request.resource.data.updatedAt is int
+                    && (!request.resource.data.keys().hasAny(['permissions'])
+                        || validSupportPermissions(request.resource.data.permissions));
       allow delete: if isSiteOwner() && resource.data.role == 'support';
     }
 
@@ -865,6 +923,7 @@ service cloud.firestore {
                     && request.resource.data.actorName is string
                     && request.resource.data.actorName.size() <= 40
                     && request.resource.data.action in ['cms_upsert', 'cms_delete', 'blog_review', 'archive_decision', 'blog_promote']
+                    && supportCanAction(request.resource.data.action)
                     && request.resource.data.summary is string
                     && request.resource.data.summary.size() > 0
                     && request.resource.data.summary.size() <= 240

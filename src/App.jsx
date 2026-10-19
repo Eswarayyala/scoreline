@@ -43,6 +43,7 @@ import { readImageFile } from "./lib/readImageFile";
 import CircuitCmsDesk from "./components/cms/CircuitCmsDesk";
 import FloatingWindowsDesk from "./components/cms/FloatingWindowsDesk";
 import SupportChangeQueue from "./components/cms/SupportChangeQueue";
+import SupportAccessDesk from "./components/cms/SupportAccessDesk";
 import { useCircuitCms } from "./hooks/useCircuitCms";
 import { useStaffChangeRequests } from "./hooks/useStaffChangeRequests";
 import { assembleFloatingSlides, floatingPolicyFromRecords, mergeEwcWindows } from "./data/floatingWindows";
@@ -68,7 +69,12 @@ import { BLOG_ANALYSIS_TYPES, analysisTypeLabel, isHttpsUrl } from "./data/blogA
 import { POSTER_PRESETS } from "./data/posterPresets";
 import { ewcFloatingSlides } from "./data/esportsResearch";
 import { EVENT_SCOPES, applyEventToVault, findGameVault, inferEventScope, normalizeGameKey, publicScopeKicker } from "./data/eventScope";
-import { canManageMediaLibrary, isAllowedSupportAction } from "./lib/staffAccess";
+import {
+  canManageMediaLibrary,
+  isAllowedSupportAction,
+  normalizeSupportPermissions,
+  supportHas,
+} from "./lib/staffAccess";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { onValue, ref as databaseRef, onDisconnect, serverTimestamp, set as setDatabaseValue } from "firebase/database";
 
@@ -1962,7 +1968,7 @@ function ArchiveSubmissionInbox({ submissions, onDecision }) {
   const pending = submissions.filter((item) => item.status === "pending");
   return <section>
     <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Review community-submitted event records before they go public in The Vault.</p>
-    {pending.length === 0 ? <EmptyState title="No Vault requests waiting" body="New event submissions will appear here for review." /> : <div style={{ display: "grid", gap: 10 }}>{pending.map((item) => <article key={item.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{item.game} · {item.eventDate} · by {item.submitterName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{item.tournament}</h2><p style={{ margin: "6px 0" }}>Winner: {item.winner}{item.runnerUp ? ` · Runner-up: ${item.runnerUp}` : ""}{item.mvp ? ` · MVP: ${item.mvp}` : ""}</p>{item.source && <a href={item.source} target="_blank" rel="noopener noreferrer">Source</a>}<div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onDecision(item.id, "approved")}>Approve for The Vault</Button><Button variant="danger" onClick={() => onDecision(item.id, "rejected")}>Decline</Button></div></article>)}</div>}
+    {pending.length === 0 ? <EmptyState title="No Vault requests waiting" body="New event submissions will appear here for review." /> : <div style={{ display: "grid", gap: 10 }}>{pending.map((item) => <article key={item.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{item.game} · {item.eventDate} · by {item.submitterName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{item.tournament}</h2><p style={{ margin: "6px 0" }}>Winner: {item.winner}{item.runnerUp ? ` · Runner-up: ${item.runnerUp}` : ""}{item.mvp ? ` · MVP: ${item.mvp}` : ""}</p>{item.source && <a href={item.source} target="_blank" rel="noopener noreferrer">Source</a>}{onDecision && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onDecision(item.id, "approved")}>Approve for The Vault</Button><Button variant="danger" onClick={() => onDecision(item.id, "rejected")}>Decline</Button></div>}</article>)}</div>}
   </section>;
 }
 
@@ -2066,6 +2072,7 @@ function BlogArchivePromoter({ posts, onPromote }) {
     setPostId(id); setEventDate(""); setWinner(""); setRunnerUp(""); setMvp(""); setSource(post?.source || "");
     setEventScope(post?.eventScope || inferEventScope(`${post?.title || ""} ${post?.game || ""}`)); setError("");
   };
+  if (!onPromote) return null;
   return <section style={{ maxWidth: 680 }}>
     <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Turn a published recap into The Vault. Mark it EWC related to merge it into that game vault and the shared EWC list.</p>
     {candidates.length === 0 ? <EmptyState title="No published blogs to add" body="Publish a blog first, then you can create a Vault record from it." /> : <>
@@ -2135,18 +2142,37 @@ function SitePopup({ popup, onDismiss }) {
   );
 }
 
-function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerAccess, popups, onSavePopup, onDeletePopup, staff, onSetSupport, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], onSaveCircuit, onDeleteCircuit, onImportArchive, filterGames = FILTER_GAMES, ewcWindows = [], blogSlides = [], supportChanges = [], onReviewSupportChange, ownerPresence = null, supportPresence = null, onSaveOwnerPresence, onSaveSupportPresence }) {
+function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerAccess, popups, onSavePopup, onDeletePopup, staff, onSetSupport, onSaveSupportPermissions, supportPermissions = null, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], onSaveCircuit, onDeleteCircuit, onImportArchive, filterGames = FILTER_GAMES, ewcWindows = [], blogSlides = [], supportChanges = [], onReviewSupportChange, ownerPresence = null, supportPresence = null, onSaveOwnerPresence, onSaveSupportPresence }) {
   const isOwner = role === "owner";
+  const perms = normalizeSupportPermissions(supportPermissions);
+  const canVault = isOwner || supportHas(perms, "vaultEdit");
+  const canLibrary = isOwner || supportHas(perms, "libraryView");
+  const canBlogs = isOwner || supportHas(perms, "blogReview") || supportHas(perms, "blogPromote");
+  const canReports = isOwner || supportHas(perms, "reportsTriage");
+  const canSocials = isOwner || supportHas(perms, "supportSocials");
+  const supportTabs = useMemo(
+    () => [
+      "overview",
+      ...(canVault ? ["windows", "tournaments", "vault"] : []),
+      ...(canLibrary ? ["library"] : []),
+      ...(canBlogs ? ["blogs"] : []),
+      ...(canReports ? ["reports"] : []),
+      ...(canSocials ? ["socials"] : []),
+      ...(isOwner ? ["support changes", "activity log", "popups", "support access"] : ["my requests"]),
+    ],
+    [canVault, canLibrary, canBlogs, canReports, canSocials, isOwner],
+  );
   const [tab, setTab] = useState(initialTab);
   const [editing, setEditing] = useState(null);
-  const [staffUid, setStaffUid] = useState("");
   const [popupError, setPopupError] = useState("");
-  const [staffError, setStaffError] = useState("");
   const activeReports = reports.filter((item) => !isReportArchived(item)).length;
   const pendingBlogs = blogPosts.filter((post) => post.status === "pending").length;
   const pendingArchiveRequests = archiveSubmissions.filter((item) => item.status === "pending").length;
   const activeTournaments = tournaments.filter((item) => !isTournamentArchived(item)).length;
   const pendingSupportChanges = supportChanges.filter((item) => item.status === "pending").length;
+  useEffect(() => {
+    if (!supportTabs.includes(tab)) setTab("overview");
+  }, [tab, supportTabs]);
   const openEditor = (popup = null) => {
     setPopupError("");
     const toLocalInput = (value) => {
@@ -2176,18 +2202,12 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
     try { await onSavePopup(editing.id || null, payload); setEditing(null); }
     catch { setPopupError("Could not save this popup. Check the published Firebase rules and try again."); }
   };
-  const assignSupport = async () => {
-    const targetUid = staffUid.trim();
-    if (!targetUid || targetUid.length > 128) { setStaffError("Enter a valid Firebase account UID."); return; }
-    try { await onSetSupport(targetUid, true); setStaffUid(""); setStaffError(""); }
-    catch { setStaffError("Could not update support access. Check the published Firebase rules."); }
-  };
 
   return (
     <div style={{ paddingTop: 24 }}>
       <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 34, margin: "0 0 10px" }}>{isOwner ? "Owner" : "Support"}</h1>
       <div role="tablist" aria-label="Dashboard sections" style={{ display: "flex", flexWrap: "wrap", gap: 2, marginBottom: 18, borderBottom: "1px solid var(--border)" }}>
-          {["overview", "windows", "library", "tournaments", "vault", "blogs", "reports", "socials", ...(isOwner ? ["support changes", "activity log", "popups", "support access"] : ["my requests"])].map((name) => (
+          {supportTabs.map((name) => (
             <button
               key={name}
               type="button"
@@ -2219,17 +2239,17 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
         <p style={{ color: "var(--text-muted)", fontSize: 13 }}>
           Monitor tournaments, The Vault, and the community blog from the tabs above
           {isOwner
-            ? ". Owner-only: media library manage, popups, support access, bans/restricts, and the activity log. Support may propose vault/event poster and desk edits — you accept or deny them."
-            : ". You can edit vault event posters and desk records; those changes wait for owner approval. You cannot manage the media library, popups, support access, bans, or the activity log."}
+            ? ". Use Support access to turn each capability on or off per support UID. Owner-only: media manage, popups, bans, grant access, activity log."
+            : ". Tabs follow the permissions the owner enabled for your account. Changes still wait for owner approval."}
         </p>
       </>}
-      {tab === "windows" && <FloatingWindowsDesk records={circuitRecords} ewcWindows={ewcWindows} blogSlides={blogSlides} role={role} onSave={onSaveCircuit} />}
-      {tab === "library" && <MediaLibraryDesk games={filterGames} canManage={canManageMediaLibrary(role)} />}
+      {tab === "windows" && canVault && <FloatingWindowsDesk records={circuitRecords} ewcWindows={ewcWindows} blogSlides={blogSlides} role={role} onSave={onSaveCircuit} permissions={perms} />}
+      {tab === "library" && canLibrary && <MediaLibraryDesk games={filterGames} canManage={canManageMediaLibrary(role)} />}
       {(tab === "support changes" || tab === "my requests") && <SupportChangeQueue requests={supportChanges} role={role} onReview={onReviewSupportChange} />}
-      {tab === "reports" && <ReportsInbox reports={reports} onStatusChange={onStatusChange} bans={bans} role={role} onSetPlayerAccess={onSetPlayerAccess} />}
-      {tab === "tournaments" && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="tournament" records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} games={filterGames} /><TournamentMonitor tournaments={tournaments} onOpen={onOpenTournament} /></div>}
-      {tab === "vault" && <div style={{ display: "grid", gap: 28 }}><VaultResearchDesk records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} filterGames={filterGames} /><VaultMonitor submissions={archiveSubmissions} blogPosts={blogPosts} onDecision={onArchiveDecision} onPromote={onPromoteBlog} /></div>}
-      {tab === "socials" && (
+      {tab === "reports" && canReports && <ReportsInbox reports={reports} onStatusChange={onStatusChange} bans={bans} role={role} onSetPlayerAccess={onSetPlayerAccess} />}
+      {tab === "tournaments" && canVault && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="tournament" records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} games={filterGames} permissions={perms} /><TournamentMonitor tournaments={tournaments} onOpen={onOpenTournament} /></div>}
+      {tab === "vault" && canVault && <div style={{ display: "grid", gap: 28 }}><VaultResearchDesk records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} filterGames={filterGames} permissions={perms} /><VaultMonitor submissions={archiveSubmissions} blogPosts={blogPosts} onDecision={supportHas(perms, "archiveDecide") || isOwner ? onArchiveDecision : undefined} onPromote={supportHas(perms, "blogPromote") || isOwner ? onPromoteBlog : undefined} /></div>}
+      {tab === "socials" && canSocials && (
         <SitePresenceDesk
           role={role}
           ownerProfile={ownerPresence}
@@ -2239,7 +2259,7 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
         />
       )}
       {tab === "activity log" && isOwner && <StaffActivityLog actions={auditLog} />}
-      {tab === "blogs" && <section><p style={{ color: "var(--text-muted)", fontSize: 13 }}>Watch every community blog from this desk. Publish or decline pending posts, then promote a published story into The Vault from the Vault tab.</p><div style={{ display: "flex", gap: 16, margin: "0 0 14px", fontSize: 13, color: "var(--text-muted)" }}><span>Pending {pendingBlogs}</span><span>Published {blogPosts.filter((post) => post.status === "published").length}</span><span>Total {blogPosts.length}</span></div>{blogPosts.length === 0 ? <EmptyState title="No blog posts yet" body="Community submissions will appear here for preview." /> : <div style={{ display: "grid", gap: 10 }}>{[...blogPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 30).map((post) => <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}{post.eventScope ? ` · ${post.eventScope}` : ""} · by {post.authorName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{post.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{post.content}</p>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{post.status === "pending" && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onBlogReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onBlogReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div>}</section>}
+      {tab === "blogs" && canBlogs && <section><p style={{ color: "var(--text-muted)", fontSize: 13 }}>Watch every community blog from this desk. Publish or decline pending posts, then promote a published story into The Vault from the Vault tab.</p><div style={{ display: "flex", gap: 16, margin: "0 0 14px", fontSize: 13, color: "var(--text-muted)" }}><span>Pending {pendingBlogs}</span><span>Published {blogPosts.filter((post) => post.status === "published").length}</span><span>Total {blogPosts.length}</span></div>{blogPosts.length === 0 ? <EmptyState title="No blog posts yet" body="Community submissions will appear here for preview." /> : <div style={{ display: "grid", gap: 10 }}>{[...blogPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 30).map((post) => <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}{post.eventScope ? ` · ${post.eventScope}` : ""} · by {post.authorName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{post.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{post.content}</p>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{post.status === "pending" && (isOwner || supportHas(perms, "blogReview")) && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onBlogReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onBlogReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div>}</section>}
       {tab === "popups" && isOwner && <section>
         <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Create plain-text safety reminders or general popups. General popups appear at random intervals of 15 to 30 minutes while someone is actively browsing.</p>
         <Button onClick={() => openEditor()}>Add popup</Button>
@@ -2259,13 +2279,9 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
         </div>}
         <div style={{ display: "grid", gap: 10, marginTop: 14 }}>{popups.map((popup) => <article key={popup.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{popup.enabled ? "Enabled" : "Disabled"} · {popup.type === "motivation" ? "Popup" : "Safety disclaimer"} · {popup.type === "disclaimer" ? "Before registration" : popup.frequency === "hourly" ? "Every hour" : popup.frequency === "session" ? "Once per visit" : popup.frequency === "busy" ? `${popup.minimumOnline || 10}+ online` : "Every 15–30 minutes"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "5px 0" }}>{popup.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{popup.message}</p><div style={{ display: "flex", gap: 8 }}><Button variant="ghost" onClick={() => openEditor(popup)}>Edit</Button><Button variant="danger" onClick={() => onDeletePopup(popup.id)}>Delete</Button></div></article>)}</div>
       </section>}
-      {tab === "support access" && isOwner && <section style={{ maxWidth: 680 }}>
-        <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Support can review reports immediately. Vault, floating-window, blog, and tournament desk edits wait in Support changes until you accept or deny them. Copy their Firebase Authentication UID from Firebase Console → Authentication → Users.</p>
-     
-   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><TextInput aria-label="Support account UID" placeholder="Paste support person's UID" value={staffUid} onChange={(e) => setStaffUid(e.target.value)} /><Button onClick={assignSupport}>Grant support access</Button></div>
-        {staffError && <div role="alert" style={{ color: "var(--danger)", marginTop: 8 }}>{staffError}</div>}
-        <div style={{ display: "grid", gap: 8, marginTop: 16 }}>{staff.filter((item) => item.role === "support" && item.enabled !== false).map((item) => <article key={item.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", padding: 12, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><code>{item.id}</code><Button variant="danger" onClick={() => onSetSupport(item.id, false)}>Remove access</Button></article>)}</div>
-      </section>}
+      {tab === "support access" && isOwner && (
+        <SupportAccessDesk staff={staff} onSetSupport={onSetSupport} onSavePermissions={onSaveSupportPermissions} />
+      )}
     </div>
   );
 }
@@ -2614,6 +2630,7 @@ export default function App() {
   const [reportTarget, setReportTarget] = useState(null);
   const [isModerator, setIsModerator] = useState(false);
   const [siteRole, setSiteRole] = useState(null);
+  const [supportPermissions, setSupportPermissions] = useState(null);
   const [siteRoleResolved, setSiteRoleResolved] = useState(!auth.currentUser);
   const [friendRequests, setFriendRequests] = useState([]);
   const [blockedUsers, setBlockedUsers] = useState([]);
@@ -2830,7 +2847,7 @@ export default function App() {
   const [mutedFriendIds, setMutedFriendIds] = useState([]);
   const [showArchivedTournaments, setShowArchivedTournaments] = useState(false);
   const circuitCms = useCircuitCms({ canWrite: siteRole === "owner" });
-  const staffChanges = useStaffChangeRequests({ role: siteRole, user });
+  const staffChanges = useStaffChangeRequests({ role: siteRole, user, permissions: supportPermissions });
   const liveEsportsBanners = useEsportsMedia();
   const blogSlides = useMemo(() => slidesFromBlogs(blogPosts), [blogPosts]);
   const ewcWindows = useMemo(
@@ -2884,13 +2901,25 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    if (!user) { setIsModerator(false); setSiteRole(null); setSiteRoleResolved(true); return undefined; }
+    if (!user) {
+      setIsModerator(false);
+      setSiteRole(null);
+      setSupportPermissions(null);
+      setSiteRoleResolved(true);
+      return undefined;
+    }
     setSiteRoleResolved(false);
     const stopRole = onSnapshot(doc(SITE_ROLES_COLLECTION, user.uid), (snapshot) => {
       const data = snapshot.exists() ? snapshot.data() : null;
-      setSiteRole(data?.enabled !== false && ["owner", "support"].includes(data?.role) ? data.role : null);
+      const nextRole = data?.enabled !== false && ["owner", "support"].includes(data?.role) ? data.role : null;
+      setSiteRole(nextRole);
+      setSupportPermissions(nextRole === "support" ? normalizeSupportPermissions(data?.permissions) : null);
       setSiteRoleResolved(true);
-    }, () => { setSiteRole(null); setSiteRoleResolved(true); });
+    }, () => {
+      setSiteRole(null);
+      setSupportPermissions(null);
+      setSiteRoleResolved(true);
+    });
     const stopModerator = onSnapshot(doc(db, "moderators", user.uid), (snapshot) => {
       setIsModerator(snapshot.exists() && snapshot.data().enabled === true);
     }, () => setIsModerator(false));
@@ -3719,6 +3748,9 @@ export default function App() {
 
   const saveSupportPresence = async (profile) => {
     if (siteRole !== "owner" && siteRole !== "support") throw new Error("Staff access required.");
+    if (siteRole === "support" && !supportHas(supportPermissions, "supportSocials")) {
+      throw new Error("Your support account cannot edit support socials.");
+    }
     await setDoc(sitePresenceRef("support"), serializePresenceProfile(profile, user?.uid), { merge: true });
     showToast("Support socials updated");
   };
@@ -3891,15 +3923,36 @@ export default function App() {
     catch { showToast("Couldn't delete popup"); }
   };
 
-  const setSupportAccess = async (targetUid, enabled) => {
+  const setSupportAccess = async (targetUid, enabled, permissions = null) => {
     if (siteRole !== "owner" || targetUid === user?.uid) throw new Error("Owner access required");
     const ref = doc(SITE_ROLES_COLLECTION, targetUid);
     const batch = writeBatch(db);
-    if (enabled) batch.set(ref, { role: "support", enabled: true, updatedAt: Date.now() });
-    else batch.update(ref, { enabled: false, updatedAt: Date.now() });
+    if (enabled) {
+      batch.set(ref, {
+        role: "support",
+        enabled: true,
+        updatedAt: Date.now(),
+        permissions: normalizeSupportPermissions(permissions),
+      });
+    } else {
+      batch.update(ref, { enabled: false, updatedAt: Date.now() });
+    }
     appendStaffAction(batch, enabled ? "support_granted" : "support_revoked", "support", targetUid, `${enabled ? "Support access granted" : "Support access removed"} for ${targetUid}`);
     await batch.commit();
     showToast(enabled ? "Support access granted" : "Support access removed");
+  };
+
+  const saveSupportPermissions = async (targetUid, permissions) => {
+    if (siteRole !== "owner" || !targetUid) throw new Error("Owner access required");
+    const ref = doc(SITE_ROLES_COLLECTION, targetUid);
+    const batch = writeBatch(db);
+    batch.update(ref, {
+      permissions: normalizeSupportPermissions(permissions),
+      updatedAt: Date.now(),
+    });
+    appendStaffAction(batch, "support_permissions_updated", "support", targetUid, `Support permissions updated for ${targetUid}`);
+    await batch.commit();
+    showToast("Support permissions saved");
   };
 
   const dismissSitePopup = () => {
@@ -4013,6 +4066,8 @@ export default function App() {
                   onDeletePopup={deleteSitePopup}
                   staff={siteStaff}
                   onSetSupport={setSupportAccess}
+                  onSaveSupportPermissions={saveSupportPermissions}
+                  supportPermissions={supportPermissions}
                   tournaments={tournaments}
                   archiveEntries={archiveEntries}
                   blogPosts={blogPosts}

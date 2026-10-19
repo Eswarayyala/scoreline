@@ -5,9 +5,9 @@ import { FILTER_GAMES } from "../../data/gameCatalog";
 import { emptyCircuitEvent } from "../../hooks/useCircuitCms";
 import CircuitEventForm from "./CircuitEventForm";
 
-export default function CircuitCmsDesk({ surface, records, role, onSave, onDelete, games = FILTER_GAMES }) {
+export default function CircuitCmsDesk({ surface, records, role, permissions = null, onSave, onDelete, games = FILTER_GAMES }) {
   const canWrite = canWriteCircuitContent(role);
-  const canRemove = canProposeCmsDelete(role);
+  const canRemove = canProposeCmsDelete(role, permissions);
   const [editing, setEditing] = useState(null);
   const items = useMemo(() => records.filter((item) => item.surface === surface), [records, surface]);
 

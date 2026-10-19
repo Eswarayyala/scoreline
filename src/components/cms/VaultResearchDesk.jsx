@@ -275,9 +275,9 @@ function ResearchForm({ initial, canWrite, role, games, onSave, onCancel }) {
   );
 }
 
-function CatalogDesk({ records, role, games, onSave, onDelete }) {
+function CatalogDesk({ records, role, permissions, games, onSave, onDelete }) {
   const canWrite = canWriteCircuitContent(role);
-  const canRemove = canProposeCmsDelete(role);
+  const canRemove = canProposeCmsDelete(role, permissions);
   const [name, setName] = useState("");
   const [media, setMedia] = useState({ poster: "", flyers: [], avatar: "" });
   const extras = records.filter((item) => item.surface === "catalog");
@@ -340,10 +340,10 @@ function CatalogDesk({ records, role, games, onSave, onDelete }) {
   );
 }
 
-export default function VaultResearchDesk({ records, role, onSave, onDelete, filterGames = FILTER_GAMES, focusId }) {
+export default function VaultResearchDesk({ records, role, permissions = null, onSave, onDelete, filterGames = FILTER_GAMES, focusId }) {
   const navigate = useNavigate();
   const canWrite = canWriteCircuitContent(role);
-  const canRemove = canProposeCmsDelete(role);
+  const canRemove = canProposeCmsDelete(role, permissions);
   const items = useMemo(() => records.filter((item) => item.surface === "research" || item.research), [records]);
 
   if (focusId) {
@@ -390,7 +390,7 @@ export default function VaultResearchDesk({ records, role, onSave, onDelete, fil
           </a>
         )}
       </div>
-      <CatalogDesk records={records} role={role} games={filterGames} onSave={onSave} onDelete={onDelete} />
+      <CatalogDesk records={records} role={role} permissions={permissions} games={filterGames} onSave={onSave} onDelete={onDelete} />
       <div className="grid gap-3">
         {items.map((item) => (
           <article key={item.id} className="flex items-start justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
