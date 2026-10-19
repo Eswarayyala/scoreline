@@ -272,7 +272,7 @@ export default function VaultDetailPage({
               </p>
               {related.length === 0 ? (
                 <p className="text-sm text-slate-400">
-                  No published results for {slide.game} yet. Paste them from the staff desk when you are ready.
+                  No published results for {slide.game} yet.
                 </p>
               ) : (
                 related.map((entry) => (

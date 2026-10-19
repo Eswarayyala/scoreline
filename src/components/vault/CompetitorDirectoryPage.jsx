@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Building2, UserRound } from "lucide-react";
 import { dossierPath, listFranchises, listPlayers } from "../../data/competitorIndex";
+import { canonicalFilterGame, gameMatchesFilter } from "../../data/gameCatalog";
 
 export default function CompetitorDirectoryPage({ slides = [], kind = "franchise" }) {
   const isFranchise = kind === "franchise";
@@ -15,12 +16,15 @@ export default function CompetitorDirectoryPage({ slides = [], kind = "franchise
 
   const games = useMemo(() => {
     const seen = new Set();
-    rows.forEach((row) => row.games.forEach((name) => name && seen.add(name)));
+    rows.forEach((row) => row.games.forEach((name) => {
+      const label = canonicalFilterGame(name);
+      if (label) seen.add(label);
+    }));
     return [...seen].sort((a, b) => a.localeCompare(b));
   }, [rows]);
 
   const visible = rows.filter((row) => {
-    if (game !== "all" && !row.games.some((name) => name === game)) return false;
+    if (game !== "all" && !row.games.some((name) => gameMatchesFilter(name, game))) return false;
     const q = query.trim().toLowerCase();
     if (q && !row.name.toLowerCase().includes(q)) return false;
     return true;
@@ -31,43 +35,28 @@ export default function CompetitorDirectoryPage({ slides = [], kind = "franchise
       <Link to="/vault" className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neon">
         <ArrowLeft size={14} /> The Vault
       </Link>
-      <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
+      <div className="mt-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-volt">
-            {isFranchise ? "Multi-title orgs" : "Single-game competitors"}
-          </p>
-          <h1 className="font-display text-5xl text-white md:text-6xl">{isFranchise ? "Franchises" : "Players"}</h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-400">
-            {isFranchise
-              ? "Organizations that show up across vault editions — often multiple games and repeated titles. Built from team payouts, known orgs, and team-format champions."
-              : "Individuals from player formats, MVP / IGL / fan-favourite fields, and player payouts. Prefer one game and fewer appearances."}
+          <h1 className="font-display text-4xl text-white md:text-5xl">{isFranchise ? "Franchises" : "Players"}</h1>
+          <p className="mt-1 max-w-lg text-xs text-slate-500">
+            {isFranchise ? "Multi-game orgs from vault team records." : "Players from payouts, MVP, and IGL fields."}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Link
-            to="/vault/franchises"
-            className={`inline-flex items-center gap-2 border px-3 py-2 font-mono text-[11px] uppercase tracking-widest no-underline ${
-              isFranchise ? "border-amber-400/50 text-amber-300" : "border-white/15 text-slate-400"
-            }`}
-          >
-            <Building2 size={14} /> Franchises
+        <div className="flex gap-3 font-mono text-[10px] uppercase tracking-widest">
+          <Link to="/vault/franchises" className={`inline-flex items-center gap-1 no-underline ${isFranchise ? "text-amber-300" : "text-slate-600 hover:text-slate-300"}`}>
+            <Building2 size={12} /> Franchises
           </Link>
-          <Link
-            to="/vault/players"
-            className={`inline-flex items-center gap-2 border px-3 py-2 font-mono text-[11px] uppercase tracking-widest no-underline ${
-              !isFranchise ? "border-amber-400/50 text-amber-300" : "border-white/15 text-slate-400"
-            }`}
-          >
-            <UserRound size={14} /> Players
+          <Link to="/vault/players" className={`inline-flex items-center gap-1 no-underline ${!isFranchise ? "text-amber-300" : "text-slate-600 hover:text-slate-300"}`}>
+            <UserRound size={12} /> Players
           </Link>
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-3">
-        <label className="font-mono text-[11px] uppercase tracking-widest text-slate-500">
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-white/5 pb-3">
+        <label className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">
           Game
           <select
-            className="ml-2 border border-white/15 bg-slate-950 px-2 py-1 text-white"
+            className="border-0 border-b border-white/20 bg-transparent py-0.5 text-[11px] normal-case tracking-normal text-white outline-none"
             value={game}
             onChange={(event) => setGame(event.target.value)}
           >
@@ -79,18 +68,16 @@ export default function CompetitorDirectoryPage({ slides = [], kind = "franchise
             ))}
           </select>
         </label>
-        <label className="font-mono text-[11px] uppercase tracking-widest text-slate-500">
+        <label className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">
           Search
           <input
-            className="ml-2 border border-white/15 bg-slate-950 px-2 py-1 text-white"
+            className="border-0 border-b border-white/20 bg-transparent py-0.5 text-[11px] normal-case tracking-normal text-white outline-none"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder={isFranchise ? "Org name" : "Player tag"}
+            placeholder={isFranchise ? "Org" : "Player"}
           />
         </label>
-        <p className="self-end font-mono text-[10px] uppercase tracking-widest text-slate-600">
-          {visible.length} shown
-        </p>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-slate-600">{visible.length}</p>
       </div>
 
       <div className="mt-6 grid gap-3">

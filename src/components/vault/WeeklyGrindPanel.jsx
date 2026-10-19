@@ -38,36 +38,30 @@ export default function WeeklyGrindPanel({
     .slice(0, 4);
 
   return (
-    <section className="mt-10 rounded-3xl border border-white/10 bg-gradient-to-br from-slate-950 via-slate-950 to-amber-950/20 p-5 md:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-amber-300">
-            <CalendarDays size={12} /> This week in GrindInfo
-          </p>
-          <h2 className="mt-1 font-display text-3xl text-white">Weekly grind</h2>
-          <p className="mt-1 max-w-xl text-sm text-slate-400">
-            Fresh vault windows, community recaps, and open scrims — in-app digest (email/push needs Blaze later).
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <button
-            type="button"
-            onClick={() => onPrefsChange?.({ showWeeklyPanel: false })}
-            className="font-mono text-[10px] uppercase tracking-widest text-slate-500"
-          >
-            Hide panel
-          </button>
-          <label className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-slate-400">
+    <section className="mb-6 border-b border-white/5 pb-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-stone-500">
+          <CalendarDays size={11} /> Weekly grind
+        </p>
+        <div className="flex items-center gap-3">
+          <label className="inline-flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-stone-600">
             <input
               type="checkbox"
               checked={prefs?.digestOptIn === true}
               onChange={(event) => onPrefsChange?.({ digestOptIn: event.target.checked })}
             />
-            Opt in for future digest
+            Digest opt-in
           </label>
+          <button
+            type="button"
+            onClick={() => onPrefsChange?.({ showWeeklyPanel: false })}
+            className="font-mono text-[9px] uppercase tracking-widest text-stone-600 hover:text-stone-400"
+          >
+            Hide
+          </button>
         </div>
       </div>
-      <div className="mt-5 grid gap-5 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         <DigestColumn title="Vault windows" empty="No vault highlights yet.">
           {freshVault.map((slide) => (
             <Link key={slide.slug} to={`/vault/${slide.slug}`} className="block text-sm text-white no-underline hover:text-neon">

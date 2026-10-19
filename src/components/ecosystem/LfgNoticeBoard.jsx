@@ -29,7 +29,7 @@ const SEED_POSTS = [
   {
     id: "seed-2",
     author: "Rogue",
-    game: "BGMI and PUBG Mobile",
+    game: "PUBG / PUBG Mobile",
     message: "Casual squad, mic on, chill vibes.",
     tags: ["Support", "Casual", "Squad"],
     discord: "rogue.gg",
@@ -66,6 +66,8 @@ export default function LfgNoticeBoard({ profile, gamesList = [] }) {
   const [game, setGame] = useState(profile?.games?.[0] || gamesList[0] || "");
   const [tags, setTags] = useState([]);
   const [discord, setDiscord] = useState(profile?.discordHandle || "");
+  const [showAllTags, setShowAllTags] = useState(false);
+  const visibleTags = showAllTags ? LFG_ROLE_TAGS : LFG_ROLE_TAGS.slice(0, 5);
 
   useEffect(() => {
     writePosts(posts);
@@ -150,22 +152,31 @@ export default function LfgNoticeBoard({ profile, gamesList = [] }) {
         </label>
         <div>
           <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">Role & playstyle tags</p>
-          <div className="flex flex-wrap gap-2">
-            {LFG_ROLE_TAGS.map((tag) => {
+          <div className="flex flex-wrap items-center gap-1.5">
+            {visibleTags.map((tag) => {
               const on = tags.includes(tag);
               return (
                 <button
                   key={tag}
                   type="button"
                   onClick={() => toggleTag(tag)}
-                  className={`rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider ${
-                    on ? "border-neon text-neon" : "border-white/15 text-slate-400"
+                  className={`border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider ${
+                    on ? "border-neon text-neon" : "border-white/10 text-slate-500"
                   }`}
                 >
                   {tag}
                 </button>
               );
             })}
+            {LFG_ROLE_TAGS.length > 5 && (
+              <button
+                type="button"
+                onClick={() => setShowAllTags((value) => !value)}
+                className="font-mono text-[10px] uppercase tracking-widest text-neon"
+              >
+                {showAllTags ? "Less" : "More"}
+              </button>
+            )}
           </div>
         </div>
         <button

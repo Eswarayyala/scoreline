@@ -1,12 +1,16 @@
 import { useMemo } from "react";
 
+function styleBlob(player = {}) {
+  return [player.style, ...(Array.isArray(player.styles) ? player.styles : [])].filter(Boolean).join(" ");
+}
+
 const BADGE_DEFS = [
-  { id: "igl", label: "IGL", test: (p) => /igl/i.test(p.style || "") },
-  { id: "entry", label: "Entry", test: (p) => /entry/i.test(p.style || "") },
-  { id: "sniper", label: "Sniper", test: (p) => /sniper/i.test(p.style || "") },
-  { id: "support", label: "Support", test: (p) => /support/i.test(p.style || "") },
-  { id: "competitive", label: "Competitive", test: (p) => (p.lookingFor || []).includes("Competitive") || /pro/i.test(p.rank || "") },
-  { id: "casual", label: "Casual", test: (p) => (p.lookingFor || []).includes("Casual") },
+  { id: "igl", label: "IGL", test: (p) => /igl/i.test(styleBlob(p)) },
+  { id: "entry", label: "Entry", test: (p) => /entry/i.test(styleBlob(p)) },
+  { id: "sniper", label: "Sniper", test: (p) => /sniper/i.test(styleBlob(p)) },
+  { id: "support", label: "Support", test: (p) => /support/i.test(styleBlob(p)) },
+  { id: "competitive", label: "Competitive", test: (p) => /competitive/i.test(styleBlob(p)) || (p.lookingFor || []).includes("Competitive") || /pro/i.test(p.rank || "") },
+  { id: "casual", label: "Casual", test: (p) => /casual/i.test(styleBlob(p)) || (p.lookingFor || []).includes("Casual") },
   { id: "mvp", label: "MVP", test: (p) => (p.badges || []).includes("MVP") || p.titles >= 1 },
   { id: "clutch", label: "Clutch Master", test: (p) => (p.badges || []).includes("Clutch Master") || /clutch/i.test(p.bio || "") },
   { id: "discoverable", label: "Looking", test: (p) => p.discoverable === true },

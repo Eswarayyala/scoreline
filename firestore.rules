@@ -109,7 +109,7 @@ service cloud.firestore {
     }
     function validPlayerProfile(data) {
       return data.keys().hasOnly([
-               'displayName', 'games', 'region', 'language', 'style',
+               'displayName', 'games', 'region', 'language', 'languages', 'style', 'styles',
                'lookingFor', 'rank',
                'bio', 'discordHandle', 'avatar', 'discoverable', 'updatedAt', 'playerTag', 'handle'
              ])
@@ -129,6 +129,8 @@ service cloud.firestore {
              && data.language.size() <= 40
              && data.style is string
              && data.style.size() <= 60
+             && (!data.keys().hasAny(['languages']) || (data.languages is list && data.languages.size() <= 8))
+             && (!data.keys().hasAny(['styles']) || (data.styles is list && data.styles.size() <= 8))
              && (!data.keys().hasAny(['lookingFor']) || (data.lookingFor is list && data.lookingFor.size() <= 6))
              && (!data.keys().hasAny(['rank']) || (data.rank is string && data.rank.size() <= 40))
              && data.bio is string

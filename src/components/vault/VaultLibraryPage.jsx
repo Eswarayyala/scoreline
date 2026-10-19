@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { VAULT_SLIDES, flyerForEvent } from "../../data/platformShowcase";
 import { publicScopeKicker } from "../../data/eventScope";
+import { canonicalFilterGame, gameMatchesFilter } from "../../data/gameCatalog";
 import WeeklyGrindPanel from "./WeeklyGrindPanel";
 
 function SlideCard({ slide, bookmarked, onToggleBookmark }) {
@@ -51,7 +52,7 @@ export default function VaultLibraryPage({
   const games = useMemo(() => {
     const seen = new Set();
     return items
-      .map((slide) => slide.game)
+      .map((slide) => canonicalFilterGame(slide.game))
       .filter((name) => {
         const gameName = String(name || "").trim();
         const key = gameName.toLowerCase();
@@ -63,7 +64,7 @@ export default function VaultLibraryPage({
   }, [items]);
   const visible = items.filter((slide) => {
     if (onlyBookmarks && !bookmarkSet.has(slide.slug)) return false;
-    const gameOk = game === "all" || slide.game === game;
+    const gameOk = game === "all" || gameMatchesFilter(slide.game, game);
     if (scope === "all") return gameOk;
     if (slide.eventScope === scope) return gameOk;
     if ((slide.editions || []).some((edition) => edition.eventScope === scope)) return gameOk;
@@ -77,44 +78,32 @@ export default function VaultLibraryPage({
   const blogs = visible.filter((slide) => slide.blog || slide.surface === "blog");
   return (
     <div className="pb-10 pt-6">
-      <p className="m-0 font-mono text-[11px] uppercase tracking-[0.18em] text-amber-400">Circuit archive</p>
-      <h1 className="mt-1 font-['Bebas_Neue',sans-serif] text-5xl tracking-wide text-white">The Vault</h1>
-      <p className="mb-6 mt-2 max-w-2xl text-sm text-stone-400">
-        EWC championship years float here as windows. Game vaults and published recaps stay on the same catalog.
-      </p>
-      <WeeklyGrindPanel
-        slides={items}
-        tournaments={tournaments}
-        prefs={grindPrefs}
-        onPrefsChange={onGrindPrefsChange}
-      />
-      <div className="mb-8 mt-8 flex flex-wrap items-center gap-3">
-        <Link
-          to="/vault/ewc"
-          className="inline-flex border border-amber-400/40 bg-amber-400/10 px-4 py-2 font-mono text-[11px] uppercase tracking-widest text-amber-300 no-underline"
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="m-0 font-['Bebas_Neue',sans-serif] text-4xl tracking-wide text-white md:text-5xl">The Vault</h1>
+          <p className="mt-1 max-w-xl text-xs text-stone-500">Championship windows, game vaults, and recaps.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOnlyBookmarks((value) => !value)}
+          className={`inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest ${
+            onlyBookmarks ? "text-amber-300" : "text-stone-500 hover:text-stone-300"
+          }`}
         >
-          All EWC editions
-        </Link>
-        <Link
-          to="/vault/franchises"
-          className="inline-flex border border-white/15 px-4 py-2 font-mono text-[11px] uppercase tracking-widest text-stone-300 no-underline hover:border-amber-400/40"
-        >
-          Franchises
-        </Link>
-        <Link
-          to="/vault/players"
-          className="inline-flex border border-white/15 px-4 py-2 font-mono text-[11px] uppercase tracking-widest text-stone-300 no-underline hover:border-amber-400/40"
-        >
-          Players
-        </Link>
-        <label className="font-mono text-[11px] uppercase tracking-widest text-stone-400">
-          Game vault
+          <Bookmark size={12} />
+          {onlyBookmarks ? "Bookmarks on" : "Bookmarks"}
+          {bookmarkSlugs.length ? ` · ${bookmarkSlugs.length}` : ""}
+        </button>
+      </div>
+      <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-white/5 pb-3">
+        <label className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-stone-500">
+          Game
           <select
-            className="ml-2 border border-white/15 bg-black/40 px-2 py-1 text-white"
+            className="border-0 border-b border-white/20 bg-transparent py-0.5 text-[11px] normal-case tracking-normal text-white outline-none"
             value={game}
             onChange={(e) => setGame(e.target.value)}
           >
-            <option value="all">All games</option>
+            <option value="all">All</option>
             {games.map((name) => (
               <option key={name} value={name}>
                 {name}
@@ -122,29 +111,29 @@ export default function VaultLibraryPage({
             ))}
           </select>
         </label>
-        <label className="font-mono text-[11px] uppercase tracking-widest text-stone-400">
-          Event type
+        <label className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-stone-500">
+          Type
           <select
-            className="ml-2 border border-white/15 bg-black/40 px-2 py-1 text-white"
+            className="border-0 border-b border-white/20 bg-transparent py-0.5 text-[11px] normal-case tracking-normal text-white outline-none"
             value={scope}
             onChange={(e) => setScope(e.target.value)}
           >
             <option value="all">All</option>
-            <option value="ewc">EWC related</option>
-            <option value="region">Region related</option>
-            <option value="random">Random event</option>
+            <option value="ewc">EWC</option>
+            <option value="region">Region</option>
+            <option value="random">Random</option>
           </select>
         </label>
-        <button
-          type="button"
-          onClick={() => setOnlyBookmarks((value) => !value)}
-          className={`inline-flex items-center gap-2 border px-3 py-2 font-mono text-[11px] uppercase tracking-widest ${
-            onlyBookmarks ? "border-amber-400/50 text-amber-300" : "border-white/15 text-stone-400"
-          }`}
-        >
-          <Bookmark size={12} /> Bookmarks {bookmarkSlugs.length ? `(${bookmarkSlugs.length})` : ""}
-        </button>
+        <Link to="/vault/ewc" className="font-mono text-[10px] uppercase tracking-widest text-stone-500 no-underline hover:text-amber-300">
+          EWC index
+        </Link>
       </div>
+      <WeeklyGrindPanel
+        slides={items}
+        tournaments={tournaments}
+        prefs={grindPrefs}
+        onPrefsChange={onGrindPrefsChange}
+      />
       {floating.length > 0 && (
         <>
           <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Floating windows</h2>

@@ -48,7 +48,7 @@ import { useStaffChangeRequests } from "./hooks/useStaffChangeRequests";
 import { assembleFloatingSlides, floatingPolicyFromRecords, mergeEwcWindows } from "./data/floatingWindows";
 import { useEsportsMedia } from "./hooks/useEsportsMedia";
 import { fetchGamePoster, mergeVaultMedia } from "./services/esportsMedia";
-import { FILTER_GAMES } from "./data/gameCatalog";
+import { FILTER_GAMES, PUBG_FAMILY_LABEL, canonicalFilterGame, filterGameAliases, isPubgFamily } from "./data/gameCatalog";
 import {
   canViewScrimRoom,
   canViewScrimStats,
@@ -247,16 +247,15 @@ async function claimUniqueHandle(user, displayName, currentTag = "") {
   throw new Error("Couldn't assign a unique GrindInfo ID. Try a different name.");
 }
 
-const LEGACY_GAME_NAMES = { "PUBG Mobile (BGMI)": "BGMI and PUBG Mobile" };
-
 function normalizeGameName(game) {
-  return LEGACY_GAME_NAMES[game] || game;
+  return canonicalFilterGame(game) || String(game || "").trim();
 }
 
 function normalizeGameNames(games = []) {
-  return [...new Set(games.map(normalizeGameName))];
+  return [...new Set(games.map(normalizeGameName).filter(Boolean))];
 }
 
+/** Kept for scrim finder server buckets (not player country). */
 const REGIONS = [
   "North America",
   "South America",
@@ -268,6 +267,59 @@ const REGIONS = [
   "Middle East",
   "Oceania",
   "Africa",
+];
+
+const COUNTRIES = [
+  "India",
+  "United States",
+  "Canada",
+  "United Kingdom",
+  "Germany",
+  "France",
+  "Spain",
+  "Portugal",
+  "Italy",
+  "Netherlands",
+  "Poland",
+  "Sweden",
+  "Norway",
+  "Denmark",
+  "Finland",
+  "Russia",
+  "Ukraine",
+  "Turkey",
+  "Brazil",
+  "Argentina",
+  "Chile",
+  "Mexico",
+  "Colombia",
+  "Peru",
+  "Australia",
+  "New Zealand",
+  "Japan",
+  "South Korea",
+  "China",
+  "Taiwan",
+  "Hong Kong",
+  "Singapore",
+  "Malaysia",
+  "Indonesia",
+  "Thailand",
+  "Vietnam",
+  "Philippines",
+  "Pakistan",
+  "Bangladesh",
+  "Nepal",
+  "Sri Lanka",
+  "UAE",
+  "Saudi Arabia",
+  "Qatar",
+  "Kuwait",
+  "Egypt",
+  "South Africa",
+  "Nigeria",
+  "Kenya",
+  "Other",
 ];
 
 const LANGUAGES = [
@@ -312,7 +364,25 @@ const LOOKING_FOR = ["Duo", "Squad", "Ranked", "Casual", "Competitive", "Tournam
 const RANK_BANDS = ["Unranked", "Beginner", "Intermediate", "High rank", "Pro / scrim"];
 
 function normalizeLookingFor(list = []) {
-  return [...new Set((Array.isArray(list) ? list : []).filter((item) => LOOKING_FOR.includes(item)))];
+  return [...new Set((Array.isArray(list) ? list : []).filter((item) => LOOKING_FOR.includes(item)))].slice(0, 6);
+}
+
+function normalizeStyles(list = [], legacy = "") {
+  const fromList = (Array.isArray(list) ? list : []).filter((item) => PLAY_STYLES.includes(item));
+  if (fromList.length) return [...new Set(fromList)].slice(0, 8);
+  if (legacy && PLAY_STYLES.includes(legacy)) return [legacy];
+  return [];
+}
+
+function normalizeLanguages(list = [], legacy = "") {
+  const fromList = (Array.isArray(list) ? list : []).filter((item) => LANGUAGES.includes(item));
+  if (fromList.length) return [...new Set(fromList)].slice(0, 8);
+  if (legacy && LANGUAGES.includes(legacy)) return [legacy];
+  return [];
+}
+
+function normalizeCountry(country) {
+  return COUNTRIES.includes(country) ? country : "";
 }
 
 function normalizeRank(rank) {
@@ -325,6 +395,10 @@ function similarityMatch(me, them) {
   const sharedGames = normalizeGameNames(them.games || []).filter((game) => myGames.has(game));
   const myWants = new Set(normalizeLookingFor(me.lookingFor));
   const sharedWants = normalizeLookingFor(them.lookingFor).filter((want) => myWants.has(want));
+  const myStyles = new Set(normalizeStyles(me.styles, me.style));
+  const sharedStyles = normalizeStyles(them.styles, them.style).filter((style) => myStyles.has(style));
+  const myLangs = new Set(normalizeLanguages(me.languages, me.language));
+  const sharedLangs = normalizeLanguages(them.languages, them.language).filter((lang) => myLangs.has(lang));
   const reasons = [];
   let score = 0;
   if (sharedGames.length) {
@@ -333,19 +407,19 @@ function similarityMatch(me, them) {
   }
   if (me.region && them.region === me.region) {
     score += 4;
-    reasons.push("Same region");
+    reasons.push("Same country");
   }
-  if (me.language && them.language === me.language) {
-    score += 3;
-    reasons.push("Same language");
+  if (sharedLangs.length) {
+    score += sharedLangs.length * 3;
+    reasons.push(`Same language: ${sharedLangs.slice(0, 2).join(", ")}`);
   }
   if (sharedWants.length) {
     score += sharedWants.length * 2;
     reasons.push(`Also looking for ${sharedWants.slice(0, 2).join(", ")}`);
   }
-  if (me.style && them.style && them.style === me.style) {
-    score += 2;
-    reasons.push("Same play style");
+  if (sharedStyles.length) {
+    score += sharedStyles.length * 2;
+    reasons.push(`Same style: ${sharedStyles.slice(0, 2).join(", ")}`);
   }
   if (me.rank && them.rank && them.rank === me.rank) {
     score += 2;
@@ -364,7 +438,10 @@ const GAME_ICONS = {
   "Apex Legends": "🏹",
   "BGMI": "🎮",
   "PUBG Mobile": "🎮",
+  "PUBG / PUBG Mobile": "🎮",
   "PUBG PC": "🎖️",
+  PUBG: "🎖️",
+  "PUBG Mobile (PMWC)": "🎮",
   "Mobile Legends: Bang Bang": "⚔️",
   "Free Fire": "🔥",
   "Call of Duty": "🎖️",
@@ -377,7 +454,7 @@ const GAME_ICONS = {
   "Teamfight Tactics": "♟️",
   "Other": "🎮",
 };
-const QUICK_PICK_GAMES = ["Valorant", "BGMI", "PUBG Mobile", "Apex Legends"];
+const QUICK_PICK_GAMES = ["Valorant", PUBG_FAMILY_LABEL, "Apex Legends"];
 const BIO_EXAMPLES = [
   { label: "Friendly", text: "Here to improve, have fun, and find a friendly squad." },
   { label: "Competitive", text: "Focused on ranked games, clear comms, and steady improvement." },
@@ -794,10 +871,19 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowse
 
 // ---------- player profile ----------
 
-function MultiToggle({ options, selected, onToggle }) {
+function MultiToggle({ options, selected, onToggle, initialVisible = 8 }) {
+  const [expanded, setExpanded] = useState(false);
+  const limit = Math.max(1, Number(initialVisible) || 8);
+  const needsCollapse = options.length > limit;
+  const visible = (() => {
+    if (expanded || !needsCollapse) return options;
+    const head = options.slice(0, limit);
+    const extras = options.filter((opt) => selected.includes(opt) && !head.includes(opt));
+    return [...head, ...extras];
+  })();
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-      {options.map((opt) => {
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+      {visible.map((opt) => {
         const active = selected.includes(opt);
         return (
           <button
@@ -805,12 +891,14 @@ function MultiToggle({ options, selected, onToggle }) {
             type="button"
             onClick={() => onToggle(opt)}
             style={{
-              fontFamily: "'Inter', sans-serif",
-              fontSize: 12,
-              fontWeight: 600,
-              padding: "7px 12px",
-              border: `1px solid ${active ? "var(--accent)" : "var(--border-strong)"}`,
-              background: active ? "rgba(255,194,46,0.12)" : "transparent",
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 10,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              fontWeight: 500,
+              padding: "5px 9px",
+              border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+              background: active ? "rgba(255,194,46,0.1)" : "transparent",
               color: active ? "var(--accent)" : "var(--text-muted)",
               cursor: "pointer",
             }}
@@ -819,6 +907,25 @@ function MultiToggle({ options, selected, onToggle }) {
           </button>
         );
       })}
+      {needsCollapse && (
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 10,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            padding: "5px 8px",
+            border: "none",
+            background: "transparent",
+            color: "var(--accent-secondary)",
+            cursor: "pointer",
+          }}
+        >
+          {expanded ? "Less" : `More (+${Math.max(0, options.length - visible.length)})`}
+        </button>
+      )}
     </div>
   );
 }
@@ -826,9 +933,9 @@ function MultiToggle({ options, selected, onToggle }) {
 function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onClose, gamesList = FILTER_GAMES }) {
   const [displayName, setDisplayName] = useState(safeProfileName(initialProfile?.displayName, defaultDisplayName));
   const [games, setGames] = useState(normalizeGameNames(initialProfile?.games || []));
-  const [region, setRegion] = useState(initialProfile?.region || "");
-  const [language, setLanguage] = useState(initialProfile?.language || "");
-  const [style, setStyle] = useState(initialProfile?.style || "");
+  const [region, setRegion] = useState(normalizeCountry(initialProfile?.region) || initialProfile?.region || "");
+  const [languages, setLanguages] = useState(normalizeLanguages(initialProfile?.languages, initialProfile?.language));
+  const [styles, setStyles] = useState(normalizeStyles(initialProfile?.styles, initialProfile?.style));
   const [lookingFor, setLookingFor] = useState(normalizeLookingFor(initialProfile?.lookingFor));
   const [rank, setRank] = useState(normalizeRank(initialProfile?.rank));
   const [bio, setBio] = useState(initialProfile?.bio || "");
@@ -840,6 +947,9 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
   const toggleGame = (g) => {
     setGames((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
   };
+  const toggleIn = (setter) => (value) => {
+    setter((prev) => (prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]));
+  };
 
   const submit = () => {
     const name = playerNameFromInput(displayName);
@@ -847,16 +957,21 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
       setError("Use 3–16 letters, numbers, or underscore. Your public ID is Name#1234.");
       return;
     }
-    if (games.length === 0 || !region || !language) {
-      setError("Pick at least one game, a region, and a language");
+    const nextLanguages = normalizeLanguages(languages);
+    const nextStyles = normalizeStyles(styles);
+    const country = normalizeCountry(region) || String(region || "").trim();
+    if (games.length === 0 || !country || !nextLanguages.length) {
+      setError("Pick at least one game, a country, and a language");
       return;
     }
     onSave({
       displayName: name,
       games,
-      region,
-      language,
-      style,
+      region: country.slice(0, 60),
+      languages: nextLanguages,
+      language: nextLanguages[0] || "",
+      styles: nextStyles,
+      style: nextStyles[0] || "",
       lookingFor: normalizeLookingFor(lookingFor),
       rank: normalizeRank(rank),
       bio: bio.trim(),
@@ -1010,43 +1125,21 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
           </Field>
           <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -8 }}>3–16 letters, numbers, or underscore. The #4-digit code is assigned after you save.</div>
           <Field label="Games you play">
-            <MultiToggle options={gamesList} selected={games} onToggle={toggleGame} />
+            <MultiToggle options={gamesList} selected={games} onToggle={toggleGame} initialVisible={8} />
           </Field>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <div style={{ flex: 1, minWidth: 150 }}>
-              <Field label="Region">
-                <Select value={region} onChange={(e) => setRegion(e.target.value)}>
-                  <option value="">Select…</option>
-                  {REGIONS.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
-            <div style={{ flex: 1, minWidth: 150 }}>
-              <Field label="Language">
-                <Select value={language} onChange={(e) => setLanguage(e.target.value)}>
-                  <option value="">Select…</option>
-                  {LANGUAGES.map((l) => (
-                    <option key={l} value={l}>
-                      {l}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
-          </div>
-          <Field label="Playing style (optional)">
-            <Select value={style} onChange={(e) => setStyle(e.target.value)}>
-              <option value="">Not specified</option>
-              {PLAY_STYLES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
+          <Field label="Country">
+            <Select value={region} onChange={(e) => setRegion(e.target.value)}>
+              <option value="">Select…</option>
+              {COUNTRIES.map((country) => (
+                <option key={country} value={country}>{country}</option>
               ))}
             </Select>
+          </Field>
+          <Field label="Languages">
+            <MultiToggle options={LANGUAGES} selected={languages} onToggle={toggleIn(setLanguages)} initialVisible={8} />
+          </Field>
+          <Field label="Playing styles (optional)">
+            <MultiToggle options={PLAY_STYLES} selected={styles} onToggle={toggleIn(setStyles)} initialVisible={8} />
           </Field>
           <Field label="Looking for (optional)">
             <MultiToggle options={LOOKING_FOR} selected={lookingFor} onToggle={(want) => setLookingFor((previous) => previous.includes(want) ? previous.filter((item) => item !== want) : [...previous, want])} />
@@ -1148,10 +1241,15 @@ function PlayerCard({ player, currentUid, friendRequest, onFriendRequest, onFrie
         ))}
       </div>
       <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--text-muted)" }}>
-        {player.region} · {player.language}
-        {player.style ? ` · ${player.style}` : ""}
-        {player.rank ? ` · ${player.rank}` : ""}
+        {[player.region, ...(normalizeLanguages(player.languages, player.language).slice(0, 3)), player.rank].filter(Boolean).join(" · ")}
       </div>
+      {normalizeStyles(player.styles, player.style).length > 0 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+          {normalizeStyles(player.styles, player.style).map((style) => (
+            <span key={style} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, padding: "3px 8px", border: "1px solid var(--border)", color: "var(--page-text)" }}>{style}</span>
+          ))}
+        </div>
+      )}
       {normalizeLookingFor(player.lookingFor).length > 0 && (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
           {normalizeLookingFor(player.lookingFor).map((want) => (
@@ -1190,7 +1288,7 @@ function PlayerCard({ player, currentUid, friendRequest, onFriendRequest, onFrie
   );
 }
 function emptyPlayerSearch() {
-  return { games: [], region: "", language: "", style: "", lookingFor: [], rank: "", name: "" };
+  return { games: [], region: "", languages: [], styles: [], lookingFor: [], rank: "", name: "" };
 }
 
 function playerSearchActive(search) {
@@ -1199,8 +1297,8 @@ function playerSearchActive(search) {
   return Boolean(
     search.games.length
     || search.region
-    || search.language
-    || search.style
+    || search.languages?.length
+    || search.styles?.length
     || search.lookingFor.length
     || search.rank
     || (search.name.includes("#") && PLAYER_TAG_PATTERN.test(tag))
@@ -1219,8 +1317,8 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
     setDraft({
       games: normalizeGameNames(myProfile?.games || []),
       region: myProfile?.region || "",
-      language: myProfile?.language || "",
-      style: myProfile?.style || "",
+      languages: normalizeLanguages(myProfile?.languages, myProfile?.language),
+      styles: normalizeStyles(myProfile?.styles, myProfile?.style),
       lookingFor: normalizeLookingFor(myProfile?.lookingFor),
       rank: normalizeRank(myProfile?.rank),
       name: draft.name,
@@ -1258,12 +1356,11 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
     else {
       if (applied.games.length) {
         const queryGames = normalizeGameNames(applied.games).flatMap((game) =>
-          game === "BGMI and PUBG Mobile" ? [game, "PUBG Mobile (BGMI)"] : [game]
+          isPubgFamily(game) ? filterGameAliases(game) : [game],
         );
         filters.push(where("games", "array-contains-any", [...new Set(queryGames)].slice(0, 10)));
       }
       if (applied.region) filters.push(where("region", "==", applied.region));
-      if (applied.language) filters.push(where("language", "==", applied.language));
     }
     const playersQuery = query(PLAYERS_COLLECTION, ...filters, limit(80));
     return onSnapshot(playersQuery, (snap) => {
@@ -1279,7 +1376,8 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
     .filter((p) => p.uid !== currentUid
       && playerMatchesQuery(p, applied?.name || "")
       && (exactId
-        || ((!applied?.style || p.style === applied.style)
+        || ((!applied?.styles?.length || normalizeStyles(p.styles, p.style).some((style) => applied.styles.includes(style)))
+          && (!applied?.languages?.length || normalizeLanguages(p.languages, p.language).some((lang) => applied.languages.includes(lang)))
           && (!applied?.rank || p.rank === applied.rank)
           && (!applied?.lookingFor?.length || normalizeLookingFor(p.lookingFor).some((want) => applied.lookingFor.includes(want))))))
     .map((p) => ({ ...p, ...similarityMatch(myProfile, p) }))
@@ -1310,8 +1408,8 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
           <div style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
             <Eyebrow>Your badges</Eyebrow>
             <AchievementBadges player={myProfile} />
-            {!myProfile.style && !normalizeLookingFor(myProfile.lookingFor).length && (
-              <div style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 8 }}>Add a playstyle or Looking for tags to unlock badges.</div>
+            {!normalizeStyles(myProfile.styles, myProfile.style).length && !normalizeLookingFor(myProfile.lookingFor).length && (
+              <div style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 8 }}>Add playstyles or Looking for tags to unlock badges.</div>
             )}
           </div>
           <PlacementTrendGraph placements={myProfile.placementTrend} />
@@ -1349,27 +1447,11 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
               />
             </Field>
           </div>
-          <div style={{ minWidth: 160 }}>
-            <Select aria-label="Region" value={draft.region} onChange={(e) => updateDraft({ region: e.target.value })}>
-              <option value="">All regions</option>
-              {REGIONS.map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </Select>
-          </div>
-          <div style={{ minWidth: 160 }}>
-            <Select aria-label="Language" value={draft.language} onChange={(e) => updateDraft({ language: e.target.value })}>
-              <option value="">All languages</option>
-              {LANGUAGES.map((l) => (
-                <option key={l} value={l}>{l}</option>
-              ))}
-            </Select>
-          </div>
-          <div style={{ minWidth: 190 }}>
-            <Select aria-label="Playing style" value={draft.style} onChange={(e) => updateDraft({ style: e.target.value })}>
-              <option value="">Any playing style</option>
-              {PLAY_STYLES.map((style) => (
-                <option key={style} value={style}>{style}</option>
+          <div style={{ minWidth: 180 }}>
+            <Select aria-label="Country" value={draft.region} onChange={(e) => updateDraft({ region: e.target.value })}>
+              <option value="">All countries</option>
+              {COUNTRIES.map((country) => (
+                <option key={country} value={country}>{country}</option>
               ))}
             </Select>
           </div>
@@ -1380,6 +1462,26 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
                 <option key={band} value={band}>{band}</option>
               ))}
             </Select>
+          </div>
+          <div style={{ width: "100%" }}>
+            <Field label="Languages (optional)">
+              <MultiToggle
+                options={LANGUAGES}
+                selected={draft.languages}
+                initialVisible={8}
+                onToggle={(lang) => updateDraft({ languages: draft.languages.includes(lang) ? draft.languages.filter((item) => item !== lang) : [...draft.languages, lang] })}
+              />
+            </Field>
+          </div>
+          <div style={{ width: "100%" }}>
+            <Field label="Playing styles (optional)">
+              <MultiToggle
+                options={PLAY_STYLES}
+                selected={draft.styles}
+                initialVisible={8}
+                onToggle={(style) => updateDraft({ styles: draft.styles.includes(style) ? draft.styles.filter((item) => item !== style) : [...draft.styles, style] })}
+              />
+            </Field>
           </div>
           <div style={{ width: "100%" }}>
             <Field label="Looking for (optional)">
@@ -2081,11 +2183,33 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
   };
 
   return (
-    <div style={{ paddingTop: 34 }}>
-      <Eyebrow>{isOwner ? "Owner controls · protected" : "Support workspace · restricted"}</Eyebrow>
-      <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 18px" }}>{isOwner ? "Owner dashboard" : "Support dashboard"}</h1>
-      <div role="tablist" aria-label="Dashboard sections" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-        {["overview", "windows", "library", "tournaments", "vault", "blogs", "reports", "socials", ...(isOwner ? ["support changes", "activity log", "popups", "support access"] : ["my requests"])].map((name) => <Button key={name} variant={tab === name ? "primary" : "ghost"} onClick={() => setTab(name)}>{name === "vault" ? "The Vault" : name === "tournaments" ? "Scrims" : name === "socials" ? "Socials" : name[0].toUpperCase() + name.slice(1)}</Button>)}
+    <div style={{ paddingTop: 24 }}>
+      <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 34, margin: "0 0 10px" }}>{isOwner ? "Owner" : "Support"}</h1>
+      <div role="tablist" aria-label="Dashboard sections" style={{ display: "flex", flexWrap: "wrap", gap: 2, marginBottom: 18, borderBottom: "1px solid var(--border)" }}>
+          {["overview", "windows", "library", "tournaments", "vault", "blogs", "reports", "socials", ...(isOwner ? ["support changes", "activity log", "popups", "support access"] : ["my requests"])].map((name) => (
+            <button
+              key={name}
+              type="button"
+              role="tab"
+              aria-selected={tab === name}
+              onClick={() => setTab(name)}
+              style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                padding: "8px 10px",
+                border: "none",
+                borderBottom: tab === name ? "1px solid var(--accent-secondary)" : "1px solid transparent",
+                marginBottom: -1,
+                background: "transparent",
+                color: tab === name ? "var(--page-text)" : "var(--text-muted)",
+                cursor: "pointer",
+              }}
+            >
+              {name === "vault" ? "Vault" : name === "tournaments" ? "Scrims" : name === "support changes" ? "Changes" : name === "activity log" ? "Log" : name === "support access" ? "Access" : name === "my requests" ? "Requests" : name[0].toUpperCase() + name.slice(1)}
+            </button>
+          ))}
       </div>
       {tab === "overview" && <>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 18 }}>
@@ -3092,6 +3216,11 @@ export default function App() {
         ...fields,
         displayName,
         lookingFor: normalizeLookingFor(fields.lookingFor),
+        styles: normalizeStyles(fields.styles, fields.style),
+        style: normalizeStyles(fields.styles, fields.style)[0] || "",
+        languages: normalizeLanguages(fields.languages, fields.language),
+        language: normalizeLanguages(fields.languages, fields.language)[0] || "",
+        region: String(fields.region || "").trim().slice(0, 60),
         rank: normalizeRank(fields.rank),
         bio: String(fields.bio || "").slice(0, 200),
         discordHandle: String(fields.discordHandle || "").trim().slice(0, 40),
