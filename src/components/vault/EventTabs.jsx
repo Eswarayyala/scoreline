@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowLeft, CheckSquare, Square } from "lucide-react";
+import { CheckSquare, Square } from "lucide-react";
 import { editionsNewestFirst, researchHighlightLabels } from "../../data/esportsResearch";
 import { formatForGame } from "../../data/vaultDeskSchema";
 import { flyerForEvent } from "../../data/platformShowcase";
@@ -329,14 +329,6 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
     setSearchParams(next, { replace: false });
   };
 
-  const closeEvent = () => {
-    const next = new URLSearchParams(searchParams);
-    next.delete("event");
-    next.delete("compare");
-    setSearchParams(next, { replace: false });
-    setPicked([]);
-  };
-
   const togglePick = (index) => {
     const key = eventKey(ordered[index], index);
     setPicked((currentPicks) => {
@@ -359,18 +351,9 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
   if (comparing) {
     return (
       <section className="mt-8 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={closeEvent}
-            className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-neon"
-          >
-            <ArrowLeft size={14} /> All events
-          </button>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
-            Comparing {compareEditions.length} editions
-          </p>
-        </div>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+          Comparing {compareEditions.length} editions
+        </p>
         <CompareTable editions={compareEditions} game={game} />
       </section>
     );
@@ -379,18 +362,9 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
   if (focused && current) {
     return (
       <section className="mt-8 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={closeEvent}
-            className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-neon"
-          >
-            <ArrowLeft size={14} /> All events
-          </button>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
-            Event {activeIndex + 1} of {ordered.length}
-          </p>
-        </div>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+          Event {activeIndex + 1} of {ordered.length}
+        </p>
         <EventBody edition={current} game={game} />
       </section>
     );
@@ -446,9 +420,6 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
                   ]
                     .filter(Boolean)
                     .join(" · ")}
-                </p>
-                <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-amber-300">
-                  Click for full event details
                 </p>
               </button>
               <div className="flex items-center justify-between gap-2 border-t border-white/10 px-4 py-2">

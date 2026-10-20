@@ -116,13 +116,17 @@ export default function ChampionshipGameTabs({
     return (
       <section className="mt-6 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={closeDetails}
-            className="font-mono text-[11px] uppercase tracking-widest text-neon"
-          >
-            ← Titles in this championship
-          </button>
+          {!urlSync ? (
+            <button
+              type="button"
+              onClick={closeDetails}
+              className="font-mono text-[11px] uppercase tracking-widest text-neon"
+            >
+              ← Titles in this championship
+            </button>
+          ) : (
+            <span />
+          )}
           {allEventsHref && (
             <Link
               to={allEventsHref}
@@ -174,9 +178,6 @@ export default function ChampionshipGameTabs({
                 <h3 className="mt-1 font-display text-2xl leading-tight text-white md:text-3xl">{edition.game}</h3>
                 <p className="mt-2 line-clamp-2 text-sm text-slate-400">
                   {[edition.event, champion && `Champion ${champion}`, edition.prizePool].filter(Boolean).join(" · ")}
-                </p>
-                <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-amber-300">
-                  Click for full event details
                 </p>
               </button>
               {allEventsHref && (

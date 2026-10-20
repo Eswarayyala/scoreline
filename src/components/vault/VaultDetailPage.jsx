@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Bookmark, BookmarkCheck, ExternalLink, Trophy } from "lucide-react";
 import { bannerForGame, flyerForEvent, VAULT_SLIDES } from "../../data/platformShowcase";
@@ -17,6 +17,23 @@ export default function VaultDetailPage({
   bookmarked = false,
   onToggleBookmark,
 }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const eventFocused = Boolean(searchParams.get("event") || searchParams.get("compare"));
+  const titleFocused = searchParams.get("details") === "1" && Boolean(searchParams.get("game"));
+
+  const clearEventFocus = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("event");
+    next.delete("compare");
+    setSearchParams(next, { replace: false });
+  };
+
+  const clearTitleFocus = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("details");
+    next.delete("game");
+    setSearchParams(next, { replace: false });
+  };
   const slide = slides.find((item) => item.slug === slug) || VAULT_SLIDES.find((item) => item.slug === slug);
   const isChampionship = !!slide?.championship?.games?.length || slide?.surface === "ewc-window";
   const related = useMemo(
@@ -53,23 +70,43 @@ export default function VaultDetailPage({
 
   return (
     <article className="mx-auto max-w-5xl px-5 pb-20 pt-6">
-      <div className="mb-5 flex flex-wrap items-center gap-4">
-        <Link to="/vault" className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neon">
-          <ArrowLeft size={14} /> The Vault
-        </Link>
-        {(slide.research || slide.surface === "research" || slide.surface === "ewc-window") && (
-          <Link to="/vault/ewc" className="font-mono text-xs uppercase tracking-widest text-amber-300">
-            EWC index
+      <div className="mb-5 space-y-2">
+        <div className="flex flex-wrap items-center gap-4">
+          <Link to="/vault" className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neon">
+            <ArrowLeft size={14} /> The Vault
           </Link>
-        )}
-        {onToggleBookmark && (
+          {(slide.research || slide.surface === "research" || slide.surface === "ewc-window") && (
+            <Link to="/vault/ewc" className="font-mono text-xs uppercase tracking-widest text-amber-300">
+              EWC index
+            </Link>
+          )}
+          {onToggleBookmark && (
+            <button
+              type="button"
+              onClick={() => onToggleBookmark(slide.slug)}
+              className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-amber-300"
+            >
+              {bookmarked ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
+              {bookmarked ? "Bookmarked" : "Bookmark"}
+            </button>
+          )}
+        </div>
+        {eventFocused && (
           <button
             type="button"
-            onClick={() => onToggleBookmark(slide.slug)}
-            className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-amber-300"
+            onClick={clearEventFocus}
+            className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-neon"
           >
-            {bookmarked ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
-            {bookmarked ? "Bookmarked" : "Bookmark"}
+            <ArrowLeft size={14} /> All events
+          </button>
+        )}
+        {titleFocused && (
+          <button
+            type="button"
+            onClick={clearTitleFocus}
+            className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-neon"
+          >
+            <ArrowLeft size={14} /> Titles in this championship
           </button>
         )}
       </div>

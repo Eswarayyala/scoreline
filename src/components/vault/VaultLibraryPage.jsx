@@ -49,9 +49,6 @@ function SlideCard({ slide, bookmarked, onToggleBookmark }) {
         {meta.detail && (
           <p className="mt-2 line-clamp-2 text-sm text-slate-400">{meta.detail}</p>
         )}
-        <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-amber-300">
-          Click for full event details
-        </p>
       </Link>
       {onToggleBookmark && (
         <button
