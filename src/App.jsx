@@ -35,9 +35,7 @@ import CompetitorDossierPage from "./components/vault/CompetitorDossierPage";
 import CompetitorDirectoryPage from "./components/vault/CompetitorDirectoryPage";
 import EwcDirectoryPage from "./components/vault/EwcDirectoryPage";
 import PreEwcHistoryPage from "./components/vault/PreEwcHistoryPage";
-import SitePresenceDesk from "./components/cms/SitePresenceDesk";
 import { useGrindPrefs, useVaultBookmarks } from "./hooks/useVaultBookmarks";
-import { emptyPresenceProfile, normalizePresenceProfile, serializePresenceProfile } from "./data/sitePresence";
 import VaultResearchDesk from "./components/cms/VaultResearchDesk";
 import { avatarForGamer, bannerForGame, flyerForEvent, flyersForGame } from "./data/platformShowcase";
 import { readImageFile } from "./lib/readImageFile";
@@ -103,7 +101,6 @@ const SITE_ROLES_COLLECTION = collection(db, "siteRoles");
 const SITE_BANS_COLLECTION = collection(db, "siteBans");
 const ARCHIVE_SUBMISSIONS_COLLECTION = collection(db, "archiveSubmissions");
 const STAFF_ACTIONS_COLLECTION = collection(db, "staffActions");
-const sitePresenceRef = (role) => doc(db, "sitePresence", role);
 const PRIZE_PRESETS = [0, 500, 1000, 2500, 5000, 10000];
 const REPORT_REASONS = ["Abuse or harassment", "Scam or fraud", "Inappropriate content", "Other"];
 
@@ -2127,14 +2124,13 @@ function SitePopup({ popup, onDismiss }) {
   );
 }
 
-function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerAccess, popups, onSavePopup, onDeletePopup, staff, onSetSupport, onSaveSupportPermissions, supportPermissions = null, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], deletedCircuitRecords = [], onSaveCircuit, onDeleteCircuit, onRestoreCircuit, onPurgeCircuit, onImportArchive, filterGames = FILTER_GAMES, ewcWindows = [], blogSlides = [], supportChanges = [], onReviewSupportChange, ownerPresence = null, supportPresence = null, onSaveOwnerPresence, onSaveSupportPresence, deskGate = null, onSaveDeskPassword, siteFeatures = null, onSaveSiteFeatures }) {
+function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerAccess, popups, onSavePopup, onDeletePopup, staff, onSetSupport, onSaveSupportPermissions, supportPermissions = null, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], deletedCircuitRecords = [], onSaveCircuit, onDeleteCircuit, onRestoreCircuit, onPurgeCircuit, onImportArchive, filterGames = FILTER_GAMES, ewcWindows = [], blogSlides = [], supportChanges = [], onReviewSupportChange, deskGate = null, onSaveDeskPassword, siteFeatures = null, onSaveSiteFeatures }) {
   const isOwner = role === "owner";
   const perms = normalizeSupportPermissions(supportPermissions);
   const canVault = isOwner || supportHas(perms, "vaultEdit");
   const canLibrary = isOwner || supportHas(perms, "libraryView");
   const canBlogs = isOwner || supportHas(perms, "blogReview") || supportHas(perms, "blogPromote");
   const canReports = isOwner || supportHas(perms, "reportsTriage");
-  const canSocials = isOwner || supportHas(perms, "supportSocials");
   const supportTabs = useMemo(
     () => [
       "overview",
@@ -2142,10 +2138,9 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
       ...(canLibrary ? ["library"] : []),
       ...(canBlogs ? ["blogs"] : []),
       ...(canReports ? ["reports"] : []),
-      ...(canSocials ? ["socials"] : []),
       ...(isOwner ? ["support changes", "activity log", "popups", "support access"] : ["my requests"]),
     ],
-    [canVault, canLibrary, canBlogs, canReports, canSocials, isOwner],
+    [canVault, canLibrary, canBlogs, canReports, isOwner],
   );
   const [tab, setTab] = useState(initialTab);
   const [editing, setEditing] = useState(null);
@@ -2267,15 +2262,6 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
       {tab === "reports" && canReports && <ReportsInbox reports={reports} onStatusChange={onStatusChange} bans={bans} role={role} onSetPlayerAccess={onSetPlayerAccess} />}
       {tab === "tournaments" && canVault && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="tournament" records={circuitRecords} deletedRecords={deletedCircuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} onRestore={onRestoreCircuit} onPurge={onPurgeCircuit} games={filterGames} permissions={perms} /><TournamentMonitor tournaments={tournaments} onOpen={onOpenTournament} /></div>}
       {tab === "vault" && canVault && <div style={{ display: "grid", gap: 28 }}><VaultResearchDesk records={circuitRecords} deletedRecords={deletedCircuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} onRestore={onRestoreCircuit} onPurge={onPurgeCircuit} filterGames={filterGames} permissions={perms} /><VaultMonitor submissions={archiveSubmissions} blogPosts={blogPosts} onDecision={supportHas(perms, "archiveDecide") || isOwner ? onArchiveDecision : undefined} onPromote={supportHas(perms, "blogPromote") || isOwner ? onPromoteBlog : undefined} /></div>}
-      {tab === "socials" && canSocials && (
-        <SitePresenceDesk
-          role={role}
-          ownerProfile={ownerPresence}
-          supportProfile={supportPresence}
-          onSaveOwner={onSaveOwnerPresence}
-          onSaveSupport={onSaveSupportPresence}
-        />
-      )}
       {tab === "activity log" && isOwner && <StaffActivityLog actions={auditLog} />}
       {tab === "blogs" && canBlogs && <section><p style={{ color: "var(--text-muted)", fontSize: 13 }}>Watch every community blog from this desk. Publish or decline pending posts, then promote a published story into The Vault from the Vault tab.</p><div style={{ display: "flex", gap: 16, margin: "0 0 14px", fontSize: 13, color: "var(--text-muted)" }}><span>Pending {pendingBlogs}</span><span>Published {blogPosts.filter((post) => post.status === "published").length}</span><span>Total {blogPosts.length}</span></div>{blogPosts.length === 0 ? <EmptyState title="No blog posts yet" body="Community submissions will appear here for preview." /> : <div style={{ display: "grid", gap: 10 }}>{[...blogPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 30).map((post) => <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}{post.eventScope ? ` · ${post.eventScope}` : ""} · by {post.authorName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{post.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{post.content}</p>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{post.status === "pending" && (isOwner || supportHas(perms, "blogReview")) && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onBlogReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onBlogReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div>}</section>}
       {tab === "popups" && isOwner && <section>
@@ -2725,9 +2711,6 @@ export default function App() {
   const [currentPopup, setCurrentPopup] = useState(null);
   const [popupScanTick, setPopupScanTick] = useState(0);
   const [onlinePlayerCount, setOnlinePlayerCount] = useState(null);
-  const [ownerPresence, setOwnerPresence] = useState(() => emptyPresenceProfile("Owner"));
-  const [supportPresence, setSupportPresence] = useState(() => emptyPresenceProfile("Support"));
-
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [guestMode, setGuestMode] = useState(false);
@@ -3196,23 +3179,6 @@ export default function App() {
     const stopStaff = onSnapshot(SITE_ROLES_COLLECTION, (snapshot) => setSiteStaff(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))), () => setSiteStaff([]));
     return () => { stopPopups(); stopStaff(); };
   }, [siteRole]);
-
-  useEffect(() => {
-    const stopOwner = onSnapshot(
-      sitePresenceRef("owner"),
-      (snapshot) => setOwnerPresence(normalizePresenceProfile(snapshot.exists() ? snapshot.data() : {}, "Owner")),
-      () => setOwnerPresence(emptyPresenceProfile("Owner")),
-    );
-    const stopSupport = onSnapshot(
-      sitePresenceRef("support"),
-      (snapshot) => setSupportPresence(normalizePresenceProfile(snapshot.exists() ? snapshot.data() : {}, "Support")),
-      () => setSupportPresence(emptyPresenceProfile("Support")),
-    );
-    return () => {
-      stopOwner();
-      stopSupport();
-    };
-  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -3874,21 +3840,6 @@ export default function App() {
     for (const next of merged.values()) await circuitCms.upsert(next);
   };
 
-  const saveOwnerPresence = async (profile) => {
-    if (siteRole !== "owner") throw new Error("Only the owner can publish owner socials.");
-    await setDoc(sitePresenceRef("owner"), serializePresenceProfile(profile, user?.uid), { merge: true });
-    showToast("Owner socials updated");
-  };
-
-  const saveSupportPresence = async (profile) => {
-    if (siteRole !== "owner" && siteRole !== "support") throw new Error("Staff access required.");
-    if (siteRole === "support" && !supportHas(supportPermissions, "supportSocials")) {
-      throw new Error("Your support account cannot edit support socials.");
-    }
-    await setDoc(sitePresenceRef("support"), serializePresenceProfile(profile, user?.uid), { merge: true });
-    showToast("Support socials updated");
-  };
-
   const submitArchiveRequest = async (fields) => {
     const clean = {
       tournament: String(fields.tournament || "").trim().slice(0, 120),
@@ -4255,10 +4206,6 @@ export default function App() {
                       onOpenTournament={(id) => navigate(`/tournaments/${id}`)}
                       onImportArchive={importArchiveEntries}
                       filterGames={circuitCms.filterGames}
-                      ownerPresence={ownerPresence}
-                      supportPresence={supportPresence}
-                      onSaveOwnerPresence={saveOwnerPresence}
-                      onSaveSupportPresence={saveSupportPresence}
                       deskGate={deskGate}
                       onSaveDeskPassword={saveDeskRolePassword}
                       siteFeatures={siteFeatures}
@@ -4303,7 +4250,7 @@ export default function App() {
                 />
               ) : null}
             />
-            <PublicNav pathname={routePath} ownerPresence={ownerPresence} supportPresence={supportPresence} />
+            <PublicNav pathname={routePath} />
             <div className={`mx-auto px-5 pb-24 ${routePath === "/" || routePath.startsWith("/vault") ? "max-w-6xl" : "max-w-5xl"}`}>
               <Routes location={windowLocation}>
                 <Route path="/" element={(

@@ -476,12 +476,12 @@ service cloud.firestore {
       return data is map
              && data.keys().hasOnly([
                   'vaultEdit', 'vaultDelete', 'blogReview', 'archiveDecide', 'blogPromote',
-                  'reportsTriage', 'supportSocials', 'libraryView', 'httpsPostersOnly',
+                  'reportsTriage', 'libraryView',
                   'vaultEditMode', 'vaultDeleteMode', 'blogReviewMode', 'archiveDecideMode', 'blogPromoteMode'
                 ])
              && data.keys().hasAll([
                   'vaultEdit', 'vaultDelete', 'blogReview', 'archiveDecide', 'blogPromote',
-                  'reportsTriage', 'supportSocials', 'libraryView', 'httpsPostersOnly',
+                  'reportsTriage', 'libraryView',
                   'vaultEditMode', 'vaultDeleteMode', 'blogReviewMode', 'archiveDecideMode', 'blogPromoteMode'
                 ])
              && data.vaultEdit is bool
@@ -490,9 +490,7 @@ service cloud.firestore {
              && data.archiveDecide is bool
              && data.blogPromote is bool
              && data.reportsTriage is bool
-             && data.supportSocials is bool
              && data.libraryView is bool
-             && data.httpsPostersOnly is bool
              && data.vaultEditMode in ['propose', 'direct']
              && data.vaultDeleteMode in ['propose', 'direct']
              && data.blogReviewMode in ['propose', 'direct']
@@ -990,41 +988,6 @@ service cloud.firestore {
                     && request.resource.data.reviewedBy == request.auth.uid
                     && (!request.resource.data.keys().hasAny(['reviewNote']) || (request.resource.data.reviewNote is string && request.resource.data.reviewNote.size() <= 240));
       allow delete: if false;
-    }
-
-    function validSitePresenceProfile(data) {
-      return data.keys().hasOnly([
-               'label', 'instagram', 'twitter', 'youtube', 'discord', 'tiktok', 'twitch',
-               'updatedAt', 'updatedBy'
-             ])
-             && data.keys().hasAll(['label', 'updatedAt', 'updatedBy'])
-             && data.label is string && data.label.size() <= 60
-             && data.updatedAt is int
-             && data.updatedBy is string && data.updatedBy.size() <= 128
-             && (!data.keys().hasAny(['instagram']) || (data.instagram is string && data.instagram.size() <= 300
-                 && (data.instagram.size() == 0 || data.instagram.matches('^https://(www\\.)?instagram\\.com/.*'))))
-             && (!data.keys().hasAny(['twitter']) || (data.twitter is string && data.twitter.size() <= 300
-                 && (data.twitter.size() == 0 || data.twitter.matches('^https://(www\\.)?(x|twitter)\\.com/.*'))))
-             && (!data.keys().hasAny(['youtube']) || (data.youtube is string && data.youtube.size() <= 300
-                 && (data.youtube.size() == 0 || data.youtube.matches('^https://(www\\.)?(youtube\\.com|youtu\\.be)/.*'))))
-             && (!data.keys().hasAny(['discord']) || (data.discord is string && data.discord.size() <= 300
-                 && (data.discord.size() == 0 || data.discord.matches('^https://(www\\.)?(discord\\.gg|discord\\.com)/.*'))))
-             && (!data.keys().hasAny(['tiktok']) || (data.tiktok is string && data.tiktok.size() <= 300
-                 && (data.tiktok.size() == 0 || data.tiktok.matches('^https://(www\\.)?tiktok\\.com/.*'))))
-             && (!data.keys().hasAny(['twitch']) || (data.twitch is string && data.twitch.size() <= 300
-                 && (data.twitch.size() == 0 || data.twitch.matches('^https://(www\\.)?twitch\\.tv/.*'))));
-    }
-
-    match /sitePresence/{roleId} {
-      allow get, list: if canBrowsePublicData() && roleId in ['owner', 'support'];
-      allow create, update: if roleId in ['owner', 'support']
-                            && validSitePresenceProfile(request.resource.data)
-                            && request.resource.data.updatedBy == request.auth.uid
-                            && (
-                              isSiteOwner()
-                              || (isSiteSupport() && roleId == 'support')
-                            );
-      allow delete: if isSiteOwner() && roleId in ['owner', 'support'];
     }
 
     match /userVaultBookmarks/{userId} {

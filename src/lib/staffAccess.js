@@ -21,9 +21,7 @@ export const SUPPORT_PERMISSION_KEYS = [
   "archiveDecide",
   "blogPromote",
   "reportsTriage",
-  "supportSocials",
   "libraryView",
-  "httpsPostersOnly",
 ];
 
 /** Capabilities that can be Propose (queue) or Direct (live write). */
@@ -42,9 +40,7 @@ export const SUPPORT_PERMISSION_LABELS = {
   archiveDecide: "Vault archive approve / reject",
   blogPromote: "Promote published blog → vault",
   reportsTriage: "Reports triage (change status)",
-  supportSocials: "Edit support socials",
   libraryView: "View media library (no manage)",
-  httpsPostersOnly: "HTTPS / library posters only (block data-URL uploads in proposals)",
 };
 
 /** Safer defaults for new grants; missing keys on old docs merge to these. */
@@ -55,9 +51,7 @@ export const DEFAULT_SUPPORT_PERMISSIONS = {
   archiveDecide: true,
   blogPromote: true,
   reportsTriage: true,
-  supportSocials: true,
   libraryView: true,
-  httpsPostersOnly: true,
   vaultEditMode: "propose",
   vaultDeleteMode: "propose",
   blogReviewMode: "propose",
@@ -159,12 +153,9 @@ export function supportCanDirectAction(permissions, action) {
   return supportAccessMode(permissions, key) === "direct";
 }
 
-function sanitizeImageField(value, { httpsOnly = false } = {}) {
+function sanitizeImageField(value) {
   const raw = String(value || "");
   if (!raw) return "";
-  if (httpsOnly && raw.startsWith("data:image/")) {
-    throw new Error("This support account must use an https URL or media library asset for posters.");
-  }
   if (raw.startsWith("data:image/") && raw.length > SUPPORT_IMAGE_MAX_CHARS) {
     throw new Error("Poster image is too large for a support request. Use an https URL or a media library asset.");
   }
@@ -174,32 +165,30 @@ function sanitizeImageField(value, { httpsOnly = false } = {}) {
   return raw;
 }
 
-function sanitizeEditionImages(edition = {}, options = {}) {
+function sanitizeEditionImages(edition = {}) {
   const next = { ...edition };
-  if (next.poster != null) next.poster = sanitizeImageField(next.poster, options);
+  if (next.poster != null) next.poster = sanitizeImageField(next.poster);
   if (Array.isArray(next.images)) {
-    next.images = next.images.map((src) => sanitizeImageField(src, options)).filter(Boolean).slice(0, 6);
+    next.images = next.images.map((src) => sanitizeImageField(src)).filter(Boolean).slice(0, 6);
   }
   if (Array.isArray(next.flyers)) {
-    next.flyers = next.flyers.map((src) => sanitizeImageField(src, options)).filter(Boolean).slice(0, 6);
+    next.flyers = next.flyers.map((src) => sanitizeImageField(src)).filter(Boolean).slice(0, 6);
   }
   return next;
 }
 
 /** Cap poster / image payloads before support queues a change. */
-export function sanitizeSupportChangePayload(action, payload = {}, permissions = null) {
+export function sanitizeSupportChangePayload(action, payload = {}) {
   if (!payload || typeof payload !== "object") return {};
-  const httpsOnly = permissions ? supportHas(permissions, "httpsPostersOnly") : false;
-  const options = { httpsOnly };
   const next = { ...payload };
   if (action === "cms_upsert") {
-    if (next.poster != null) next.poster = sanitizeImageField(next.poster, options);
-    if (next.avatar != null) next.avatar = sanitizeImageField(next.avatar, options);
+    if (next.poster != null) next.poster = sanitizeImageField(next.poster);
+    if (next.avatar != null) next.avatar = sanitizeImageField(next.avatar);
     if (Array.isArray(next.flyers)) {
-      next.flyers = next.flyers.map((src) => sanitizeImageField(src, options)).filter(Boolean).slice(0, 6);
+      next.flyers = next.flyers.map((src) => sanitizeImageField(src)).filter(Boolean).slice(0, 6);
     }
     if (Array.isArray(next.editions)) {
-      next.editions = next.editions.map((edition) => sanitizeEditionImages(edition, options));
+      next.editions = next.editions.map((edition) => sanitizeEditionImages(edition));
     }
   }
   return next;

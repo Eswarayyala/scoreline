@@ -1,5 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import StaffSocialLinks from "./StaffSocialLinks";
 
 const PRIMARY = [
   { to: "/", label: "Home", end: true },
@@ -8,8 +7,6 @@ const PRIMARY = [
 
 export default function PublicNav({
   pathname = window.location.pathname,
-  ownerPresence = null,
-  supportPresence = null,
 }) {
   const navigate = useNavigate();
   const onVault = pathname === "/vault" || pathname.startsWith("/vault/");
@@ -52,7 +49,6 @@ export default function PublicNav({
           </>
         )}
       </div>
-      <StaffSocialLinks ownerProfile={ownerPresence} supportProfile={supportPresence} />
     </nav>
   );
 }
