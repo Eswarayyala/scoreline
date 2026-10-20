@@ -4,22 +4,54 @@ import { Bookmark, BookmarkCheck } from "lucide-react";
 import { VAULT_SLIDES, flyerForEvent } from "../../data/platformShowcase";
 import { publicScopeKicker } from "../../data/eventScope";
 import { canonicalFilterGame, gameMatchesFilter } from "../../data/gameCatalog";
-import WeeklyGrindPanel from "./WeeklyGrindPanel";
+
+function previewMeta(slide) {
+  const edition = (slide.editions || [])[0];
+  const champion =
+    edition?.champion
+    || edition?.payouts?.[0]?.team
+    || edition?.payouts?.[0]?.player
+    || slide.winners
+    || "";
+  const year = edition?.year || edition?.season || slide.season || "";
+  const event = edition?.event || slide.season || slide.summary || "";
+  return {
+    kicker: [year, publicScopeKicker(slide) || slide.eventScope, slide.game].filter(Boolean).join(" · "),
+    title: slide.title || slide.game || "Vault",
+    detail: [
+      event && event !== slide.title ? event : null,
+      champion && `Champion ${champion}`,
+      slide.peakPrizePool && `Peak ${slide.peakPrizePool}`,
+      edition?.prizePool,
+    ]
+      .filter(Boolean)
+      .join(" · "),
+  };
+}
 
 function SlideCard({ slide, bookmarked, onToggleBookmark }) {
+  const meta = previewMeta(slide);
+  const art = flyerForEvent(slide);
   return (
-    <div className="relative overflow-hidden border border-white/10 bg-black/20 hover:border-amber-400/50">
-      <Link to={`/vault/${slide.slug}`} className="block no-underline text-inherit">
-        <div className="aspect-video overflow-hidden">
-          <img src={flyerForEvent(slide)} alt="" className="h-full w-full object-cover" />
-        </div>
-        <div className="p-3">
-          <p className="m-0 font-mono text-[10px] uppercase tracking-widest text-cyan-300">
-            {[publicScopeKicker(slide), slide.game].filter(Boolean).join(" · ")}
-          </p>
-          <h3 className="mt-1 font-['Bebas_Neue',sans-serif] text-2xl text-white">{slide.title}</h3>
-          {slide.peakPrizePool && <p className="mt-1 text-xs text-stone-400">Peak prize pool {slide.peakPrizePool}</p>}
-        </div>
+    <article className="relative flex flex-col border border-white/10 bg-white/[0.03] transition hover:border-amber-400/50 hover:bg-white/[0.05]">
+      <Link to={`/vault/${slide.slug}`} className="flex flex-1 flex-col p-4 text-inherit no-underline">
+        {art && (
+          <div className="mb-3 aspect-[16/7] overflow-hidden border border-white/5 bg-black/40">
+            <img src={art} alt="" className="h-full w-full object-cover opacity-80" />
+          </div>
+        )}
+        <p className="font-mono text-[10px] uppercase tracking-widest text-neon">
+          {meta.kicker} · Preview
+        </p>
+        <h3 className="mt-1 font-['Bebas_Neue',sans-serif] text-2xl leading-tight text-white md:text-3xl">
+          {meta.title}
+        </h3>
+        {meta.detail && (
+          <p className="mt-2 line-clamp-2 text-sm text-slate-400">{meta.detail}</p>
+        )}
+        <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-amber-300">
+          Click for full event details
+        </p>
       </Link>
       {onToggleBookmark && (
         <button
@@ -31,7 +63,7 @@ function SlideCard({ slide, bookmarked, onToggleBookmark }) {
           {bookmarked ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
         </button>
       )}
-    </div>
+    </article>
   );
 }
 
@@ -40,10 +72,6 @@ export default function VaultLibraryPage({
   children,
   bookmarkSlugs = [],
   onToggleBookmark,
-  tournaments = [],
-  grindPrefs,
-  onGrindPrefsChange,
-  digestControlsEnabled = false,
 }) {
   const items = slides.length ? slides : VAULT_SLIDES;
   const [game, setGame] = useState("all");
@@ -82,7 +110,7 @@ export default function VaultLibraryPage({
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="m-0 font-['Bebas_Neue',sans-serif] text-4xl tracking-wide text-white md:text-5xl">The Vault</h1>
-          <p className="mt-1 max-w-xl text-xs text-stone-500">Championship windows, game vaults, and recaps.</p>
+          <p className="mt-1 max-w-xl text-xs text-stone-500">Championship windows, game vaults, and recaps — preview cards, open one for full details.</p>
         </div>
         <button
           type="button"
@@ -129,17 +157,10 @@ export default function VaultLibraryPage({
           EWC index
         </Link>
       </div>
-      <WeeklyGrindPanel
-        slides={items}
-        tournaments={tournaments}
-        prefs={grindPrefs}
-        onPrefsChange={onGrindPrefsChange}
-        digestControlsEnabled={digestControlsEnabled}
-      />
       {floating.length > 0 && (
         <>
           <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Floating windows</h2>
-          <div className="mb-10 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="mb-10 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {floating.map((slide) => (
               <SlideCard
                 key={slide.slug || slide.id}
@@ -154,7 +175,7 @@ export default function VaultLibraryPage({
       {research.length > 0 && (
         <>
           <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Game vaults</h2>
-          <div className="mb-10 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="mb-10 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {research.map((slide) => (
               <SlideCard
                 key={slide.slug || slide.id}
@@ -170,7 +191,7 @@ export default function VaultLibraryPage({
       {blogs.length === 0 ? (
         <p className="text-sm text-stone-400">No published recaps in The Vault yet.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {blogs.map((slide) => (
             <SlideCard
               key={slide.slug || slide.id}

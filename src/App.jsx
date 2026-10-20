@@ -35,7 +35,7 @@ import CompetitorDossierPage from "./components/vault/CompetitorDossierPage";
 import CompetitorDirectoryPage from "./components/vault/CompetitorDirectoryPage";
 import EwcDirectoryPage from "./components/vault/EwcDirectoryPage";
 import PreEwcHistoryPage from "./components/vault/PreEwcHistoryPage";
-import { useGrindPrefs, useVaultBookmarks } from "./hooks/useVaultBookmarks";
+import { useVaultBookmarks } from "./hooks/useVaultBookmarks";
 import VaultResearchDesk from "./components/cms/VaultResearchDesk";
 import { avatarForGamer, bannerForGame, flyerForEvent, flyersForGame } from "./data/platformShowcase";
 import { readImageFile } from "./lib/readImageFile";
@@ -2124,7 +2124,7 @@ function SitePopup({ popup, onDismiss }) {
   );
 }
 
-function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerAccess, popups, onSavePopup, onDeletePopup, staff, onSetSupport, onSaveSupportPermissions, supportPermissions = null, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], deletedCircuitRecords = [], onSaveCircuit, onDeleteCircuit, onRestoreCircuit, onPurgeCircuit, onImportArchive, filterGames = FILTER_GAMES, ewcWindows = [], blogSlides = [], supportChanges = [], onReviewSupportChange, deskGate = null, onSaveDeskPassword, siteFeatures = null, onSaveSiteFeatures }) {
+function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerAccess, popups, onSavePopup, onDeletePopup, staff, onSetSupport, onSaveSupportPermissions, supportPermissions = null, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], deletedCircuitRecords = [], onSaveCircuit, onDeleteCircuit, onRestoreCircuit, onPurgeCircuit, onImportArchive, filterGames = FILTER_GAMES, ewcWindows = [], blogSlides = [], supportChanges = [], onReviewSupportChange, deskGate = null, onSaveDeskPassword }) {
   const isOwner = role === "owner";
   const perms = normalizeSupportPermissions(supportPermissions);
   const canVault = isOwner || supportHas(perms, "vaultEdit");
@@ -2239,22 +2239,6 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
             ? ". Use Support access to turn each capability on or off per support UID. Owner-only: media manage, popups, bans, grant access, activity log."
             : ". Tabs follow the permissions the owner enabled for your account. Changes still wait for owner approval."}
         </p>
-        {onSaveSiteFeatures && (
-          <section style={{ marginTop: 18, padding: 14, border: "1px solid var(--border)", background: "var(--panel-bg)", maxWidth: 560 }}>
-            <Eyebrow>Vault features</Eyebrow>
-            <p style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 8 }}>
-              Digest opt-in and Hide on Weekly grind stay off for players until you enable them here.
-            </p>
-            <label style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12, fontSize: 13, cursor: "pointer" }}>
-              <input
-                type="checkbox"
-                checked={siteFeatures?.digestControlsEnabled === true}
-                onChange={(event) => onSaveSiteFeatures({ digestControlsEnabled: event.target.checked })}
-              />
-              Show digest opt-in / hide controls on Weekly grind
-            </label>
-          </section>
-        )}
       </>}
       {tab === "windows" && canVault && <FloatingWindowsDesk records={circuitRecords} ewcWindows={ewcWindows} blogSlides={blogSlides} role={role} onSave={onSaveCircuit} filterGames={filterGames} />}
       {tab === "library" && canLibrary && <MediaLibraryDesk games={filterGames} canManage={canManageMediaLibrary(role)} />}
@@ -2693,7 +2677,6 @@ export default function App() {
   const [siteRoleResolved, setSiteRoleResolved] = useState(!auth.currentUser);
   const [deskGate, setDeskGate] = useState(null);
   const [deskGateLoading, setDeskGateLoading] = useState(true);
-  const [siteFeatures, setSiteFeatures] = useState({ digestControlsEnabled: false });
   const [friendRequests, setFriendRequests] = useState([]);
   const [blockedUsers, setBlockedUsers] = useState([]);
   const [tournamentInvites, setTournamentInvites] = useState([]);
@@ -2719,7 +2702,6 @@ export default function App() {
   const [authBusy, setAuthBusy] = useState(false);
   const [knownAccounts, setKnownAccounts] = useState(() => readKnownAccounts());
   const vaultBookmarks = useVaultBookmarks(user?.uid);
-  const grindPrefs = useGrindPrefs(user?.uid);
 
   useEffect(() => {
     let cancelled = false;
@@ -3017,14 +2999,6 @@ export default function App() {
       if (snapshot.exists() && snapshot.data()?.active === true) signOut(auth);
     }, () => {});
   }, [user]);
-
-  useEffect(() => {
-    const [settingsCollection] = deskGateDocPath();
-    return onSnapshot(doc(db, settingsCollection, "features"), (snapshot) => {
-      const data = snapshot.exists() ? snapshot.data() : null;
-      setSiteFeatures({ digestControlsEnabled: data?.digestControlsEnabled === true });
-    }, () => setSiteFeatures({ digestControlsEnabled: false }));
-  }, []);
 
   useEffect(() => {
     if (!user || !realtimeDb) return undefined;
@@ -4043,19 +4017,6 @@ export default function App() {
     showToast(`${role === "owner" ? "Owner" : "Support"} desk password saved`);
   };
 
-  const saveSiteFeatures = async (patch) => {
-    if (siteRole !== "owner" && siteRole !== "support") throw new Error("Staff access required.");
-    const [settingsCollection] = deskGateDocPath();
-    const payload = {
-      digestControlsEnabled: patch.digestControlsEnabled === true,
-      updatedAt: Date.now(),
-      updatedBy: user.uid,
-    };
-    await setDoc(doc(db, settingsCollection, "features"), payload, { merge: true });
-    setSiteFeatures({ digestControlsEnabled: payload.digestControlsEnabled });
-    showToast(payload.digestControlsEnabled ? "Digest controls enabled on Vault" : "Digest controls hidden on Vault");
-  };
-
   const saveSupportPermissions = async (targetUid, permissions) => {
     if (siteRole !== "owner" || !targetUid) throw new Error("Owner access required");
     const ref = doc(SITE_ROLES_COLLECTION, targetUid);
@@ -4208,8 +4169,6 @@ export default function App() {
                       filterGames={circuitCms.filterGames}
                       deskGate={deskGate}
                       onSaveDeskPassword={saveDeskRolePassword}
-                      siteFeatures={siteFeatures}
-                      onSaveSiteFeatures={saveSiteFeatures}
                     />
                   )}
                 </StaffDeskGate>
@@ -4263,10 +4222,6 @@ export default function App() {
                     slides={vaultSlides}
                     bookmarkSlugs={vaultBookmarks.slugs}
                     onToggleBookmark={vaultBookmarks.toggle}
-                    tournaments={tournaments}
-                    grindPrefs={grindPrefs.prefs}
-                    onGrindPrefsChange={grindPrefs.update}
-                    digestControlsEnabled={siteFeatures.digestControlsEnabled === true}
                   >
                     <div>
                       <p className="mb-2 font-mono text-[11px] uppercase tracking-widest text-amber-300">Contributor desk</p>

@@ -3,7 +3,6 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
 
 const STORAGE_KEY = "grindinfo.vaultBookmarks.v1";
-const PREFS_KEY = "grindinfo.grindPrefs.v1";
 
 function readLocal(key, fallback) {
   try {
@@ -82,53 +81,4 @@ export function useVaultBookmarks(uid) {
   const has = useCallback((slug) => slugs.includes(String(slug || "")), [slugs]);
 
   return { slugs, ready, toggle, has };
-}
-
-export function useGrindPrefs(uid) {
-  const [prefs, setPrefs] = useState(() =>
-    readLocal(PREFS_KEY, { showWeeklyPanel: true, digestOptIn: false }),
-  );
-
-  useEffect(() => {
-    let active = true;
-    if (!uid) {
-      setPrefs(readLocal(PREFS_KEY, { showWeeklyPanel: true, digestOptIn: false }));
-      return undefined;
-    }
-    getDoc(doc(db, "userPrefs", uid))
-      .then((snap) => {
-        if (!active) return;
-        const data = snap.data() || {};
-        const next = {
-          showWeeklyPanel: data.showWeeklyPanel !== false,
-          digestOptIn: data.digestOptIn === true,
-        };
-        setPrefs(next);
-        writeLocal(PREFS_KEY, next);
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [uid]);
-
-  const update = useCallback(
-    (patch) => {
-      setPrefs((current) => {
-        const next = { ...current, ...patch };
-        writeLocal(PREFS_KEY, next);
-        if (uid) {
-          setDoc(
-            doc(db, "userPrefs", uid),
-            { ...next, updatedAt: Date.now() },
-            { merge: true },
-          ).catch(() => {});
-        }
-        return next;
-      });
-    },
-    [uid],
-  );
-
-  return { prefs, update };
 }
