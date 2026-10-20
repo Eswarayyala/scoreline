@@ -200,6 +200,8 @@ function ResearchForm({ initial, canWrite, role, games, onSave, onCancel }) {
     return { ...base, editions: editions.length ? editions : [emptyEdition(base.game)] };
   });
   const [error, setError] = useState("");
+  /** Index of the season being edited; null = season list + vault fields. */
+  const [editionFocus, setEditionFocus] = useState(null);
   const patch = (key, value) => setForm((current) => ({ ...current, [key]: value }));
   const editions = form.editions?.length ? form.editions : [emptyEdition(form.game)];
 
@@ -223,6 +225,50 @@ function ResearchForm({ initial, canWrite, role, games, onSave, onCancel }) {
 
   const rows = form.yearlyStats?.length ? form.yearlyStats : [{ year: "", tournamentCount: 1, circuit: "", region: "Global" }];
   const related = form.relatedTournaments?.length ? form.relatedTournaments : [{ year: "", name: "", region: "", result: "" }];
+  const focusedEdition = editionFocus != null ? editions[editionFocus] : null;
+
+  if (focusedEdition) {
+    return (
+      <div className="grid gap-3 rounded-2xl border border-neon/20 bg-slate-950/80 p-5">
+        <button
+          type="button"
+          onClick={() => setEditionFocus(null)}
+          className="w-fit font-mono text-xs uppercase tracking-widest text-neon"
+        >
+          ← Seasons
+        </button>
+        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-neon">
+          Edit season · {focusedEdition.year || focusedEdition.event || `#${editionFocus + 1}`}
+        </p>
+        <EditionCard
+          edition={focusedEdition}
+          game={form.game}
+          role={role}
+          onChange={(next) => patch("editions", editions.map((item, i) => i === editionFocus ? next : item))}
+          onRemove={() => {
+            patch("editions", editions.filter((_, i) => i !== editionFocus));
+            setEditionFocus(null);
+          }}
+        />
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setEditionFocus(null)}
+            className="rounded-full bg-neon px-4 py-2 text-sm font-semibold text-slate-950"
+          >
+            Done · back to seasons
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-full border border-white/15 px-4 py-2 text-sm text-slate-200"
+          >
+            Cancel vault
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={submit} className="grid gap-3 rounded-2xl border border-neon/20 bg-slate-950/80 p-5">
@@ -285,21 +331,47 @@ function ResearchForm({ initial, canWrite, role, games, onSave, onCancel }) {
         ))}
         <button type="button" className="text-xs text-neon" onClick={() => patch("relatedTournaments", [...related, { year: "", name: "", region: "", result: "" }])}>+ Related event</button>
       </div>
-      <div className="grid gap-4">
-        <div className="flex items-center justify-between">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Seasons (text desk)</p>
-          <button type="button" className="text-xs text-neon" onClick={() => patch("editions", [emptyEdition(form.game), ...editions])}>+ Season</button>
+      <div className="grid gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Seasons · {editions.length}</p>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 text-xs text-neon"
+            onClick={() => {
+              patch("editions", [emptyEdition(form.game), ...editions]);
+              setEditionFocus(0);
+            }}
+          >
+            <Plus size={12} /> Season
+          </button>
         </div>
-        {editions.map((edition, index) => (
-          <EditionCard
-            key={index}
-            edition={edition}
-            game={form.game}
-            role={role}
-            onChange={(next) => patch("editions", editions.map((item, i) => i === index ? next : item))}
-            onRemove={() => patch("editions", editions.filter((_, i) => i !== index))}
-          />
-        ))}
+        <div className="grid gap-2">
+          {editions.map((edition, index) => (
+            <article
+              key={`${edition.year || ""}-${edition.event || ""}-${index}`}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2.5"
+            >
+              <div className="min-w-0">
+                <p className="truncate font-mono text-[9px] uppercase tracking-widest text-slate-500">
+                  {edition.year || "Year?"} · {edition.eventScope || "scope"}
+                </p>
+                <p className="truncate text-sm text-white">{edition.event || edition.season || `Season ${index + 1}`}</p>
+                {(edition.champion || edition.mvp) && (
+                  <p className="truncate text-[11px] text-slate-500">
+                    {[edition.champion && `Champ ${edition.champion}`, edition.mvp && `MVP ${edition.mvp}`].filter(Boolean).join(" · ")}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditionFocus(index)}
+                className="inline-flex items-center gap-1 text-[11px] text-neon"
+              >
+                <Pencil size={11} /> Edit
+              </button>
+            </article>
+          ))}
+        </div>
       </div>
       {error && <p className="text-sm text-rose-400">{error}</p>}
       {isSiteSupportRole(role) && (
@@ -465,8 +537,8 @@ export default function VaultResearchDesk({
             role={role}
             games={filterGames}
             onSave={async (draft) => {
-              const saved = await onSave(draft);
-              if (focusId === "new" && saved?.id) navigate(`/admin/portal/vault/${saved.id}`, { replace: true });
+              await onSave(draft);
+              navigate("/admin/portal?tab=vault", { replace: true });
             }}
             onCancel={() => navigate("/admin/portal?tab=vault")}
           />

@@ -7,12 +7,6 @@ function editionKey(edition, index) {
   return `${edition.game || ""}-${edition.year || ""}-${edition.event || ""}-${index}`;
 }
 
-function tabLabel(edition) {
-  const name = String(edition.game || "").trim();
-  if (!name) return "Title";
-  return name.replace(/\s*\([^)]*\)\s*$/, "") || name;
-}
-
 function gameParam(edition) {
   return String(edition?.game || "")
     .trim()
@@ -27,9 +21,12 @@ function vaultSlugFor(edition, slides = []) {
   return vault?.slug || "";
 }
 
+function championOf(edition) {
+  return edition?.champion || edition?.payouts?.[0]?.team || edition?.payouts?.[0]?.player || "";
+}
+
 /**
- * Championship year → game grid → preview → full details for that title.
- * "All {game} events" links to every game vault the same way (Valorant, CS2, …).
+ * Championship year → one grid of minimal game cards → full details for one title.
  */
 export default function ChampionshipGameTabs({
   games = [],
@@ -54,14 +51,14 @@ export default function ChampionshipGameTabs({
   const activeIndex = useMemo(() => {
     if (!editions.length) return 0;
     if (!urlSync) return Math.min(localIndex, editions.length - 1);
-    if (!gameFromUrl) return 0;
+    if (!gameFromUrl) return -1;
     const match = editions.findIndex(
       (edition) => gameParam(edition) === gameFromUrl || String(edition.game || "").toLowerCase() === gameFromUrl,
     );
-    return match >= 0 ? match : 0;
+    return match >= 0 ? match : -1;
   }, [editions, gameFromUrl, localIndex, urlSync]);
 
-  const detailsOpen = urlSync ? detailsFromUrl : localDetails;
+  const detailsOpen = urlSync ? detailsFromUrl && activeIndex >= 0 : localDetails && activeIndex >= 0;
 
   useEffect(() => {
     setExpanded(false);
@@ -69,18 +66,14 @@ export default function ChampionshipGameTabs({
     setLocalDetails(false);
   }, [editions]);
 
-  const safeIndex = editions.length ? Math.min(activeIndex, editions.length - 1) : 0;
-  const current = editions[safeIndex] || null;
+  const safeIndex = activeIndex >= 0 ? Math.min(activeIndex, editions.length - 1) : 0;
+  const current = detailsOpen ? editions[safeIndex] : null;
   const needsCollapse = editions.length > initialVisible;
   const visibleIndexes = useMemo(() => {
     if (!editions.length) return [];
     if (expanded || !needsCollapse) return editions.map((_, index) => index);
-    const head = Array.from({ length: initialVisible }, (_, index) => index);
-    if (safeIndex >= initialVisible) {
-      return [...head.slice(0, initialVisible - 1), safeIndex];
-    }
-    return head;
-  }, [editions, expanded, needsCollapse, initialVisible, safeIndex]);
+    return Array.from({ length: initialVisible }, (_, index) => index);
+  }, [editions, expanded, needsCollapse, initialVisible]);
 
   useEffect(() => {
     if (!current || !onSelectPoster) return;
@@ -89,18 +82,17 @@ export default function ChampionshipGameTabs({
     );
   }, [current, onSelectPoster]);
 
-  const setGameParams = (index, { openDetails = false } = {}) => {
+  const openDetails = (index) => {
     const edition = editions[index];
     if (!edition) return;
     if (!urlSync) {
       setLocalIndex(index);
-      setLocalDetails(openDetails);
+      setLocalDetails(true);
       return;
     }
     const next = new URLSearchParams(searchParams);
     next.set("game", gameParam(edition));
-    if (openDetails) next.set("details", "1");
-    else next.delete("details");
+    next.set("details", "1");
     setSearchParams(next, { replace: false });
   };
 
@@ -111,18 +103,16 @@ export default function ChampionshipGameTabs({
     }
     const next = new URLSearchParams(searchParams);
     next.delete("details");
+    next.delete("game");
     setSearchParams(next, { replace: false });
   };
 
   if (!editions.length) return null;
 
-  const gameName = current?.game || "game";
-  const vaultSlug = vaultSlugFor(current, slides);
-  const allEventsHref = vaultSlug ? `/vault/${vaultSlug}` : "";
-  const champion =
-    current?.champion || current?.payouts?.[0]?.team || current?.payouts?.[0]?.player || "";
-
   if (detailsOpen && current) {
+    const gameName = current.game || "game";
+    const vaultSlug = vaultSlugFor(current, slides);
+    const allEventsHref = vaultSlug ? `/vault/${vaultSlug}` : "";
     return (
       <section className="mt-6 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -160,68 +150,58 @@ export default function ChampionshipGameTabs({
     <section className="mt-6">
       {heading ? <h2 className="font-display text-2xl text-white md:text-3xl">{heading}</h2> : null}
       <p className="mt-1 text-sm text-slate-500">
-        Select a title for a preview, click it for full championship details, or open all events for that game.
+        Each title shows a short championship snapshot — open one for full details or every event for that game.
       </p>
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {visibleIndexes.map((index) => {
           const edition = editions[index];
-          const on = index === safeIndex;
+          const champion = championOf(edition);
+          const vaultSlug = vaultSlugFor(edition, slides);
+          const allEventsHref = vaultSlug ? `/vault/${vaultSlug}` : "";
           return (
-            <button
+            <article
               key={editionKey(edition, index)}
-              type="button"
-              onClick={() => setGameParams(index, { openDetails: false })}
-              className={`min-h-[2.75rem] border px-2 py-2 text-left font-mono text-[10px] uppercase tracking-wider ${
-                on
-                  ? "border-amber-400 bg-white/5 text-white"
-                  : "border-white/10 text-slate-500 hover:border-white/25 hover:text-slate-300"
-              }`}
+              className="flex flex-col border border-white/10 bg-white/[0.03] transition hover:border-amber-400/50 hover:bg-white/[0.05]"
             >
-              {tabLabel(edition)}
-            </button>
+              <button
+                type="button"
+                onClick={() => openDetails(index)}
+                className="flex flex-1 flex-col p-4 text-left"
+              >
+                <p className="font-mono text-[10px] uppercase tracking-widest text-neon">
+                  {[edition.year, edition.eventScope || "ewc", "this championship"].filter(Boolean).join(" · ")} · Preview
+                </p>
+                <h3 className="mt-1 font-display text-2xl leading-tight text-white md:text-3xl">{edition.game}</h3>
+                <p className="mt-2 line-clamp-2 text-sm text-slate-400">
+                  {[edition.event, champion && `Champion ${champion}`, edition.prizePool].filter(Boolean).join(" · ")}
+                </p>
+                <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-amber-300">
+                  Click for full event details
+                </p>
+              </button>
+              {allEventsHref && (
+                <div className="border-t border-white/10 px-4 py-2">
+                  <Link
+                    to={allEventsHref}
+                    className="font-mono text-[10px] uppercase tracking-widest text-amber-300 no-underline hover:text-white"
+                  >
+                    All {edition.game} events →
+                  </Link>
+                </div>
+              )}
+            </article>
           );
         })}
         {needsCollapse && (
           <button
             type="button"
             onClick={() => setExpanded((value) => !value)}
-            className="min-h-[2.75rem] border border-dashed border-neon/40 px-2 py-2 font-mono text-[10px] uppercase tracking-widest text-neon hover:border-neon"
+            className="min-h-[8rem] border border-dashed border-neon/40 px-4 py-4 font-mono text-[10px] uppercase tracking-widest text-neon hover:border-neon sm:min-h-0"
           >
             {expanded ? "Less" : `More (+${editions.length - initialVisible})`}
           </button>
         )}
       </div>
-
-      {current && (
-        <div className="mt-6 space-y-3">
-          <div className="flex flex-wrap items-center justify-end gap-3">
-            {allEventsHref && (
-              <Link
-                to={allEventsHref}
-                className="font-mono text-[10px] uppercase tracking-widest text-amber-300 no-underline hover:text-white"
-              >
-                All {gameName} events →
-              </Link>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => setGameParams(safeIndex, { openDetails: true })}
-            className="w-full border border-white/10 bg-white/[0.03] p-4 text-left transition hover:border-amber-400/50 hover:bg-white/[0.05]"
-          >
-            <p className="font-mono text-[10px] uppercase tracking-widest text-neon">
-              {[current.year, current.eventScope || "ewc", "this championship"].filter(Boolean).join(" · ")} · Preview
-            </p>
-            <h3 className="mt-1 font-display text-3xl text-white">{current.game}</h3>
-            <p className="mt-2 text-sm text-slate-400">
-              {[current.event, champion && `Champion ${champion}`, current.prizePool].filter(Boolean).join(" · ")}
-            </p>
-            <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-amber-300">
-              Click for full event details
-            </p>
-          </button>
-        </div>
-      )}
     </section>
   );
 }

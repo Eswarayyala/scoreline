@@ -41,13 +41,38 @@ export default function CircuitCmsDesk({
     return sortByRecency(filtered, sort, (item) => recordRecency(item) || (Number(item.floatingPriority) || 0));
   }, [items, query, sort]);
 
+  if (editing) {
+    return (
+      <section className="space-y-4">
+        <button
+          type="button"
+          onClick={() => setEditing(null)}
+          className="font-mono text-xs uppercase tracking-widest text-neon"
+        >
+          ← {surface === "vault" ? "Windows" : "Scrims"}
+        </button>
+        <h2 className="font-display text-3xl text-white">
+          {editing.id ? "Edit" : "New"} {surface === "vault" ? "window" : "event"}
+        </h2>
+        <CircuitEventForm
+          surface={surface}
+          initial={editing}
+          canWrite={canWrite}
+          games={games}
+          onSave={(draft) => { onSave({ ...draft, surface }); setEditing(null); }}
+          onCancel={() => setEditing(null)}
+        />
+      </section>
+    );
+  }
+
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-neon">Circuit CMS · {role || "staff"}</p>
           <h2 className="font-display text-3xl text-white">{surface === "vault" ? "Floating windows" : "Scrims"}</h2>
-          <p className="mt-1 text-sm text-slate-400">{surface === "vault" ? "Priority controls which windows lead The Vault carousel. Higher numbers show first." : "Status dropdown swaps completed, live, and upcoming fields."} Removed items stay in the bin until deleted forever.</p>
+          <p className="mt-1 text-sm text-slate-400">{surface === "vault" ? "Priority controls which windows lead The Vault carousel. Higher numbers show first." : "Status dropdown swaps completed, live, and upcoming fields."} Edit opens one event here; the rest stay hidden until you save or cancel.</p>
         </div>
         {canWrite && (
           <button type="button" onClick={() => setEditing(emptyCircuitEvent(surface))} className="inline-flex items-center gap-1 rounded-full bg-neon px-4 py-2 text-sm font-semibold text-slate-950">
@@ -69,17 +94,6 @@ export default function CircuitCmsDesk({
         </label>
         <DeskSortSelect value={sort} onChange={setSort} />
       </div>
-
-      {editing && (
-        <CircuitEventForm
-          surface={surface}
-          initial={editing}
-          canWrite={canWrite}
-          games={games}
-          onSave={(draft) => { onSave({ ...draft, surface }); setEditing(null); }}
-          onCancel={() => setEditing(null)}
-        />
-      )}
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {visible.map((item) => (

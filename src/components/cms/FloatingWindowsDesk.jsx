@@ -153,13 +153,49 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
     setEditing(null);
   };
 
+  if (editing) {
+    return (
+      <section className="space-y-4">
+        <button
+          type="button"
+          onClick={() => setEditing(null)}
+          className="font-mono text-xs uppercase tracking-widest text-neon"
+        >
+          ← Windows
+        </button>
+        <h2 className="font-display text-3xl text-white">Edit window</h2>
+        <form
+          className="grid gap-3 rounded-2xl border border-neon/20 p-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            saveWindow(editing);
+          }}
+        >
+          <p className="font-mono text-[10px] uppercase tracking-widest text-volt">{editing.sourceLabel} · {editing.slug || editing.id}</p>
+          <label className="grid gap-1 text-xs text-slate-400">Title<input className={inputClass} value={editing.title || ""} onChange={(e) => setEditing({ ...editing, title: e.target.value })} /></label>
+          <label className="grid gap-1 text-xs text-slate-400">Summary<textarea rows={3} className={inputClass} value={editing.summary || ""} onChange={(e) => setEditing({ ...editing, summary: e.target.value })} /></label>
+          <label className="grid gap-1 text-xs text-slate-400">Poster URL<input className={inputClass} value={editing.poster || ""} onChange={(e) => setEditing({ ...editing, poster: e.target.value })} /></label>
+          <label className="grid gap-1 text-xs text-slate-400">Priority<input type="number" min="0" max="99" className={inputClass} value={editing.floatingPriority ?? 5} onChange={(e) => setEditing({ ...editing, floatingPriority: Number(e.target.value) })} /></label>
+          <label className="flex items-center gap-2 text-sm text-slate-200">
+            <input type="checkbox" checked={editing.floating !== false} onChange={(e) => setEditing({ ...editing, floating: e.target.checked })} />
+            Show as a floating window
+          </label>
+          <div className="flex gap-2">
+            <button type="submit" disabled={!canWrite} className="rounded-full bg-neon px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-40">Save window</button>
+            <button type="button" className="rounded-full border border-white/15 px-4 py-2 text-sm text-slate-200" onClick={() => setEditing(null)}>Cancel</button>
+          </div>
+        </form>
+      </section>
+    );
+  }
+
   return (
     <section className="space-y-4">
       <div>
         <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-neon">Home and Vault carousel</p>
         <h2 className="font-display text-3xl text-white">Floating windows</h2>
         <p className="mt-1 text-sm text-slate-400">
-          Filter events or games, search a title, then edit. {role === "support" ? "Support edits wait for owner approval." : "Owner saves go live immediately."}
+          Filter events or games, search a title, then edit one at a time. {role === "support" ? "Support edits wait for owner approval." : "Owner saves go live immediately."}
         </p>
       </div>
       <div className="grid gap-2 rounded-2xl border border-white/10 p-4">
@@ -203,30 +239,6 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
         <DeskSortSelect value={sort} onChange={setSort} />
         <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">{visible.length} shown</p>
       </div>
-
-      {editing && (
-        <form
-          className="grid gap-3 rounded-2xl border border-neon/20 p-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            saveWindow(editing);
-          }}
-        >
-          <p className="font-mono text-[10px] uppercase tracking-widest text-volt">{editing.sourceLabel} · {editing.slug || editing.id}</p>
-          <label className="grid gap-1 text-xs text-slate-400">Title<input className={inputClass} value={editing.title || ""} onChange={(e) => setEditing({ ...editing, title: e.target.value })} /></label>
-          <label className="grid gap-1 text-xs text-slate-400">Summary<textarea rows={3} className={inputClass} value={editing.summary || ""} onChange={(e) => setEditing({ ...editing, summary: e.target.value })} /></label>
-          <label className="grid gap-1 text-xs text-slate-400">Poster URL<input className={inputClass} value={editing.poster || ""} onChange={(e) => setEditing({ ...editing, poster: e.target.value })} /></label>
-          <label className="grid gap-1 text-xs text-slate-400">Priority<input type="number" min="0" max="99" className={inputClass} value={editing.floatingPriority ?? 5} onChange={(e) => setEditing({ ...editing, floatingPriority: Number(e.target.value) })} /></label>
-          <label className="flex items-center gap-2 text-sm text-slate-200">
-            <input type="checkbox" checked={editing.floating !== false} onChange={(e) => setEditing({ ...editing, floating: e.target.checked })} />
-            Show as a floating window
-          </label>
-          <div className="flex gap-2">
-            <button type="submit" disabled={!canWrite} className="rounded-full bg-neon px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-40">Save window</button>
-            <button type="button" className="rounded-full border border-white/15 px-4 py-2 text-sm text-slate-200" onClick={() => setEditing(null)}>Cancel</button>
-          </div>
-        </form>
-      )}
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {visible.map((item) => (
