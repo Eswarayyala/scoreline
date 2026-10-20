@@ -1,8 +1,11 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Pencil, Plus, Trash2 } from "lucide-react";
-import { canProposeCmsDelete, canWriteCircuitContent, isSiteSupportRole } from "../../lib/staffAccess";
-import { FILTER_GAMES } from "../../data/gameCatalog";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { canProposeCmsDelete, canWriteCircuitContent, isSiteSupportRole, supportWritesDirect } from "../../lib/staffAccess";
+import { FILTER_GAMES, canonicalFilterGame } from "../../data/gameCatalog";
+import { recordRecency, sortByRecency } from "../../lib/deskSort";
+import DeskBin from "./DeskBin";
+import DeskSortSelect from "./DeskSortSelect";
 import PosterPicker from "./PosterPicker";
 import { ensureGameCollections } from "../../services/mediaLibrary";
 import EventImagePicker from "./EventImagePicker";
@@ -64,6 +67,41 @@ function EditionCard({ edition, game, role, onChange, onRemove }) {
           images: patchIn.images ?? edition.images,
         })}
       />
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">YouTube links for this event</p>
+          <button
+            type="button"
+            className="text-xs text-neon"
+            onClick={() => patch("youtubeUrls", [...(edition.youtubeUrls || []), ""])}
+          >
+            + Link
+          </button>
+        </div>
+        {(edition.youtubeUrls?.length ? edition.youtubeUrls : [""]).map((url, index) => (
+          <div key={index} className="mb-2 flex gap-2">
+            <input
+              className={inputClass}
+              placeholder="https://youtube.com/watch?v=…"
+              value={url || ""}
+              onChange={(e) => {
+                const list = [...(edition.youtubeUrls?.length ? edition.youtubeUrls : [""])];
+                list[index] = e.target.value;
+                patch("youtubeUrls", list);
+              }}
+            />
+            <button
+              type="button"
+              aria-label="Remove YouTube link"
+              className="text-slate-400 hover:text-rose-400"
+              onClick={() => patch("youtubeUrls", (edition.youtubeUrls || []).filter((_, i) => i !== index))}
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        ))}
+        <p className="text-[11px] text-slate-500">Each link opens on YouTube for this season / event only.</p>
+      </div>
       <details className="rounded-lg border border-white/10 p-3">
         <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-widest text-slate-500">Structure category</summary>
         <select
@@ -340,15 +378,79 @@ function CatalogDesk({ records, role, permissions, games, onSave, onDelete }) {
   );
 }
 
-export default function VaultResearchDesk({ records, role, permissions = null, onSave, onDelete, filterGames = FILTER_GAMES, focusId }) {
+export default function VaultResearchDesk({
+  records,
+  deletedRecords = [],
+  role,
+  permissions = null,
+  onSave,
+  onDelete,
+  onRestore,
+  onPurge,
+  filterGames = FILTER_GAMES,
+  focusId,
+}) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState("newest");
   const canWrite = canWriteCircuitContent(role);
   const canRemove = canProposeCmsDelete(role, permissions);
   const items = useMemo(() => records.filter((item) => item.surface === "research" || item.research), [records]);
+  const binned = useMemo(
+    () => deletedRecords.filter((item) => item.surface === "research" || item.research || item.surface === "catalog"),
+    [deletedRecords],
+  );
+
+  const deskCards = useMemo(() => {
+    const cards = items.map((item) => ({
+      ...item,
+      displayTitle: item.fullName || item.title || item.game,
+      missing: false,
+    }));
+    const present = new Set(
+      cards.flatMap((item) => [item.game, item.fullName, item.title].filter(Boolean).map((name) => canonicalFilterGame(name).toLowerCase())),
+    );
+    filterGames
+      .filter((game) => game && game !== "Other")
+      .forEach((game) => {
+        const key = canonicalFilterGame(game).toLowerCase();
+        const covered = [...present].some((name) => name === key || name.includes(key) || key.includes(name));
+        if (covered) return;
+        cards.push({
+          id: `missing-${key.replace(/[^a-z0-9]+/g, "-")}`,
+          game,
+          title: game,
+          displayTitle: game,
+          region: "Global",
+          editions: [],
+          missing: true,
+        });
+        present.add(key);
+      });
+    return cards;
+  }, [items, filterGames]);
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const filtered = !q
+      ? deskCards
+      : deskCards.filter((item) => [item.displayTitle, item.title, item.game, item.fullName, item.region]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(q));
+    return sortByRecency(filtered, sort, (item) => recordRecency(item) || String(item.displayTitle || "").charCodeAt(0));
+  }, [deskCards, query, sort]);
 
   if (focusId) {
+    const presetGame = searchParams.get("game") || "";
     const initial = focusId === "new"
-      ? { surface: "research", research: true }
+      ? {
+        surface: "research",
+        research: true,
+        ...(presetGame ? { game: presetGame, title: presetGame } : {}),
+      }
       : items.find((item) => item.id === focusId);
     return (
       <section className="space-y-4">
@@ -380,30 +482,53 @@ export default function VaultResearchDesk({ records, role, permissions = null, o
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-neon">Shared research desk</p>
           <h2 className="font-display text-3xl text-white">Game vaults</h2>
           <p className="mt-1 text-sm text-slate-400">
-            Open a game in a new tab to edit. Event posters stay available for owner and support
-            {isSiteSupportRole(role) ? " (support publishes only after owner approval)" : ""}.
+            Missing titles (including Chess) stay listed so you can create them. Edit opens in this tab
+            {isSiteSupportRole(role) ? " — support publishes only after owner approval" : ""}.
           </p>
         </div>
         {canWrite && (
-          <a href="/admin/portal/vault/new" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full bg-neon px-4 py-2 text-sm font-semibold text-slate-950 no-underline">
+          <Link to="/admin/portal/vault/new" className="inline-flex items-center gap-1 rounded-full bg-neon px-4 py-2 text-sm font-semibold text-slate-950 no-underline">
             <Plus size={14} /> New game vault
-          </a>
+          </Link>
         )}
       </div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <label className="relative block min-w-0 flex-1 sm:max-w-md">
+          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+          <input
+            className={`${inputClass} pl-9`}
+            placeholder="Search game vaults…"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            aria-label="Search game vaults"
+          />
+        </label>
+        <DeskSortSelect value={sort} onChange={setSort} />
+      </div>
       <CatalogDesk records={records} role={role} permissions={permissions} games={filterGames} onSave={onSave} onDelete={onDelete} />
-      <div className="grid gap-3">
-        {items.map((item) => (
-          <article key={item.id} className="flex items-start justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-            <div>
-              <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">{item.game} · {item.region || "Global"} · {(item.editions || []).length} EWC editions</p>
-              <h3 className="font-display text-2xl text-white">{item.title}</h3>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        {visible.map((item) => (
+          <article
+            key={item.id}
+            className="flex min-h-[6.5rem] flex-col justify-between rounded-xl border border-white/10 bg-slate-950/60 p-2.5 sm:min-h-[7.25rem] sm:p-3"
+          >
+            <div className="min-w-0">
+              <p className="truncate font-mono text-[8px] uppercase tracking-widest text-slate-500 sm:text-[9px]">
+                {item.missing ? "Missing · create" : `${item.game} · ${item.region || "Global"} · ${(item.editions || []).length} EWC`}
+              </p>
+              <h3 className="mt-1 line-clamp-2 font-display text-base leading-tight text-white sm:text-lg">{item.displayTitle || item.title}</h3>
             </div>
             {canWrite && (
-              <div className="flex gap-3">
-                <a href={`/admin/portal/vault/${item.id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-neon no-underline"><Pencil size={12} /> Edit</a>
-                {canRemove && (
-                  <button type="button" onClick={() => onDelete(item.id)} className="inline-flex items-center gap-1 text-xs text-rose-400">
-                    <Trash2 size={12} /> {isSiteSupportRole(role) ? "Request remove" : "Remove"}
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Link
+                  to={item.missing ? `/admin/portal/vault/new?game=${encodeURIComponent(item.game || item.title || "")}` : `/admin/portal/vault/${item.id}`}
+                  className="inline-flex items-center gap-1 text-[11px] text-neon no-underline"
+                >
+                  <Pencil size={11} /> {item.missing ? "Create" : "Edit"}
+                </Link>
+                {!item.missing && canRemove && (
+                  <button type="button" onClick={() => onDelete(item.id)} className="inline-flex items-center gap-1 text-[11px] text-rose-400">
+                    <Trash2 size={11} /> {isSiteSupportRole(role) && !supportWritesDirect(role, permissions, "vaultDelete") ? "Request remove" : "Move to bin"}
                   </button>
                 )}
               </div>
@@ -411,6 +536,14 @@ export default function VaultResearchDesk({ records, role, permissions = null, o
           </article>
         ))}
       </div>
+      {!visible.length && <p className="text-sm text-slate-500">No game vaults match that search.</p>}
+      <DeskBin
+        items={binned}
+        title="Vault bin"
+        canManage={canWrite && !!onRestore && !!onPurge}
+        onRestore={(item) => onRestore(item.id)}
+        onPurge={(item) => onPurge(item.id)}
+      />
     </section>
   );
 }

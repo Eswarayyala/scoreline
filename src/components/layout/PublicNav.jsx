@@ -15,7 +15,7 @@ export default function PublicNav({
   const onVault = pathname === "/vault" || pathname.startsWith("/vault/");
   return (
     <nav className="relative z-20 mx-auto max-w-6xl px-5">
-      <div className="flex flex-nowrap items-center gap-0.5 overflow-x-auto border-b border-white/10">
+      <div className="-mx-1 flex flex-nowrap items-center gap-1 overflow-x-auto px-1 pb-0.5 border-b border-white/10 [scrollbar-width:thin]">
         {PRIMARY.map((link) => {
           const on = link.end ? pathname === link.to : onVault;
           return (
@@ -23,7 +23,7 @@ export default function PublicNav({
               key={link.to}
               type="button"
               onClick={() => navigate(link.to)}
-              className={`px-3 py-2 font-mono text-[11px] uppercase tracking-wider ${on ? "border-b border-amber-400 text-white" : "border-b border-transparent text-stone-500 hover:text-stone-200"}`}
+              className={`min-h-10 shrink-0 px-3 py-2.5 font-mono text-[11px] uppercase tracking-wider ${on ? "border-b-2 border-amber-400 text-white" : "border-b-2 border-transparent text-stone-500 hover:text-stone-200"}`}
             >
               {link.label}
             </button>
@@ -31,7 +31,7 @@ export default function PublicNav({
         })}
         {onVault && (
           <>
-            <span className="mx-1 text-stone-700">/</span>
+            <span className="mx-0.5 shrink-0 text-stone-700" aria-hidden="true">/</span>
             {[
               { to: "/vault/franchises", label: "Franchises" },
               { to: "/vault/players", label: "Players" },
@@ -43,7 +43,7 @@ export default function PublicNav({
                   key={link.to}
                   type="button"
                   onClick={() => navigate(link.to)}
-                  className={`px-2.5 py-2 font-mono text-[10px] uppercase tracking-wider ${on ? "text-amber-300" : "text-stone-600 hover:text-stone-300"}`}
+                  className={`min-h-10 shrink-0 px-2.5 py-2.5 font-mono text-[10px] uppercase tracking-wider ${on ? "text-amber-300" : "text-stone-600 hover:text-stone-300"}`}
                 >
                   {link.label}
                 </button>

@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { ImagePlus, Plus, RotateCcw, Star, Trash2 } from "lucide-react";
 import { FILTER_GAMES } from "../../data/gameCatalog";
-import { SITE_COLLECTION_KINDS, TOURNAMENT_COLLECTION_KINDS, collectionKindLabel } from "../../data/mediaCollections";
+import { SITE_COLLECTION_KINDS, TOURNAMENT_COLLECTION_KINDS, collectionKindLabel, siteCollectionId } from "../../data/mediaCollections";
 import { useCollectionAssets, useLibraryAssetIndex, useMediaArt } from "../../hooks/useMediaLibrary";
+import { sortByRecency } from "../../lib/deskSort";
 import {
   createMediaCollection,
   deleteMediaAsset,
   deleteMediaCollection,
   ensureGameCollections,
+  purgeMediaAsset,
   restoreMediaAsset,
   setCollectionCover,
   uploadMediaFiles,
 } from "../../services/mediaLibrary";
+import DeskSortSelect from "./DeskSortSelect";
 
 const inputClass = "w-full rounded-lg border border-white/15 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none focus:border-neon";
 const ALL_KIND = "all";
@@ -51,11 +54,20 @@ export default function MediaLibraryDesk({
     return () => { cancelled = true; };
   }, [canManage, games, tournamentId]);
 
-  const { assets: libraryAssets, collections: visible } = useLibraryAssetIndex({
+  const [sort, setSort] = useState("newest");
+  const [uploadGame, setUploadGame] = useState("");
+  const [uploadKind, setUploadKind] = useState("avatar");
+  const [uploadCollectionId, setUploadCollectionId] = useState("");
+
+  const { assets: libraryAssetsRaw, collections: visible } = useLibraryAssetIndex({
     game: tournamentId ? "" : activeGame,
     kind: tournamentId ? "poster" : kind,
     tournamentId,
   });
+  const libraryAssets = useMemo(
+    () => sortByRecency(libraryAssetsRaw, sort, (item) => Number(item.createdAt || 0)),
+    [libraryAssetsRaw, sort],
+  );
 
   const filteredCollections = useMemo(() => {
     if (tournamentId) {
@@ -68,16 +80,86 @@ export default function MediaLibraryDesk({
   }, [collections, kind, tournamentId, visible]);
 
   const selected = filteredCollections.find((item) => item.id === openId) || (!showAll ? filteredCollections[0] : null);
-  const { assets, hiddenAssets } = useCollectionAssets(selected?.id);
+  const { assets, binAssets } = useCollectionAssets(selected?.id);
+  const sortedAssets = useMemo(
+    () => sortByRecency(assets, sort, (item) => Number(item.createdAt || 0)),
+    [assets, sort],
+  );
 
-  const canUpload = canManage && selected && (tournamentId || (kind !== "host" && kind !== ALL_KIND && activeGame));
+  useEffect(() => {
+    if (activeGame) setUploadGame(activeGame);
+  }, [activeGame]);
+  useEffect(() => {
+    if (kind !== ALL_KIND && kind !== "host") setUploadKind(kind);
+  }, [kind]);
+  useEffect(() => {
+    if (selected?.id) setUploadCollectionId(selected.id);
+  }, [selected?.id]);
+
+  const uploadTargetCollections = useMemo(() => {
+    if (tournamentId) {
+      return collections.filter((row) => row.scope === "tournament" && row.tournamentId === tournamentId);
+    }
+    return collections.filter((row) => (
+      row.scope === "site"
+      && row.kind === uploadKind
+      && (!uploadGame || String(row.game || "").toLowerCase() === String(uploadGame).toLowerCase())
+    ));
+  }, [collections, tournamentId, uploadGame, uploadKind]);
+
+  const uploadTarget = uploadTargetCollections.find((item) => item.id === uploadCollectionId)
+    || uploadTargetCollections[0]
+    || selected;
+
+  const canUpload = canManage && (tournamentId
+    ? !!uploadTarget
+    : !!(uploadGame && uploadKind && uploadKind !== "host"));
+
+  const resolveUploadCollection = async () => {
+    if (tournamentId) {
+      if (!uploadTarget) throw new Error("Create or select a host poster collection first.");
+      return uploadTarget;
+    }
+    if (!uploadGame) throw new Error("Pick a game section for this upload.");
+    if (!uploadKind || uploadKind === ALL_KIND || uploadKind === "host") {
+      throw new Error("Pick a library section (Avatar, Poster, Flyer, …) for this upload.");
+    }
+    if (uploadCollectionId) {
+      const picked = collections.find((row) => row.id === uploadCollectionId);
+      if (picked) return picked;
+    }
+    await ensureGameCollections(uploadGame);
+    const defaultId = siteCollectionId(uploadGame, uploadKind);
+    const match = collections.find((row) => row.id === defaultId)
+      || collections.find((row) => (
+        row.scope === "site"
+        && row.kind === uploadKind
+        && String(row.game || "").toLowerCase() === String(uploadGame).toLowerCase()
+      ));
+    if (match) return match;
+    return {
+      id: defaultId,
+      scope: "site",
+      kind: uploadKind,
+      game: uploadGame,
+      tournamentId: "",
+      title: `${uploadGame} · ${collectionKindLabel(uploadKind)}`,
+      generated: true,
+    };
+  };
 
   const addFiles = async (fileList) => {
-    if (!canUpload || !selected) return;
+    if (!canManage || !fileList?.length) return;
     setError("");
     setBusy("upload");
     try {
-      await uploadMediaFiles(selected, fileList);
+      const target = await resolveUploadCollection();
+      await uploadMediaFiles(target, fileList);
+      setOpenId(target.id);
+      if (!tournamentId) {
+        setKind(target.kind || uploadKind);
+        setActiveGame(target.game || uploadGame);
+      }
     } catch (issue) {
       setError(issue.message || "Upload failed. Images can still be stored as compressed library entries without Storage.");
     } finally {
@@ -123,7 +205,7 @@ export default function MediaLibraryDesk({
       {tournamentId && (
         <p className="text-sm text-slate-400">Host poster collections for this tournament. Only the host or co-host can apply a poster to the listing.</p>
       )}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {!tournamentId && (
           <select className={`${inputClass} max-w-xs`} value={activeGame} onChange={(event) => setActiveGame(event.target.value)}>
             <option value="">All games</option>
@@ -143,11 +225,76 @@ export default function MediaLibraryDesk({
             {item.label}
           </button>
         ))}
+        <DeskSortSelect value={sort} onChange={setSort} />
       </div>
-      {canManage && !tournamentId && kind !== "host" && kind !== ALL_KIND && !activeGame && (
-        <p className="text-xs text-amber-200/90">Pick a game above to upload into the {collectionKindLabel(kind)} category for that title.</p>
+      {canManage && (
+        <div className="space-y-3 rounded-xl border border-dashed border-neon/30 bg-slate-950/50 p-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-neon">Upload images</p>
+          <p className="text-xs text-slate-400">
+            Choose the section first. Uploads land in that game + kind pack
+            {selected ? ` (current: ${collectionKindLabel(selected.kind)} · ${selected.title})` : ""}.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {!tournamentId && (
+              <>
+                <select
+                  className={`${inputClass} max-w-[11rem]`}
+                  value={uploadGame}
+                  onChange={(event) => setUploadGame(event.target.value)}
+                  aria-label="Upload game section"
+                >
+                  <option value="">Game section…</option>
+                  {games.filter((name) => name && name !== "Other").map((name) => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
+                <select
+                  className={`${inputClass} max-w-[10rem]`}
+                  value={uploadKind}
+                  onChange={(event) => {
+                    setUploadKind(event.target.value);
+                    setUploadCollectionId("");
+                  }}
+                  aria-label="Upload library section"
+                >
+                  {SITE_COLLECTION_KINDS.map((item) => (
+                    <option key={item.id} value={item.id}>{item.label}</option>
+                  ))}
+                </select>
+              </>
+            )}
+            <select
+              className={`${inputClass} max-w-xs`}
+              value={uploadTarget?.id || ""}
+              onChange={(event) => setUploadCollectionId(event.target.value)}
+              aria-label="Upload collection"
+            >
+              <option value="">{tournamentId ? "Default host collection" : "Default pack for section"}</option>
+              {uploadTargetCollections.map((item) => (
+                <option key={item.id} value={item.id}>{item.title}</option>
+              ))}
+            </select>
+            <label className={`inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm font-semibold ${canUpload ? "cursor-pointer bg-neon text-slate-950" : "cursor-not-allowed border border-white/15 text-slate-500"}`}>
+              <ImagePlus size={14} /> {busy === "upload" ? "Uploading…" : "Upload"}
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                disabled={!canUpload || busy === "upload"}
+                className="hidden"
+                onChange={(event) => {
+                  addFiles(event.target.files);
+                  event.target.value = "";
+                }}
+              />
+            </label>
+          </div>
+          {!tournamentId && !uploadGame && (
+            <p className="text-xs text-amber-200/90">Select a game section to enable upload.</p>
+          )}
+        </div>
       )}
-      {canManage && (tournamentId || (kind !== "host" && kind !== ALL_KIND && activeGame)) && (
+      {canManage && (tournamentId || (kind !== "host" && kind !== ALL_KIND && activeGame) || uploadGame) && (
         <div className="flex flex-wrap gap-2">
           <input className={`${inputClass} max-w-sm`} placeholder={tournamentId ? "New poster collection name" : "New collection title"} value={newTitle} onChange={(event) => setNewTitle(event.target.value)} />
           <button
@@ -160,12 +307,13 @@ export default function MediaLibraryDesk({
               try {
                 const created = await createMediaCollection({
                   scope: tournamentId ? "tournament" : "site",
-                  kind: tournamentId ? "poster" : kind,
-                  game: tournamentId ? game : activeGame,
+                  kind: tournamentId ? "poster" : (kind !== ALL_KIND && kind !== "host" ? kind : uploadKind),
+                  game: tournamentId ? game : (activeGame || uploadGame),
                   tournamentId,
                   title,
                 });
                 setOpenId(created.id);
+                setUploadCollectionId(created.id);
                 setNewTitle("");
               } catch (issue) {
                 setError(issue.message || "Could not create this collection.");
@@ -200,6 +348,31 @@ export default function MediaLibraryDesk({
                 <p className="truncate px-2 py-1 text-[10px] text-slate-400">
                   {collectionKindLabel(asset.kind)} · {asset.game || asset.collectionTitle || asset.name || asset.id}
                 </p>
+                {canManage && asset.collectionId && (
+                  <button
+                    type="button"
+                    aria-label="Delete image"
+                    title="Delete image"
+                    className="absolute right-1 top-1 rounded-full bg-slate-950/85 p-1.5 text-rose-300"
+                    onClick={async (event) => {
+                      event.stopPropagation();
+                      setError("");
+                      try {
+                        const pack = collections.find((row) => row.id === asset.collectionId) || {
+                          id: asset.collectionId,
+                          coverUrl: asset.url,
+                          defaultUrl: "",
+                          hiddenAssetIds: [],
+                        };
+                        await deleteMediaAsset(asset.collectionId, asset, pack);
+                      } catch (issue) {
+                        setError(issue.message || "Could not remove this image.");
+                      }
+                    }}
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -250,7 +423,7 @@ export default function MediaLibraryDesk({
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-                {assets.map((asset) => (
+                {sortedAssets.map((asset) => (
                   <div key={asset.id} className={`relative overflow-hidden rounded-xl border ${currentPoster === asset.url || selected.coverUrl === asset.url ? "border-neon" : "border-white/10"}`}>
                     <button type="button" className="block w-full" onClick={() => onPickPoster?.(asset.url)}>
                       <img src={asset.url} alt="" className="h-28 w-full object-cover" />
@@ -261,7 +434,7 @@ export default function MediaLibraryDesk({
                         <button type="button" aria-label="Set cover" title="Set as cover" className="rounded-full bg-slate-950/80 p-1.5 text-amber-300" onClick={() => makeCover(asset.url)}>
                           <Star size={12} />
                         </button>
-                        <button type="button" aria-label="Delete image" title={asset.seeded ? "Remove from pack" : "Delete image"} className="rounded-full bg-slate-950/80 p-1.5 text-rose-300" onClick={() => removeAsset(asset)}>
+                        <button type="button" aria-label="Move to bin" title="Move to bin" className="rounded-full bg-slate-950/80 p-1.5 text-rose-300" onClick={() => removeAsset(asset)}>
                           <Trash2 size={12} />
                         </button>
                       </div>
@@ -269,20 +442,32 @@ export default function MediaLibraryDesk({
                   </div>
                 ))}
               </div>
-              {canManage && hiddenAssets.length > 0 && (
-                <div className="space-y-2 rounded-xl border border-white/10 p-3">
-                  <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Removed from pack · restore anytime</p>
+              {canManage && binAssets.length > 0 && (
+                <div className="space-y-2 rounded-xl border border-dashed border-rose-400/30 p-3">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-rose-300/90">Bin · restore or delete forever</p>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {hiddenAssets.map((asset) => (
-                      <div key={asset.id} className="relative overflow-hidden rounded-xl border border-white/10 opacity-70">
+                    {binAssets.map((asset) => (
+                      <div key={asset.id} className="relative overflow-hidden rounded-xl border border-white/10 opacity-80">
                         <img src={asset.url} alt="" className="h-20 w-full object-cover" />
-                        <button
-                          type="button"
-                          className="absolute inset-x-1 bottom-1 inline-flex items-center justify-center gap-1 rounded-full bg-slate-950/90 px-2 py-1 text-[10px] text-neon"
-                          onClick={() => restoreMediaAsset(selected, asset.id).catch((issue) => setError(issue.message))}
-                        >
-                          <RotateCcw size={10} /> Restore
-                        </button>
+                        <div className="absolute inset-x-1 bottom-1 flex gap-1">
+                          <button
+                            type="button"
+                            className="inline-flex flex-1 items-center justify-center gap-1 rounded-full bg-slate-950/90 px-2 py-1 text-[10px] text-neon"
+                            onClick={() => restoreMediaAsset(selected, asset.id, asset).catch((issue) => setError(issue.message))}
+                          >
+                            <RotateCcw size={10} /> Restore
+                          </button>
+                          <button
+                            type="button"
+                            className="inline-flex flex-1 items-center justify-center gap-1 rounded-full bg-slate-950/90 px-2 py-1 text-[10px] text-rose-300"
+                            onClick={() => {
+                              if (!window.confirm("Permanently delete this image?")) return;
+                              purgeMediaAsset(selected.id, asset, selected).catch((issue) => setError(issue.message));
+                            }}
+                          >
+                            <Trash2 size={10} /> Forever
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

@@ -181,6 +181,38 @@ export function useCircuitCms({ canWrite = false } = {}) {
   }, [canWrite]);
 
   const remove = useCallback(async (id) => {
+    const stamp = Date.now();
+    setRecords((current) => {
+      const next = current.map((item) => (item.id === id ? { ...item, deleted: true, deletedAt: stamp } : item));
+      persistLocal(next);
+      return next;
+    });
+    if (canWrite) {
+      try {
+        await setDoc(doc(db, CMS_COLLECTION, id), { deleted: true, deletedAt: stamp, updatedAt: stamp }, { merge: true });
+      } catch {
+        /* keep local */
+      }
+    }
+  }, [canWrite]);
+
+  const restore = useCallback(async (id) => {
+    const stamp = Date.now();
+    setRecords((current) => {
+      const next = current.map((item) => (item.id === id ? { ...item, deleted: false, deletedAt: 0 } : item));
+      persistLocal(next);
+      return next;
+    });
+    if (canWrite) {
+      try {
+        await setDoc(doc(db, CMS_COLLECTION, id), { deleted: false, deletedAt: 0, updatedAt: stamp }, { merge: true });
+      } catch {
+        /* keep local */
+      }
+    }
+  }, [canWrite]);
+
+  const purge = useCallback(async (id) => {
     setRecords((current) => {
       const next = current.filter((item) => item.id !== id);
       persistLocal(next);
@@ -195,35 +227,51 @@ export function useCircuitCms({ canWrite = false } = {}) {
     }
   }, [canWrite]);
 
+  const liveRecords = useMemo(() => records.filter((item) => !item.deleted), [records]);
+  const deletedRecords = useMemo(() => records.filter((item) => item.deleted), [records]);
+
   const vaultSlides = useMemo(
-    () => records
+    () => liveRecords
       .filter((item) => item.surface === "vault")
       .sort((a, b) => (Number(b.floatingPriority) || 0) - (Number(a.floatingPriority) || 0) || (b.updatedAt || 0) - (a.updatedAt || 0)),
-    [records],
+    [liveRecords],
   );
 
   const researchSlides = useMemo(
-    () => records
+    () => liveRecords
       .filter((item) => item.surface === "research" || item.research)
       .map((item) => ({
         ...item,
         editions: (item.editions || []).map((edition) => normalizeEdition(edition, item.game)),
       }))
       .sort((a, b) => Number(b.editions?.[0]?.year || 0) - Number(a.editions?.[0]?.year || 0)),
-    [records],
+    [liveRecords],
   );
 
   const managedTournaments = useMemo(
-    () => records.filter((item) => item.surface === "tournament"),
-    [records],
+    () => liveRecords.filter((item) => item.surface === "tournament"),
+    [liveRecords],
   );
 
   const filterGames = useMemo(() => {
-    const extras = records
+    const extras = liveRecords
       .filter((item) => item.inFilters !== false && (item.surface === "catalog" || item.surface === "research" || item.research || item.game))
       .map((item) => item.game || item.title);
     return buildFilterGames(extras);
-  }, [records]);
+  }, [liveRecords]);
 
-  return { records, vaultSlides, researchSlides, managedTournaments, filterGames, upsert, remove, emptyCircuitEvent };
+  return {
+    records: liveRecords,
+    allRecords: records,
+    deletedRecords,
+    vaultSlides,
+    researchSlides,
+    managedTournaments,
+    filterGames,
+    upsert,
+    remove,
+    restore,
+    purge,
+    emptyCircuitEvent,
+  };
 }

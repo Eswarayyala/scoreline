@@ -31,6 +31,7 @@ function basePayload(record = {}) {
     createdBy: record.createdBy || uid(),
     ...(record.generated ? { generated: true } : {}),
     ...(Array.isArray(record.hiddenAssetIds) ? { hiddenAssetIds: record.hiddenAssetIds } : {}),
+    ...(Array.isArray(record.purgedAssetIds) ? { purgedAssetIds: record.purgedAssetIds } : {}),
   };
 }
 
@@ -190,6 +191,7 @@ export async function uploadMediaFiles(collectionRecord, files) {
   return uploaded;
 }
 
+/** Soft-delete: seeded packs hide via hiddenAssetIds; uploads get trashed flags. */
 export async function deleteMediaAsset(collectionId, asset, collectionRecord = null) {
   if (asset?.seeded || String(collectionId || "").startsWith("generated-")) {
     const record = collectionRecord || { id: collectionId };
@@ -201,15 +203,41 @@ export async function deleteMediaAsset(collectionId, asset, collectionRecord = n
     }, record);
     return;
   }
+  const assetRef = doc(db, COLLECTIONS, collectionId, "assets", asset.id);
+  await updateDoc(assetRef, { trashed: true, trashedAt: Date.now() });
+  if (collectionRecord?.coverUrl === asset.url) {
+    await upsertMediaCollection(collectionId, { coverUrl: collectionRecord.defaultUrl || "" }, collectionRecord);
+  }
+}
+
+export async function restoreMediaAsset(collectionRecord, assetId, asset = null) {
+  if (asset && !asset.seeded && asset.id) {
+    await updateDoc(doc(db, COLLECTIONS, collectionRecord.id, "assets", asset.id), {
+      trashed: false,
+      trashedAt: 0,
+    });
+    return;
+  }
+  const hidden = (collectionRecord.hiddenAssetIds || []).filter((id) => id !== assetId);
+  await upsertMediaCollection(collectionRecord.id, { hiddenAssetIds: hidden }, collectionRecord);
+}
+
+/** Permanently remove a binned asset (seeded stay hidden forever; uploads leave Storage). */
+export async function purgeMediaAsset(collectionId, asset, collectionRecord = null) {
+  if (asset?.seeded || String(collectionId || "").startsWith("generated-")) {
+    const record = collectionRecord || { id: collectionId };
+    const hidden = [...new Set([...(record.hiddenAssetIds || []), asset.id].filter(Boolean))];
+    const purged = [...new Set([...(record.purgedAssetIds || []), asset.id].filter(Boolean))];
+    await upsertMediaCollection(collectionId, {
+      hiddenAssetIds: hidden,
+      purgedAssetIds: purged.slice(0, 64),
+    }, record);
+    return;
+  }
   if (asset?.path) {
     try { await deleteObject(ref(storage, asset.path)); } catch { /* already gone */ }
   }
   await deleteDoc(doc(db, COLLECTIONS, collectionId, "assets", asset.id));
-}
-
-export async function restoreMediaAsset(collectionRecord, assetId) {
-  const hidden = (collectionRecord.hiddenAssetIds || []).filter((id) => id !== assetId);
-  await upsertMediaCollection(collectionRecord.id, { hiddenAssetIds: hidden }, collectionRecord);
 }
 
 export async function setCollectionCover(collectionId, url, collectionRecord = null) {

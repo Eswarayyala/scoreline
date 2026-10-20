@@ -1,4 +1,4 @@
-/** Owner publishes immediately. Support can fill the same desks; those writes wait for owner approval. */
+/** Owner publishes immediately. Support can fill the same desks; those writes wait for owner approval unless Direct is granted. */
 export const CMS_WRITE_ROLES = ["owner", "support"];
 
 /** Actions support may propose; owner approval ignores anything else. */
@@ -26,12 +26,21 @@ export const SUPPORT_PERMISSION_KEYS = [
   "httpsPostersOnly",
 ];
 
+/** Capabilities that can be Propose (queue) or Direct (live write). */
+export const SUPPORT_MODE_CAPABILITIES = [
+  "vaultEdit",
+  "vaultDelete",
+  "blogReview",
+  "archiveDecide",
+  "blogPromote",
+];
+
 export const SUPPORT_PERMISSION_LABELS = {
-  vaultEdit: "Vault / windows / scrims edit (propose upsert + event posters)",
-  vaultDelete: "Propose deletes (CMS remove)",
-  blogReview: "Blog publish / decline (propose)",
-  archiveDecide: "Vault archive request approve / reject (propose)",
-  blogPromote: "Promote published blog → vault (propose)",
+  vaultEdit: "Vault / windows / scrims edit",
+  vaultDelete: "CMS deletes",
+  blogReview: "Blog publish / decline",
+  archiveDecide: "Vault archive approve / reject",
+  blogPromote: "Promote published blog → vault",
   reportsTriage: "Reports triage (change status)",
   supportSocials: "Edit support socials",
   libraryView: "View media library (no manage)",
@@ -49,6 +58,11 @@ export const DEFAULT_SUPPORT_PERMISSIONS = {
   supportSocials: true,
   libraryView: true,
   httpsPostersOnly: true,
+  vaultEditMode: "propose",
+  vaultDeleteMode: "propose",
+  blogReviewMode: "propose",
+  archiveDecideMode: "propose",
+  blogPromoteMode: "propose",
 };
 
 const ACTION_PERMISSION = {
@@ -58,6 +72,10 @@ const ACTION_PERMISSION = {
   archive_decision: "archiveDecide",
   blog_promote: "blogPromote",
 };
+
+export function modeKeyForPermission(key) {
+  return `${key}Mode`;
+}
 
 export function canWriteCircuitContent(role) {
   return CMS_WRITE_ROLES.includes(String(role || "").toLowerCase());
@@ -87,6 +105,10 @@ export function canProposeCmsDelete(role, permissions) {
   return supportHas(permissions, "vaultDelete");
 }
 
+export function supportWritesDirect(role, permissions, key) {
+  return isSiteSupportRole(role) && supportAccessMode(permissions, key) === "direct";
+}
+
 export function isAllowedSupportAction(action) {
   return SUPPORT_CHANGE_ACTIONS.includes(String(action || ""));
 }
@@ -97,12 +119,25 @@ export function normalizeSupportPermissions(input) {
   SUPPORT_PERMISSION_KEYS.forEach((key) => {
     if (typeof raw[key] === "boolean") next[key] = raw[key];
   });
+  SUPPORT_MODE_CAPABILITIES.forEach((key) => {
+    const modeKey = modeKeyForPermission(key);
+    const mode = String(raw[modeKey] || next[modeKey] || "propose").toLowerCase();
+    next[modeKey] = mode === "direct" ? "direct" : "propose";
+    if (!next[key]) next[modeKey] = "propose";
+  });
   return next;
 }
 
 export function supportHas(permissions, key) {
   const perms = normalizeSupportPermissions(permissions);
   return perms[key] === true;
+}
+
+export function supportAccessMode(permissions, key) {
+  if (!SUPPORT_MODE_CAPABILITIES.includes(key)) return null;
+  if (!supportHas(permissions, key)) return null;
+  const perms = normalizeSupportPermissions(permissions);
+  return perms[modeKeyForPermission(key)] === "direct" ? "direct" : "propose";
 }
 
 export function permissionForSupportAction(action) {
@@ -113,7 +148,15 @@ export function supportCanProposeAction(permissions, action) {
   if (!isAllowedSupportAction(action)) return false;
   const key = permissionForSupportAction(action);
   if (!key) return false;
-  return supportHas(permissions, key);
+  if (!supportHas(permissions, key)) return false;
+  return supportAccessMode(permissions, key) !== "direct";
+}
+
+export function supportCanDirectAction(permissions, action) {
+  if (!isAllowedSupportAction(action)) return false;
+  const key = permissionForSupportAction(action);
+  if (!key) return false;
+  return supportAccessMode(permissions, key) === "direct";
 }
 
 function sanitizeImageField(value, { httpsOnly = false } = {}) {

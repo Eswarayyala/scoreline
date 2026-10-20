@@ -27,6 +27,7 @@ import { db, auth, realtimeDb, signInWithGoogle, completeGoogleSignInReturn } fr
 import PlatformHome from "./components/layout/PlatformHome";
 import HubSections from "./components/layout/HubSections";
 import PublicNav from "./components/layout/PublicNav";
+import SectionBackHome from "./components/layout/SectionBackHome";
 import TournamentOpsRail from "./components/layout/TournamentOpsRail";
 import VaultDetailPage from "./components/vault/VaultDetailPage";
 import VaultLibraryPage from "./components/vault/VaultLibraryPage";
@@ -44,8 +45,10 @@ import CircuitCmsDesk from "./components/cms/CircuitCmsDesk";
 import FloatingWindowsDesk from "./components/cms/FloatingWindowsDesk";
 import SupportChangeQueue from "./components/cms/SupportChangeQueue";
 import SupportAccessDesk from "./components/cms/SupportAccessDesk";
+import StaffDeskGate from "./components/cms/StaffDeskGate";
 import { useCircuitCms } from "./hooks/useCircuitCms";
 import { useStaffChangeRequests } from "./hooks/useStaffChangeRequests";
+import { deskGateDocPath, hashDeskPassword, hashFieldForRole } from "./lib/deskGate";
 import { assembleFloatingSlides, floatingPolicyFromRecords, mergeEwcWindows } from "./data/floatingWindows";
 import { useEsportsMedia } from "./hooks/useEsportsMedia";
 import { fetchGamePoster, mergeVaultMedia } from "./services/esportsMedia";
@@ -61,7 +64,6 @@ import { useGameBanner, useMediaArt } from "./hooks/useMediaLibrary";
 import CollectionPicker from "./components/cms/CollectionPicker";
 import MediaLibraryDesk from "./components/cms/MediaLibraryDesk";
 import LfgNoticeBoard from "./components/ecosystem/LfgNoticeBoard";
-import FindPlayersShowcase from "./components/ecosystem/FindPlayersShowcase";
 import Countdown from "./components/shared/Countdown";
 import DynamicPointsTable from "./components/shared/DynamicPointsTable";
 import AchievementBadges, { PlacementTrendGraph } from "./components/shared/AchievementBadges";
@@ -73,6 +75,7 @@ import {
   canManageMediaLibrary,
   isAllowedSupportAction,
   normalizeSupportPermissions,
+  supportCanDirectAction,
   supportHas,
 } from "./lib/staffAccess";
 import { getFunctions, httpsCallable } from "firebase/functions";
@@ -1027,7 +1030,7 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
           <div style={{ background: "var(--panel-raised)", border: "1px solid var(--border)", padding: 14 }}>
             <Eyebrow>Profile ideas</Eyebrow>
             <div style={{ fontSize: 13, color: "var(--text-muted)", margin: "6px 0 10px" }}>
-              Pick a library avatar for your GrindInfo ID, or use a quick emoji. Avatars come from each game&apos;s Avatar pack.
+              Pick a library avatar for your GrindInfo ID, or use a quick emoji. Browse every game&apos;s Avatar pack — not only the games you play.
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
               <span
@@ -1073,33 +1076,14 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
                 </button>
               ))}
             </div>
-            {games[0] ? (
-              <div style={{ marginBottom: 12 }}>
-                <CollectionPicker
-                  game={games[0]}
-                  kinds={["avatar"]}
-                  value={avatar}
-                  onSelect={setAvatar}
-                  heading={`Avatars · ${games[0]}`}
-                />
-                {games.length > 1 && (
-                  <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-                    {games.slice(1, 4).map((gameName) => (
-                      <CollectionPicker
-                        key={gameName}
-                        game={gameName}
-                        kinds={["avatar"]}
-                        value={avatar}
-                        onSelect={setAvatar}
-                        heading={`Avatars · ${gameName}`}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 12 }}>Select a game below to browse that title&apos;s avatar pack.</p>
-            )}
+            <div style={{ marginBottom: 12 }}>
+              <CollectionPicker
+                kinds={["avatar"]}
+                value={avatar}
+                onSelect={setAvatar}
+                heading="Library avatars · all games"
+              />
+            </div>
             <div style={{ fontSize: 11, color: "var(--text-dim)", marginBottom: 6 }}>QUICK GAME PICKS</div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
               {QUICK_PICK_GAMES.map((game) => (
@@ -1403,6 +1387,7 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
         }}
       >
         <div>
+          {!embedded && <SectionBackHome />}
           {!embedded && <Eyebrow>Squad up</Eyebrow>}
           <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: embedded ? 28 : 44, margin: "4px 0 0" }}>{embedded ? "Find players" : "Find similar players"}</h1>
         </div>
@@ -2142,7 +2127,7 @@ function SitePopup({ popup, onDismiss }) {
   );
 }
 
-function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerAccess, popups, onSavePopup, onDeletePopup, staff, onSetSupport, onSaveSupportPermissions, supportPermissions = null, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], onSaveCircuit, onDeleteCircuit, onImportArchive, filterGames = FILTER_GAMES, ewcWindows = [], blogSlides = [], supportChanges = [], onReviewSupportChange, ownerPresence = null, supportPresence = null, onSaveOwnerPresence, onSaveSupportPresence }) {
+function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerAccess, popups, onSavePopup, onDeletePopup, staff, onSetSupport, onSaveSupportPermissions, supportPermissions = null, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], deletedCircuitRecords = [], onSaveCircuit, onDeleteCircuit, onRestoreCircuit, onPurgeCircuit, onImportArchive, filterGames = FILTER_GAMES, ewcWindows = [], blogSlides = [], supportChanges = [], onReviewSupportChange, ownerPresence = null, supportPresence = null, onSaveOwnerPresence, onSaveSupportPresence, deskGate = null, onSaveDeskPassword, siteFeatures = null, onSaveSiteFeatures }) {
   const isOwner = role === "owner";
   const perms = normalizeSupportPermissions(supportPermissions);
   const canVault = isOwner || supportHas(perms, "vaultEdit");
@@ -2206,7 +2191,21 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
   return (
     <div style={{ paddingTop: 24 }}>
       <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 34, margin: "0 0 10px" }}>{isOwner ? "Owner" : "Support"}</h1>
-      <div role="tablist" aria-label="Dashboard sections" style={{ display: "flex", flexWrap: "wrap", gap: 2, marginBottom: 18, borderBottom: "1px solid var(--border)" }}>
+      <div
+        role="tablist"
+        aria-label="Dashboard sections"
+        style={{
+          display: "flex",
+          flexWrap: "nowrap",
+          gap: 4,
+          marginBottom: 18,
+          borderBottom: "1px solid var(--border)",
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
+          scrollbarWidth: "thin",
+          paddingBottom: 2,
+        }}
+      >
           {supportTabs.map((name) => (
             <button
               key={name}
@@ -2219,9 +2218,12 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
                 fontSize: 10,
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
-                padding: "8px 10px",
+                padding: "10px 12px",
+                minHeight: 40,
+                flex: "0 0 auto",
+                whiteSpace: "nowrap",
                 border: "none",
-                borderBottom: tab === name ? "1px solid var(--accent-secondary)" : "1px solid transparent",
+                borderBottom: tab === name ? "2px solid var(--accent-secondary)" : "2px solid transparent",
                 marginBottom: -1,
                 background: "transparent",
                 color: tab === name ? "var(--page-text)" : "var(--text-muted)",
@@ -2242,13 +2244,29 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
             ? ". Use Support access to turn each capability on or off per support UID. Owner-only: media manage, popups, bans, grant access, activity log."
             : ". Tabs follow the permissions the owner enabled for your account. Changes still wait for owner approval."}
         </p>
+        {onSaveSiteFeatures && (
+          <section style={{ marginTop: 18, padding: 14, border: "1px solid var(--border)", background: "var(--panel-bg)", maxWidth: 560 }}>
+            <Eyebrow>Vault features</Eyebrow>
+            <p style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 8 }}>
+              Digest opt-in and Hide on Weekly grind stay off for players until you enable them here.
+            </p>
+            <label style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12, fontSize: 13, cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={siteFeatures?.digestControlsEnabled === true}
+                onChange={(event) => onSaveSiteFeatures({ digestControlsEnabled: event.target.checked })}
+              />
+              Show digest opt-in / hide controls on Weekly grind
+            </label>
+          </section>
+        )}
       </>}
-      {tab === "windows" && canVault && <FloatingWindowsDesk records={circuitRecords} ewcWindows={ewcWindows} blogSlides={blogSlides} role={role} onSave={onSaveCircuit} permissions={perms} />}
+      {tab === "windows" && canVault && <FloatingWindowsDesk records={circuitRecords} ewcWindows={ewcWindows} blogSlides={blogSlides} role={role} onSave={onSaveCircuit} filterGames={filterGames} />}
       {tab === "library" && canLibrary && <MediaLibraryDesk games={filterGames} canManage={canManageMediaLibrary(role)} />}
       {(tab === "support changes" || tab === "my requests") && <SupportChangeQueue requests={supportChanges} role={role} onReview={onReviewSupportChange} />}
       {tab === "reports" && canReports && <ReportsInbox reports={reports} onStatusChange={onStatusChange} bans={bans} role={role} onSetPlayerAccess={onSetPlayerAccess} />}
-      {tab === "tournaments" && canVault && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="tournament" records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} games={filterGames} permissions={perms} /><TournamentMonitor tournaments={tournaments} onOpen={onOpenTournament} /></div>}
-      {tab === "vault" && canVault && <div style={{ display: "grid", gap: 28 }}><VaultResearchDesk records={circuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} filterGames={filterGames} permissions={perms} /><VaultMonitor submissions={archiveSubmissions} blogPosts={blogPosts} onDecision={supportHas(perms, "archiveDecide") || isOwner ? onArchiveDecision : undefined} onPromote={supportHas(perms, "blogPromote") || isOwner ? onPromoteBlog : undefined} /></div>}
+      {tab === "tournaments" && canVault && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="tournament" records={circuitRecords} deletedRecords={deletedCircuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} onRestore={onRestoreCircuit} onPurge={onPurgeCircuit} games={filterGames} permissions={perms} /><TournamentMonitor tournaments={tournaments} onOpen={onOpenTournament} /></div>}
+      {tab === "vault" && canVault && <div style={{ display: "grid", gap: 28 }}><VaultResearchDesk records={circuitRecords} deletedRecords={deletedCircuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} onRestore={onRestoreCircuit} onPurge={onPurgeCircuit} filterGames={filterGames} permissions={perms} /><VaultMonitor submissions={archiveSubmissions} blogPosts={blogPosts} onDecision={supportHas(perms, "archiveDecide") || isOwner ? onArchiveDecision : undefined} onPromote={supportHas(perms, "blogPromote") || isOwner ? onPromoteBlog : undefined} /></div>}
       {tab === "socials" && canSocials && (
         <SitePresenceDesk
           role={role}
@@ -2280,9 +2298,64 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
         <div style={{ display: "grid", gap: 10, marginTop: 14 }}>{popups.map((popup) => <article key={popup.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{popup.enabled ? "Enabled" : "Disabled"} · {popup.type === "motivation" ? "Popup" : "Safety disclaimer"} · {popup.type === "disclaimer" ? "Before registration" : popup.frequency === "hourly" ? "Every hour" : popup.frequency === "session" ? "Once per visit" : popup.frequency === "busy" ? `${popup.minimumOnline || 10}+ online` : "Every 15–30 minutes"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "5px 0" }}>{popup.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{popup.message}</p><div style={{ display: "flex", gap: 8 }}><Button variant="ghost" onClick={() => openEditor(popup)}>Edit</Button><Button variant="danger" onClick={() => onDeletePopup(popup.id)}>Delete</Button></div></article>)}</div>
       </section>}
       {tab === "support access" && isOwner && (
-        <SupportAccessDesk staff={staff} onSetSupport={onSetSupport} onSavePermissions={onSaveSupportPermissions} />
+        <div style={{ display: "grid", gap: 28 }}>
+          <DeskPasswordSettings gate={deskGate} onSave={onSaveDeskPassword} />
+          <SupportAccessDesk staff={staff} onSetSupport={onSetSupport} onSavePermissions={onSaveSupportPermissions} />
+        </div>
       )}
     </div>
+  );
+}
+
+function DeskPasswordSettings({ gate = null, onSave }) {
+  const [ownerPass, setOwnerPass] = useState("");
+  const [supportPass, setSupportPass] = useState("");
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+
+  const save = async (role, value) => {
+    setError("");
+    setMessage("");
+    setBusy(role);
+    try {
+      const hash = await hashDeskPassword(value);
+      await onSave(role, hash);
+      if (role === "owner") setOwnerPass("");
+      else setSupportPass("");
+      setMessage(`${role === "owner" ? "Owner" : "Support"} desk password updated.`);
+    } catch (issue) {
+      setError(issue.message || "Could not save desk password.");
+    } finally {
+      setBusy("");
+    }
+  };
+
+  return (
+    <section style={{ maxWidth: 760, padding: 14, border: "1px solid var(--border)", background: "var(--panel-bg)" }}>
+      <Eyebrow>Desk passwords</Eyebrow>
+      <p style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 8 }}>
+        Separate passwords for owner and support dashboards. Staff still need their Firebase account, then this desk password.
+      </p>
+      <div style={{ display: "grid", gap: 12, marginTop: 14 }}>
+        <label style={{ display: "grid", gap: 6, fontSize: 12, color: "var(--text-muted)" }}>
+          Owner desk password {gate?.ownerHash ? "(set)" : "(not set)"}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <TextInput type="password" value={ownerPass} onChange={(e) => setOwnerPass(e.target.value)} placeholder="New owner password" style={{ flex: 1, minWidth: 180 }} />
+            <Button disabled={busy === "owner" || !ownerPass} onClick={() => save("owner", ownerPass)}>{busy === "owner" ? "Saving…" : "Save owner"}</Button>
+          </div>
+        </label>
+        <label style={{ display: "grid", gap: 6, fontSize: 12, color: "var(--text-muted)" }}>
+          Support desk password {gate?.supportHash ? "(set)" : "(not set)"}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <TextInput type="password" value={supportPass} onChange={(e) => setSupportPass(e.target.value)} placeholder="New support password" style={{ flex: 1, minWidth: 180 }} />
+            <Button disabled={busy === "support" || !supportPass} onClick={() => save("support", supportPass)}>{busy === "support" ? "Saving…" : "Save support"}</Button>
+          </div>
+        </label>
+      </div>
+      {error && <div role="alert" style={{ color: "var(--danger)", marginTop: 8 }}>{error}</div>}
+      {message && <p style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 8 }}>{message}</p>}
+    </section>
   );
 }
 
@@ -2528,7 +2601,7 @@ function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDele
   );
   return (
     <div style={{ paddingTop: embedded ? 16 : 32, paddingBottom: manageInDrawer ? 88 : 0 }}>
-      {!embedded && (<><Eyebrow>Community stories</Eyebrow><h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42 }}>Esports blog</h1><p style={{ color: "var(--text-muted)" }}>Read community stories, tournament recaps, and esports updates.</p></>)}
+      {!embedded && (<><SectionBackHome /><Eyebrow>Community stories</Eyebrow><h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42 }}>Esports blog</h1><p style={{ color: "var(--text-muted)" }}>Read community stories, tournament recaps, and esports updates.</p></>)}
       {embedded && <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, margin: "0 0 12px" }}>Community blog</h2>}
       {!manageInDrawer && compose}
       <div style={{ display: "grid", gap: 12, marginTop: 20 }}>
@@ -2632,6 +2705,9 @@ export default function App() {
   const [siteRole, setSiteRole] = useState(null);
   const [supportPermissions, setSupportPermissions] = useState(null);
   const [siteRoleResolved, setSiteRoleResolved] = useState(!auth.currentUser);
+  const [deskGate, setDeskGate] = useState(null);
+  const [deskGateLoading, setDeskGateLoading] = useState(true);
+  const [siteFeatures, setSiteFeatures] = useState({ digestControlsEnabled: false });
   const [friendRequests, setFriendRequests] = useState([]);
   const [blockedUsers, setBlockedUsers] = useState([]);
   const [tournamentInvites, setTournamentInvites] = useState([]);
@@ -2678,6 +2754,9 @@ export default function App() {
       }
       if (u) {
         sessionStorage.removeItem("grindinfo-guest-mode");
+        setAuthBusy(false);
+        setAuthError("");
+        try { localStorage.setItem("grindinfo-last-active", String(Date.now())); } catch { /* private mode */ }
         rememberKnownAccount({
           uid: u.uid,
           email: u.email || "",
@@ -2686,6 +2765,8 @@ export default function App() {
           provider: u.providerData?.some((item) => item.providerId === "google.com") ? "google" : "password",
         });
         setKnownAccounts(readKnownAccounts());
+      } else {
+        setAuthBusy(false);
       }
       if (!loadingCleared) {
         loadingCleared = true;
@@ -2740,12 +2821,21 @@ export default function App() {
     const touch = () => {
       try { localStorage.setItem(KEY, String(Date.now())); } catch { /* private mode */ }
     };
-    const last = Number(localStorage.getItem(KEY) || 0);
-    if (last > 0 && Date.now() - last > IDLE_MS) {
+    const clearStamp = () => {
+      try { localStorage.removeItem(KEY); } catch { /* private mode */ }
+    };
+    const forceIdleSignOut = () => {
+      // Drop the stale stamp so the next successful sign-in is not bounced immediately.
+      clearStamp();
       sessionStorage.removeItem("grindinfo-guest-mode");
+      setAuthBusy(false);
       signOut(auth);
       setAuthDialogOpen(true);
       setAuthError("Signed out after idle time. Sign in again to continue.");
+    };
+    const last = Number(localStorage.getItem(KEY) || 0);
+    if (last > 0 && Date.now() - last > IDLE_MS) {
+      forceIdleSignOut();
       return undefined;
     }
     touch();
@@ -2755,10 +2845,7 @@ export default function App() {
     const tick = window.setInterval(() => {
       const stamped = Number(localStorage.getItem(KEY) || 0);
       if (stamped > 0 && Date.now() - stamped > IDLE_MS) {
-        sessionStorage.removeItem("grindinfo-guest-mode");
-        signOut(auth);
-        setAuthDialogOpen(true);
-        setAuthError("Signed out after idle time. Sign in again to continue.");
+        forceIdleSignOut();
       }
     }, 60 * 1000);
     return () => {
@@ -2772,6 +2859,7 @@ export default function App() {
     setAuthBusy(true);
     try {
       await signInWithGoogle();
+      try { localStorage.setItem("grindinfo-last-active", String(Date.now())); } catch { /* private mode */ }
     } catch (e) {
       if (e?.code === "auth/popup-closed-by-user" || e?.code === "auth/cancelled-popup-request") {
         setAuthBusy(false);
@@ -2823,14 +2911,17 @@ export default function App() {
 
   const handleSignOut = useCallback(() => {
     sessionStorage.removeItem("grindinfo-guest-mode");
+    try { localStorage.removeItem("grindinfo-last-active"); } catch { /* private mode */ }
     signOut(auth);
   }, []);
 
   const handleSwitchAccount = useCallback(() => {
     sessionStorage.removeItem("grindinfo-guest-mode");
+    try { localStorage.removeItem("grindinfo-last-active"); } catch { /* private mode */ }
     setGuestMode(false);
     setAuthDialogOpen(true);
     setAuthError("");
+    setAuthBusy(false);
     signOut(auth);
   }, []);
 
@@ -2846,7 +2937,7 @@ export default function App() {
   const [showFriendRequests, setShowFriendRequests] = useState(false);
   const [mutedFriendIds, setMutedFriendIds] = useState([]);
   const [showArchivedTournaments, setShowArchivedTournaments] = useState(false);
-  const circuitCms = useCircuitCms({ canWrite: siteRole === "owner" });
+  const circuitCms = useCircuitCms({ canWrite: siteRole === "owner" || (siteRole === "support" && supportCanDirectAction(supportPermissions, "cms_upsert")) });
   const staffChanges = useStaffChangeRequests({ role: siteRole, user, permissions: supportPermissions });
   const liveEsportsBanners = useEsportsMedia();
   const blogSlides = useMemo(() => slidesFromBlogs(blogPosts), [blogPosts]);
@@ -2906,9 +2997,12 @@ export default function App() {
       setSiteRole(null);
       setSupportPermissions(null);
       setSiteRoleResolved(true);
+      setDeskGate(null);
+      setDeskGateLoading(false);
       return undefined;
     }
     setSiteRoleResolved(false);
+    setDeskGateLoading(true);
     const stopRole = onSnapshot(doc(SITE_ROLES_COLLECTION, user.uid), (snapshot) => {
       const data = snapshot.exists() ? snapshot.data() : null;
       const nextRole = data?.enabled !== false && ["owner", "support"].includes(data?.role) ? data.role : null;
@@ -2923,7 +3017,15 @@ export default function App() {
     const stopModerator = onSnapshot(doc(db, "moderators", user.uid), (snapshot) => {
       setIsModerator(snapshot.exists() && snapshot.data().enabled === true);
     }, () => setIsModerator(false));
-    return () => { stopRole(); stopModerator(); };
+    const [settingsCollection, gateId] = deskGateDocPath();
+    const stopGate = onSnapshot(doc(db, settingsCollection, gateId), (snapshot) => {
+      setDeskGate(snapshot.exists() ? snapshot.data() : null);
+      setDeskGateLoading(false);
+    }, () => {
+      setDeskGate(null);
+      setDeskGateLoading(false);
+    });
+    return () => { stopRole(); stopModerator(); stopGate(); };
   }, [user]);
 
   useEffect(() => {
@@ -2932,6 +3034,14 @@ export default function App() {
       if (snapshot.exists() && snapshot.data()?.active === true) signOut(auth);
     }, () => {});
   }, [user]);
+
+  useEffect(() => {
+    const [settingsCollection] = deskGateDocPath();
+    return onSnapshot(doc(db, settingsCollection, "features"), (snapshot) => {
+      const data = snapshot.exists() ? snapshot.data() : null;
+      setSiteFeatures({ digestControlsEnabled: data?.digestControlsEnabled === true });
+    }, () => setSiteFeatures({ digestControlsEnabled: false }));
+  }, []);
 
   useEffect(() => {
     if (!user || !realtimeDb) return undefined;
@@ -3504,6 +3614,9 @@ export default function App() {
     const id = draft.id || `cms-${Date.now().toString(36)}`;
     const record = { ...draft, id };
     if (siteRole === "support") {
+      if (supportCanDirectAction(supportPermissions, "cms_upsert")) {
+        return circuitCms.upsert(record);
+      }
       await queueSupportChange({
         action: "cms_upsert",
         targetType: "circuitCms",
@@ -3519,12 +3632,15 @@ export default function App() {
 
   const deleteCircuit = async (id) => {
     if (siteRole === "support") {
+      if (supportCanDirectAction(supportPermissions, "cms_delete")) {
+        return circuitCms.remove(id);
+      }
       await queueSupportChange({
         action: "cms_delete",
         targetType: "circuitCms",
         targetId: id,
         targetLabel: id,
-        summary: `Remove desk record ${id}`,
+        summary: `Move desk record ${id} to bin`,
         payload: { id },
       });
       return;
@@ -3532,8 +3648,26 @@ export default function App() {
     return circuitCms.remove(id);
   };
 
+  const restoreCircuit = async (id) => {
+    if (siteRole !== "owner" && !supportCanDirectAction(supportPermissions, "cms_upsert")) {
+      showToast("Only the owner (or direct-edit support) can restore from the bin.");
+      return;
+    }
+    await circuitCms.restore(id);
+    showToast("Restored from bin");
+  };
+
+  const purgeCircuit = async (id) => {
+    if (siteRole !== "owner" && !supportCanDirectAction(supportPermissions, "cms_delete")) {
+      showToast("Only the owner (or direct-delete support) can permanently delete.");
+      return;
+    }
+    await circuitCms.purge(id);
+    showToast("Permanently deleted");
+  };
+
   const reviewBlogPost = async (postId, status) => {
-    if (siteRole === "support") {
+    if (siteRole === "support" && !supportCanDirectAction(supportPermissions, "blog_review")) {
       await queueSupportChange({
         action: "blog_review",
         targetType: "blog",
@@ -3773,7 +3907,7 @@ export default function App() {
 
   const decideArchiveSubmission = async (requestId, status) => {
     if (!isSiteStaff || !["approved", "rejected"].includes(status)) return;
-    if (siteRole === "support") {
+    if (siteRole === "support" && !supportCanDirectAction(supportPermissions, "archive_decision")) {
       await queueSupportChange({
         action: "archive_decision",
         targetType: "archiveSubmission",
@@ -3812,7 +3946,7 @@ export default function App() {
 
   const promoteBlogToArchive = async (post, fields) => {
     if (!isSiteStaff || post.status !== "published") throw new Error("Only staff can promote published posts");
-    if (siteRole === "support") {
+    if (siteRole === "support" && !supportCanDirectAction(supportPermissions, "blog_promote")) {
       await queueSupportChange({
         action: "blog_promote",
         targetType: "blog",
@@ -3942,6 +4076,35 @@ export default function App() {
     showToast(enabled ? "Support access granted" : "Support access removed");
   };
 
+  const saveDeskRolePassword = async (role, hash) => {
+    if (siteRole !== "owner") throw new Error("Only the owner can set desk passwords.");
+    const field = hashFieldForRole(role);
+    const payload = {
+      ownerHash: String(deskGate?.ownerHash || ""),
+      supportHash: String(deskGate?.supportHash || ""),
+      [field]: hash,
+      updatedAt: Date.now(),
+      updatedBy: user.uid,
+    };
+    const [settingsCollection, gateId] = deskGateDocPath();
+    await setDoc(doc(db, settingsCollection, gateId), payload, { merge: true });
+    setDeskGate(payload);
+    showToast(`${role === "owner" ? "Owner" : "Support"} desk password saved`);
+  };
+
+  const saveSiteFeatures = async (patch) => {
+    if (siteRole !== "owner" && siteRole !== "support") throw new Error("Staff access required.");
+    const [settingsCollection] = deskGateDocPath();
+    const payload = {
+      digestControlsEnabled: patch.digestControlsEnabled === true,
+      updatedAt: Date.now(),
+      updatedBy: user.uid,
+    };
+    await setDoc(doc(db, settingsCollection, "features"), payload, { merge: true });
+    setSiteFeatures({ digestControlsEnabled: payload.digestControlsEnabled });
+    showToast(payload.digestControlsEnabled ? "Digest controls enabled on Vault" : "Digest controls hidden on Vault");
+  };
+
   const saveSupportPermissions = async (targetUid, permissions) => {
     if (siteRole !== "owner" || !targetUid) throw new Error("Owner access required");
     const ref = doc(SITE_ROLES_COLLECTION, targetUid);
@@ -4036,55 +4199,73 @@ export default function App() {
                 </div>
               </header>
               <div className="mx-auto max-w-6xl px-5 pb-24">
-                {vaultEditId ? (
-                  <VaultResearchDesk
-                    focusId={decodeURIComponent(vaultEditId)}
-                    records={circuitCms.records}
-                    role={siteRole || "support"}
-                    onSave={saveCircuit}
-                    onDelete={deleteCircuit}
-                    filterGames={circuitCms.filterGames}
-                  />
-                ) : (
-                <OwnerDashboard
-                  key={dashTabHint}
-                  initialTab={dashTabHint}
-                  circuitRecords={circuitCms.records}
-                  onSaveCircuit={saveCircuit}
-                  onDeleteCircuit={deleteCircuit}
-                  ewcWindows={ewcWindows}
-                  blogSlides={blogSlides}
-                  supportChanges={staffChanges.requests}
-                  onReviewSupportChange={reviewSupportChange}
-                  role={siteRole || "support"}
-                  reports={privateReports}
-                  onStatusChange={updateReportStatus}
-                  bans={siteBans}
-                  onSetPlayerAccess={setPlayerAccess}
-                  popups={adminPopups}
-                  onSavePopup={saveSitePopup}
-                  onDeletePopup={deleteSitePopup}
-                  staff={siteStaff}
-                  onSetSupport={setSupportAccess}
-                  onSaveSupportPermissions={saveSupportPermissions}
-                  supportPermissions={supportPermissions}
-                  tournaments={tournaments}
-                  archiveEntries={archiveEntries}
-                  blogPosts={blogPosts}
-                  onBlogReview={reviewBlogPost}
-                  onPromoteBlog={promoteBlogToArchive}
-                  archiveSubmissions={archiveSubmissions}
-                  onArchiveDecision={decideArchiveSubmission}
-                  auditLog={auditLog}
-                  onOpenTournament={(id) => navigate(`/tournaments/${id}`)}
-                  onImportArchive={importArchiveEntries}
-                  filterGames={circuitCms.filterGames}
-                  ownerPresence={ownerPresence}
-                  supportPresence={supportPresence}
-                  onSaveOwnerPresence={saveOwnerPresence}
-                  onSaveSupportPresence={saveSupportPresence}
-                />
-                )}
+                <StaffDeskGate
+                  role={dashboardRole}
+                  gate={deskGate}
+                  gateLoading={deskGateLoading}
+                  isOwner={dashboardRole === "owner"}
+                  onSaveRolePassword={saveDeskRolePassword}
+                >
+                  {vaultEditId ? (
+                    <VaultResearchDesk
+                      focusId={decodeURIComponent(vaultEditId)}
+                      records={circuitCms.records}
+                      deletedRecords={circuitCms.deletedRecords}
+                      role={siteRole || "support"}
+                      onSave={saveCircuit}
+                      onDelete={deleteCircuit}
+                      onRestore={restoreCircuit}
+                      onPurge={purgeCircuit}
+                      filterGames={circuitCms.filterGames}
+                    />
+                  ) : (
+                    <OwnerDashboard
+                      key={dashTabHint}
+                      initialTab={dashTabHint}
+                      circuitRecords={circuitCms.records}
+                      onSaveCircuit={saveCircuit}
+                      onDeleteCircuit={deleteCircuit}
+                      deletedCircuitRecords={circuitCms.deletedRecords}
+                      onRestoreCircuit={restoreCircuit}
+                      onPurgeCircuit={purgeCircuit}
+                      ewcWindows={ewcWindows}
+                      blogSlides={blogSlides}
+                      supportChanges={staffChanges.requests}
+                      onReviewSupportChange={reviewSupportChange}
+                      role={siteRole || "support"}
+                      reports={privateReports}
+                      onStatusChange={updateReportStatus}
+                      bans={siteBans}
+                      onSetPlayerAccess={setPlayerAccess}
+                      popups={adminPopups}
+                      onSavePopup={saveSitePopup}
+                      onDeletePopup={deleteSitePopup}
+                      staff={siteStaff}
+                      onSetSupport={setSupportAccess}
+                      onSaveSupportPermissions={saveSupportPermissions}
+                      supportPermissions={supportPermissions}
+                      tournaments={tournaments}
+                      archiveEntries={archiveEntries}
+                      blogPosts={blogPosts}
+                      onBlogReview={reviewBlogPost}
+                      onPromoteBlog={promoteBlogToArchive}
+                      archiveSubmissions={archiveSubmissions}
+                      onArchiveDecision={decideArchiveSubmission}
+                      auditLog={auditLog}
+                      onOpenTournament={(id) => navigate(`/tournaments/${id}`)}
+                      onImportArchive={importArchiveEntries}
+                      filterGames={circuitCms.filterGames}
+                      ownerPresence={ownerPresence}
+                      supportPresence={supportPresence}
+                      onSaveOwnerPresence={saveOwnerPresence}
+                      onSaveSupportPresence={saveSupportPresence}
+                      deskGate={deskGate}
+                      onSaveDeskPassword={saveDeskRolePassword}
+                      siteFeatures={siteFeatures}
+                      onSaveSiteFeatures={saveSiteFeatures}
+                    />
+                  )}
+                </StaffDeskGate>
               </div>
             </div>
           ) : <Navigate to="/" replace />
@@ -4127,13 +4308,7 @@ export default function App() {
               <Routes location={windowLocation}>
                 <Route path="/" element={(
                   <PlatformHome slides={homeSlides}>
-                    <div className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-                      <HubSections />
-                      <FindPlayersShowcase
-                        onBrowseAll={() => (user ? navigate("/find-players") : setAuthDialogOpen(true))}
-                        onConnect={() => (user ? navigate("/find-players") : setAuthDialogOpen(true))}
-                      />
-                    </div>
+                    <HubSections />
                   </PlatformHome>
                 )} />
                 <Route path="/vault" element={(
@@ -4144,6 +4319,7 @@ export default function App() {
                     tournaments={tournaments}
                     grindPrefs={grindPrefs.prefs}
                     onGrindPrefsChange={grindPrefs.update}
+                    digestControlsEnabled={siteFeatures.digestControlsEnabled === true}
                   >
                     <div>
                       <p className="mb-2 font-mono text-[11px] uppercase tracking-widest text-amber-300">Contributor desk</p>
@@ -4165,6 +4341,7 @@ export default function App() {
                 <Route path="/vault/:slug" element={<VaultDetailPage slides={vaultSlides} slug={routePath.replace(/^\/vault\//, "").split("/")[0]} liveEntries={archiveEntries} bookmarked={vaultBookmarks.has(routePath.replace(/^\/vault\//, "").split("/")[0])} onToggleBookmark={vaultBookmarks.toggle} />} />
                 <Route path="/tournaments" element={(
                   <>
+                    <SectionBackHome />
                     <TournamentOpsRail
                       signedIn={!!user}
                       onNew={() => {
@@ -4240,6 +4417,7 @@ export default function App() {
                   <FindPlayersPage gamesList={circuitCms.filterGames} currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid, player.displayName)} onFriendDecision={decideFriendRequest} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} onEditProfile={() => setShowProfileModal(true)} />
                 ) : (
                   <div className="pt-8">
+                    <SectionBackHome />
                     <h1 className="m-0 font-['Bebas_Neue',sans-serif] text-5xl">Find players</h1>
                     <p className="mb-4 mt-2 text-sm text-stone-400">Sign in to search similar players and send a connect request.</p>
                     <Button onClick={() => setAuthDialogOpen(true)}>Sign in to find players</Button>

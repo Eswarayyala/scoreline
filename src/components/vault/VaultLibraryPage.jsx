@@ -43,6 +43,7 @@ export default function VaultLibraryPage({
   tournaments = [],
   grindPrefs,
   onGrindPrefsChange,
+  digestControlsEnabled = false,
 }) {
   const items = slides.length ? slides : VAULT_SLIDES;
   const [game, setGame] = useState("all");
@@ -133,6 +134,7 @@ export default function VaultLibraryPage({
         tournaments={tournaments}
         prefs={grindPrefs}
         onPrefsChange={onGrindPrefsChange}
+        digestControlsEnabled={digestControlsEnabled}
       />
       {floating.length > 0 && (
         <>

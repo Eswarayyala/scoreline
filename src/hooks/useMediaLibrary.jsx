@@ -72,11 +72,14 @@ export function useCollectionAssets(collectionId) {
   const row = (collections || []).find((item) => item.id === collectionId);
   const seeded = row?.generated ? row : null;
   const hidden = new Set(row?.hiddenAssetIds || []);
+  const purged = new Set(row?.purgedAssetIds || []);
   const seedAssets = seeded
-    ? generatedAssetsFor(seeded.game, seeded.kind).filter((asset) => !hidden.has(asset.id))
+    ? generatedAssetsFor(seeded.game, seeded.kind).filter((asset) => !hidden.has(asset.id) && !purged.has(asset.id))
     : [];
   const hiddenSeedAssets = seeded
-    ? generatedAssetsFor(seeded.game, seeded.kind).filter((asset) => hidden.has(asset.id))
+    ? generatedAssetsFor(seeded.game, seeded.kind)
+      .filter((asset) => hidden.has(asset.id) && !purged.has(asset.id))
+      .map((asset) => ({ ...asset, seeded: true }))
     : [];
   const [remote, setRemote] = useState([]);
   useEffect(() => {
@@ -95,11 +98,14 @@ export function useCollectionAssets(collectionId) {
     );
     return unsub;
   }, [collectionId]);
+  const liveRemote = remote.filter((item) => !item.trashed && !hidden.has(item.id));
+  const trashedRemote = remote.filter((item) => item.trashed === true);
   const visible = [
     ...seedAssets,
-    ...remote.filter((item) => !seedAssets.some((seed) => seed.url === item.url) && !hidden.has(item.id)),
+    ...liveRemote.filter((item) => !seedAssets.some((seed) => seed.url === item.url)),
   ];
-  return { assets: visible, hiddenAssets: hiddenSeedAssets, collection: row };
+  const binAssets = [...hiddenSeedAssets, ...trashedRemote];
+  return { assets: visible, hiddenAssets: binAssets, binAssets, collection: row };
 }
 
 export function useCollectionsFor({ game, kinds, tournamentId, scope } = {}) {
@@ -162,16 +168,19 @@ export function useLibraryAssetIndex({ game = "", kind = "", tournamentId = "" }
         }));
     });
     const uploaded = remote
-      .filter((asset) => byId.has(asset.collectionId))
+      .filter((asset) => byId.has(asset.collectionId) && !asset.trashed)
       .map((asset) => {
         const row = byId.get(asset.collectionId);
+        const hidden = new Set(row.hiddenAssetIds || []);
+        if (hidden.has(asset.id)) return null;
         return {
           ...asset,
           game: row.game,
           kind: row.kind,
           collectionTitle: row.title,
         };
-      });
+      })
+      .filter(Boolean);
     const merged = [...seeded];
     uploaded.forEach((asset) => {
       if (!merged.some((row) => row.url === asset.url && row.collectionId === asset.collectionId)) {

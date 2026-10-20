@@ -1,7 +1,10 @@
 import { ESPORTS_RESEARCH } from "./esportsResearch";
 
-/** Single filter label for all PUBG / PUBG Mobile / PMWC / BGMI variants. */
+/** @deprecated Kept for older records that still store the combined label. */
 export const PUBG_FAMILY_LABEL = "PUBG / PUBG Mobile";
+
+/** Distinct PUBG titles shown in filters and desks. */
+export const PUBG_TITLES = ["PUBG", "PUBG Mobile", "BGMI", "PUBG PC"];
 
 export const PUBG_FAMILY_ALIASES = [
   "PUBG",
@@ -12,6 +15,7 @@ export const PUBG_FAMILY_ALIASES = [
   "PUBG PC",
   "BGMI",
   "BGMI and PUBG Mobile",
+  PUBG_FAMILY_LABEL,
 ];
 
 const PRESET_GAMES = [
@@ -22,7 +26,7 @@ const PRESET_GAMES = [
   "Overwatch 2",
   "Rocket League",
   "Apex Legends",
-  PUBG_FAMILY_LABEL,
+  ...PUBG_TITLES,
   "Mobile Legends: Bang Bang",
   "Free Fire",
   "Call of Duty",
@@ -44,31 +48,53 @@ const VAULT_EXTRA_GAMES = [
   "Standoff 2",
   "Trackmania",
   "Chess",
+  "Chess (EWC Invitational)",
   "StarCraft II",
   "Fatal Fury",
   "Sim Racing",
 ];
 
+/** Aliases that should collapse to a single desk / filter label. */
+const GAME_ALIASES = {
+  "chess (ewc invitational)": "Chess",
+  "starcraft 2": "StarCraft II",
+  "starcraft ii": "StarCraft II",
+  "pubg: battlegrounds": "PUBG",
+  "pubg mobile (pmwc)": "PUBG Mobile",
+  "pubg mobile (bgmi)": "BGMI",
+  "bgmi and pubg mobile": "BGMI",
+  "pubg / pubg mobile": "PUBG Mobile",
+};
+
 export function isPubgFamily(game = "") {
   const raw = String(game || "").trim().toLowerCase();
   if (!raw) return false;
+  if (PUBG_TITLES.some((title) => title.toLowerCase() === raw)) return true;
   if (raw === PUBG_FAMILY_LABEL.toLowerCase()) return true;
   if (PUBG_FAMILY_ALIASES.some((alias) => alias.toLowerCase() === raw)) return true;
   return /\bpubg\b/.test(raw) || /\bbgmi\b/.test(raw) || /\bbattlegrounds\b/.test(raw) || /\bpmwc\b/.test(raw);
 }
 
-/** Collapse PUBG variants to one catalog / filter label. */
+/** Map aliases to their display title — PUBG titles stay separate. */
 export function canonicalFilterGame(game = "") {
   const raw = String(game || "").trim();
   if (!raw) return "";
-  if (isPubgFamily(raw)) return PUBG_FAMILY_LABEL;
+  const alias = GAME_ALIASES[raw.toLowerCase()];
+  if (alias) return alias;
+  if (PUBG_TITLES.some((title) => title.toLowerCase() === raw.toLowerCase())) {
+    return PUBG_TITLES.find((title) => title.toLowerCase() === raw.toLowerCase());
+  }
   return raw;
 }
 
 export function filterGameAliases(game = "") {
   const canonical = canonicalFilterGame(game);
-  if (canonical === PUBG_FAMILY_LABEL) return [...PUBG_FAMILY_ALIASES, PUBG_FAMILY_LABEL];
-  return canonical ? [canonical] : [];
+  if (!canonical) return [];
+  if (canonical === "PUBG") return ["PUBG", "PUBG: Battlegrounds"];
+  if (canonical === "PUBG Mobile") return ["PUBG Mobile", "PUBG Mobile (PMWC)", PUBG_FAMILY_LABEL];
+  if (canonical === "BGMI") return ["BGMI", "PUBG Mobile (BGMI)", "BGMI and PUBG Mobile"];
+  if (canonical === "PUBG PC") return ["PUBG PC"];
+  return [canonical];
 }
 
 export function gameMatchesFilter(slideGame, filterGame) {
@@ -101,7 +127,7 @@ export function buildFilterGames(extra = []) {
     ...VAULT_EXTRA_GAMES,
     ...extra,
   ]);
-  return [...core.filter((game) => game !== "Other"), "Other"];
+  return [...core.filter((game) => game !== "Other" && game !== PUBG_FAMILY_LABEL), "Other"];
 }
 
 export const FILTER_GAMES = buildFilterGames();

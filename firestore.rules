@@ -476,11 +476,13 @@ service cloud.firestore {
       return data is map
              && data.keys().hasOnly([
                   'vaultEdit', 'vaultDelete', 'blogReview', 'archiveDecide', 'blogPromote',
-                  'reportsTriage', 'supportSocials', 'libraryView', 'httpsPostersOnly'
+                  'reportsTriage', 'supportSocials', 'libraryView', 'httpsPostersOnly',
+                  'vaultEditMode', 'vaultDeleteMode', 'blogReviewMode', 'archiveDecideMode', 'blogPromoteMode'
                 ])
              && data.keys().hasAll([
                   'vaultEdit', 'vaultDelete', 'blogReview', 'archiveDecide', 'blogPromote',
-                  'reportsTriage', 'supportSocials', 'libraryView', 'httpsPostersOnly'
+                  'reportsTriage', 'supportSocials', 'libraryView', 'httpsPostersOnly',
+                  'vaultEditMode', 'vaultDeleteMode', 'blogReviewMode', 'archiveDecideMode', 'blogPromoteMode'
                 ])
              && data.vaultEdit is bool
              && data.vaultDelete is bool
@@ -490,7 +492,17 @@ service cloud.firestore {
              && data.reportsTriage is bool
              && data.supportSocials is bool
              && data.libraryView is bool
-             && data.httpsPostersOnly is bool;
+             && data.httpsPostersOnly is bool
+             && data.vaultEditMode in ['propose', 'direct']
+             && data.vaultDeleteMode in ['propose', 'direct']
+             && data.blogReviewMode in ['propose', 'direct']
+             && data.archiveDecideMode in ['propose', 'direct']
+             && data.blogPromoteMode in ['propose', 'direct'];
+    }
+
+    function supportPermDirect(uid, key) {
+      return supportPerm(uid, key)
+             && get(/databases/$(database)/documents/siteRoles/$(uid)).data.permissions[key + 'Mode'] == 'direct';
     }
 
     function supportPerm(uid, key) {
@@ -845,13 +857,44 @@ service cloud.firestore {
 
     match /circuitCms/{recordId} {
       allow get, list: if canBrowsePublicData();
-      allow create, update, delete: if isSiteOwner();
+      allow create, update: if isSiteOwner()
+                           || supportPermDirect(request.auth.uid, 'vaultEdit');
+      allow delete: if isSiteOwner()
+                    || supportPermDirect(request.auth.uid, 'vaultDelete');
+    }
+
+    match /siteSettings/{docId} {
+      allow get: if (docId == 'deskGate' && isSiteStaff())
+                 || (docId == 'features' && canBrowsePublicData());
+      allow create, update: if
+        (isSiteOwner()
+         && docId == 'deskGate'
+         && request.resource.data.keys().hasOnly(['ownerHash', 'supportHash', 'updatedAt', 'updatedBy'])
+         && request.resource.data.keys().hasAll(['ownerHash', 'supportHash', 'updatedAt'])
+         && request.resource.data.ownerHash is string
+         && request.resource.data.ownerHash.size() <= 128
+         && request.resource.data.supportHash is string
+         && request.resource.data.supportHash.size() <= 128
+         && request.resource.data.updatedAt is int
+         && (!request.resource.data.keys().hasAny(['updatedBy'])
+             || (request.resource.data.updatedBy is string
+                 && request.resource.data.updatedBy == request.auth.uid)))
+        || (isSiteStaff()
+            && docId == 'features'
+            && request.resource.data.keys().hasOnly(['digestControlsEnabled', 'updatedAt', 'updatedBy'])
+            && request.resource.data.keys().hasAll(['digestControlsEnabled', 'updatedAt'])
+            && request.resource.data.digestControlsEnabled is bool
+            && request.resource.data.updatedAt is int
+            && (!request.resource.data.keys().hasAny(['updatedBy'])
+                || (request.resource.data.updatedBy is string
+                    && request.resource.data.updatedBy == request.auth.uid)));
+      allow delete: if false;
     }
 
     function validMediaCollection(data) {
       return data.keys().hasOnly([
                'scope', 'kind', 'game', 'tournamentId', 'title', 'defaultUrl',
-               'coverUrl', 'createdAt', 'updatedAt', 'createdBy', 'hiddenAssetIds', 'generated'
+               'coverUrl', 'createdAt', 'updatedAt', 'createdBy', 'hiddenAssetIds', 'purgedAssetIds', 'generated'
              ])
              && data.scope in ['site', 'tournament']
              && data.kind in ['background', 'avatar', 'event', 'flyer', 'post', 'poster']
@@ -870,6 +913,8 @@ service cloud.firestore {
              && (!data.keys().hasAny(['generated']) || data.generated is bool)
              && (!data.keys().hasAny(['hiddenAssetIds'])
                  || (data.hiddenAssetIds is list && data.hiddenAssetIds.size() <= 64))
+             && (!data.keys().hasAny(['purgedAssetIds'])
+                 || (data.purgedAssetIds is list && data.purgedAssetIds.size() <= 64))
              && (data.scope == 'site' || data.tournamentId.size() > 0);
     }
 
@@ -882,7 +927,7 @@ service cloud.firestore {
     }
 
     function validMediaAsset(data) {
-      return data.keys().hasOnly(['url', 'path', 'name', 'contentType', 'bytes', 'createdAt', 'createdBy', 'isDefault'])
+      return data.keys().hasOnly(['url', 'path', 'name', 'contentType', 'bytes', 'createdAt', 'createdBy', 'isDefault', 'trashed', 'trashedAt'])
              && isSafeImageUrl(data.url, 500000)
              && data.path is string && data.path.size() > 0 && data.path.size() <= 800
              && data.name is string && data.name.size() <= 200
@@ -891,7 +936,9 @@ service cloud.firestore {
              && data.contentType is string
              && data.contentType.matches('image/.*')
              && (!data.keys().hasAny(['bytes']) || ((data.bytes is int || data.bytes is float) && data.bytes >= 0 && data.bytes <= 5000000))
-             && (!data.keys().hasAny(['isDefault']) || data.isDefault is bool);
+             && (!data.keys().hasAny(['isDefault']) || data.isDefault is bool)
+             && (!data.keys().hasAny(['trashed']) || data.trashed is bool)
+             && (!data.keys().hasAny(['trashedAt']) || (data.trashedAt is int && data.trashedAt >= 0));
     }
 
     match /mediaCollections/{collectionId} {

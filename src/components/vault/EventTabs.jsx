@@ -92,6 +92,21 @@ export function EventBody({ edition, game, compact = false }) {
           </dl>
         )}
         {edition.formatNotes && !compact && <p className="mt-3 text-sm text-slate-400">{edition.formatNotes}</p>}
+        {!!(edition.youtubeUrls || []).length && !compact && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {(edition.youtubeUrls || []).map((url, index) => (
+              <a
+                key={`${url}-${index}`}
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-full border border-neon/40 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-neon no-underline hover:bg-neon/10"
+              >
+                YouTube {index + 1}
+              </a>
+            ))}
+          </div>
+        )}
         {!!photos.length && !compact && (
           <div className="mt-4 grid grid-cols-3 gap-2">
             {photos.map((src) => (

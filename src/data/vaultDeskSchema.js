@@ -151,6 +151,7 @@ export function emptyEdition(game = "", structureId) {
     poster: "",
     posterSource: "",
     images: [],
+    youtubeUrls: [],
   };
 }
 
@@ -185,6 +186,9 @@ export function normalizeEdition(edition = {}, game = "") {
     poster: edition.poster || "",
     posterSource: edition.posterSource || "",
     images: Array.isArray(edition.images) ? edition.images.filter(Boolean).slice(0, 6) : [],
+    youtubeUrls: Array.isArray(edition.youtubeUrls)
+      ? edition.youtubeUrls.map((url) => String(url || "").trim()).filter(Boolean).slice(0, 12)
+      : (edition.youtubeUrl ? [String(edition.youtubeUrl).trim()].filter(Boolean) : []),
   };
 }
 
@@ -201,5 +205,6 @@ export function serializeEdition(edition, game = "") {
     payouts: (next.payouts || []).filter((row) => row.rank || row.team || row.player || row.prize),
     stages: (next.stages || []).filter((row) => row.name || row.kickedOff || row.teams),
     finalsTable: (next.finalsTable || []).filter((row) => Object.values(row).some((value) => String(value || "").trim())),
+    youtubeUrls: (next.youtubeUrls || []).map((url) => String(url || "").trim()).filter(Boolean).slice(0, 12),
   };
 }

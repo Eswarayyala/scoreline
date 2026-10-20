@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   DEFAULT_SUPPORT_PERMISSIONS,
+  SUPPORT_MODE_CAPABILITIES,
   SUPPORT_PERMISSION_KEYS,
   SUPPORT_PERMISSION_LABELS,
+  modeKeyForPermission,
   normalizeSupportPermissions,
 } from "../../lib/staffAccess";
 
@@ -64,11 +66,24 @@ export default function SupportAccessDesk({ staff = [], onSetSupport, onSavePerm
   };
 
   const toggleKey = (uid, key) => {
+    setDrafts((current) => {
+      const base = normalizeSupportPermissions(current[uid]);
+      const enabled = !base[key];
+      const next = { ...base, [key]: enabled };
+      if (SUPPORT_MODE_CAPABILITIES.includes(key) && !enabled) {
+        next[modeKeyForPermission(key)] = "propose";
+      }
+      return { ...current, [uid]: next };
+    });
+  };
+
+  const setMode = (uid, key, mode) => {
     setDrafts((current) => ({
       ...current,
       [uid]: {
         ...normalizeSupportPermissions(current[uid]),
-        [key]: !normalizeSupportPermissions(current[uid])[key],
+        [key]: true,
+        [modeKeyForPermission(key)]: mode === "direct" ? "direct" : "propose",
       },
     }));
   };
@@ -76,9 +91,9 @@ export default function SupportAccessDesk({ staff = [], onSetSupport, onSavePerm
   return (
     <section style={{ maxWidth: 760 }}>
       <p style={{ color: "var(--text-muted)", fontSize: 13 }}>
-        Grant support by Firebase Auth UID, then turn capabilities on or off per person. Owner-only
-        powers (bans, popups, media manage, grant access, activity log) are never toggleable here.
-        Desk edits still wait in Support changes until you accept them.
+        Grant support by Firebase Auth UID, then turn capabilities on or off per person. For edit
+        actions, choose Propose (owner approval queue) or Direct (live write). Owner-only powers
+        (bans, popups, media manage, grant access, activity log) stay here never toggleable.
       </p>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
         <input
@@ -126,13 +141,41 @@ export default function SupportAccessDesk({ staff = [], onSetSupport, onSavePerm
                 </div>
               </div>
               {open && (
-                <div style={{ marginTop: 14, display: "grid", gap: 8 }}>
-                  {SUPPORT_PERMISSION_KEYS.map((key) => (
-                    <label key={key} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13 }}>
-                      <input type="checkbox" checked={draft[key] === true} onChange={() => toggleKey(item.id, key)} style={{ marginTop: 2 }} />
-                      <span>{SUPPORT_PERMISSION_LABELS[key] || key}</span>
-                    </label>
-                  ))}
+                <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
+                  {SUPPORT_PERMISSION_KEYS.map((key) => {
+                    const hasMode = SUPPORT_MODE_CAPABILITIES.includes(key);
+                    const mode = draft[modeKeyForPermission(key)] || "propose";
+                    return (
+                      <div key={key} style={{ display: "grid", gap: 6, paddingBottom: 8, borderBottom: "1px solid var(--border)" }}>
+                        <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13 }}>
+                          <input type="checkbox" checked={draft[key] === true} onChange={() => toggleKey(item.id, key)} style={{ marginTop: 2 }} />
+                          <span>{SUPPORT_PERMISSION_LABELS[key] || key}</span>
+                        </label>
+                        {hasMode && draft[key] && (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, paddingLeft: 26, fontSize: 12 }}>
+                            <label style={{ display: "inline-flex", gap: 6, alignItems: "center", color: "var(--text-muted)" }}>
+                              <input
+                                type="radio"
+                                name={`${item.id}-${key}-mode`}
+                                checked={mode === "propose"}
+                                onChange={() => setMode(item.id, key, "propose")}
+                              />
+                              Propose (owner queue)
+                            </label>
+                            <label style={{ display: "inline-flex", gap: 6, alignItems: "center", color: "var(--text-muted)" }}>
+                              <input
+                                type="radio"
+                                name={`${item.id}-${key}-mode`}
+                                checked={mode === "direct"}
+                                onChange={() => setMode(item.id, key, "direct")}
+                              />
+                              Direct (live)
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                   <button
                     type="button"
                     disabled={busyId === item.id}

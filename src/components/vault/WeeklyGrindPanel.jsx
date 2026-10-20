@@ -13,8 +13,11 @@ export default function WeeklyGrindPanel({
   tournaments = [],
   prefs,
   onPrefsChange,
+  digestControlsEnabled = false,
 }) {
-  if (prefs?.showWeeklyPanel === false) {
+  const controlsOn = digestControlsEnabled === true;
+
+  if (controlsOn && prefs?.showWeeklyPanel === false) {
     return (
       <button
         type="button"
@@ -43,23 +46,25 @@ export default function WeeklyGrindPanel({
         <p className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-stone-500">
           <CalendarDays size={11} /> Weekly grind
         </p>
-        <div className="flex items-center gap-3">
-          <label className="inline-flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-stone-600">
-            <input
-              type="checkbox"
-              checked={prefs?.digestOptIn === true}
-              onChange={(event) => onPrefsChange?.({ digestOptIn: event.target.checked })}
-            />
-            Digest opt-in
-          </label>
-          <button
-            type="button"
-            onClick={() => onPrefsChange?.({ showWeeklyPanel: false })}
-            className="font-mono text-[9px] uppercase tracking-widest text-stone-600 hover:text-stone-400"
-          >
-            Hide
-          </button>
-        </div>
+        {controlsOn && (
+          <div className="flex items-center gap-3">
+            <label className="inline-flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-stone-600">
+              <input
+                type="checkbox"
+                checked={prefs?.digestOptIn === true}
+                onChange={(event) => onPrefsChange?.({ digestOptIn: event.target.checked })}
+              />
+              Digest opt-in
+            </label>
+            <button
+              type="button"
+              onClick={() => onPrefsChange?.({ showWeeklyPanel: false })}
+              className="font-mono text-[9px] uppercase tracking-widest text-stone-600 hover:text-stone-400"
+            >
+              Hide
+            </button>
+          </div>
+        )}
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         <DigestColumn title="Vault windows" empty="No vault highlights yet.">
