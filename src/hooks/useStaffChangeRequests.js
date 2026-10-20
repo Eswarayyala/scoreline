@@ -50,6 +50,7 @@ export function useStaffChangeRequests({ role, user, permissions = null } = {}) 
       payload: sanitizeSupportChangePayload(
         nextAction,
         payload && typeof payload === "object" ? payload : {},
+        permissions,
       ),
       actorUid: user.uid,
       actorName: String(user.displayName || "Support").slice(0, 40),

@@ -3916,6 +3916,10 @@ export default function App() {
   };
 
   const updateReportStatus = async (reportId, status) => {
+    if (siteRole === "support" && !supportHas(supportPermissions, "reportsTriage")) {
+      showToast("Your support account cannot triage reports.");
+      return;
+    }
     const writeStatus = async (next) => {
       const batch = writeBatch(db);
       batch.update(doc(REPORTS_COLLECTION, reportId), { status: next, reviewedAt: Date.now() });

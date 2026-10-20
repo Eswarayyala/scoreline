@@ -476,12 +476,12 @@ service cloud.firestore {
       return data is map
              && data.keys().hasOnly([
                   'vaultEdit', 'vaultDelete', 'blogReview', 'archiveDecide', 'blogPromote',
-                  'reportsTriage', 'libraryView',
+                  'reportsTriage', 'libraryView', 'httpsPostersOnly',
                   'vaultEditMode', 'vaultDeleteMode', 'blogReviewMode', 'archiveDecideMode', 'blogPromoteMode'
                 ])
              && data.keys().hasAll([
                   'vaultEdit', 'vaultDelete', 'blogReview', 'archiveDecide', 'blogPromote',
-                  'reportsTriage', 'libraryView',
+                  'reportsTriage', 'libraryView', 'httpsPostersOnly',
                   'vaultEditMode', 'vaultDeleteMode', 'blogReviewMode', 'archiveDecideMode', 'blogPromoteMode'
                 ])
              && data.vaultEdit is bool
@@ -491,6 +491,7 @@ service cloud.firestore {
              && data.blogPromote is bool
              && data.reportsTriage is bool
              && data.libraryView is bool
+             && data.httpsPostersOnly is bool
              && data.vaultEditMode in ['propose', 'direct']
              && data.vaultDeleteMode in ['propose', 'direct']
              && data.blogReviewMode in ['propose', 'direct']
@@ -646,7 +647,12 @@ service cloud.firestore {
                     && reportId == request.auth.uid + '_' + request.resource.data.targetType
                          + '_' + request.resource.data.targetId;
       allow get, list: if isSiteStaff();
-      allow update: if isSiteStaff()
+      allow update: if (isSiteOwner()
+                        || (isSiteSupport()
+                            && (
+                              !get(/databases/$(database)/documents/siteRoles/$(request.auth.uid)).data.keys().hasAny(['permissions'])
+                              || supportPerm(request.auth.uid, 'reportsTriage')
+                            )))
                     && request.resource.data.diff(resource.data).affectedKeys()
                          .hasOnly(['status', 'reviewedAt'])
                     && request.resource.data.status in ['reviewing', 'closed', 'archived']

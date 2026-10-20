@@ -32,6 +32,12 @@ function matchesQuery(item, query) {
   return hay.includes(query);
 }
 
+/** Research/tournament opt in; EWC/blog/custom stay live unless explicitly off. */
+function isWindowLive(item) {
+  if (item.feature === "research" || item.feature === "tournament") return item.floating === true;
+  return item.floating !== false;
+}
+
 export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blogSlides = [], role, onSave, filterGames = FILTER_GAMES }) {
   const canWrite = canWriteCircuitContent(role);
   const policy = floatingPolicyFromRecords(records);
@@ -39,6 +45,7 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
   const [typeFilter, setTypeFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("newest");
+  const [togglingKey, setTogglingKey] = useState("");
 
   const windows = useMemo(() => {
     const listed = [];
@@ -108,10 +115,10 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
     });
   };
 
-  const saveWindow = (draft) => {
+  const saveWindow = async (draft, { closeEditor = true } = {}) => {
     const feature = draft.feature;
     if (feature === "ewc") {
-      onSave({
+      await onSave({
         id: draft.slug || draft.id,
         slug: draft.slug,
         surface: "ewc-window",
@@ -122,12 +129,12 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
         game: draft.game || "Esports World Cup",
         kicker: draft.kicker || "EWC",
         season: draft.season,
-        floating: draft.floating !== false,
+        floating: draft.floating === true,
         floatingPriority: Number(draft.floatingPriority) || 0,
         eventScope: "ewc",
       });
     } else if (feature === "blog") {
-      onSave({
+      await onSave({
         id: `blog-window-${draft.id || draft.blogId}`,
         surface: "blog-window",
         blogId: draft.id || draft.blogId,
@@ -136,21 +143,32 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
         summary: draft.summary,
         poster: draft.poster,
         game: draft.game,
-        floating: draft.floating !== false,
+        floating: draft.floating === true,
         floatingPriority: Number(draft.floatingPriority) || 0,
       });
     } else {
       const original = records.find((item) => item.id === draft.id) || draft;
-      onSave({
+      await onSave({
         ...original,
         title: draft.title,
         summary: draft.summary,
         poster: draft.poster,
-        floating: draft.floating !== false,
+        floating: draft.floating === true,
         floatingPriority: Number(draft.floatingPriority) || 0,
       });
     }
-    setEditing(null);
+    if (closeEditor) setEditing(null);
+  };
+
+  const toggleLive = async (item) => {
+    if (!canWrite || item.missing) return;
+    const key = `${item.feature}-${item.slug || item.id}`;
+    setTogglingKey(key);
+    try {
+      await saveWindow({ ...item, floating: !isWindowLive(item) }, { closeEditor: false });
+    } finally {
+      setTogglingKey("");
+    }
   };
 
   if (editing) {
@@ -177,8 +195,12 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
           <label className="grid gap-1 text-xs text-slate-400">Poster URL<input className={inputClass} value={editing.poster || ""} onChange={(e) => setEditing({ ...editing, poster: e.target.value })} /></label>
           <label className="grid gap-1 text-xs text-slate-400">Priority<input type="number" min="0" max="99" className={inputClass} value={editing.floatingPriority ?? 5} onChange={(e) => setEditing({ ...editing, floatingPriority: Number(e.target.value) })} /></label>
           <label className="flex items-center gap-2 text-sm text-slate-200">
-            <input type="checkbox" checked={editing.floating !== false} onChange={(e) => setEditing({ ...editing, floating: e.target.checked })} />
-            Show as a floating window
+            <input
+              type="checkbox"
+              checked={isWindowLive(editing)}
+              onChange={(e) => setEditing({ ...editing, floating: e.target.checked })}
+            />
+            Live on home / vault carousel
           </label>
           <div className="flex gap-2">
             <button type="submit" disabled={!canWrite} className="rounded-full bg-neon px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-40">Save window</button>
@@ -195,7 +217,8 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
         <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-neon">Home and Vault carousel</p>
         <h2 className="font-display text-3xl text-white">Floating windows</h2>
         <p className="mt-1 text-sm text-slate-400">
-          Filter events or games, search a title, then edit one at a time. {role === "support" ? "Support edits wait for owner approval." : "Owner saves go live immediately."}
+          Toggle Live on any card to show or hide it on the carousel. Edit opens details for that window only.
+          {role === "support" ? " Support Live toggles and edits wait for owner approval." : " Owner toggles go live immediately."}
         </p>
       </div>
       <div className="grid gap-2 rounded-2xl border border-white/10 p-4">
@@ -249,7 +272,7 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
             <div className="min-w-0">
               <p className="truncate font-mono text-[8px] uppercase tracking-widest text-slate-500 sm:text-[9px]">
                 {item.sourceLabel}
-                {item.floating ? ` · p${item.floatingPriority || 0}` : " · off"}
+                {isWindowLive(item) ? ` · live · p${item.floatingPriority || 0}` : " · off"}
                 {policy[item.feature] ? "" : " · src off"}
                 {item.missing ? " · missing" : ""}
               </p>
@@ -266,17 +289,30 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
                 >
                   <Pencil size={11} /> Create
                 </Link>
-              ) : item.feature === "research" ? (
-                <Link
-                  to={`/admin/portal/vault/${item.id}`}
-                  className="mt-2 inline-flex items-center gap-1 text-[11px] text-neon no-underline"
-                >
-                  <Pencil size={11} /> Edit
-                </Link>
               ) : (
-                <button type="button" className="mt-2 inline-flex items-center gap-1 text-[11px] text-neon" onClick={() => setEditing(item)}>
-                  <Pencil size={11} /> Edit
-                </button>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <label className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-slate-400">
+                    <input
+                      type="checkbox"
+                      checked={isWindowLive(item)}
+                      disabled={togglingKey === `${item.feature}-${item.slug || item.id}`}
+                      onChange={() => toggleLive(item)}
+                    />
+                    {isWindowLive(item) ? "Live" : "Off"}
+                  </label>
+                  {item.feature === "research" ? (
+                    <Link
+                      to={`/admin/portal/vault/${item.id}`}
+                      className="inline-flex items-center gap-1 text-[11px] text-neon no-underline"
+                    >
+                      <Pencil size={11} /> Edit
+                    </Link>
+                  ) : (
+                    <button type="button" className="inline-flex items-center gap-1 text-[11px] text-neon" onClick={() => setEditing(item)}>
+                      <Pencil size={11} /> Edit
+                    </button>
+                  )}
+                </div>
               )
             )}
           </article>
