@@ -417,7 +417,7 @@ function ResearchForm({ initial, canWrite, role, games, onSave, onCancel }) {
       </details>
       <Field label="Overview"><textarea rows={3} className={inputClass} value={form.summary || ""} onChange={(e) => patch("summary", e.target.value)} /></Field>
       <div>
-        <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">Avatars, flyers, and posters</p>
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">Avatars and posters</p>
         <PosterPicker
           game={form.game}
           value={form.poster}

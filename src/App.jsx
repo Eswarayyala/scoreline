@@ -2550,10 +2550,10 @@ function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDele
           {coverUrl ? <img src={coverUrl} alt="" style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 10, marginBottom: 8 }} /> : null}
           <CollectionPicker
             game={game.trim()}
-            kinds={["post", "flyer", "poster", "event", "background"]}
+            kinds={["poster", "event", "background"]}
             value={coverUrl}
             onSelect={setCoverUrl}
-            heading="Post / flyer / poster packs"
+            heading="Poster / event / background packs"
           />
         </Field>
       )}
@@ -2591,10 +2591,10 @@ function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDele
                     {draft.coverUrl ? <img src={draft.coverUrl} alt="" style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 10, marginBottom: 8 }} /> : null}
                     <CollectionPicker
                       game={draft.game.trim()}
-                      kinds={["post", "flyer", "poster", "event", "background"]}
+                      kinds={["poster", "event", "background"]}
                       value={draft.coverUrl || ""}
                       onSelect={(url) => setDraft({ ...draft, coverUrl: url })}
-                      heading="Post / flyer / poster packs"
+                      heading="Poster / event / background packs"
                     />
                   </Field>
                 )}
@@ -4877,10 +4877,10 @@ function NewTournamentModal({ onClose, onCreate, slides = [], gameArt = [], game
               </Field>
               <CollectionPicker
                 game={game}
-                kinds={["poster", "flyer", "event", "post", "background"]}
+                kinds={["poster", "event", "background"]}
                 value={posterUrl}
                 onSelect={(url) => { setPosterUrl(url); setPosterLocked(true); }}
-                heading="Game posters & flyers"
+                heading="Game posters & backgrounds"
               />
             </div>
           </Field>

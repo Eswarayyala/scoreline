@@ -205,7 +205,7 @@ export default function PosterPicker({ game, value, avatar, flyers, posterIndex 
       </div>
       <CollectionPicker
         game={game}
-        kinds={["flyer", "event", "post", "background"]}
+        kinds={["event", "poster", "background"]}
         value={value}
         onSelect={(url) => applyFlyer(url, 0, "library")}
         heading="Post from game collections"

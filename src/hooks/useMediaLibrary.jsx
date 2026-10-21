@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { collection, collectionGroup, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import { FILTER_GAMES } from "../data/gameCatalog";
+import { SITE_KIND_IDS } from "../data/mediaCollections";
 import { allGeneratedCollections, generatedAssetsFor } from "../data/generatedGameArt";
 
 const MediaArtContext = createContext({ covers: {}, collections: [] });
@@ -146,10 +147,10 @@ export function useLibraryAssetIndex({ game = "", kind = "", tournamentId = "" }
   return useMemo(() => {
     const visibleCollections = (collections || []).filter((row) => {
       if (tournamentId) return row.scope === "tournament" && row.tournamentId === tournamentId;
-      if (kind === "host") return row.scope === "tournament";
       if (row.scope !== "site") return false;
+      if (!SITE_KIND_IDS.has(row.kind)) return false;
       if (game && String(row.game || "").toLowerCase() !== String(game).toLowerCase()) return false;
-      if (kind && kind !== "all" && row.kind !== kind) return false;
+      if (kind && kind !== "all" && kind !== "bin" && row.kind !== kind) return false;
       return true;
     });
     const byId = new Map(visibleCollections.map((row) => [row.id, row]));
@@ -189,4 +190,49 @@ export function useLibraryAssetIndex({ game = "", kind = "", tournamentId = "" }
     });
     return { assets: merged, collections: visibleCollections };
   }, [collections, game, kind, remote, tournamentId]);
+}
+
+/** Soft-deleted / hidden images across site packs for the library Bin tab. */
+export function useLibraryBinIndex({ game = "" } = {}) {
+  const { collections } = useMediaArt();
+  const remote = useRemoteLibraryAssets();
+
+  return useMemo(() => {
+    const site = (collections || []).filter((row) => row.scope === "site" && SITE_KIND_IDS.has(row.kind));
+    const byId = new Map(site.map((row) => [row.id, row]));
+    const items = [];
+    site.forEach((row) => {
+      if (game && String(row.game || "").toLowerCase() !== String(game).toLowerCase()) return;
+      const hidden = new Set(row.hiddenAssetIds || []);
+      if (row.generated) {
+        generatedAssetsFor(row.game, row.kind)
+          .filter((asset) => hidden.has(asset.id))
+          .forEach((asset) => {
+            items.push({
+              ...asset,
+              collectionId: row.id,
+              game: row.game,
+              kind: row.kind,
+              collectionTitle: row.title,
+              collection: row,
+              seeded: true,
+            });
+          });
+      }
+    });
+    remote.forEach((asset) => {
+      if (!asset.trashed) return;
+      const row = byId.get(asset.collectionId);
+      if (!row) return;
+      if (game && String(row.game || "").toLowerCase() !== String(game).toLowerCase()) return;
+      items.push({
+        ...asset,
+        game: row.game,
+        kind: row.kind,
+        collectionTitle: row.title,
+        collection: row,
+      });
+    });
+    return items;
+  }, [collections, game, remote]);
 }

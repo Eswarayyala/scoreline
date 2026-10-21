@@ -4,7 +4,7 @@ import { collectionKindLabel } from "../../data/mediaCollections";
 
 export default function CollectionPicker({
   game,
-  kinds = ["avatar", "poster", "background", "event", "flyer", "post"],
+  kinds = ["avatar", "poster", "background", "event"],
   tournamentId,
   scope,
   value,

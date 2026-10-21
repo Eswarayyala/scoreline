@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ImagePlus, Plus, RotateCcw, Star, Trash2 } from "lucide-react";
 import { FILTER_GAMES } from "../../data/gameCatalog";
 import { SITE_COLLECTION_KINDS, TOURNAMENT_COLLECTION_KINDS, collectionKindLabel, siteCollectionId } from "../../data/mediaCollections";
-import { useCollectionAssets, useLibraryAssetIndex, useMediaArt } from "../../hooks/useMediaLibrary";
+import { useCollectionAssets, useLibraryAssetIndex, useLibraryBinIndex, useMediaArt } from "../../hooks/useMediaLibrary";
 import { sortByRecency } from "../../lib/deskSort";
 import {
   createMediaCollection,
@@ -60,6 +60,7 @@ export default function MediaLibraryDesk({
   const [uploadKind, setUploadKind] = useState("avatar");
   const [uploadCollectionId, setUploadCollectionId] = useState("");
 
+  const showBin = !tournamentId && kind === "bin";
   const { assets: libraryAssetsRaw, collections: visible } = useLibraryAssetIndex({
     game: tournamentId ? "" : activeGame,
     kind: tournamentId ? "poster" : kind,
@@ -69,18 +70,21 @@ export default function MediaLibraryDesk({
     () => sortByRecency(libraryAssetsRaw, sort, (item) => Number(item.createdAt || 0)),
     [libraryAssetsRaw, sort],
   );
+  const libraryBinRaw = useLibraryBinIndex({ game: tournamentId ? "" : activeGame });
+  const libraryBin = useMemo(
+    () => sortByRecency(libraryBinRaw, sort, (item) => Number(item.createdAt || 0)),
+    [libraryBinRaw, sort],
+  );
 
   const filteredCollections = useMemo(() => {
     if (tournamentId) {
       return collections.filter((row) => row.scope === "tournament" && row.tournamentId === tournamentId);
     }
-    if (kind === "host") {
-      return collections.filter((row) => row.scope === "tournament");
-    }
+    if (showBin) return [];
     return visible;
-  }, [collections, kind, tournamentId, visible]);
+  }, [collections, showBin, tournamentId, visible]);
 
-  const selected = filteredCollections.find((item) => item.id === openId) || (!showAll ? filteredCollections[0] : null);
+  const selected = filteredCollections.find((item) => item.id === openId) || (!showAll && !showBin ? filteredCollections[0] : null);
   const { assets, binAssets } = useCollectionAssets(selected?.id);
   const sortedAssets = useMemo(
     () => sortByRecency(assets, sort, (item) => Number(item.createdAt || 0)),
@@ -91,7 +95,7 @@ export default function MediaLibraryDesk({
     if (activeGame) setUploadGame(activeGame);
   }, [activeGame]);
   useEffect(() => {
-    if (kind !== ALL_KIND && kind !== "host") setUploadKind(kind);
+    if (kind !== ALL_KIND && kind !== "bin") setUploadKind(kind);
   }, [kind]);
   useEffect(() => {
     if (selected?.id) setUploadCollectionId(selected.id);
@@ -114,16 +118,16 @@ export default function MediaLibraryDesk({
 
   const canUpload = canManage && (tournamentId
     ? !!uploadTarget
-    : !!(uploadGame && uploadKind && uploadKind !== "host"));
+    : !!(uploadGame && uploadKind && uploadKind !== "bin"));
 
   const resolveUploadCollection = async () => {
     if (tournamentId) {
-      if (!uploadTarget) throw new Error("Create or select a host poster collection first.");
+      if (!uploadTarget) throw new Error("Create or select a poster collection first.");
       return uploadTarget;
     }
     if (!uploadGame) throw new Error("Pick a game section for this upload.");
-    if (!uploadKind || uploadKind === ALL_KIND || uploadKind === "host") {
-      throw new Error("Pick a library section (Avatar, Poster, Flyer, …) for this upload.");
+    if (!uploadKind || uploadKind === ALL_KIND || uploadKind === "bin") {
+      throw new Error("Pick a library section (Avatar, Poster, …) for this upload.");
     }
     if (uploadCollectionId) {
       const picked = collections.find((row) => row.id === uploadCollectionId);
@@ -190,7 +194,11 @@ export default function MediaLibraryDesk({
 
   const kindButtons = tournamentId
     ? TOURNAMENT_COLLECTION_KINDS
-    : [{ id: ALL_KIND, label: "All" }, ...SITE_COLLECTION_KINDS, { id: "host", label: "Host posters" }];
+    : [
+      { id: ALL_KIND, label: "All" },
+      ...SITE_COLLECTION_KINDS,
+      ...(canManage ? [{ id: "bin", label: libraryBin.length ? `Bin (${libraryBin.length})` : "Bin" }] : []),
+    ];
 
   return (
     <section className={`space-y-4 ${compact ? "" : "rounded-2xl border border-neon/20 bg-slate-950/80 p-5"}`}>
@@ -199,12 +207,12 @@ export default function MediaLibraryDesk({
           <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-neon">Image collections</p>
           <h2 className="font-display text-3xl text-white">Library</h2>
           <p className="mt-1 text-sm text-slate-400">
-            Browse every pack with no filter, or open Avatar / Poster / Flyer by game to upload into that category.
+            Browse every pack, or open Avatar / Poster / Background / Event by game to upload. Trash moves images into Bin.
           </p>
         </div>
       )}
       {tournamentId && (
-        <p className="text-sm text-slate-400">Host poster collections for this tournament. Only the host or co-host can apply a poster to the listing.</p>
+        <p className="text-sm text-slate-400">Poster collections for this tournament. Only the host or co-host can apply a poster to the listing.</p>
       )}
       <div className="flex flex-wrap items-center gap-2">
         {!tournamentId && (
@@ -228,7 +236,7 @@ export default function MediaLibraryDesk({
         ))}
         <DeskSortSelect value={sort} onChange={setSort} />
       </div>
-      {canManage && (
+      {canManage && !showBin && (
         <div className="space-y-3 rounded-xl border border-dashed border-neon/30 bg-slate-950/50 p-3">
           <p className="font-mono text-[10px] uppercase tracking-widest text-neon">Upload images</p>
           <p className="text-xs text-slate-400">
@@ -270,7 +278,7 @@ export default function MediaLibraryDesk({
               onChange={(event) => setUploadCollectionId(event.target.value)}
               aria-label="Upload collection"
             >
-              <option value="">{tournamentId ? "Default host collection" : "Default pack for section"}</option>
+              <option value="">{tournamentId ? "Default poster collection" : "Default pack for section"}</option>
               {uploadTargetCollections.map((item) => (
                 <option key={item.id} value={item.id}>{item.title}</option>
               ))}
@@ -295,7 +303,7 @@ export default function MediaLibraryDesk({
           )}
         </div>
       )}
-      {canManage && (tournamentId || (kind !== "host" && kind !== ALL_KIND && activeGame) || uploadGame) && (
+      {canManage && !showBin && (tournamentId || (kind !== ALL_KIND && activeGame) || uploadGame) && (
         <div className="flex flex-wrap gap-2">
           <input className={`${inputClass} max-w-sm`} placeholder={tournamentId ? "New poster collection name" : "New collection title"} value={newTitle} onChange={(event) => setNewTitle(event.target.value)} />
           <button
@@ -308,7 +316,7 @@ export default function MediaLibraryDesk({
               try {
                 const created = await createMediaCollection({
                   scope: tournamentId ? "tournament" : "site",
-                  kind: tournamentId ? "poster" : (kind !== ALL_KIND && kind !== "host" ? kind : uploadKind),
+                  kind: tournamentId ? "poster" : (kind !== ALL_KIND && kind !== "bin" ? kind : uploadKind),
                   game: tournamentId ? game : (activeGame || uploadGame),
                   tournamentId,
                   title,
@@ -326,7 +334,45 @@ export default function MediaLibraryDesk({
         </div>
       )}
 
-      {showAll ? (
+      {showBin ? (
+        <div className="space-y-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-rose-300/90">
+            Bin · restore or delete forever{activeGame ? ` · ${activeGame}` : ""} · {libraryBin.length}
+          </p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {libraryBin.map((asset) => (
+              <div key={`${asset.collectionId}-${asset.id}`} className="relative overflow-hidden rounded-xl border border-white/10 opacity-90">
+                <img src={asset.url} alt="" className="h-28 w-full object-cover" />
+                <p className="truncate px-2 py-1 text-[10px] text-slate-400">
+                  {collectionKindLabel(asset.kind)} · {asset.game || asset.collectionTitle || asset.name || asset.id}
+                </p>
+                {canManage && (
+                  <div className="absolute inset-x-1 bottom-1 flex gap-1">
+                    <button
+                      type="button"
+                      className="inline-flex flex-1 items-center justify-center gap-1 rounded-full bg-slate-950/90 px-2 py-1 text-[10px] text-neon"
+                      onClick={() => restoreMediaAsset(asset.collection || { id: asset.collectionId }, asset.id, asset).catch((issue) => setError(issue.message))}
+                    >
+                      <RotateCcw size={10} /> Restore
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex flex-1 items-center justify-center gap-1 rounded-full bg-slate-950/90 px-2 py-1 text-[10px] text-rose-300"
+                      onClick={() => {
+                        if (!window.confirm("Permanently delete this image?")) return;
+                        purgeMediaAsset(asset.collectionId, asset, asset.collection || { id: asset.collectionId }).catch((issue) => setError(issue.message));
+                      }}
+                    >
+                      <Trash2 size={10} /> Forever
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          {!libraryBin.length && <p className="text-sm text-slate-500">Bin is empty. Trash an image from any pack to move it here.</p>}
+        </div>
+      ) : showAll ? (
         <div className="space-y-3">
           <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
             All images{activeGame ? ` · ${activeGame}` : ""} · {libraryAssets.length}
@@ -352,8 +398,8 @@ export default function MediaLibraryDesk({
                 {canManage && asset.collectionId && (
                   <button
                     type="button"
-                    aria-label="Delete image"
-                    title="Delete image"
+                    aria-label="Move to bin"
+                    title="Move to bin"
                     className="absolute right-1 top-1 rounded-full bg-slate-950/85 p-1.5 text-rose-300"
                     onClick={async (event) => {
                       event.stopPropagation();
@@ -367,7 +413,7 @@ export default function MediaLibraryDesk({
                         };
                         await deleteMediaAsset(asset.collectionId, asset, pack);
                       } catch (issue) {
-                        setError(issue.message || "Could not remove this image.");
+                        setError(issue.message || "Could not move this image to the bin.");
                       }
                     }}
                   >
@@ -493,9 +539,7 @@ export default function MediaLibraryDesk({
             </div>
           )}
           {!filteredCollections.length && (
-            <p className="text-sm text-slate-500">
-              {kind === "host" ? "No host poster collections yet." : "No collections for this filter yet."}
-            </p>
+            <p className="text-sm text-slate-500">No collections for this filter yet.</p>
           )}
         </>
       )}

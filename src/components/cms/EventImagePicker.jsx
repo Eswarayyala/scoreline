@@ -125,7 +125,7 @@ export default function EventImagePicker({
           ))}
         </div>
       )}
-      <CollectionPicker game={game} kinds={["event", "flyer", "post", "background"]} value={poster} onSelect={(url) => applyPoster(url, "library")} heading="Post a collection image onto this event" />
+      <CollectionPicker game={game} kinds={["event", "poster", "background"]} value={poster} onSelect={(url) => applyPoster(url, "library")} heading="Post a collection image onto this event" />
       {error && <p className="text-sm text-rose-400">{error}</p>}
     </div>
   );

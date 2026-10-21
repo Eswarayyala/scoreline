@@ -3,6 +3,10 @@ export const SITE_COLLECTION_KINDS = [
   { id: "avatar", label: "Avatar" },
   { id: "poster", label: "Poster" },
   { id: "event", label: "Event" },
+];
+
+/** Kept for labels on older packs; not offered in library filters or uploads. */
+export const LEGACY_COLLECTION_KINDS = [
   { id: "flyer", label: "Flyer" },
   { id: "post", label: "Post" },
 ];
@@ -11,7 +15,13 @@ export const TOURNAMENT_COLLECTION_KINDS = [
   { id: "poster", label: "Poster" },
 ];
 
-export const ALL_COLLECTION_KINDS = [...SITE_COLLECTION_KINDS, ...TOURNAMENT_COLLECTION_KINDS];
+export const ALL_COLLECTION_KINDS = [
+  ...SITE_COLLECTION_KINDS,
+  ...TOURNAMENT_COLLECTION_KINDS,
+  ...LEGACY_COLLECTION_KINDS,
+];
+
+export const SITE_KIND_IDS = new Set(SITE_COLLECTION_KINDS.map((item) => item.id));
 
 export function slugMedia(value) {
   return String(value || "item")

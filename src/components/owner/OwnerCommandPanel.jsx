@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ImagePlus, Layers3, Newspaper, Trophy, Users, X } from "lucide-react";
 
 const OPTIONS = [
-  { id: "library", label: "Image collections", copy: "Add or delete game backgrounds, event flyers, posts, and tournament posters.", icon: ImagePlus },
+  { id: "library", label: "Image collections", copy: "Add or delete game backgrounds, avatars, posters, and event images.", icon: ImagePlus },
   { id: "vault", label: "Manage Vault Slides", copy: "Stage posters, paste results, and review Vault requests.", icon: Layers3 },
   { id: "tournaments", label: "Edit Scrims", copy: "Open brackets, flyers, registrations, and live ops.", icon: Trophy },
   { id: "players", label: "Moderate Players", copy: "Safety reports, bans, and discovery profiles.", icon: Users },
