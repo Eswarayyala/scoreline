@@ -73,7 +73,7 @@ function SlideCard({ slide, bookmarked, onToggleBookmark }) {
           </div>
         )}
         <p className="font-mono text-[10px] uppercase tracking-widest text-neon">
-          {meta.kicker} · Preview
+          {meta.kicker}
         </p>
         <h3 className="mt-1 font-['Bebas_Neue',sans-serif] text-2xl leading-tight text-white md:text-3xl">
           {meta.title}

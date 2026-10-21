@@ -170,8 +170,17 @@ export default function ChampionshipGameTabs({
                 onClick={() => openDetails(index)}
                 className="flex flex-1 flex-col p-4 text-left"
               >
+                {(edition.poster || edition.posterUrl || edition.images?.[0]) && (
+                  <div className="mb-3 aspect-[16/7] overflow-hidden border border-white/5 bg-black/40">
+                    <img
+                      src={edition.poster || edition.posterUrl || edition.images[0]}
+                      alt=""
+                      className="h-full w-full object-cover opacity-85"
+                    />
+                  </div>
+                )}
                 <p className="font-mono text-[10px] uppercase tracking-widest text-neon">
-                  {[edition.year, edition.eventScope || "ewc", "this championship"].filter(Boolean).join(" · ")} · Preview
+                  {[edition.year, edition.eventScope || "ewc", "this championship"].filter(Boolean).join(" · ")}
                 </p>
                 <h3 className="mt-1 font-display text-2xl leading-tight text-white md:text-3xl">{edition.game}</h3>
                 <p className="mt-2 line-clamp-2 text-sm text-slate-400">
