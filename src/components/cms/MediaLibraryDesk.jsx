@@ -11,6 +11,7 @@ import {
   ensureGameCollections,
   purgeMediaAsset,
   restoreMediaAsset,
+  setAvatarPickerBlocked,
   setCollectionCover,
   uploadMediaFiles,
 } from "../../services/mediaLibrary";
@@ -430,13 +431,29 @@ export default function MediaLibraryDesk({
                     </button>
                     <p className="truncate px-2 py-1 text-[10px] text-slate-400">{asset.name || asset.id}</p>
                     {canManage && (
-                      <div className="absolute right-1 top-1 flex gap-1">
-                        <button type="button" aria-label="Set cover" title="Set as cover" className="rounded-full bg-slate-950/80 p-1.5 text-amber-300" onClick={() => makeCover(asset.url)}>
-                          <Star size={12} />
-                        </button>
-                        <button type="button" aria-label="Move to bin" title="Move to bin" className="rounded-full bg-slate-950/80 p-1.5 text-rose-300" onClick={() => removeAsset(asset)}>
-                          <Trash2 size={12} />
-                        </button>
+                      <div className="absolute right-1 top-1 flex flex-col gap-1">
+                        {selected.kind === "avatar" && (
+                          <button
+                            type="button"
+                            aria-label={(selected.pickerBlockedIds || []).includes(asset.id) ? "Allow in profile picker" : "Hide from profile picker"}
+                            title={(selected.pickerBlockedIds || []).includes(asset.id) ? "Allow in profile picker" : "Hide from profile picker"}
+                            className={`rounded-full bg-slate-950/80 px-1.5 py-1 font-mono text-[8px] uppercase tracking-wider ${(selected.pickerBlockedIds || []).includes(asset.id) ? "text-slate-500" : "text-neon"}`}
+                            onClick={() => {
+                              const blocked = !(selected.pickerBlockedIds || []).includes(asset.id);
+                              setAvatarPickerBlocked(selected, asset.id, blocked).catch((issue) => setError(issue.message));
+                            }}
+                          >
+                            {(selected.pickerBlockedIds || []).includes(asset.id) ? "Off list" : "On list"}
+                          </button>
+                        )}
+                        <div className="flex gap-1 self-end">
+                          <button type="button" aria-label="Set cover" title="Set as cover" className="rounded-full bg-slate-950/80 p-1.5 text-amber-300" onClick={() => makeCover(asset.url)}>
+                            <Star size={12} />
+                          </button>
+                          <button type="button" aria-label="Move to bin" title="Move to bin" className="rounded-full bg-slate-950/80 p-1.5 text-rose-300" onClick={() => removeAsset(asset)}>
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>

@@ -60,6 +60,7 @@ import {
 } from "./data/scrimAccess";
 import { useGameBanner, useMediaArt } from "./hooks/useMediaLibrary";
 import CollectionPicker from "./components/cms/CollectionPicker";
+import AvatarRosterPicker from "./components/cms/AvatarRosterPicker";
 import MediaLibraryDesk from "./components/cms/MediaLibraryDesk";
 import LfgNoticeBoard from "./components/ecosystem/LfgNoticeBoard";
 import Countdown from "./components/shared/Countdown";
@@ -1074,8 +1075,7 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
               ))}
             </div>
             <div style={{ marginBottom: 12 }}>
-              <CollectionPicker
-                kinds={["avatar"]}
+              <AvatarRosterPicker
                 value={avatar}
                 onSelect={setAvatar}
                 heading="Library avatars · all games"

@@ -3,6 +3,9 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, Building2, Trophy, UserRound } from "lucide-react";
 import { findCompetitor } from "../../data/competitorIndex";
 import AchievementBadges, { PlacementTrendGraph } from "../shared/AchievementBadges";
+import LoadMoreBar, { usePagedVisible } from "../shared/LoadMoreBar";
+
+const TAB_PAGE = 6;
 
 export default function CompetitorDossierPage({ slides = [], name = "" }) {
   const decoded = decodeURIComponent(String(name || "").trim());
@@ -20,10 +23,10 @@ export default function CompetitorDossierPage({ slides = [], name = "" }) {
   }, [dossier]);
 
   const [activeGame, setActiveGame] = useState("");
-  const [expanded, setExpanded] = useState(false);
+  const page = usePagedVisible(gameTabs.length, TAB_PAGE, TAB_PAGE);
+
   useEffect(() => {
     setActiveGame(gameTabs[0]?.game || "");
-    setExpanded(false);
   }, [gameTabs, decoded]);
 
   if (!dossier) {
@@ -42,18 +45,13 @@ export default function CompetitorDossierPage({ slides = [], name = "" }) {
 
   const isFranchise = dossier.kind === "franchise";
   const champs = dossier.titles || dossier.appearances.filter((row) => /champion/i.test(row.role)).length;
-  const initialVisible = 6;
-  const needsCollapse = gameTabs.length > initialVisible;
   const safeGame = gameTabs.some((tab) => tab.game === activeGame) ? activeGame : gameTabs[0]?.game || "";
   const activeRows = gameTabs.find((tab) => tab.game === safeGame)?.rows || [];
-  const visibleTabs = (() => {
-    if (!needsCollapse || expanded) return gameTabs;
-    const head = gameTabs.slice(0, initialVisible);
-    if (gameTabs.findIndex((tab) => tab.game === safeGame) >= initialVisible) {
-      return [...head.slice(0, initialVisible - 1), gameTabs.find((tab) => tab.game === safeGame)].filter(Boolean);
-    }
-    return head;
-  })();
+  const visibleTabs = gameTabs.slice(0, page.visible);
+  const activeBeyond = gameTabs.findIndex((tab) => tab.game === safeGame) >= page.visible;
+  const tabsToShow = activeBeyond
+    ? [...visibleTabs.slice(0, Math.max(0, TAB_PAGE - 1)), gameTabs.find((tab) => tab.game === safeGame)].filter(Boolean)
+    : visibleTabs;
 
   return (
     <article className="mx-auto max-w-4xl px-5 pb-20 pt-6">
@@ -111,7 +109,7 @@ export default function CompetitorDossierPage({ slides = [], name = "" }) {
       <section className="mt-8">
         <h2 className="font-display text-3xl text-white">By title</h2>
         <div className="mt-3 flex flex-wrap items-center gap-1 border-b border-white/10">
-          {visibleTabs.map((tab) => {
+          {tabsToShow.map((tab) => {
             const on = tab.game === safeGame;
             return (
               <button
@@ -126,16 +124,17 @@ export default function CompetitorDossierPage({ slides = [], name = "" }) {
               </button>
             );
           })}
-          {needsCollapse && (
-            <button
-              type="button"
-              onClick={() => setExpanded((value) => !value)}
-              className="px-2 py-2 font-mono text-[10px] uppercase tracking-widest text-neon"
-            >
-              {expanded ? "Less" : `More (+${gameTabs.length - initialVisible})`}
-            </button>
-          )}
         </div>
+        <LoadMoreBar
+          className="mt-2"
+          total={gameTabs.length}
+          shown={page.visible}
+          pageSize={TAB_PAGE}
+          initial={TAB_PAGE}
+          onMore={page.more}
+          onAll={page.all}
+          onLess={page.less}
+        />
         <ul className="mt-4 space-y-3">
           {activeRows.map((row, index) => (
             <li key={`${row.year}-${row.event}-${row.role}-${index}`} className="border-t border-white/5 pt-3">

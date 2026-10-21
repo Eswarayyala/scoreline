@@ -11,7 +11,16 @@ import { ensureGameCollections } from "../../services/mediaLibrary";
 import EventImagePicker from "./EventImagePicker";
 import { emptyCircuitEvent } from "../../hooks/useCircuitCms";
 import EventScopeField from "./EventScopeField";
-import { emptyEdition, emptyFinalsRow, formatForGame, normalizeEdition, serializeEdition, VAULT_FORMATS } from "../../data/vaultDeskSchema";
+import {
+  emptyEdition,
+  emptyFinalsRow,
+  formatForGame,
+  normalizeEdition,
+  normalizeStageEntries,
+  serializeEdition,
+  STAGE_STATUSES,
+  VAULT_FORMATS,
+} from "../../data/vaultDeskSchema";
 
 const inputClass = "w-full rounded-lg border border-white/15 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none focus:border-neon";
 
@@ -28,8 +37,26 @@ function EditionCard({ edition, game, role, onChange, onRemove }) {
   const format = formatForGame(game, edition.structureId);
   const patch = (key, value) => onChange({ ...edition, [key]: value });
   const payouts = edition.payouts?.length ? edition.payouts : [{ rank: "", team: "", player: "", prize: "" }];
-  const stages = edition.stages?.length ? edition.stages : format.stages.map((name) => ({ name, teams: "", kickedOff: "" }));
+  const stages = edition.stages?.length
+    ? edition.stages.map((stage) => ({ ...stage, entries: normalizeStageEntries(stage) }))
+    : format.stages.map((name) => ({ name, teams: "", kickedOff: "", entries: [] }));
   const finals = edition.finalsTable?.length ? edition.finalsTable : [emptyFinalsRow(format)];
+  const patchStage = (index, next) => patch("stages", stages.map((item, i) => (i === index ? next : item)));
+  const applyStructure = (structureId) => {
+    const nextFormat = VAULT_FORMATS[structureId] || format;
+    const nextStages = nextFormat.stages.map((name) => {
+      const existing = stages.find((row) => String(row.name || "").toLowerCase() === String(name).toLowerCase());
+      return existing
+        ? { ...existing, name, entries: normalizeStageEntries(existing) }
+        : { name, teams: "", kickedOff: "", entries: [] };
+    });
+    onChange({
+      ...edition,
+      structureId: nextFormat.id,
+      stages: nextStages,
+      finalsTable: edition.finalsTable?.length ? edition.finalsTable : [emptyFinalsRow(nextFormat)],
+    });
+  };
 
   return (
     <div className="grid gap-3 rounded-2xl border border-white/10 p-4">
@@ -102,17 +129,20 @@ function EditionCard({ edition, game, role, onChange, onRemove }) {
         ))}
         <p className="text-[11px] text-slate-500">Each link opens on YouTube for this season / event only.</p>
       </div>
-      <details className="rounded-lg border border-white/10 p-3">
-        <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-widest text-slate-500">Structure category</summary>
+      <details className="rounded-lg border border-white/10 p-3" open>
+        <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-widest text-slate-500">Structure · per-game ladder</summary>
         <select
           className={`${inputClass} mt-2`}
           value={edition.structureId || format.id}
-          onChange={(e) => patch("structureId", e.target.value)}
+          onChange={(e) => applyStructure(e.target.value)}
         >
           {Object.values(VAULT_FORMATS).map((item) => (
-            <option key={item.id} value={item.id}>{item.id}</option>
+            <option key={item.id} value={item.id}>{item.label}</option>
           ))}
         </select>
+        <p className="mt-2 text-[11px] text-slate-500">
+          Ladder for this game: {format.stages.join(" → ")}. Public view lists Grand finals first.
+        </p>
       </details>
       <Field label="Who lost in the early stage">
         <textarea rows={2} className={inputClass} value={edition.earlyExits || ""} onChange={(e) => patch("earlyExits", e.target.value)} />
@@ -131,18 +161,108 @@ function EditionCard({ edition, game, role, onChange, onRemove }) {
       </Field>
 
       <div>
-        <div className="mb-2 flex items-center justify-between">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Kicked off at each level</p>
-          <button type="button" className="text-xs text-neon" onClick={() => patch("stages", [...stages, { name: "", teams: "", kickedOff: "" }])}>+ Stage</button>
-        </div>
-        {stages.map((row, index) => (
-          <div key={index} className="mb-2 grid gap-2 sm:grid-cols-[1fr_0.5fr_1.4fr_auto]">
-            <input placeholder="Stage" className={inputClass} value={row.name || ""} onChange={(e) => patch("stages", stages.map((item, i) => i === index ? { ...item, name: e.target.value } : item))} />
-            <input placeholder="Teams" className={inputClass} value={row.teams || ""} onChange={(e) => patch("stages", stages.map((item, i) => i === index ? { ...item, teams: e.target.value } : item))} />
-            <input placeholder="Who got kicked off" className={inputClass} value={row.kickedOff || ""} onChange={(e) => patch("stages", stages.map((item, i) => i === index ? { ...item, kickedOff: e.target.value } : item))} />
-            <button type="button" aria-label="Remove stage" onClick={() => patch("stages", stages.filter((_, i) => i !== index))} className="text-slate-400 hover:text-rose-400"><Trash2 size={14} /></button>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+            Stage teams · qualified / eliminated / survival
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="text-xs text-slate-400 hover:text-neon"
+              onClick={() => applyStructure(format.id)}
+            >
+              Fill {format.label} stages
+            </button>
+            <button
+              type="button"
+              className="text-xs text-neon"
+              onClick={() => patch("stages", [...stages, { name: "", teams: "", kickedOff: "", entries: [] }])}
+            >
+              + Stage
+            </button>
           </div>
-        ))}
+        </div>
+        <p className="mb-3 text-[11px] text-slate-500">
+          Add every group, survival, quarters, semis, finals, and grand finals as its own stage. Status marks who qualified, got eliminated, or moved to survival.
+        </p>
+        {stages.map((row, index) => {
+          const entries = row.entries?.length ? row.entries : [{ name: "", status: "qualified" }];
+          return (
+            <div key={index} className="mb-3 grid gap-2 rounded-xl border border-white/10 p-3">
+              <div className="flex gap-2">
+                <input
+                  list={`stage-names-${format.id}`}
+                  placeholder="Stage (Grand finals, Survival, Group A…)"
+                  className={inputClass}
+                  value={row.name || ""}
+                  onChange={(e) => patchStage(index, { ...row, name: e.target.value })}
+                />
+                <button
+                  type="button"
+                  aria-label="Remove stage"
+                  onClick={() => patch("stages", stages.filter((_, i) => i !== index))}
+                  className="text-slate-400 hover:text-rose-400"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+              {entries.map((entry, entryIndex) => (
+                <div key={entryIndex} className="grid gap-2 sm:grid-cols-[1.4fr_1fr_auto]">
+                  <input
+                    placeholder={format.competitor}
+                    className={inputClass}
+                    value={entry.name || ""}
+                    onChange={(e) => {
+                      const nextEntries = entries.map((item, i) => (i === entryIndex ? { ...item, name: e.target.value } : item));
+                      patchStage(index, { ...row, entries: nextEntries });
+                    }}
+                  />
+                  <select
+                    className={inputClass}
+                    value={entry.status || "qualified"}
+                    onChange={(e) => {
+                      const nextEntries = entries.map((item, i) => (i === entryIndex ? { ...item, status: e.target.value } : item));
+                      patchStage(index, { ...row, entries: nextEntries });
+                    }}
+                  >
+                    {STAGE_STATUSES.map((status) => (
+                      <option key={status.id} value={status.id}>{status.label}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    aria-label="Remove team"
+                    onClick={() => patchStage(index, { ...row, entries: entries.filter((_, i) => i !== entryIndex) })}
+                    className="text-slate-400 hover:text-rose-400"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                className="w-fit text-xs text-neon"
+                onClick={() => patchStage(index, { ...row, entries: [...entries, { name: "", status: "qualified" }] })}
+              >
+                + {format.competitor}
+              </button>
+            </div>
+          );
+        })}
+        <datalist id={`stage-names-${format.id}`}>
+          {format.stages.map((name) => (
+            <option key={name} value={name} />
+          ))}
+          <option value="Group A" />
+          <option value="Group B" />
+          <option value="Group C" />
+          <option value="Group D" />
+          <option value="Survival" />
+          <option value="Quarterfinals" />
+          <option value="Semifinals" />
+          <option value="Finals" />
+          <option value="Grand finals" />
+        </datalist>
       </div>
 
       <div>

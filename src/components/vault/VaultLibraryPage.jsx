@@ -4,6 +4,38 @@ import { Bookmark, BookmarkCheck } from "lucide-react";
 import { VAULT_SLIDES, flyerForEvent } from "../../data/platformShowcase";
 import { publicScopeKicker } from "../../data/eventScope";
 import { canonicalFilterGame, gameMatchesFilter } from "../../data/gameCatalog";
+import LoadMoreBar, { usePagedVisible } from "../shared/LoadMoreBar";
+
+const LIBRARY_PAGE = 9;
+
+function PagedSlideGrid({ items, bookmarkSet, onToggleBookmark }) {
+  const page = usePagedVisible(items.length, LIBRARY_PAGE, LIBRARY_PAGE);
+  const shown = items.slice(0, page.visible);
+  return (
+    <>
+      <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {shown.map((slide) => (
+          <SlideCard
+            key={slide.slug || slide.id}
+            slide={slide}
+            bookmarked={bookmarkSet.has(slide.slug)}
+            onToggleBookmark={onToggleBookmark}
+          />
+        ))}
+      </div>
+      <LoadMoreBar
+        className="mb-10"
+        total={items.length}
+        shown={page.visible}
+        pageSize={LIBRARY_PAGE}
+        initial={LIBRARY_PAGE}
+        onMore={page.more}
+        onAll={page.all}
+        onLess={page.less}
+      />
+    </>
+  );
+}
 
 function previewMeta(slide) {
   const edition = (slide.editions || [])[0];
@@ -107,7 +139,7 @@ export default function VaultLibraryPage({
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="m-0 font-['Bebas_Neue',sans-serif] text-4xl tracking-wide text-white md:text-5xl">The Vault</h1>
-          <p className="mt-1 max-w-xl text-xs text-stone-500">Championship windows, game vaults, and recaps — preview cards, open one for full details.</p>
+          <p className="mt-1 max-w-xl text-xs text-stone-500">Championship windows, game vaults, and recaps.</p>
         </div>
         <button
           type="button"
@@ -157,47 +189,20 @@ export default function VaultLibraryPage({
       {floating.length > 0 && (
         <>
           <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Floating windows</h2>
-          <div className="mb-10 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {floating.map((slide) => (
-              <SlideCard
-                key={slide.slug || slide.id}
-                slide={slide}
-                bookmarked={bookmarkSet.has(slide.slug)}
-                onToggleBookmark={onToggleBookmark}
-              />
-            ))}
-          </div>
+          <PagedSlideGrid items={floating} bookmarkSet={bookmarkSet} onToggleBookmark={onToggleBookmark} />
         </>
       )}
       {research.length > 0 && (
         <>
           <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Game vaults</h2>
-          <div className="mb-10 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {research.map((slide) => (
-              <SlideCard
-                key={slide.slug || slide.id}
-                slide={slide}
-                bookmarked={bookmarkSet.has(slide.slug)}
-                onToggleBookmark={onToggleBookmark}
-              />
-            ))}
-          </div>
+          <PagedSlideGrid items={research} bookmarkSet={bookmarkSet} onToggleBookmark={onToggleBookmark} />
         </>
       )}
       <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Published blogs</h2>
       {blogs.length === 0 ? (
         <p className="text-sm text-stone-400">No published recaps in The Vault yet.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {blogs.map((slide) => (
-            <SlideCard
-              key={slide.slug || slide.id}
-              slide={slide}
-              bookmarked={bookmarkSet.has(slide.slug)}
-              onToggleBookmark={onToggleBookmark}
-            />
-          ))}
-        </div>
+        <PagedSlideGrid items={blogs} bookmarkSet={bookmarkSet} onToggleBookmark={onToggleBookmark} />
       )}
       {children ? <div className="mt-10 border-t border-white/10 pt-6">{children}</div> : null}
     </div>

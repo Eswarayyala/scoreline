@@ -194,14 +194,18 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
           <label className="grid gap-1 text-xs text-slate-400">Summary<textarea rows={3} className={inputClass} value={editing.summary || ""} onChange={(e) => setEditing({ ...editing, summary: e.target.value })} /></label>
           <label className="grid gap-1 text-xs text-slate-400">Poster URL<input className={inputClass} value={editing.poster || ""} onChange={(e) => setEditing({ ...editing, poster: e.target.value })} /></label>
           <label className="grid gap-1 text-xs text-slate-400">Priority<input type="number" min="0" max="99" className={inputClass} value={editing.floatingPriority ?? 5} onChange={(e) => setEditing({ ...editing, floatingPriority: Number(e.target.value) })} /></label>
-          <label className="flex items-center gap-2 text-sm text-slate-200">
-            <input
-              type="checkbox"
-              checked={isWindowLive(editing)}
-              onChange={(e) => setEditing({ ...editing, floating: e.target.checked })}
-            />
-            Live on home / vault carousel
-          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setEditing({ ...editing, floating: !isWindowLive(editing) })}
+              className={`rounded-full px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest ${
+                isWindowLive(editing) ? "bg-neon text-slate-950" : "border border-white/20 text-slate-400"
+              }`}
+            >
+              {isWindowLive(editing) ? "Live" : "Off"}
+            </button>
+            <span className="text-sm text-slate-400">Show on home / vault carousel</span>
+          </div>
           <div className="flex gap-2">
             <button type="submit" disabled={!canWrite} className="rounded-full bg-neon px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-40">Save window</button>
             <button type="button" className="rounded-full border border-white/15 px-4 py-2 text-sm text-slate-200" onClick={() => setEditing(null)}>Cancel</button>
@@ -281,39 +285,37 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
               </h3>
               <p className="mt-0.5 line-clamp-2 text-[10px] text-slate-500 sm:text-[11px]">{item.summary}</p>
             </div>
-            {canWrite && (
-              item.missing ? (
+            {item.missing ? (
+              canWrite ? (
                 <Link
                   to={`/admin/portal/vault/new?game=${encodeURIComponent(item.game || item.title || "")}`}
                   className="mt-2 inline-flex items-center gap-1 text-[11px] text-neon no-underline"
                 >
                   <Pencil size={11} /> Create
                 </Link>
-              ) : (
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <label className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-slate-400">
-                    <input
-                      type="checkbox"
-                      checked={isWindowLive(item)}
-                      disabled={togglingKey === `${item.feature}-${item.slug || item.id}`}
-                      onChange={() => toggleLive(item)}
-                    />
-                    {isWindowLive(item) ? "Live" : "Off"}
-                  </label>
-                  {item.feature === "research" ? (
-                    <Link
-                      to={`/admin/portal/vault/${item.id}`}
-                      className="inline-flex items-center gap-1 text-[11px] text-neon no-underline"
-                    >
-                      <Pencil size={11} /> Edit
-                    </Link>
-                  ) : (
-                    <button type="button" className="inline-flex items-center gap-1 text-[11px] text-neon" onClick={() => setEditing(item)}>
-                      <Pencil size={11} /> Edit
-                    </button>
-                  )}
-                </div>
-              )
+              ) : null
+            ) : (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={!canWrite || togglingKey === `${item.feature}-${item.slug || item.id}`}
+                  onClick={() => toggleLive(item)}
+                  className={`rounded-full px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest disabled:opacity-50 ${
+                    isWindowLive(item)
+                      ? "bg-neon text-slate-950"
+                      : "border border-white/20 text-slate-400 hover:border-white/40"
+                  }`}
+                >
+                  {togglingKey === `${item.feature}-${item.slug || item.id}`
+                    ? "…"
+                    : isWindowLive(item) ? "Live" : "Off"}
+                </button>
+                {canWrite && (
+                  <button type="button" className="inline-flex items-center gap-1 text-[11px] text-neon" onClick={() => setEditing(item)}>
+                    <Pencil size={11} /> Edit
+                  </button>
+                )}
+              </div>
             )}
           </article>
         ))}

@@ -1,3 +1,11 @@
+export const STAGE_STATUSES = [
+  { id: "qualified", label: "Qualified" },
+  { id: "advanced", label: "Advanced" },
+  { id: "survival", label: "Moved to survival" },
+  { id: "eliminated", label: "Eliminated" },
+];
+
+/** Per-format stage ladders — always authored bottom→top; UI shows Grand finals first. */
 export const VAULT_FORMATS = {
   bracket: {
     id: "bracket",
@@ -17,7 +25,7 @@ export const VAULT_FORMATS = {
     label: "Battle royale finals",
     competitor: "Team",
     hasIgl: true,
-    stages: ["Lobby / groups", "Playoffs", "Grand finals"],
+    stages: ["Lobby / groups", "Survival", "Playoffs", "Grand finals"],
     finalsColumns: [
       { key: "place", label: "Place" },
       { key: "team", label: "Team" },
@@ -69,7 +77,7 @@ export const VAULT_FORMATS = {
     label: "Match / series",
     competitor: "Player",
     hasIgl: false,
-    stages: ["Groups", "Knockouts", "Grand finals"],
+    stages: ["Groups", "Quarterfinals", "Semifinals", "Grand finals"],
     finalsColumns: [
       { key: "game", label: "Game" },
       { key: "score", label: "Score" },
@@ -107,17 +115,78 @@ function inferTotalTeams(edition = {}) {
   return match ? match[1] : "";
 }
 
+export function normalizeStageEntries(stage = {}) {
+  if (Array.isArray(stage.entries) && stage.entries.length) {
+    return stage.entries
+      .map((row) => ({
+        name: String(row.name || row.team || row.player || "").trim(),
+        status: STAGE_STATUSES.some((item) => item.id === row.status) ? row.status : "qualified",
+      }))
+      .filter((row) => row.name);
+  }
+  const fromTeams = String(stage.teams || "")
+    .split(/[,;|]/)
+    .map((name) => name.trim())
+    .filter(Boolean)
+    .map((name) => ({ name, status: "qualified" }));
+  const kicked = String(stage.kickedOff || "")
+    .split(/[,;|]/)
+    .map((name) => name.trim())
+    .filter(Boolean)
+    .map((name) => ({ name, status: "eliminated" }));
+  const merged = [...fromTeams];
+  kicked.forEach((row) => {
+    if (!merged.some((item) => item.name.toLowerCase() === row.name.toLowerCase())) merged.push(row);
+  });
+  return merged;
+}
+
+export function stageHasRoster(stage = {}) {
+  return normalizeStageEntries(stage).length > 0;
+}
+
+export function stageStatusLabel(id) {
+  return STAGE_STATUSES.find((item) => item.id === id)?.label || String(id || "");
+}
+
+function emptyStage(name = "") {
+  return { name, teams: "", kickedOff: "", entries: [] };
+}
+
 function stagesFromPayouts(edition, format) {
-  if (edition.stages?.length) return edition.stages;
+  if (edition.stages?.length) {
+    return edition.stages.map((stage) => ({
+      name: stage.name || "",
+      teams: stage.teams || "",
+      kickedOff: stage.kickedOff || "",
+      entries: normalizeStageEntries(stage),
+    }));
+  }
   const extras = (edition.payouts || [])
     .filter((row) => !/^1st|^2nd/i.test(String(row.rank || "")))
     .map((row) => ({
       name: row.rank || "",
       teams: "",
       kickedOff: payoutName(row),
+      entries: payoutName(row) ? [{ name: payoutName(row), status: "eliminated" }] : [],
     }));
-  if (!extras.length) return [];
-  return extras;
+  if (extras.length) return extras;
+  return (format?.stages || []).map((name) => emptyStage(name));
+}
+
+/** Display stages Grand finals → groups (reverse of format ladder). */
+export function stagesNewestFirst(stages = [], format) {
+  const list = Array.isArray(stages) ? [...stages] : [];
+  if (!list.length) return [];
+  const order = (format?.stages || []).map((name) => String(name).toLowerCase());
+  if (!order.length) return list.slice().reverse();
+  return list.slice().sort((a, b) => {
+    const ai = order.indexOf(String(a.name || "").toLowerCase());
+    const bi = order.indexOf(String(b.name || "").toLowerCase());
+    const av = ai < 0 ? -1 : ai;
+    const bv = bi < 0 ? -1 : bi;
+    return bv - av;
+  });
 }
 
 export function emptyFinalsRow(format) {
@@ -145,7 +214,7 @@ export function emptyEdition(game = "", structureId) {
     formatNotes: "",
     eventScope: "ewc",
     structureId: format.id,
-    stages: format.stages.map((name) => ({ name, teams: "", kickedOff: "" })),
+    stages: format.stages.map((name) => ({ name, teams: "", kickedOff: "", entries: [] })),
     finalsTable: [emptyFinalsRow(format)],
     payouts: [{ rank: "1st (Champion)", team: "", player: "", prize: "" }],
     poster: "",
@@ -203,7 +272,12 @@ export function serializeEdition(edition, game = "") {
       droppedOut: next.earlyExits,
     },
     payouts: (next.payouts || []).filter((row) => row.rank || row.team || row.player || row.prize),
-    stages: (next.stages || []).filter((row) => row.name || row.kickedOff || row.teams),
+    stages: (next.stages || [])
+      .map((stage) => ({
+        ...stage,
+        entries: normalizeStageEntries(stage),
+      }))
+      .filter((row) => row.name || row.kickedOff || row.teams || (row.entries || []).length),
     finalsTable: (next.finalsTable || []).filter((row) => Object.values(row).some((value) => String(value || "").trim())),
     youtubeUrls: (next.youtubeUrls || []).map((url) => String(url || "").trim()).filter(Boolean).slice(0, 12),
   };

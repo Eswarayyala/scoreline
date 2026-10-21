@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { findGameVault } from "../../data/eventScope";
+import LoadMoreBar, { usePagedVisible } from "../shared/LoadMoreBar";
 import { EventBody } from "./EventTabs";
 
 function editionKey(edition, index) {
@@ -32,7 +33,7 @@ export default function ChampionshipGameTabs({
   games = [],
   slides = [],
   heading = "Titles in this championship",
-  initialVisible = 12,
+  initialVisible = 6,
   onSelectPoster,
   urlSync = true,
 }) {
@@ -43,7 +44,7 @@ export default function ChampionshipGameTabs({
   const [searchParams, setSearchParams] = useSearchParams();
   const [localIndex, setLocalIndex] = useState(0);
   const [localDetails, setLocalDetails] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const page = usePagedVisible(editions.length, initialVisible, 6);
 
   const gameFromUrl = String(searchParams.get("game") || "").toLowerCase();
   const detailsFromUrl = searchParams.get("details") === "1";
@@ -61,19 +62,16 @@ export default function ChampionshipGameTabs({
   const detailsOpen = urlSync ? detailsFromUrl && activeIndex >= 0 : localDetails && activeIndex >= 0;
 
   useEffect(() => {
-    setExpanded(false);
     setLocalIndex(0);
     setLocalDetails(false);
   }, [editions]);
 
   const safeIndex = activeIndex >= 0 ? Math.min(activeIndex, editions.length - 1) : 0;
   const current = detailsOpen ? editions[safeIndex] : null;
-  const needsCollapse = editions.length > initialVisible;
-  const visibleIndexes = useMemo(() => {
-    if (!editions.length) return [];
-    if (expanded || !needsCollapse) return editions.map((_, index) => index);
-    return Array.from({ length: initialVisible }, (_, index) => index);
-  }, [editions, expanded, needsCollapse, initialVisible]);
+  const visibleIndexes = useMemo(
+    () => Array.from({ length: page.visible }, (_, index) => index),
+    [page.visible],
+  );
 
   useEffect(() => {
     if (!current || !onSelectPoster) return;
@@ -154,7 +152,7 @@ export default function ChampionshipGameTabs({
     <section className="mt-6">
       {heading ? <h2 className="font-display text-2xl text-white md:text-3xl">{heading}</h2> : null}
       <p className="mt-1 text-sm text-slate-500">
-        Each title shows a short championship snapshot — open one for full details or every event for that game.
+        {editions.length} titles · showing {Math.min(page.visible, editions.length)}. Use More, All, or Less when the list is long.
       </p>
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {visibleIndexes.map((index) => {
@@ -193,16 +191,17 @@ export default function ChampionshipGameTabs({
             </article>
           );
         })}
-        {needsCollapse && (
-          <button
-            type="button"
-            onClick={() => setExpanded((value) => !value)}
-            className="min-h-[8rem] border border-dashed border-neon/40 px-4 py-4 font-mono text-[10px] uppercase tracking-widest text-neon hover:border-neon sm:min-h-0"
-          >
-            {expanded ? "Less" : `More (+${editions.length - initialVisible})`}
-          </button>
-        )}
       </div>
+      <LoadMoreBar
+        className="mt-3"
+        total={editions.length}
+        shown={page.visible}
+        pageSize={6}
+        initial={initialVisible}
+        onMore={page.more}
+        onAll={page.all}
+        onLess={page.less}
+      />
     </section>
   );
 }

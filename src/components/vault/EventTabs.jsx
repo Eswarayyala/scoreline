@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { CheckSquare, Square } from "lucide-react";
+import LoadMoreBar, { usePagedVisible } from "../shared/LoadMoreBar";
 import { editionsNewestFirst, researchHighlightLabels } from "../../data/esportsResearch";
-import { formatForGame } from "../../data/vaultDeskSchema";
+import {
+  formatForGame,
+  normalizeStageEntries,
+  stageHasRoster,
+  stagesNewestFirst,
+  stageStatusLabel,
+} from "../../data/vaultDeskSchema";
 import { flyerForEvent } from "../../data/platformShowcase";
 import { dossierPath } from "../../data/competitorIndex";
 import ShareEventCard from "./ShareEventCard";
@@ -33,7 +40,10 @@ function NameLink({ children }) {
 export function EventBody({ edition, game, compact = false }) {
   const format = formatForGame(game, edition.structureId);
   const finalsRows = (edition.finalsTable || []).filter((row) => Object.values(row).some((value) => String(value || "").trim()));
-  const stages = (edition.stages || []).filter((row) => row.kickedOff || row.teams);
+  const stages = stagesNewestFirst(
+    (edition.stages || []).filter((row) => stageHasRoster(row)),
+    format,
+  );
   const yearLabel = [...new Set([edition.season, edition.year].filter((value) => String(value || "").trim()).map(String))];
   const payouts = (edition.payouts || []).filter((row) => row.rank || row.team || row.player || row.prize);
   const showPrizes = payouts.some((row) => String(row.prize || "").trim());
@@ -115,26 +125,28 @@ export function EventBody({ edition, game, compact = false }) {
           </div>
         )}
         {!!stages.length && !compact && (
-          <div className="mt-4">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Kicked off by stage</p>
-            <table className="mt-2 w-full text-left text-sm text-slate-300">
-              <thead>
-                <tr className="text-slate-500">
-                  <th className="py-1 pr-3 font-mono text-[10px] uppercase tracking-widest">Stage</th>
-                  <th className="py-1 pr-3 font-mono text-[10px] uppercase tracking-widest">Teams</th>
-                  <th className="py-1 font-mono text-[10px] uppercase tracking-widest">Kicked off</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stages.map((row) => (
-                  <tr key={`${edition.year}-${row.name}-${row.kickedOff}`} className="border-t border-white/5">
-                    <td className="py-2 pr-3">{row.name}</td>
-                    <td className="py-2 pr-3">{row.teams}</td>
-                    <td className="py-2">{row.kickedOff}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="mt-4 space-y-4">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+              Stage roster · {format.label} · Grand finals first
+            </p>
+            {stages.map((row) => {
+              const entries = normalizeStageEntries(row);
+              return (
+                <div key={`${edition.year}-${row.name}`} className="border-t border-white/5 pt-3">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-volt">{row.name || "Stage"}</p>
+                  <ul className="mt-2 space-y-1.5 text-sm text-slate-300">
+                    {entries.map((entry) => (
+                      <li key={`${row.name}-${entry.name}-${entry.status}`} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                        <NameLink>{entry.name}</NameLink>
+                        <span className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+                          {stageStatusLabel(entry.status)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
           </div>
         )}
         {!!finalsRows.length && !compact && (
@@ -264,8 +276,7 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
   const eventParam = searchParams.get("event") || "";
   const compareParam = searchParams.get("compare") || "";
   const [picked, setPicked] = useState([]);
-  const [expanded, setExpanded] = useState(false);
-  const initialVisible = 8;
+  const initialVisible = 6;
 
   const activeIndex = useMemo(() => {
     if (!ordered.length || !eventParam) return -1;
@@ -309,16 +320,11 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
     onSelectPoster(eventPoster(current, fallbackPoster, game));
   }, [current, fallbackPoster, game, onSelectPoster]);
 
-  useEffect(() => {
-    setExpanded(false);
-  }, [ordered]);
-
-  const needsCollapse = ordered.length > initialVisible;
-  const visibleIndexes = useMemo(() => {
-    if (!ordered.length) return [];
-    if (expanded || !needsCollapse) return ordered.map((_, index) => index);
-    return Array.from({ length: initialVisible }, (_, index) => index);
-  }, [ordered, expanded, needsCollapse]);
+  const page = usePagedVisible(ordered.length, initialVisible, 6);
+  const visibleIndexes = useMemo(
+    () => Array.from({ length: page.visible }, (_, index) => index),
+    [page.visible],
+  );
 
   const openEvent = (index) => {
     const edition = ordered[index];
@@ -377,7 +383,7 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
       )}
       <div className="mb-3 mt-2 flex flex-wrap items-center justify-between gap-3">
         <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
-          Minimal cards for every edition — open one for full details
+          {ordered.length} editions · showing {Math.min(page.visible, ordered.length)}
         </p>
         {picked.length >= 2 && (
           <button
@@ -436,16 +442,17 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
             </article>
           );
         })}
-        {needsCollapse && (
-          <button
-            type="button"
-            onClick={() => setExpanded((value) => !value)}
-            className="min-h-[8rem] border border-dashed border-neon/40 px-4 py-4 font-mono text-[10px] uppercase tracking-widest text-neon hover:border-neon sm:min-h-0"
-          >
-            {expanded ? "Less" : `More (+${ordered.length - initialVisible})`}
-          </button>
-        )}
       </div>
+      <LoadMoreBar
+        className="mt-3"
+        total={ordered.length}
+        shown={page.visible}
+        pageSize={6}
+        initial={initialVisible}
+        onMore={page.more}
+        onAll={page.all}
+        onLess={page.less}
+      />
     </section>
   );
 }

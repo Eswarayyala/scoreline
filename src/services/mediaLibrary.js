@@ -32,7 +32,21 @@ function basePayload(record = {}) {
     ...(record.generated ? { generated: true } : {}),
     ...(Array.isArray(record.hiddenAssetIds) ? { hiddenAssetIds: record.hiddenAssetIds } : {}),
     ...(Array.isArray(record.purgedAssetIds) ? { purgedAssetIds: record.purgedAssetIds } : {}),
+    ...(Array.isArray(record.pickerBlockedIds) ? { pickerBlockedIds: record.pickerBlockedIds } : {}),
   };
+}
+
+/** Owner: keep an avatar in the library but hide it from the profile avatar grid. */
+export async function setAvatarPickerBlocked(collectionRecord, assetId, blocked) {
+  if (!collectionRecord?.id || !assetId) return;
+  const current = new Set(collectionRecord.pickerBlockedIds || []);
+  if (blocked) current.add(assetId);
+  else current.delete(assetId);
+  await upsertMediaCollection(
+    collectionRecord.id,
+    { pickerBlockedIds: [...current].slice(0, 120) },
+    collectionRecord,
+  );
 }
 
 export async function upsertMediaCollection(id, patch = {}, record = {}) {
