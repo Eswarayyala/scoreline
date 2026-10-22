@@ -62,6 +62,7 @@ import { useGameBanner, useMediaArt } from "./hooks/useMediaLibrary";
 import CollectionPicker from "./components/cms/CollectionPicker";
 import AvatarRosterPicker from "./components/cms/AvatarRosterPicker";
 import MediaLibraryDesk from "./components/cms/MediaLibraryDesk";
+import LiveMatrixDesk from "./components/cms/LiveMatrixDesk";
 import LfgNoticeBoard from "./components/ecosystem/LfgNoticeBoard";
 import Countdown from "./components/shared/Countdown";
 import DynamicPointsTable from "./components/shared/DynamicPointsTable";
@@ -2138,7 +2139,7 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
       ...(canLibrary ? ["library"] : []),
       ...(canBlogs ? ["blogs"] : []),
       ...(canReports ? ["reports"] : []),
-      ...(isOwner ? ["support changes", "activity log", "popups", "support access"] : ["my requests"]),
+      ...(isOwner ? ["live matrix", "support changes", "activity log", "popups", "support access"] : ["my requests"]),
     ],
     [canVault, canLibrary, canBlogs, canReports, isOwner],
   );
@@ -2225,7 +2226,7 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
                 cursor: "pointer",
               }}
             >
-              {name === "vault" ? "Vault" : name === "tournaments" ? "Scrims" : name === "support changes" ? "Changes" : name === "activity log" ? "Log" : name === "support access" ? "Access" : name === "my requests" ? "Requests" : name[0].toUpperCase() + name.slice(1)}
+              {name === "vault" ? "Vault" : name === "tournaments" ? "Scrims" : name === "live matrix" ? "Matrix" : name === "support changes" ? "Changes" : name === "activity log" ? "Log" : name === "support access" ? "Access" : name === "my requests" ? "Requests" : name[0].toUpperCase() + name.slice(1)}
             </button>
           ))}
       </div>
@@ -2242,6 +2243,7 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
       </>}
       {tab === "windows" && canVault && <FloatingWindowsDesk records={circuitRecords} ewcWindows={ewcWindows} blogSlides={blogSlides} role={role} onSave={onSaveCircuit} filterGames={filterGames} />}
       {tab === "library" && canLibrary && <MediaLibraryDesk games={filterGames} canManage={canManageMediaLibrary(role)} />}
+      {tab === "live matrix" && isOwner && <LiveMatrixDesk role={role} onMergeCircuit={onSaveCircuit} />}
       {(tab === "support changes" || tab === "my requests") && <SupportChangeQueue requests={supportChanges} role={role} onReview={onReviewSupportChange} />}
       {tab === "reports" && canReports && <ReportsInbox reports={reports} onStatusChange={onStatusChange} bans={bans} role={role} onSetPlayerAccess={onSetPlayerAccess} />}
       {tab === "tournaments" && canVault && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="tournament" records={circuitRecords} deletedRecords={deletedCircuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} onRestore={onRestoreCircuit} onPurge={onPurgeCircuit} games={filterGames} permissions={perms} /><TournamentMonitor tournaments={tournaments} onOpen={onOpenTournament} /></div>}

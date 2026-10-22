@@ -1,0 +1,18 @@
+[
+  {
+    "matchKey": "community-valorant-scrim-1",
+    "gameId": "valorant",
+    "tournamentName": "Community Friday Scrim",
+    "status": "scheduled",
+    "gameClock": "",
+    "teamA": { "name": "Local Alpha", "score": null },
+    "teamB": { "name": "Local Bravo", "score": null },
+    "room": {
+      "roomId": "",
+      "password": "",
+      "timeline": [],
+      "bracketResults": []
+    },
+    "notes": "Fill roomId/password before the lobby opens."
+  }
+]

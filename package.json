@@ -10,7 +10,10 @@
     "preview": "vite preview",
     "dummy": "playwright test dummy-user --headed --slow-mo=250",
     "dummy:headless": "playwright test dummy-user",
-    "dummy:signup": "playwright test dummy-signup --headed --slow-mo=250"
+    "dummy:signup": "playwright test dummy-signup --headed --slow-mo=250",
+    "matrix:extract": "node src/agents/data_orchestrator.js",
+    "matrix:cron": "node src/agents/data_orchestrator.js --cron",
+    "matrix:apply": "node src/agents/data_orchestrator.js --apply"
   },
   "dependencies": {
     "firebase": "^12.18.0",

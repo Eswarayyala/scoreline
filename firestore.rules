@@ -867,6 +867,17 @@ service cloud.firestore {
                     || supportPermDirect(request.auth.uid, 'vaultDelete');
     }
 
+    // Agent-extracted matches: staff can read; only owner approves/writes one match at a time.
+    match /liveMatrix/{matchId} {
+      allow get, list: if isSiteStaff();
+      allow create, update, delete: if isSiteOwner();
+    }
+
+    match /liveMatrixDecisions/{matchId} {
+      allow get, list: if isSiteStaff();
+      allow create, update, delete: if isSiteOwner();
+    }
+
     match /siteSettings/{docId} {
       allow get: if (docId == 'deskGate' && isSiteStaff())
                  || (docId == 'features' && canBrowsePublicData());
