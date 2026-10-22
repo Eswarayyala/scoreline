@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Building2, Trophy, UserRound } from "lucide-react";
 import { findCompetitor } from "../../data/competitorIndex";
-import AchievementBadges, { PlacementTrendGraph } from "../shared/AchievementBadges";
+import AchievementBadges from "../shared/AchievementBadges";
 import LoadMoreBar, { usePagedVisible } from "../shared/LoadMoreBar";
 
-const TAB_PAGE = 6;
+const TAB_PAGE = 9;
 
 export default function CompetitorDossierPage({ slides = [], name = "" }) {
   const decoded = decodeURIComponent(String(name || "").trim());
@@ -80,31 +80,17 @@ export default function CompetitorDossierPage({ slides = [], name = "" }) {
           .filter(Boolean)
           .join(" · ")}
       </p>
-      <AchievementBadges
-        player={{
-          style: isFranchise ? "" : dossier.appearances.some((row) => /igl/i.test(row.role)) ? "IGL / Shotcaller" : "",
-          titles: champs,
-          badges: champs > 0 ? ["MVP"] : [],
-          lookingFor: dossier.gameCount > 1 ? ["Competitive"] : [],
-        }}
-        extra={isFranchise ? ["Franchise"] : ["Player"]}
-      />
-      {!isFranchise && (
-        <PlacementTrendGraph
-          className="mt-4"
-          placements={dossier.appearances
-            .map((row) => {
-              const place = String(row.role || "").match(/(\d+)/);
-              if (/champion/i.test(row.role)) return 1;
-              if (/runner/i.test(row.role)) return 2;
-              if (/third/i.test(row.role)) return 3;
-              return place ? Number(place[1]) : null;
-            })
-            .filter(Boolean)
-            .slice(0, 8)
-            .reverse()}
+      <div className="mt-2">
+        <AchievementBadges
+          player={{
+            style: isFranchise ? "" : dossier.appearances.some((row) => /igl/i.test(row.role)) ? "IGL / Shotcaller" : "",
+            titles: champs,
+            badges: champs > 0 ? ["MVP"] : [],
+            lookingFor: dossier.gameCount > 1 ? ["Competitive"] : [],
+          }}
+          extra={isFranchise ? ["Franchise"] : ["Player"]}
         />
-      )}
+      </div>
 
       <section className="mt-8">
         <h2 className="font-display text-3xl text-white">By title</h2>
@@ -132,7 +118,6 @@ export default function CompetitorDossierPage({ slides = [], name = "" }) {
           pageSize={TAB_PAGE}
           initial={TAB_PAGE}
           onMore={page.more}
-          onAll={page.all}
           onLess={page.less}
         />
         <ul className="mt-4 space-y-3">

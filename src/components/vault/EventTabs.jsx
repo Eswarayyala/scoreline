@@ -291,47 +291,53 @@ function CompareTable({ editions, game, onRemove }) {
 function CompareTray({ items, max, onRemove, onCompare, onClear, canCompare }) {
   if (!items.length) return null;
   return (
-    <div className="sticky bottom-4 z-20 mt-6 rounded-2xl border border-amber-400/40 bg-slate-950/95 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-amber-300">
-          Compare list · {items.length}/{max}
-        </p>
+    <div
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-[80] flex justify-center p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      role="region"
+      aria-label="Compare selected events"
+    >
+      <div className="pointer-events-auto w-full max-w-xl rounded-2xl border border-amber-400/50 bg-slate-950 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-amber-300">
+            Compare list · {items.length}/{max}
+          </p>
+          <button
+            type="button"
+            onClick={onClear}
+            className="font-mono text-[10px] uppercase tracking-widest text-slate-500 hover:text-slate-300"
+          >
+            Clear
+          </button>
+        </div>
+        <ul className="mb-4 flex flex-wrap gap-2">
+          {items.map((item) => (
+            <li
+              key={item.key}
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 py-1 pl-3 pr-1 text-sm text-slate-200"
+            >
+              <span className="max-w-[160px] truncate">
+                {item.edition.year || item.edition.season} · {item.edition.event}
+              </span>
+              <button
+                type="button"
+                aria-label={`Remove ${item.edition.event}`}
+                onClick={() => onRemove(item.key)}
+                className="rounded-full p-1 text-slate-500 hover:bg-white/10 hover:text-white"
+              >
+                <X size={12} />
+              </button>
+            </li>
+          ))}
+        </ul>
         <button
           type="button"
-          onClick={onClear}
-          className="font-mono text-[10px] uppercase tracking-widest text-slate-500 hover:text-slate-300"
+          disabled={!canCompare}
+          onClick={onCompare}
+          className="w-full rounded-xl bg-amber-400 px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Clear
+          {canCompare ? `Compare ${items.length} events` : `Select ${COMPARE_MIN}–${max} events to compare`}
         </button>
       </div>
-      <ul className="mb-4 flex flex-wrap gap-2">
-        {items.map((item) => (
-          <li
-            key={item.key}
-            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 py-1 pl-3 pr-1 text-sm text-slate-200"
-          >
-            <span className="max-w-[160px] truncate">
-              {item.edition.year || item.edition.season} · {item.edition.event}
-            </span>
-            <button
-              type="button"
-              aria-label={`Remove ${item.edition.event}`}
-              onClick={() => onRemove(item.key)}
-              className="rounded-full p-1 text-slate-500 hover:bg-white/10 hover:text-white"
-            >
-              <X size={12} />
-            </button>
-          </li>
-        ))}
-      </ul>
-      <button
-        type="button"
-        disabled={!canCompare}
-        onClick={onCompare}
-        className="w-full rounded-xl bg-amber-400 px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {canCompare ? `Compare ${items.length} events` : `Select ${COMPARE_MIN}–${max} events to compare`}
-      </button>
     </div>
   );
 }
@@ -343,7 +349,7 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
   const compareParam = searchParams.get("compare") || "";
   const [picked, setPicked] = useState([]);
   const [addingMore, setAddingMore] = useState(false);
-  const initialVisible = 6;
+  const initialVisible = 9;
 
   const activeIndex = useMemo(() => {
     if (!ordered.length || !eventParam) return -1;
@@ -391,7 +397,7 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
     onSelectPoster(eventPoster(current, fallbackPoster, game));
   }, [current, fallbackPoster, game, onSelectPoster]);
 
-  const page = usePagedVisible(ordered.length, initialVisible, 6);
+  const page = usePagedVisible(ordered.length, initialVisible, 9);
   const visibleIndexes = useMemo(
     () => Array.from({ length: page.visible }, (_, index) => index),
     [page.visible],
@@ -527,7 +533,7 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
   }
 
   return (
-    <section className={comparing || addingMore ? "space-y-4" : "mt-8"}>
+    <section className={`${comparing || addingMore ? "space-y-4" : "mt-8"} ${pickedItems.length ? "pb-40" : ""}`}>
       {(heading || game) && !addingMore && (
         <h2 className="font-display text-2xl text-white md:text-3xl">{heading || `All ${game} events`}</h2>
       )}
@@ -552,6 +558,9 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
         <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
           {ordered.length} editions · showing {Math.min(page.visible, ordered.length)}
           {picked.length > 0 ? ` · ${picked.length} selected` : ""}
+        </p>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+          Tap Add on 2–{COMPARE_MAX} events, then Compare at the bottom
         </p>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -621,10 +630,9 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
         className="mt-3"
         total={ordered.length}
         shown={page.visible}
-        pageSize={6}
+        pageSize={9}
         initial={initialVisible}
         onMore={page.more}
-        onAll={page.all}
         onLess={page.less}
       />
       <CompareTray

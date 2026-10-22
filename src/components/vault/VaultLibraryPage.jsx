@@ -31,7 +31,6 @@ function PagedSlideGrid({ items, bookmarkSet, onToggleBookmark }) {
         pageSize={LIBRARY_PAGE}
         initial={LIBRARY_PAGE}
         onMore={page.more}
-        onAll={page.all}
         onLess={page.less}
       />
     </>

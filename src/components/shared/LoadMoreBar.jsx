@@ -1,20 +1,19 @@
 import { useEffect, useState } from "react";
 
-/** More loads a few more; All expands fully; Less collapses back to the default page. */
+/** More loads the next page quietly (no +N / All). Less collapses to the default page. */
 export default function LoadMoreBar({
   total = 0,
   shown = 0,
   pageSize = 6,
   initial = pageSize,
   onMore,
-  onAll,
+  onAll: _onAll,
   onLess,
   className = "",
 }) {
   const floor = Math.max(1, initial || pageSize);
   if (total <= floor && shown >= total) return null;
   const remaining = Math.max(0, total - shown);
-  const nextChunk = Math.min(pageSize, remaining);
   const canLess = shown > floor;
   return (
     <div className={`flex flex-wrap items-center gap-2 ${className}`}>
@@ -24,16 +23,7 @@ export default function LoadMoreBar({
           onClick={onMore}
           className="border border-dashed border-neon/40 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-neon hover:border-neon"
         >
-          More (+{nextChunk})
-        </button>
-      )}
-      {remaining > nextChunk && (
-        <button
-          type="button"
-          onClick={onAll}
-          className="border border-white/15 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-slate-300 hover:border-white/30"
-        >
-          All ({total})
+          More
         </button>
       )}
       {canLess && (

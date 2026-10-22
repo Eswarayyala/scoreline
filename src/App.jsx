@@ -66,7 +66,7 @@ import LiveMatrixDesk from "./components/cms/LiveMatrixDesk";
 import LfgNoticeBoard from "./components/ecosystem/LfgNoticeBoard";
 import Countdown from "./components/shared/Countdown";
 import DynamicPointsTable from "./components/shared/DynamicPointsTable";
-import AchievementBadges, { PlacementTrendGraph } from "./components/shared/AchievementBadges";
+import AchievementBadges from "./components/shared/AchievementBadges";
 import { BLOG_ANALYSIS_TYPES, analysisTypeLabel, isHttpsUrl } from "./data/blogAnalysis";
 import { POSTER_PRESETS } from "./data/posterPresets";
 import { ewcFloatingSlides } from "./data/esportsResearch";
@@ -900,16 +900,14 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowse
 
 // ---------- player profile ----------
 
-function MultiToggle({ options, selected, onToggle, initialVisible = 8 }) {
-  const [expanded, setExpanded] = useState(false);
-  const limit = Math.max(1, Number(initialVisible) || 8);
-  const needsCollapse = options.length > limit;
-  const visible = (() => {
-    if (expanded || !needsCollapse) return options;
-    const head = options.slice(0, limit);
-    const extras = options.filter((opt) => selected.includes(opt) && !head.includes(opt));
-    return [...head, ...extras];
-  })();
+function MultiToggle({ options, selected, onToggle, initialVisible = 8, pageSize = 8 }) {
+  const floor = Math.max(1, Number(initialVisible) || 8);
+  const step = Math.max(6, Math.min(9, Number(pageSize) || floor));
+  const [visibleCount, setVisibleCount] = useState(floor);
+  const head = options.slice(0, visibleCount);
+  const extras = options.filter((opt) => selected.includes(opt) && !head.includes(opt));
+  const visible = [...head, ...extras];
+  const remaining = Math.max(0, options.length - visibleCount);
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
       {visible.map((opt) => {
@@ -936,10 +934,10 @@ function MultiToggle({ options, selected, onToggle, initialVisible = 8 }) {
           </button>
         );
       })}
-      {needsCollapse && (
+      {remaining > 0 && (
         <button
           type="button"
-          onClick={() => setExpanded((value) => !value)}
+          onClick={() => setVisibleCount((current) => Math.min(options.length, current + step))}
           style={{
             fontFamily: "'JetBrains Mono', monospace",
             fontSize: 10,
@@ -952,7 +950,26 @@ function MultiToggle({ options, selected, onToggle, initialVisible = 8 }) {
             cursor: "pointer",
           }}
         >
-          {expanded ? "Less" : `More (+${Math.max(0, options.length - visible.length)})`}
+          More
+        </button>
+      )}
+      {visibleCount > floor && (
+        <button
+          type="button"
+          onClick={() => setVisibleCount(floor)}
+          style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 10,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            padding: "5px 8px",
+            border: "none",
+            background: "transparent",
+            color: "var(--text-muted)",
+            cursor: "pointer",
+          }}
+        >
+          Less
         </button>
       )}
     </div>
@@ -1181,7 +1198,7 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
                 : "If you leave the digits blank we assign a random #0000-style code. You can edit them before saving."}
           </div>
           <Field label="Games you play">
-            <MultiToggle options={gamesList} selected={games} onToggle={toggleGame} initialVisible={8} />
+            <MultiToggle options={gamesList} selected={games} onToggle={toggleGame} initialVisible={8} pageSize={8} />
           </Field>
           <Field label="Country">
             <Select value={region} onChange={(e) => setRegion(e.target.value)}>
@@ -1460,18 +1477,7 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
       </div>
 
       <LfgNoticeBoard profile={myProfile} gamesList={gamesList} />
-      {myProfile && (
-        <div style={{ marginBottom: 18, display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
-          <div style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
-            <Eyebrow>Your badges</Eyebrow>
-            <AchievementBadges player={myProfile} />
-            {!normalizeStyles(myProfile.styles, myProfile.style).length && !normalizeLookingFor(myProfile.lookingFor).length && (
-              <div style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 8 }}>Add playstyles or Looking for tags to unlock badges.</div>
-            )}
-          </div>
-          <PlacementTrendGraph placements={myProfile.placementTrend} />
-        </div>
-      )}
+      {myProfile && <div style={{ marginBottom: 10 }}><AchievementBadges player={myProfile} /></div>}
 
       <form onSubmit={runSearch} style={{ marginBottom: 18, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
         <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--accent-secondary)", marginBottom: 10 }}>Manual search</div>
@@ -1494,6 +1500,8 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
               <MultiToggle
                 options={gamesList}
                 selected={draft.games}
+                initialVisible={9}
+                pageSize={9}
                 onToggle={(game) =>
                   updateDraft({
                     games: draft.games.includes(game)

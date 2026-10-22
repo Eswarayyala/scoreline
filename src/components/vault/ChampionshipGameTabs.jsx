@@ -33,7 +33,7 @@ export default function ChampionshipGameTabs({
   games = [],
   slides = [],
   heading = "Titles in this championship",
-  initialVisible = 6,
+  initialVisible = 9,
   onSelectPoster,
   urlSync = true,
 }) {
@@ -44,7 +44,7 @@ export default function ChampionshipGameTabs({
   const [searchParams, setSearchParams] = useSearchParams();
   const [localIndex, setLocalIndex] = useState(0);
   const [localDetails, setLocalDetails] = useState(false);
-  const page = usePagedVisible(editions.length, initialVisible, 6);
+  const page = usePagedVisible(editions.length, initialVisible, 9);
 
   const gameFromUrl = String(searchParams.get("game") || "").toLowerCase();
   const detailsFromUrl = searchParams.get("details") === "1";
@@ -205,10 +205,9 @@ export default function ChampionshipGameTabs({
         className="mt-3"
         total={editions.length}
         shown={page.visible}
-        pageSize={6}
+        pageSize={9}
         initial={initialVisible}
         onMore={page.more}
-        onAll={page.all}
         onLess={page.less}
       />
     </section>
