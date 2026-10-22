@@ -43,10 +43,10 @@ export default function CompetitorDirectoryPage({ slides = [], kind = "franchise
           </p>
         </div>
         <div className="flex gap-3 font-mono text-[10px] uppercase tracking-widest">
-          <Link to="/vault/franchises" className={`inline-flex items-center gap-1 no-underline ${isFranchise ? "text-amber-300" : "text-slate-600 hover:text-slate-300"}`}>
+          <Link to="/vault/franchises" className={`inline-flex items-center gap-1 no-underline ${isFranchise ? "text-neon" : "text-slate-600 hover:text-slate-300"}`}>
             <Building2 size={12} /> Franchises
           </Link>
-          <Link to="/vault/players" className={`inline-flex items-center gap-1 no-underline ${!isFranchise ? "text-amber-300" : "text-slate-600 hover:text-slate-300"}`}>
+          <Link to="/vault/players" className={`inline-flex items-center gap-1 no-underline ${!isFranchise ? "text-neon" : "text-slate-600 hover:text-slate-300"}`}>
             <UserRound size={12} /> Players
           </Link>
         </div>

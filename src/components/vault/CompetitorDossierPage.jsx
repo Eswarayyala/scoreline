@@ -61,7 +61,7 @@ export default function CompetitorDossierPage({ slides = [], name = "" }) {
         </Link>
         <Link
           to={isFranchise ? "/vault/franchises" : "/vault/players"}
-          className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-amber-300"
+          className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neon"
         >
           {isFranchise ? <Building2 size={14} /> : <UserRound size={14} />}
           {isFranchise ? "All franchises" : "All players"}
@@ -103,7 +103,7 @@ export default function CompetitorDossierPage({ slides = [], name = "" }) {
                 type="button"
                 onClick={() => setActiveGame(tab.game)}
                 className={`px-2.5 py-2 font-mono text-[10px] uppercase tracking-wider ${
-                  on ? "border-b border-amber-400 text-white" : "border-b border-transparent text-slate-500 hover:text-slate-300"
+                  on ? "border-b border-neon text-white" : "border-b border-transparent text-slate-500 hover:text-slate-300"
                 }`}
               >
                 {tab.game}
@@ -136,7 +136,7 @@ export default function CompetitorDossierPage({ slides = [], name = "" }) {
                 )}
               </p>
               <p className="mt-1 flex items-center gap-2 text-sm text-slate-300">
-                <Trophy size={14} className="text-amber-300" />
+                <Trophy size={14} className="text-neon" />
                 {row.role}
                 {row.prize ? ` · ${row.prize}` : ""}
                 {row.prizePool ? ` · ${row.prizePool}` : ""}

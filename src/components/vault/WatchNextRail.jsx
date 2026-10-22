@@ -48,7 +48,7 @@ export default function WatchNextRail({ slides = [], current }) {
                 </Link>
                 <div className="mt-2 flex flex-wrap gap-3 text-xs">
                   {slide.youtubeUrl && (
-                    <a href={slide.youtubeUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-amber-300">
+                    <a href={slide.youtubeUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-neon">
                       <Play size={12} /> YouTube
                     </a>
                   )}

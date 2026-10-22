@@ -33,7 +33,7 @@ export default function EwcDirectoryPage({ slides = [], liveEntries = [] }) {
       <Link to="/vault" className="font-mono text-xs uppercase tracking-widest text-neon">
         ← The Vault
       </Link>
-      <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.18em] text-amber-400">Shared championship index</p>
+      <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.18em] text-neon">Shared championship index</p>
       <h1 className="mt-1 font-['Bebas_Neue',sans-serif] text-5xl tracking-wide text-white">Esports World Cup</h1>
       <p className="mb-8 mt-2 max-w-2xl text-sm text-stone-400">
         Every EWC / Gamers8 year opens as game tabs. Per-game vaults marked EWC related join the same championship.

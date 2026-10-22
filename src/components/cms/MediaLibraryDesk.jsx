@@ -91,7 +91,7 @@ function AssetEditPanel({ asset, collection, games, onClose, onSaved, onError })
           </select>
         </label>
         {seeded && (
-          <p className="text-[11px] text-amber-200/90">
+          <p className="text-[11px] text-neon/90">
             Generated pack images can only move to Bin. Upload a copy to rename or change category.
           </p>
         )}
@@ -644,7 +644,7 @@ export default function MediaLibraryDesk({
                           <button type="button" aria-label="Edit image" title="Edit image" className="rounded-full bg-slate-950/80 p-1.5 text-neon" onClick={() => openEdit(asset, selected)}>
                             <Pencil size={12} />
                           </button>
-                          <button type="button" aria-label="Set cover" title="Set as cover" className="rounded-full bg-slate-950/80 p-1.5 text-amber-300" onClick={() => makeCover(asset.url)}>
+                          <button type="button" aria-label="Set cover" title="Set as cover" className="rounded-full bg-slate-950/80 p-1.5 text-neon" onClick={() => makeCover(asset.url)}>
                             <Star size={12} />
                           </button>
                           <button type="button" aria-label="Move to bin" title="Move to bin" className="rounded-full bg-slate-950/80 p-1.5 text-rose-300" onClick={() => removeAsset(asset)}>

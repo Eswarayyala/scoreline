@@ -95,7 +95,7 @@ export default function StaffDeskGate({
   return (
     <section className="mx-auto max-w-md space-y-6 px-5 py-16">
       <div>
-        <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-amber-300">Staff desk</p>
+        <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-neon">Staff desk</p>
         <h1 className="mt-2 font-display text-3xl text-white">{role === "owner" ? "Owner" : "Support"} password</h1>
         <p className="mt-2 text-sm text-stone-400">
           Account sign-in alone is not enough. Enter the desk password to open the {role} dashboard.
@@ -118,13 +118,13 @@ export default function StaffDeskGate({
           <button
             type="submit"
             disabled={busy}
-            className="rounded-full bg-amber-400 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-60"
+            className="rounded-full bg-neon px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-60"
           >
             {busy ? "Checking…" : "Unlock desk"}
           </button>
         </form>
       ) : (
-        <p className="text-sm text-amber-200/90">
+        <p className="text-sm text-neon/90">
           {isOwner
             ? "No desk password is set yet. Create one below for this role."
             : "Ask the owner to set a support desk password from Access."}

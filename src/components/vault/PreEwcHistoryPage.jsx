@@ -11,7 +11,7 @@ export default function PreEwcHistoryPage() {
   return (
     <div className="pb-10 pt-6">
       <Link to="/vault" className="font-mono text-xs uppercase tracking-widest text-neon">← The Vault</Link>
-      <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.18em] text-amber-400">Launch-era majors · not merged yet</p>
+      <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.18em] text-neon">Launch-era majors · not merged yet</p>
       <h1 className="mt-1 font-['Bebas_Neue',sans-serif] text-5xl tracking-wide text-white">Pre-EWC history</h1>
       <p className="mb-6 mt-2 max-w-2xl text-sm text-stone-400">
         Converted from Master extraction.txt. {total} events across {circuits.length} circuits. Trim this list, then paste the kept file so it can merge into each game vault from launch year forward.

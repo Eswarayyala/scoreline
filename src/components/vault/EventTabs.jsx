@@ -296,9 +296,9 @@ function CompareTray({ items, max, onRemove, onCompare, onClear, canCompare }) {
       role="region"
       aria-label="Compare selected events"
     >
-      <div className="pointer-events-auto w-full max-w-xl rounded-2xl border border-amber-400/50 bg-slate-950 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
+      <div className="pointer-events-auto w-full max-w-xl rounded-2xl border border-neon/50 bg-slate-950 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-amber-300">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-neon">
             Compare list · {items.length}/{max}
           </p>
           <button
@@ -333,7 +333,7 @@ function CompareTray({ items, max, onRemove, onCompare, onClear, canCompare }) {
           type="button"
           disabled={!canCompare}
           onClick={onCompare}
-          className="w-full rounded-xl bg-amber-400 px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full rounded-xl bg-neon px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-[var(--accent-contrast)] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {canCompare ? `Compare ${items.length} events` : `Select ${COMPARE_MIN}–${max} events to compare`}
         </button>
@@ -539,7 +539,7 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
       )}
       {addingMore && (
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-amber-300">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-neon">
             Add to compare · {picked.length}/{COMPARE_MAX}
           </p>
           <button
@@ -575,7 +575,7 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
             <article
               key={key}
               className={`flex flex-col border bg-white/[0.03] transition ${
-                selected ? "border-amber-400/60" : "border-white/10 hover:border-amber-400/50 hover:bg-white/[0.05]"
+                selected ? "border-neon/60" : "border-white/10 hover:border-neon/50 hover:bg-white/[0.05]"
               }`}
             >
               <button
@@ -615,7 +615,7 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
                   aria-label={selected ? "Remove from compare list" : "Add to compare list"}
                   onClick={() => (selected ? removeFromCompare(key) : addToCompare(index))}
                   className={`inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-40 ${
-                    selected ? "text-amber-300" : "text-slate-500 hover:text-slate-300"
+                    selected ? "text-neon" : "text-slate-500 hover:text-slate-300"
                   }`}
                 >
                   {selected ? <CheckSquare size={11} /> : <Square size={11} />}

@@ -44,7 +44,7 @@ export default function SupportChangeQueue({ requests = [], role, onReview }) {
   return (
     <section style={{ display: "grid", gap: 18 }}>
       <div>
-        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-amber-400" style={{ margin: 0 }}>Support desk</p>
+        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-neon" style={{ margin: 0 }}>Support desk</p>
         <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, margin: "4px 0 8px" }}>{isOwner ? "Approve or deny support changes" : "Changes waiting for the owner"}</h2>
         <p style={{ color: "var(--text-muted)", fontSize: 13, margin: 0 }}>
           {isOwner

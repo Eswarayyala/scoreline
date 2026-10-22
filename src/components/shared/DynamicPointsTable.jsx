@@ -103,7 +103,7 @@ export default function DynamicPointsTable({ initialRows, placementPoints, readO
                     />
                   )}
                 </td>
-                <td className="py-2 font-mono text-amber-300">{row.total}</td>
+                <td className="py-2 font-mono text-neon">{row.total}</td>
               </tr>
             ))}
           </tbody>

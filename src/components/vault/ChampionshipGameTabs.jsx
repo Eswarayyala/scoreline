@@ -128,7 +128,7 @@ export default function ChampionshipGameTabs({
           {allEventsHref && (
             <Link
               to={allEventsHref}
-              className="font-mono text-[10px] uppercase tracking-widest text-amber-300 no-underline hover:text-white"
+              className="font-mono text-[10px] uppercase tracking-widest text-neon no-underline hover:text-white"
             >
               All {gameName} events →
             </Link>
@@ -163,7 +163,7 @@ export default function ChampionshipGameTabs({
           return (
             <article
               key={editionKey(edition, index)}
-              className="flex flex-col border border-white/10 bg-white/[0.03] transition hover:border-amber-400/50 hover:bg-white/[0.05]"
+              className="flex flex-col border border-white/10 bg-white/[0.03] transition hover:border-neon/50 hover:bg-white/[0.05]"
             >
               <button
                 type="button"
@@ -191,7 +191,7 @@ export default function ChampionshipGameTabs({
                 <div className="border-t border-white/10 px-4 py-2">
                   <Link
                     to={allEventsHref}
-                    className="font-mono text-[10px] uppercase tracking-widest text-amber-300 no-underline hover:text-white"
+                    className="font-mono text-[10px] uppercase tracking-widest text-neon no-underline hover:text-white"
                   >
                     All {edition.game} events →
                   </Link>

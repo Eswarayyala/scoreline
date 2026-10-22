@@ -60,7 +60,7 @@ export async function buildEventShareCanvas({ edition, game, fallbackPoster }) {
   drawRoundedRect(ctx, 64, 180, width - 128, height - 360, 36);
   ctx.fill();
 
-  ctx.fillStyle = "#fbbf24";
+  ctx.fillStyle = "#ff2d95";
   ctx.font = "600 28px JetBrains Mono, monospace";
   ctx.fillText(String(edition.year || edition.season || game || "VAULT").toUpperCase(), 100, 260);
 
@@ -82,7 +82,7 @@ export async function buildEventShareCanvas({ edition, game, fallbackPoster }) {
     ctx.fillText(line.slice(0, 48), 100, 560 + index * 64);
   });
 
-  ctx.fillStyle = "#22d3ee";
+  ctx.fillStyle = "#3b82ff";
   ctx.font = "600 26px JetBrains Mono, monospace";
   ctx.fillText("GRINDINFO · THE VAULT", 100, height - 120);
 
@@ -139,7 +139,7 @@ export default function ShareEventCard({ edition, game, fallbackPoster }) {
         type="button"
         disabled={busy}
         onClick={run}
-        className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-amber-300 disabled:opacity-50"
+        className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-neon disabled:opacity-50"
       >
         <Share2 size={14} /> {busy ? "Building…" : "Share card"}
       </button>

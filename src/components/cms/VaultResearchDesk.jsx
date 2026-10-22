@@ -496,7 +496,7 @@ function ResearchForm({ initial, canWrite, role, games, onSave, onCancel }) {
       </div>
       {error && <p className="text-sm text-rose-400">{error}</p>}
       {isSiteSupportRole(role) && (
-        <p className="text-xs text-amber-300/90">Support saves (including event posters) wait for owner approval.</p>
+        <p className="text-xs text-neon/90">Support saves (including event posters) wait for owner approval.</p>
       )}
       <div className="flex gap-2">
         <button type="submit" disabled={!canWrite} className="rounded-full bg-neon px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-40">Save game vault</button>
@@ -517,7 +517,7 @@ function CatalogDesk({ records, role, permissions, games, onSave, onDelete }) {
       <h3 className="font-display text-2xl text-white">Filter catalog</h3>
       <p className="text-sm text-slate-400">These names power Find players, create-tournament, and CMS dropdowns. Attach posters for games you add by hand.</p>
       {isSiteSupportRole(role) && (
-        <p className="text-xs text-amber-300/90">Catalog edits and removals go to the owner queue — support never writes live.</p>
+        <p className="text-xs text-neon/90">Catalog edits and removals go to the owner queue — support never writes live.</p>
       )}
       <p className="text-xs text-slate-500">{games.join(" · ")}</p>
       {canWrite && (

@@ -65,7 +65,7 @@ function SlideCard({ slide, bookmarked, onToggleBookmark }) {
   const meta = previewMeta(slide);
   const art = flyerForEvent(slide);
   return (
-    <article className="relative flex flex-col border border-white/10 bg-white/[0.03] transition hover:border-amber-400/50 hover:bg-white/[0.05]">
+    <article className="relative flex flex-col border border-white/10 bg-white/[0.03] transition hover:border-neon/50 hover:bg-white/[0.05]">
       <Link to={`/vault/${slide.slug}`} className="flex flex-1 flex-col p-4 text-inherit no-underline">
         {art && (
           <div className="mb-3 aspect-[16/7] overflow-hidden border border-white/5 bg-black/40">
@@ -87,7 +87,7 @@ function SlideCard({ slide, bookmarked, onToggleBookmark }) {
           type="button"
           aria-label={bookmarked ? "Remove bookmark" : "Bookmark"}
           onClick={() => onToggleBookmark(slide.slug)}
-          className="absolute right-2 top-2 rounded-full border border-white/15 bg-black/70 p-1.5 text-amber-300"
+          className="absolute right-2 top-2 rounded-full border border-white/15 bg-black/70 p-1.5 text-neon"
         >
           {bookmarked ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
         </button>
@@ -139,13 +139,13 @@ export default function VaultLibraryPage({
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="m-0 font-['Bebas_Neue',sans-serif] text-4xl tracking-wide text-white md:text-5xl">The Vault</h1>
-          <p className="mt-1 max-w-xl text-xs text-stone-500">Championship windows, game vaults, and recaps.</p>
+          <p className="mt-1 max-w-xl text-xs text-slate-500">Championship windows, game vaults, and recaps.</p>
         </div>
         <button
           type="button"
           onClick={() => setOnlyBookmarks((value) => !value)}
           className={`inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest ${
-            onlyBookmarks ? "text-amber-300" : "text-stone-500 hover:text-stone-300"
+            onlyBookmarks ? "text-neon" : "text-slate-500 hover:text-slate-300"
           }`}
         >
           <Bookmark size={12} />
@@ -154,11 +154,11 @@ export default function VaultLibraryPage({
         </button>
       </div>
       <StickyFilterBar className="mb-6 -mx-0 border-white/5 bg-slate-950/90" trailing={(
-        <Link to="/vault/ewc" className="font-mono text-[10px] uppercase tracking-widest text-stone-500 no-underline hover:text-amber-300">
+        <Link to="/vault/ewc" className="font-mono text-[10px] uppercase tracking-widest text-slate-500 no-underline hover:text-neon">
           EWC index
         </Link>
       )}>
-        <label className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-stone-500">
+        <label className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">
           Game
           <select
             className="border-0 border-b border-white/20 bg-transparent py-0.5 text-[11px] normal-case tracking-normal text-white outline-none"
@@ -173,7 +173,7 @@ export default function VaultLibraryPage({
             ))}
           </select>
         </label>
-        <label className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-stone-500">
+        <label className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">
           Type
           <select
             className="border-0 border-b border-white/20 bg-transparent py-0.5 text-[11px] normal-case tracking-normal text-white outline-none"
@@ -201,7 +201,7 @@ export default function VaultLibraryPage({
       )}
       <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Published blogs</h2>
       {blogs.length === 0 ? (
-        <p className="text-sm text-stone-400">No published recaps in The Vault yet.</p>
+        <p className="text-sm text-slate-400">No published recaps in The Vault yet.</p>
       ) : (
         <PagedSlideGrid items={blogs} bookmarkSet={bookmarkSet} onToggleBookmark={onToggleBookmark} />
       )}

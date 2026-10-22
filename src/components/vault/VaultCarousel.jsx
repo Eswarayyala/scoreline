@@ -49,7 +49,7 @@ export default function VaultCarousel({ slides = VAULT_SLIDES }) {
               <div style={{ overflow: "hidden", borderRadius: 16, border: "1px solid var(--border)", background: "var(--panel-bg)", boxShadow: "var(--panel-shadow)" }}>
                 <div className="relative aspect-video overflow-hidden">
                   <img src={slide.poster} alt="" className="h-full w-full object-cover" />
-                  <span style={{ position: "absolute", left: 10, top: 10, fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--accent-secondary)", background: "rgba(23,17,15,0.78)", border: "1px solid var(--border)", borderRadius: 999, padding: "3px 8px" }}>
+                  <span style={{ position: "absolute", left: 10, top: 10, fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--accent-secondary)", background: "rgba(12,16,24,0.88)", border: "1px solid var(--border)", borderRadius: 999, padding: "3px 8px" }}>
                     {publicScopeKicker(slide) || slide.game}
                   </span>
                 </div>

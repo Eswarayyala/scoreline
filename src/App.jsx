@@ -925,7 +925,7 @@ function MultiToggle({ options, selected, onToggle, initialVisible = 8, pageSize
               fontWeight: 500,
               padding: "5px 9px",
               border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
-              background: active ? "rgba(255,194,46,0.1)" : "transparent",
+              background: active ? "rgba(255,45,149,0.12)" : "transparent",
               color: active ? "var(--accent)" : "var(--text-muted)",
               cursor: "pointer",
             }}
@@ -2333,9 +2333,9 @@ function ArchiveRequestForm({ user, submissions = [], onSubmit, onSignIn }) {
   };
   return (
     <div className="relative mb-4 flex justify-end">
-      <button type="button" aria-label="Suggest event to Vault" onClick={() => { if (!user) { onSignIn?.(); return; } setOpen((value) => !value); }} className="grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-black/40 font-mono text-lg text-amber-300 hover:border-amber-400">+</button>
+      <button type="button" aria-label="Suggest event to Vault" onClick={() => { if (!user) { onSignIn?.(); return; } setOpen((value) => !value); }} className="grid h-9 w-9 place-items-center rounded-full border border-white/20 bg-black/40 font-mono text-lg text-neon hover:border-neon">+</button>
       {open && user && (
-        <div className="absolute right-0 top-11 z-20 w-[min(100vw-2rem,20rem)] border border-white/10 bg-[#17110f] p-3 shadow-xl">
+        <div className="absolute right-0 top-11 z-20 w-[min(100vw-2rem,20rem)] border border-white/10 bg-[var(--page-bg-solid)] p-3 shadow-xl">
           <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-stone-400">Suggest event</p>
           <div className="grid gap-2">
             <TextInput maxLength={120} value={form.tournament} onChange={(e) => update("tournament", e.target.value)} placeholder="Tournament" />
@@ -2717,7 +2717,7 @@ function HistoricalArchive({ entries, user, submissions, onSubmitRequest, onSign
               <Eyebrow>{entry.game} · {entry.eventDate}{entry.eventScope ? ` · ${entry.eventScope}` : ""}</Eyebrow>
               <h3 className="my-1 font-['Bebas_Neue',sans-serif] text-2xl">{entry.tournament}</h3>
               <div className="text-sm text-stone-300">Winner {entry.winner}{entry.runnerUp ? ` · Runner-up ${entry.runnerUp}` : ""}{entry.mvp ? ` · MVP ${entry.mvp}` : ""}</div>
-              {entry.source && <a href={entry.source} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sm text-amber-300">Source</a>}
+              {entry.source && <a href={entry.source} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sm text-neon">Source</a>}
             </div>
           </article>
         ))}
@@ -2884,8 +2884,8 @@ function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDele
         ))}
       </div>
       {manageInDrawer && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#17110f]/95 backdrop-blur-md">
-          <button type="button" onClick={() => setManageOpen((open) => !open)} className="flex w-full items-center justify-between px-5 py-3 font-mono text-[11px] uppercase tracking-[0.22em] text-amber-300">
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[var(--page-bg-solid)]/95 backdrop-blur-md">
+          <button type="button" onClick={() => setManageOpen((open) => !open)} className="flex w-full items-center justify-between px-5 py-3 font-mono text-[11px] uppercase tracking-[0.22em] text-neon">
             <span>Manage Posts</span>
             <span aria-hidden="true">{manageOpen ? "−" : "+"}</span>
           </button>
@@ -4385,7 +4385,7 @@ export default function App() {
             <div>
               <header className="border-b border-white/10">
                 <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4">
-                  <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-amber-300">Staff portal</span>
+                  <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-neon">Staff portal</span>
                   <Link to="/" className="font-mono text-xs uppercase tracking-wider text-stone-400 hover:text-white">Leave portal</Link>
                 </div>
               </header>
@@ -4513,7 +4513,7 @@ export default function App() {
                     onToggleBookmark={vaultBookmarks.toggle}
                   >
                     <div>
-                      <p className="mb-2 font-mono text-[11px] uppercase tracking-widest text-amber-300">Contributor desk</p>
+                      <p className="mb-2 font-mono text-[11px] uppercase tracking-widest text-neon">Contributor desk</p>
                       <p className="mb-3 max-w-xl text-sm text-stone-400">Suggest a missing event or correction. Staff reviews every submission before it lands in The Vault.</p>
                       <ArchiveRequestForm
                         user={user}
@@ -4620,10 +4620,10 @@ export default function App() {
                     <h1 className="m-0 font-['Bebas_Neue',sans-serif] text-5xl">Page not found</h1>
                     <p className="mt-2 text-sm text-stone-400">That link is not a GrindInfo page.</p>
                     <div className="mt-4 flex flex-wrap gap-3">
-                      <Link to="/" className="font-mono text-xs uppercase tracking-wider text-amber-300">Home</Link>
-                      <Link to="/find-players" className="font-mono text-xs uppercase tracking-wider text-amber-300">Find players</Link>
-                      <Link to="/tournaments" className="font-mono text-xs uppercase tracking-wider text-amber-300">Scrims</Link>
-                      <Link to="/blog" className="font-mono text-xs uppercase tracking-wider text-amber-300">Community blog</Link>
+                      <Link to="/" className="font-mono text-xs uppercase tracking-wider text-neon">Home</Link>
+                      <Link to="/find-players" className="font-mono text-xs uppercase tracking-wider text-neon">Find players</Link>
+                      <Link to="/tournaments" className="font-mono text-xs uppercase tracking-wider text-neon">Scrims</Link>
+                      <Link to="/blog" className="font-mono text-xs uppercase tracking-wider text-neon">Community blog</Link>
                     </div>
                   </div>
                 } />
@@ -4650,7 +4650,7 @@ export default function App() {
       {user && reportTarget && <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} onSubmit={submitReport} />}
       {user && showFriendRequests && (
         <div className="fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4">
-          <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto border border-white/10 bg-[#17110f] p-4">
+          <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto border border-white/10 bg-[var(--page-bg-solid)] p-4">
             <div className="mb-3 flex justify-end"><Button variant="ghost" onClick={() => setShowFriendRequests(false)}>Close</Button></div>
             <FriendRequestCenter requests={friendRequests} currentUserId={user.uid} onDecision={decideFriendRequest} />
           </div>

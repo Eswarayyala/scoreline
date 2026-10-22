@@ -4,36 +4,39 @@
   --font-display: "Bebas Neue", sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
-  --color-neon: #22f3c4;
-  --color-volt: #c8ff3d;
+  /* Lead neon pink · secondary electric blue · tertiary orange flare */
+  --color-neon: #ff2d95;
+  --color-volt: #3b82ff;
   --color-flare: #ff8a24;
-  --color-slate-ink: #070b12;
+  --color-slate-ink: #05070c;
 }
 
 :root {
   color-scheme: dark;
-  --page-bg: radial-gradient(circle at 90% 0%, rgba(255, 132, 39, 0.12), transparent 30%),
-    linear-gradient(145deg, #17110f 0%, #1a1412 58%, #211510 100%);
-  --page-bg-solid: #17110f;
-  --page-text: #fff1e6;
-  --panel-bg: rgba(34, 25, 21, 0.96);
-  --panel-raised: #2b1e19;
-  --input-bg: #1a1411;
-  --text-muted: #c3aa9a;
-  --text-dim: #967d70;
-  --border: #493025;
-  --border-strong: #684534;
-  --accent: #ff8a24;
-  --accent-secondary: #ffc04b;
-  --accent-contrast: #23120b;
-  --danger: #ff6b5d;
-  --danger-border: #673832;
-  --rank-second: #d2b99f;
-  --rank-third: #c8804a;
-  --success: #55cea2;
-  --google-bg: #f8f7f4;
-  --google-text: #17110f;
-  --panel-shadow: 0 8px 26px rgba(255, 118, 29, 0.1);
+  --page-bg:
+    radial-gradient(circle at 12% 0%, rgba(59, 130, 255, 0.16), transparent 34%),
+    radial-gradient(circle at 92% 8%, rgba(255, 45, 149, 0.12), transparent 32%),
+    linear-gradient(160deg, #05070c 0%, #070b12 52%, #0a1020 100%);
+  --page-bg-solid: #05070c;
+  --page-text: #f4f7ff;
+  --panel-bg: rgba(12, 16, 24, 0.96);
+  --panel-raised: #121826;
+  --input-bg: #0a0e16;
+  --text-muted: #9aa8c2;
+  --text-dim: #6b7a96;
+  --border: #1e2a3d;
+  --border-strong: #2a3b55;
+  --accent: #ff2d95;
+  --accent-secondary: #3b82ff;
+  --accent-contrast: #05070c;
+  --danger: #ff5c6c;
+  --danger-border: #5c2430;
+  --rank-second: #9aa8c2;
+  --rank-third: #ff8a24;
+  --success: #3ddea8;
+  --google-bg: #f4f7ff;
+  --google-text: #05070c;
+  --panel-shadow: 0 10px 28px rgba(5, 7, 12, 0.55);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -51,6 +54,7 @@ body,
 
 #root {
   min-height: 100svh;
+  background: var(--page-bg);
 }
 
 h1,

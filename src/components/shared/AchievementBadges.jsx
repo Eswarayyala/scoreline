@@ -29,7 +29,7 @@ export default function AchievementBadges({ player, extra = [] }) {
       {badges.map((label) => (
         <span
           key={label}
-          className="rounded border border-amber-400/25 px-1.5 py-px font-mono text-[9px] uppercase tracking-wider text-amber-300/90"
+          className="rounded border border-neon/25 px-1.5 py-px font-mono text-[9px] uppercase tracking-wider text-neon/90"
         >
           {label}
         </span>

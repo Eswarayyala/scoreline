@@ -42,7 +42,7 @@ export default function EventImagePicker({
     <div className="space-y-3 rounded-xl border border-white/10 p-3">
       <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">{heading}</p>
       {supportQueued && (
-        <p className="text-xs text-amber-300/90">Support changes wait for owner approval before going live.</p>
+        <p className="text-xs text-neon/90">Support changes wait for owner approval before going live.</p>
       )}
       <p className="text-[11px] text-slate-500">
         Default for this event is unique until you pick a poster. Staff can override with a URL, upload, or library image.

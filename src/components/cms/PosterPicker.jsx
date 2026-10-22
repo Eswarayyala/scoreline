@@ -127,7 +127,7 @@ export default function PosterPicker({ game, value, avatar, flyers, posterIndex 
               );
             })}
           </div>
-          {pack.length < 3 && <p className="mt-2 text-sm text-amber-300">Add at least two more flyers with Import URLs or Upload.</p>}
+          {pack.length < 3 && <p className="mt-2 text-sm text-neon">Add at least two more flyers with Import URLs or Upload.</p>}
         </div>
       )}
 

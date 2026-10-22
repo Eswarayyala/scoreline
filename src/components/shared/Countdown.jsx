@@ -30,7 +30,7 @@ export default function Countdown({ target, label = "Starts in", className = "" 
     <div className={`rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 ${className}`}>
       <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">{parts.done ? "Live / started" : label}</p>
       {!parts.done && (
-        <p className="mt-1 font-mono text-sm text-amber-300">
+        <p className="mt-1 font-mono text-sm text-neon">
           {parts.days > 0 ? `${parts.days}d ` : ""}
           {String(parts.hours).padStart(2, "0")}:{String(parts.minutes).padStart(2, "0")}:{String(parts.seconds).padStart(2, "0")}
         </p>

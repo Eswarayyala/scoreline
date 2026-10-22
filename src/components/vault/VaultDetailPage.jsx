@@ -77,7 +77,7 @@ export default function VaultDetailPage({
             <ArrowLeft size={14} /> The Vault
           </Link>
           {(slide.research || slide.surface === "research" || slide.surface === "ewc-window") && (
-            <Link to="/vault/ewc" className="font-mono text-xs uppercase tracking-widest text-amber-300">
+            <Link to="/vault/ewc" className="font-mono text-xs uppercase tracking-widest text-neon">
               EWC index
             </Link>
           )}
@@ -85,7 +85,7 @@ export default function VaultDetailPage({
             <button
               type="button"
               onClick={() => onToggleBookmark(slide.slug)}
-              className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-amber-300"
+              className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neon"
             >
               {bookmarked ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
               {bookmarked ? "Bookmarked" : "Bookmark"}

@@ -7,7 +7,7 @@ export default function SectionBackHome({ label = "Home" } = {}) {
     <button
       type="button"
       onClick={() => navigate("/", { replace: true })}
-      className="mb-3 inline-flex min-h-9 items-center font-mono text-[10px] uppercase tracking-widest text-amber-300 hover:text-amber-200"
+      className="mb-3 inline-flex min-h-9 items-center font-mono text-[10px] uppercase tracking-widest text-neon hover:text-neon"
     >
       ← {label}
     </button>

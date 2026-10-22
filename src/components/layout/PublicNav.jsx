@@ -20,7 +20,7 @@ export default function PublicNav({
               key={link.to}
               type="button"
               onClick={() => navigate(link.to)}
-              className={`min-h-10 shrink-0 px-3 py-2.5 font-mono text-[11px] uppercase tracking-wider ${on ? "border-b-2 border-amber-400 text-white" : "border-b-2 border-transparent text-stone-500 hover:text-stone-200"}`}
+              className={`min-h-10 shrink-0 px-3 py-2.5 font-mono text-[11px] uppercase tracking-wider ${on ? "border-b-2 border-neon text-white" : "border-b-2 border-transparent text-slate-500 hover:text-slate-200"}`}
             >
               {link.label}
             </button>
@@ -28,7 +28,7 @@ export default function PublicNav({
         })}
         {onVault && (
           <>
-            <span className="mx-0.5 shrink-0 text-stone-700" aria-hidden="true">/</span>
+            <span className="mx-0.5 shrink-0 text-slate-600" aria-hidden="true">/</span>
             {[
               { to: "/vault/franchises", label: "Franchises" },
               { to: "/vault/players", label: "Players" },
@@ -40,7 +40,7 @@ export default function PublicNav({
                   key={link.to}
                   type="button"
                   onClick={() => navigate(link.to)}
-                  className={`min-h-10 shrink-0 px-2.5 py-2.5 font-mono text-[10px] uppercase tracking-wider ${on ? "text-amber-300" : "text-stone-600 hover:text-stone-300"}`}
+                  className={`min-h-10 shrink-0 px-2.5 py-2.5 font-mono text-[10px] uppercase tracking-wider ${on ? "text-neon" : "text-slate-500 hover:text-slate-300"}`}
                 >
                   {link.label}
                 </button>
