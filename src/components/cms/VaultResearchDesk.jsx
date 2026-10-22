@@ -5,6 +5,7 @@ import { canProposeCmsDelete, canWriteCircuitContent, isSiteSupportRole, support
 import { FILTER_GAMES, canonicalFilterGame } from "../../data/gameCatalog";
 import { recordRecency, sortByRecency } from "../../lib/deskSort";
 import DeskBin from "./DeskBin";
+import StickyFilterBar from "../shared/StickyFilterBar";
 import DeskSortSelect from "./DeskSortSelect";
 import PosterPicker from "./PosterPicker";
 import { ensureGameCollections } from "../../services/mediaLibrary";
@@ -684,7 +685,7 @@ export default function VaultResearchDesk({
           </Link>
         )}
       </div>
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+      <StickyFilterBar>
         <label className="relative block min-w-0 flex-1 sm:max-w-md">
           <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
@@ -696,7 +697,7 @@ export default function VaultResearchDesk({
           />
         </label>
         <DeskSortSelect value={sort} onChange={setSort} />
-      </div>
+      </StickyFilterBar>
       <CatalogDesk records={records} role={role} permissions={permissions} games={filterGames} onSave={onSave} onDelete={onDelete} />
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {visible.map((item) => (

@@ -5,6 +5,7 @@ import { VAULT_SLIDES, flyerForEvent } from "../../data/platformShowcase";
 import { publicScopeKicker } from "../../data/eventScope";
 import { canonicalFilterGame, gameMatchesFilter } from "../../data/gameCatalog";
 import LoadMoreBar, { usePagedVisible } from "../shared/LoadMoreBar";
+import StickyFilterBar from "../shared/StickyFilterBar";
 
 const LIBRARY_PAGE = 9;
 
@@ -153,7 +154,11 @@ export default function VaultLibraryPage({
           {bookmarkSlugs.length ? ` · ${bookmarkSlugs.length}` : ""}
         </button>
       </div>
-      <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-white/5 pb-3">
+      <StickyFilterBar className="mb-6 -mx-0 border-white/5 bg-slate-950/90" trailing={(
+        <Link to="/vault/ewc" className="font-mono text-[10px] uppercase tracking-widest text-stone-500 no-underline hover:text-amber-300">
+          EWC index
+        </Link>
+      )}>
         <label className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-stone-500">
           Game
           <select
@@ -182,10 +187,7 @@ export default function VaultLibraryPage({
             <option value="random">Random</option>
           </select>
         </label>
-        <Link to="/vault/ewc" className="font-mono text-[10px] uppercase tracking-widest text-stone-500 no-underline hover:text-amber-300">
-          EWC index
-        </Link>
-      </div>
+      </StickyFilterBar>
       {floating.length > 0 && (
         <>
           <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Floating windows</h2>

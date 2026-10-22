@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { ImagePlus, Plus, RotateCcw, Star, Trash2 } from "lucide-react";
+import { ImagePlus, Pencil, Plus, RotateCcw, Star, Trash2 } from "lucide-react";
 import { FILTER_GAMES } from "../../data/gameCatalog";
 import { SITE_COLLECTION_KINDS, TOURNAMENT_COLLECTION_KINDS, collectionKindLabel, siteCollectionId } from "../../data/mediaCollections";
 import { useCollectionAssets, useLibraryAssetIndex, useLibraryBinIndex, useMediaArt } from "../../hooks/useMediaLibrary";
 import { sortByRecency } from "../../lib/deskSort";
+import StickyFilterBar from "../shared/StickyFilterBar";
 import {
   createMediaCollection,
   deleteMediaAsset,
   deleteMediaCollection,
   ensureGameCollections,
+  moveMediaAsset,
   purgeMediaAsset,
+  renameMediaAsset,
   restoreMediaAsset,
   setAvatarPickerBlocked,
   setCollectionCover,
@@ -19,6 +22,107 @@ import DeskSortSelect from "./DeskSortSelect";
 
 const inputClass = "w-full rounded-lg border border-white/15 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none focus:border-neon";
 const ALL_KIND = "all";
+
+function AssetEditPanel({ asset, collection, games, onClose, onSaved, onError }) {
+  const seeded = asset?.seeded || String(collection?.id || "").startsWith("generated-");
+  const [name, setName] = useState(asset?.name || asset?.id || "");
+  const [kind, setKind] = useState(collection?.kind || "poster");
+  const [busy, setBusy] = useState("");
+
+  const save = async () => {
+    setBusy("save");
+    try {
+      if (!seeded && name.trim() && name.trim() !== asset.name) {
+        await renameMediaAsset(collection.id, asset.id, name.trim());
+      }
+      if (!seeded && kind && kind !== collection.kind) {
+        await moveMediaAsset(collection, asset, kind);
+      }
+      onSaved?.();
+      onClose?.();
+    } catch (issue) {
+      onError?.(issue.message || "Could not update this image.");
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const toBin = async () => {
+    setBusy("bin");
+    try {
+      await deleteMediaAsset(collection.id, asset, collection);
+      onSaved?.();
+      onClose?.();
+    } catch (issue) {
+      onError?.(issue.message || "Could not move this image to the bin.");
+    } finally {
+      setBusy("");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-md space-y-3 rounded-2xl border border-white/15 bg-slate-950 p-4"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <p className="font-mono text-[10px] uppercase tracking-widest text-neon">Edit image</p>
+        <img src={asset.url} alt="" className="h-36 w-full rounded-xl object-cover" />
+        <label className="grid gap-1 text-xs text-slate-400">
+          Name
+          <input
+            className={inputClass}
+            value={name}
+            disabled={seeded || Boolean(busy)}
+            onChange={(event) => setName(event.target.value)}
+          />
+        </label>
+        <label className="grid gap-1 text-xs text-slate-400">
+          Category
+          <select
+            className={inputClass}
+            value={kind}
+            disabled={seeded || Boolean(busy)}
+            onChange={(event) => setKind(event.target.value)}
+          >
+            {SITE_COLLECTION_KINDS.map((item) => (
+              <option key={item.id} value={item.id}>{item.label}</option>
+            ))}
+          </select>
+        </label>
+        {seeded && (
+          <p className="text-[11px] text-amber-200/90">
+            Generated pack images can only move to Bin. Upload a copy to rename or change category.
+          </p>
+        )}
+        <p className="text-[11px] text-slate-500">{collection?.game || games?.[0] || "Game"} · {collectionKindLabel(collection?.kind)}</p>
+        <div className="flex flex-wrap gap-2">
+          {!seeded && (
+            <button
+              type="button"
+              disabled={Boolean(busy)}
+              onClick={save}
+              className="rounded-full bg-neon px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-40"
+            >
+              {busy === "save" ? "Saving…" : "Save"}
+            </button>
+          )}
+          <button
+            type="button"
+            disabled={Boolean(busy)}
+            onClick={toBin}
+            className="inline-flex items-center gap-1 rounded-full border border-rose-400/40 px-4 py-2 text-sm text-rose-300"
+          >
+            <Trash2 size={14} /> {busy === "bin" ? "…" : "Move to bin"}
+          </button>
+          <button type="button" onClick={onClose} className="rounded-full border border-white/15 px-4 py-2 text-sm text-slate-200">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function MediaLibraryDesk({
   games = FILTER_GAMES,
@@ -36,6 +140,7 @@ export default function MediaLibraryDesk({
   const [newTitle, setNewTitle] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [editing, setEditing] = useState(null);
   const showAll = !tournamentId && kind === ALL_KIND;
 
   useEffect(() => {
@@ -172,11 +277,11 @@ export default function MediaLibraryDesk({
     }
   };
 
-  const removeAsset = async (asset) => {
-    if (!canManage || !selected) return;
+  const removeAsset = async (asset, pack = selected) => {
+    if (!canManage || !pack) return;
     setError("");
     try {
-      await deleteMediaAsset(selected.id, asset, selected);
+      await deleteMediaAsset(pack.id, asset, pack);
     } catch (issue) {
       setError(issue.message || "Could not remove this image.");
     }
@@ -194,29 +299,66 @@ export default function MediaLibraryDesk({
 
   const kindButtons = tournamentId
     ? TOURNAMENT_COLLECTION_KINDS
-    : [
-      { id: ALL_KIND, label: "All" },
-      ...SITE_COLLECTION_KINDS,
-      ...(canManage ? [{ id: "bin", label: libraryBin.length ? `Bin (${libraryBin.length})` : "Bin" }] : []),
-    ];
+    : [{ id: ALL_KIND, label: "All" }, ...SITE_COLLECTION_KINDS];
+
+  const openEdit = (asset, pack) => {
+    setEditing({
+      asset,
+      collection: pack || collections.find((row) => row.id === asset.collectionId) || selected,
+    });
+  };
 
   return (
     <section className={`space-y-4 ${compact ? "" : "rounded-2xl border border-neon/20 bg-slate-950/80 p-5"}`}>
       {!compact && (
-        <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-neon">Image collections</p>
-          <h2 className="font-display text-3xl text-white">Library</h2>
-          <p className="mt-1 text-sm text-slate-400">
-            Browse every pack, or open Avatar / Poster / Background / Event by game to upload. Trash moves images into Bin.
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-neon">Image collections</p>
+            <h2 className="font-display text-3xl text-white">Library</h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Browse packs by game. Edit any image to rename, change category, or move it to Bin.
+            </p>
+          </div>
+          {!tournamentId && (
+            <button
+              type="button"
+              onClick={() => {
+                setKind("bin");
+                setOpenId("");
+              }}
+              className={`shrink-0 rounded-full px-4 py-2 font-mono text-[11px] uppercase tracking-widest ${
+                showBin
+                  ? "bg-rose-400 text-slate-950"
+                  : "border border-rose-400/50 text-rose-300 hover:border-rose-300"
+              }`}
+            >
+              Bin{libraryBin.length ? ` · ${libraryBin.length}` : ""}
+            </button>
+          )}
         </div>
       )}
       {tournamentId && (
         <p className="text-sm text-slate-400">Poster collections for this tournament. Only the host or co-host can apply a poster to the listing.</p>
       )}
-      <div className="flex flex-wrap items-center gap-2">
+
+      <StickyFilterBar
+        trailing={!tournamentId && canManage ? (
+          <button
+            type="button"
+            onClick={() => {
+              setKind("bin");
+              setOpenId("");
+            }}
+            className={`rounded-full px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest ${
+              showBin ? "bg-rose-400 text-slate-950" : "border border-rose-400/40 text-rose-300"
+            }`}
+          >
+            Bin{libraryBin.length ? ` (${libraryBin.length})` : ""}
+          </button>
+        ) : null}
+      >
         {!tournamentId && (
-          <select className={`${inputClass} max-w-xs`} value={activeGame} onChange={(event) => setActiveGame(event.target.value)}>
+          <select className={`${inputClass} max-w-[11rem]`} value={activeGame} onChange={(event) => setActiveGame(event.target.value)}>
             <option value="">All games</option>
             {games.map((name) => <option key={name} value={name}>{name}</option>)}
           </select>
@@ -235,14 +377,11 @@ export default function MediaLibraryDesk({
           </button>
         ))}
         <DeskSortSelect value={sort} onChange={setSort} />
-      </div>
+      </StickyFilterBar>
+
       {canManage && !showBin && (
         <div className="space-y-3 rounded-xl border border-dashed border-neon/30 bg-slate-950/50 p-3">
           <p className="font-mono text-[10px] uppercase tracking-widest text-neon">Upload images</p>
-          <p className="text-xs text-slate-400">
-            Choose the section first. Uploads land in that game + kind pack
-            {selected ? ` (current: ${collectionKindLabel(selected.kind)} · ${selected.title})` : ""}.
-          </p>
           <div className="flex flex-wrap gap-2">
             {!tournamentId && (
               <>
@@ -298,9 +437,6 @@ export default function MediaLibraryDesk({
               />
             </label>
           </div>
-          {!tournamentId && !uploadGame && (
-            <p className="text-xs text-amber-200/90">Select a game section to enable upload.</p>
-          )}
         </div>
       )}
       {canManage && !showBin && (tournamentId || (kind !== ALL_KIND && activeGame) || uploadGame) && (
@@ -370,7 +506,7 @@ export default function MediaLibraryDesk({
               </div>
             ))}
           </div>
-          {!libraryBin.length && <p className="text-sm text-slate-500">Bin is empty. Trash an image from any pack to move it here.</p>}
+          {!libraryBin.length && <p className="text-sm text-slate-500">Bin is empty. Use Edit → Move to bin on any image.</p>}
         </div>
       ) : showAll ? (
         <div className="space-y-3">
@@ -378,50 +514,63 @@ export default function MediaLibraryDesk({
             All images{activeGame ? ` · ${activeGame}` : ""} · {libraryAssets.length}
           </p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {libraryAssets.map((asset) => (
-              <div key={`${asset.collectionId}-${asset.id}`} className={`relative overflow-hidden rounded-xl border ${currentPoster === asset.url ? "border-neon" : "border-white/10"}`}>
-                <button
-                  type="button"
-                  className="block w-full"
-                  onClick={() => {
-                    onPickPoster?.(asset.url);
-                    setOpenId(asset.collectionId);
-                    if (asset.kind) setKind(asset.kind);
-                    if (asset.game) setActiveGame(asset.game);
-                  }}
-                >
-                  <img src={asset.url} alt="" className="h-28 w-full object-cover" />
-                </button>
-                <p className="truncate px-2 py-1 text-[10px] text-slate-400">
-                  {collectionKindLabel(asset.kind)} · {asset.game || asset.collectionTitle || asset.name || asset.id}
-                </p>
-                {canManage && asset.collectionId && (
+            {libraryAssets.map((asset) => {
+              const pack = collections.find((row) => row.id === asset.collectionId) || {
+                id: asset.collectionId,
+                kind: asset.kind,
+                game: asset.game,
+                coverUrl: asset.url,
+                defaultUrl: "",
+                hiddenAssetIds: [],
+              };
+              return (
+                <div key={`${asset.collectionId}-${asset.id}`} className={`relative overflow-hidden rounded-xl border ${currentPoster === asset.url ? "border-neon" : "border-white/10"}`}>
                   <button
                     type="button"
-                    aria-label="Move to bin"
-                    title="Move to bin"
-                    className="absolute right-1 top-1 rounded-full bg-slate-950/85 p-1.5 text-rose-300"
-                    onClick={async (event) => {
-                      event.stopPropagation();
-                      setError("");
-                      try {
-                        const pack = collections.find((row) => row.id === asset.collectionId) || {
-                          id: asset.collectionId,
-                          coverUrl: asset.url,
-                          defaultUrl: "",
-                          hiddenAssetIds: [],
-                        };
-                        await deleteMediaAsset(asset.collectionId, asset, pack);
-                      } catch (issue) {
-                        setError(issue.message || "Could not move this image to the bin.");
-                      }
+                    className="block w-full"
+                    onClick={() => {
+                      onPickPoster?.(asset.url);
+                      setOpenId(asset.collectionId);
+                      if (asset.kind) setKind(asset.kind);
+                      if (asset.game) setActiveGame(asset.game);
                     }}
                   >
-                    <Trash2 size={12} />
+                    <img src={asset.url} alt="" className="h-28 w-full object-cover" />
                   </button>
-                )}
-              </div>
-            ))}
+                  <p className="truncate px-2 py-1 text-[10px] text-slate-400">
+                    {collectionKindLabel(asset.kind)} · {asset.game || asset.collectionTitle || asset.name || asset.id}
+                  </p>
+                  {canManage && (
+                    <div className="absolute right-1 top-1 flex gap-1">
+                      <button
+                        type="button"
+                        aria-label="Edit image"
+                        title="Edit image"
+                        className="rounded-full bg-slate-950/85 p-1.5 text-neon"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openEdit(asset, pack);
+                        }}
+                      >
+                        <Pencil size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Move to bin"
+                        title="Move to bin"
+                        className="rounded-full bg-slate-950/85 p-1.5 text-rose-300"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          removeAsset(asset, pack);
+                        }}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
           {!libraryAssets.length && <p className="text-sm text-slate-500">No images yet. Open a category like Avatar or Poster, pick a game, and upload.</p>}
         </div>
@@ -482,7 +631,6 @@ export default function MediaLibraryDesk({
                           <button
                             type="button"
                             aria-label={(selected.pickerBlockedIds || []).includes(asset.id) ? "Allow in profile picker" : "Hide from profile picker"}
-                            title={(selected.pickerBlockedIds || []).includes(asset.id) ? "Allow in profile picker" : "Hide from profile picker"}
                             className={`rounded-full bg-slate-950/80 px-1.5 py-1 font-mono text-[8px] uppercase tracking-wider ${(selected.pickerBlockedIds || []).includes(asset.id) ? "text-slate-500" : "text-neon"}`}
                             onClick={() => {
                               const blocked = !(selected.pickerBlockedIds || []).includes(asset.id);
@@ -493,6 +641,9 @@ export default function MediaLibraryDesk({
                           </button>
                         )}
                         <div className="flex gap-1 self-end">
+                          <button type="button" aria-label="Edit image" title="Edit image" className="rounded-full bg-slate-950/80 p-1.5 text-neon" onClick={() => openEdit(asset, selected)}>
+                            <Pencil size={12} />
+                          </button>
                           <button type="button" aria-label="Set cover" title="Set as cover" className="rounded-full bg-slate-950/80 p-1.5 text-amber-300" onClick={() => makeCover(asset.url)}>
                             <Star size={12} />
                           </button>
@@ -507,7 +658,7 @@ export default function MediaLibraryDesk({
               </div>
               {canManage && binAssets.length > 0 && (
                 <div className="space-y-2 rounded-xl border border-dashed border-rose-400/30 p-3">
-                  <p className="font-mono text-[10px] uppercase tracking-widest text-rose-300/90">Bin · restore or delete forever</p>
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-rose-300/90">Collection bin</p>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {binAssets.map((asset) => (
                       <div key={asset.id} className="relative overflow-hidden rounded-xl border border-white/10 opacity-80">
@@ -544,7 +695,17 @@ export default function MediaLibraryDesk({
         </>
       )}
       {error && <p className="text-sm text-rose-400">{error}</p>}
-      {!canManage && <p className="text-xs text-slate-500">View only. The owner dashboard can add or delete any collection image.</p>}
+      {!canManage && <p className="text-xs text-slate-500">View only. The owner dashboard can edit or bin any collection image.</p>}
+      {editing && (
+        <AssetEditPanel
+          asset={editing.asset}
+          collection={editing.collection}
+          games={games}
+          onClose={() => setEditing(null)}
+          onSaved={() => setError("")}
+          onError={setError}
+        />
+      )}
     </section>
   );
 }

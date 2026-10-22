@@ -257,3 +257,59 @@ export async function purgeMediaAsset(collectionId, asset, collectionRecord = nu
 export async function setCollectionCover(collectionId, url, collectionRecord = null) {
   await upsertMediaCollection(collectionId, { coverUrl: url }, collectionRecord || { id: collectionId, coverUrl: url });
 }
+
+/** Rename an uploaded library asset (seeded packs have no Firestore name doc). */
+export async function renameMediaAsset(collectionId, assetId, name) {
+  if (!collectionId || !assetId) throw new Error("Missing asset.");
+  if (String(collectionId).startsWith("generated-")) {
+    throw new Error("Generated pack images can’t be renamed — upload a copy first.");
+  }
+  await updateDoc(doc(db, COLLECTIONS, collectionId, "assets", assetId), {
+    name: String(name || "image").replace(/[^\w.\-]+/g, "_").slice(0, 80),
+    updatedAt: Date.now(),
+  });
+}
+
+/**
+ * Move an uploaded asset into another site kind pack for the same game.
+ * Soft-deletes the source (bin) after copying.
+ */
+export async function moveMediaAsset(fromCollection, asset, toKind) {
+  if (!fromCollection?.id || !asset?.id) throw new Error("Missing asset.");
+  if (asset.seeded || String(fromCollection.id).startsWith("generated-")) {
+    throw new Error("Generated pack images can’t change category — upload a copy first.");
+  }
+  const kind = String(toKind || "").trim();
+  if (!kind || kind === fromCollection.kind) return fromCollection;
+  const game = fromCollection.game || "";
+  await ensureGameCollections(game);
+  const targetId = siteCollectionId(game, kind);
+  const target = await upsertMediaCollection(
+    targetId,
+    {},
+    {
+      id: targetId,
+      scope: "site",
+      kind,
+      game,
+      title: `${game} · ${kind}`,
+      defaultUrl: fromCollection.defaultUrl || "",
+      coverUrl: fromCollection.coverUrl || "",
+      generated: true,
+    },
+  );
+  const payload = {
+    url: asset.url,
+    path: asset.path || "",
+    name: asset.name || asset.id,
+    contentType: asset.contentType || "image/jpeg",
+    bytes: Number(asset.bytes) || 0,
+    createdAt: Date.now(),
+    createdBy: uid(),
+    isDefault: false,
+    movedFrom: fromCollection.id,
+  };
+  await addDoc(collection(db, COLLECTIONS, target.id, "assets"), payload);
+  await deleteMediaAsset(fromCollection.id, asset, fromCollection);
+  return target;
+}

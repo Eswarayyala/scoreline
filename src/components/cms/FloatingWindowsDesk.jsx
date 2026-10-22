@@ -5,6 +5,7 @@ import { canWriteCircuitContent } from "../../lib/staffAccess";
 import { FILTER_GAMES, canonicalFilterGame } from "../../data/gameCatalog";
 import { FLOATING_FEATURES, FLOATING_POLICY_ID, floatingPolicyFromRecords } from "../../data/floatingWindows";
 import { recordRecency, sortByRecency } from "../../lib/deskSort";
+import StickyFilterBar from "../shared/StickyFilterBar";
 import DeskSortSelect from "./DeskSortSelect";
 
 const inputClass = "w-full rounded-lg border border-white/15 bg-slate-950/80 px-3 py-2 text-sm text-white outline-none focus:border-neon";
@@ -240,7 +241,7 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
         ))}
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+      <StickyFilterBar trailing={<p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">{visible.length} shown</p>}>
         <div className="flex flex-wrap gap-1">
           {TYPE_FILTERS.map((item) => (
             <button
@@ -264,8 +265,7 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
           />
         </label>
         <DeskSortSelect value={sort} onChange={setSort} />
-        <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">{visible.length} shown</p>
-      </div>
+      </StickyFilterBar>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {visible.map((item) => (

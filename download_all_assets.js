@@ -58,16 +58,51 @@ function loadDotEnv() {
 loadDotEnv();
 
 function parseArgs(argv) {
-  const opts = { dryRun: false, limit: 0, manifest: DEFAULT_MANIFEST, skipExisting: true };
+  const opts = {
+    dryRun: false,
+    limit: 0,
+    manifest: DEFAULT_MANIFEST,
+    skipExisting: true,
+    kinds: null,
+    wipe: false,
+  };
   for (let i = 2; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--dry-run") opts.dryRun = true;
     else if (arg === "--force") opts.skipExisting = false;
+    else if (arg === "--wipe") opts.wipe = true;
     else if (arg === "--limit") opts.limit = Number(argv[++i]) || 0;
-    else if (!arg.startsWith("-")) opts.manifest = resolve(arg);
+    else if (arg === "--kinds") {
+      const raw = String(argv[++i] || "");
+      opts.kinds = new Set(
+        raw
+          .split(",")
+          .map((item) => item.trim().toLowerCase())
+          .filter(Boolean)
+          .map((item) => (item === "avatar" ? "avatars" : item === "background" ? "backgrounds" : item === "poster" ? "posters" : item)),
+      );
+    } else if (!arg.startsWith("-")) opts.manifest = resolve(arg);
   }
   return opts;
 }
+
+const VARIATION_CUES = {
+  avatars: [
+    "unique face angle three-quarter view, cyan rim light",
+    "unique face angle profile silhouette, magenta accent glow",
+    "unique face angle front hero shot, gold specular highlights",
+  ],
+  backgrounds: [
+    "wide empty midground for UI overlay, cool blue fog, no characters",
+    "asymmetric neon architecture, warm orange haze, no characters",
+    "deep perspective corridor, violet particles, no characters",
+  ],
+  posters: [
+    "diagonal action crop, upper copy band empty",
+    "centered arena frame, lower third empty for title",
+    "split-panel composition, center negative space",
+  ],
+};
 
 function slugGame(name) {
   return String(name || "game")
@@ -114,26 +149,36 @@ function apiKey() {
   return String(process.env.POLLINATIONS_API_KEY || process.env.POLLINATIONS_KEY || "").trim();
 }
 
-function buildPollinationsUrl(entry) {
+function diversifyPrompt(entry, folder, index) {
+  const cue = (VARIATION_CUES[folder] || [])[index % 3] || `variation seed ${index + 1}`;
+  return `${String(entry.prompt || "").trim()}. Distinct composition: ${cue}. Avoid repeating prior frames.`;
+}
+
+function buildPollinationsUrl(entry, folder, index) {
   const { width, height } = parseResolution(entry.resolution);
-  const prompt = String(entry.prompt || "").trim();
+  const prompt = diversifyPrompt(entry, folder, index);
   const encoded = encodeURIComponent(prompt);
+  const seed = Math.abs(
+    [...`${entry.id || prompt}-${index}`].reduce((acc, ch) => ((acc * 33) ^ ch.charCodeAt(0)) | 0, 7),
+  );
   const params = new URLSearchParams({
     model: process.env.ASSET_MODEL || "flux",
     width: String(width),
     height: String(height),
     nologo: "true",
     enhance: "false",
+    seed: String(seed),
   });
   const key = apiKey();
   if (key) params.set("key", key);
   return `${POLLINATIONS_BASE}/${encoded}?${params.toString()}`;
 }
 
-function flattenJobs(manifest) {
+function flattenJobs(manifest, kindFilter = null) {
   const jobs = [];
   for (const [gameName, kinds] of Object.entries(manifest || {})) {
     for (const [kindKey, folder] of Object.entries(KIND_FOLDERS)) {
+      if (kindFilter && !kindFilter.has(folder)) continue;
       const entries = Array.isArray(kinds?.[kindKey]) ? kinds[kindKey] : [];
       entries.forEach((entry, index) => {
         const id = entry.id || `${slugGame(gameName)}-${folder}-${index + 1}`;
@@ -150,7 +195,7 @@ function flattenJobs(manifest) {
           aspect_ratio: entry.aspect_ratio,
           relPath,
           absPath,
-          url: buildPollinationsUrl(entry),
+          url: buildPollinationsUrl(entry, folder, index),
         });
       });
     }
@@ -223,9 +268,21 @@ or add to .env:
     }
   }
 
-  let jobs = flattenJobs(manifest);
+  let jobs = flattenJobs(manifest, opts.kinds);
+  if (opts.wipe && !opts.dryRun) {
+    const { unlink } = await import("node:fs/promises");
+    let wiped = 0;
+    for (const job of jobs) {
+      if (await pathExists(job.absPath)) {
+        await unlink(job.absPath);
+        wiped += 1;
+      }
+    }
+    console.log(`[wipe] removed ${wiped} existing files for selected kinds`);
+    opts.skipExisting = false;
+  }
   if (opts.limit > 0) jobs = jobs.slice(0, opts.limit);
-  console.log(`[controller] jobs:     ${jobs.length}${opts.dryRun ? " (dry-run)" : ""}`);
+  console.log(`[controller] jobs:     ${jobs.length}${opts.dryRun ? " (dry-run)" : ""}${opts.kinds ? ` · kinds=${[...opts.kinds].join(",")}` : ""}`);
 
   const placementLog = [];
   let saved = 0;
