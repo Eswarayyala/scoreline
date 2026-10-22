@@ -3,16 +3,16 @@ import { ESPORTS_RESEARCH } from "./esportsResearch";
 /** @deprecated Kept for older records that still store the combined label. */
 export const PUBG_FAMILY_LABEL = "PUBG / PUBG Mobile";
 
-/** Distinct PUBG titles shown in filters and desks. */
-export const PUBG_TITLES = ["PUBG", "PUBG Mobile", "BGMI", "PUBG PC"];
+/** Distinct PUBG titles shown in filters and desks (PC folds into PUBG). */
+export const PUBG_TITLES = ["PUBG", "PUBG Mobile", "BGMI"];
 
 export const PUBG_FAMILY_ALIASES = [
   "PUBG",
   "PUBG: Battlegrounds",
+  "PUBG PC",
   "PUBG Mobile",
   "PUBG Mobile (PMWC)",
   "PUBG Mobile (BGMI)",
-  "PUBG PC",
   "BGMI",
   "BGMI and PUBG Mobile",
   PUBG_FAMILY_LABEL,
@@ -60,6 +60,7 @@ const GAME_ALIASES = {
   "starcraft 2": "StarCraft II",
   "starcraft ii": "StarCraft II",
   "pubg: battlegrounds": "PUBG",
+  "pubg pc": "PUBG",
   "pubg mobile (pmwc)": "PUBG Mobile",
   "pubg mobile (bgmi)": "BGMI",
   "bgmi and pubg mobile": "BGMI",
@@ -90,10 +91,9 @@ export function canonicalFilterGame(game = "") {
 export function filterGameAliases(game = "") {
   const canonical = canonicalFilterGame(game);
   if (!canonical) return [];
-  if (canonical === "PUBG") return ["PUBG", "PUBG: Battlegrounds"];
+  if (canonical === "PUBG") return ["PUBG", "PUBG: Battlegrounds", "PUBG PC"];
   if (canonical === "PUBG Mobile") return ["PUBG Mobile", "PUBG Mobile (PMWC)", PUBG_FAMILY_LABEL];
   if (canonical === "BGMI") return ["BGMI", "PUBG Mobile (BGMI)", "BGMI and PUBG Mobile"];
-  if (canonical === "PUBG PC") return ["PUBG PC"];
   return [canonical];
 }
 
