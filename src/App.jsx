@@ -209,10 +209,25 @@ const handleDocRef = (handle) => doc(db, "handles", handleDocId(handle));
 
 const KNOWN_ACCOUNTS_KEY = "grindinfo-known-accounts";
 
+function isDummybotAccount(item) {
+  const blob = [item?.email, item?.handle, item?.label, item?.displayName, item?.name]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return blob.includes("dummybot");
+}
+
 function readKnownAccounts() {
   try {
     const parsed = JSON.parse(localStorage.getItem(KNOWN_ACCOUNTS_KEY) || "[]");
-    return Array.isArray(parsed) ? parsed.filter((item) => item && (item.email || item.handle)).slice(0, 8) : [];
+    if (!Array.isArray(parsed)) return [];
+    const cleaned = parsed
+      .filter((item) => item && (item.email || item.handle) && !isDummybotAccount(item))
+      .slice(0, 8);
+    if (cleaned.length !== parsed.length) {
+      localStorage.setItem(KNOWN_ACCOUNTS_KEY, JSON.stringify(cleaned));
+    }
+    return cleaned;
   } catch {
     return [];
   }
@@ -220,6 +235,7 @@ function readKnownAccounts() {
 
 function rememberKnownAccount(entry) {
   if (!entry?.uid && !entry?.email) return;
+  if (isDummybotAccount(entry)) return;
   const current = readKnownAccounts().filter((item) => item.uid !== entry.uid && item.email !== entry.email);
   localStorage.setItem(KNOWN_ACCOUNTS_KEY, JSON.stringify([{ ...entry, seenAt: Date.now() }, ...current].slice(0, 8)));
 }
@@ -751,9 +767,10 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowse
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const accountChoices = knownAccounts.filter((item, index, list) => {
-    const key = String(item.email || item.handle || "").toLowerCase();
-    if (!key || key.includes("dummybot")) return false;
-    return list.findIndex((other) => String(other.email || other.handle || "").toLowerCase() === key) === index;
+    if (isDummybotAccount(item)) return false;
+    const key = String(item.email || item.handle || item.label || "").toLowerCase();
+    if (!key) return false;
+    return list.findIndex((other) => String(other.email || other.handle || other.label || "").toLowerCase() === key) === index;
   });
 
   const submit = (e) => {
@@ -1447,6 +1464,7 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
 
   const filtered = players
     .filter((p) => p.uid !== currentUid
+      && !isDummybotAccount(p)
       && playerMatchesQuery(p, applied?.name || "")
       && (exactId
         || ((!applied?.styles?.length || normalizeStyles(p.styles, p.style).some((style) => applied.styles.includes(style)))
