@@ -1,7 +1,7 @@
 /**
  * Live matrix data orchestrator — single-agent background service.
  *
- * Pipelines: ESPN scoreboard (Tier-1) → Liquipedia parse (catalog) → community rooms.
+ * Pipelines: ESPN → PandaScore → Liquipedia → community rooms.
  * New / changed matches land in live_matrix.pending.json only.
  * Owner dashboard must approve one match at a time before --apply merges into live_matrix.json.
  *
@@ -12,9 +12,10 @@
  *   node src/agents/data_orchestrator.js --once --limit 5
  *
  * Env:
- *   LIQUIPEDIA_USER_AGENT  required compliant UA for Liquipedia (never hardcode email/token)
- *   ORCHESTRATOR_THROTTLE_MS  default 3000
- *   ORCHESTRATOR_CRON_MS      default 900000
+ *   PANDASCORE_API_KEY       free-tier token from https://app.pandascore.co (Bearer auth)
+ *   LIQUIPEDIA_USER_AGENT    required compliant UA for Liquipedia (never hardcode email/token)
+ *   ORCHESTRATOR_THROTTLE_MS default 3000
+ *   ORCHESTRATOR_CRON_MS     default 900000
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -33,7 +34,45 @@ const COMMUNITY_PATH = join(DATA_DIR, "community_rooms.json");
 const THROTTLE_MS = Number(process.env.ORCHESTRATOR_THROTTLE_MS || 3000);
 const CRON_MS = Number(process.env.ORCHESTRATOR_CRON_MS || 15 * 60 * 1000);
 const ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/esports";
+const PANDASCORE_BASE = "https://api.pandascore.co";
 const REQUEST_TIMEOUT_MS = Number(process.env.ORCHESTRATOR_TIMEOUT_MS || 45_000);
+const PANDASCORE_PER_PAGE = Math.min(100, Number(process.env.PANDASCORE_PER_PAGE || 50) || 50);
+
+/** PandaScore videogame slug → our asset / matrix gameId. */
+const PANDASCORE_GAME_MAP = {
+  valorant: "valorant",
+  lol: "league-of-legends",
+  "league-of-legends": "league-of-legends",
+  "cs-go": "cs2",
+  csgo: "cs2",
+  "counter-strike": "cs2",
+  "dota-2": "dota-2",
+  dota2: "dota-2",
+  codmw: "call-of-duty",
+  "call-of-duty": "call-of-duty",
+  "call-of-duty-warzone": "call-of-duty",
+  ow: "overwatch-2",
+  overwatch: "overwatch-2",
+  "overwatch-2": "overwatch-2",
+  rl: "rocket-league",
+  "rocket-league": "rocket-league",
+  "r6-siege": "rainbow-six-siege",
+  rainbowsix: "rainbow-six-siege",
+  "starcraft-2": "starcraft-2",
+  "starcraft-brood-war": "starcraft-2",
+  fifa: "ea-sports-fc",
+  "ea-sports-fc": "ea-sports-fc",
+  "pubg": "pubg",
+  "pubg-mobile": "pubg-mobile",
+  mlbb: "mobile-legends-bang-bang",
+  "mobile-legends": "mobile-legends-bang-bang",
+  fortnite: "fortnite",
+  "apex-legends": "apex-legends",
+  "teamfight-tactics": "teamfight-tactics",
+  "honor-of-kings": "honor-of-kings",
+  "clash-royale": "clash-royale",
+  "brawl-stars": "brawl-stars",
+};
 
 /** Tier-1 ESPN scoreboard targets. */
 const ESPN_LEAGUES = [
@@ -289,6 +328,114 @@ async function extractEspnScoreboard(gameMeta) {
   }
 }
 
+// ─── PandaScore REST ─────────────────────────────────────────────────────────
+
+function mapPandascoreGameId(match) {
+  const slug = String(match?.videogame?.slug || match?.videogame_title?.slug || "").toLowerCase();
+  if (PANDASCORE_GAME_MAP[slug]) return PANDASCORE_GAME_MAP[slug];
+  const name = String(match?.videogame?.name || "").toLowerCase();
+  if (name.includes("valorant")) return "valorant";
+  if (name.includes("league of legends") || name === "lol") return "league-of-legends";
+  if (name.includes("counter-strike") || name.includes("cs2") || name.includes("cs:go")) return "cs2";
+  if (name.includes("dota")) return "dota-2";
+  if (name.includes("call of duty")) return "call-of-duty";
+  if (name.includes("overwatch")) return "overwatch-2";
+  if (name.includes("rocket league")) return "rocket-league";
+  return slugGame(slug || name || "unknown");
+}
+
+function mapPandascoreStatus(status) {
+  const raw = String(status || "").toLowerCase();
+  if (raw === "running") return "live";
+  if (raw === "finished") return "completed";
+  return "scheduled";
+}
+
+function extractPandascoreMatch(match) {
+  const opponents = Array.isArray(match?.opponents) ? match.opponents : [];
+  const results = Array.isArray(match?.results) ? match.results : [];
+  const teamAMeta = opponents[0] || {};
+  const teamBMeta = opponents[1] || {};
+  const scoreA = results.find((row) => row?.team_id && row.team_id === teamAMeta?.opponent?.id)?.score;
+  const scoreB = results.find((row) => row?.team_id && row.team_id === teamBMeta?.opponent?.id)?.score;
+  const streams = Array.isArray(match?.streams_list) ? match.streams_list : [];
+  const liveStream = streams.find((row) => row?.main || row?.official) || streams[0] || null;
+  const leagueName = match?.league?.name || match?.serie?.full_name || match?.tournament?.name || "PandaScore";
+  const mapLabel =
+    match?.game_advantage != null
+      ? `Bo${match.number_of_games || "?"} · game advantage ${match.game_advantage}`
+      : match?.number_of_games
+        ? `Bo${match.number_of_games}`
+        : null;
+
+  return normalizeMatch({
+    id: `ps-${match.id || match.slug || Date.now()}`,
+    gameId: mapPandascoreGameId(match),
+    tournamentName: match.name || match.slug || leagueName,
+    status: mapPandascoreStatus(match.status),
+    gameClock: match.status === "running" ? "LIVE" : match.begin_at || match.scheduled_at || "",
+    teamA: {
+      name: teamAMeta?.opponent?.name || teamAMeta?.opponent?.acronym || "TBD",
+      score: scoreA !== undefined ? scoreA : teamAMeta.score ?? null,
+      logo: teamAMeta?.opponent?.image_url || null,
+    },
+    teamB: {
+      name: teamBMeta?.opponent?.name || teamBMeta?.opponent?.acronym || "TBD",
+      score: scoreB !== undefined ? scoreB : teamBMeta.score ?? null,
+      logo: teamBMeta?.opponent?.image_url || null,
+    },
+    mapStatus: mapLabel,
+    stream: {
+      available: Boolean(liveStream?.raw_url || liveStream?.embed_url),
+      url: liveStream?.raw_url || liveStream?.embed_url || null,
+    },
+    source: "pandascore",
+  });
+}
+
+async function fetchPandascoreList(path) {
+  const token = process.env.PANDASCORE_API_KEY;
+  if (!token) {
+    console.warn("[pandascore] skipped: set PANDASCORE_API_KEY");
+    return null;
+  }
+  const url = `${PANDASCORE_BASE}${path}${path.includes("?") ? "&" : "?"}per_page=${PANDASCORE_PER_PAGE}`;
+  try {
+    const data = await fetchJson(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+    });
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.warn(`[pandascore] ${path} skipped: ${error.message}`);
+    return [];
+  }
+}
+
+/** Running + upcoming matches (free-tier endpoints), throttled between calls. */
+async function extractPandascore() {
+  if (!process.env.PANDASCORE_API_KEY) {
+    console.warn("[pandascore] skipped: set PANDASCORE_API_KEY");
+    return [];
+  }
+  const running = await fetchPandascoreList("/matches/running");
+  if (running === null) return [];
+  await sleep(THROTTLE_MS);
+  const upcoming = await fetchPandascoreList("/matches/upcoming");
+  const merged = new Map();
+  [...(running || []), ...(upcoming || [])].forEach((match) => {
+    try {
+      const row = extractPandascoreMatch(match);
+      merged.set(row.id, row);
+    } catch (error) {
+      console.warn(`[pandascore] match parse skipped: ${error.message}`);
+    }
+  });
+  return [...merged.values()];
+}
+
 // ─── Liquipedia MediaWiki parse ──────────────────────────────────────────────
 
 function stripHtml(html = "") {
@@ -507,6 +654,13 @@ async function runExtractCycle({ limit = 0, dryRun = false } = {}) {
     console.log(`[espn] ${league.gameId} → ${rows.length} events`);
     await sleep(THROTTLE_MS);
     if (limit && candidates.length >= limit) break;
+  }
+
+  if (!limit || candidates.length < limit) {
+    const psRows = await extractPandascore();
+    candidates.push(...psRows);
+    console.log(`[pandascore] → ${psRows.length} matches`);
+    await sleep(THROTTLE_MS);
   }
 
   if (!limit || candidates.length < limit) {
