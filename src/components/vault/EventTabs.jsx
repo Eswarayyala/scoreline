@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { CheckSquare, Square } from "lucide-react";
+import { CheckSquare, Square, X } from "lucide-react";
 import LoadMoreBar, { usePagedVisible } from "../shared/LoadMoreBar";
 import { editionsNewestFirst, researchHighlightLabels } from "../../data/esportsResearch";
 import {
@@ -13,6 +13,9 @@ import {
 import { flyerForEvent } from "../../data/platformShowcase";
 import { dossierPath } from "../../data/competitorIndex";
 import ShareEventCard from "./ShareEventCard";
+
+const COMPARE_MAX = 4;
+const COMPARE_MIN = 2;
 
 function eventKey(edition, index) {
   return `${edition.year}-${edition.event}-${edition.eventScope || ""}-${index}`;
@@ -221,7 +224,7 @@ export function EventBody({ edition, game, compact = false }) {
   );
 }
 
-function CompareTable({ editions, game }) {
+function CompareTable({ editions, game, onRemove }) {
   const rows = [
     ["Year", (e) => e.year || e.season],
     ["Prize pool", (e) => e.prizePool],
@@ -238,8 +241,23 @@ function CompareTable({ editions, game }) {
           <tr className="border-b border-white/10 text-slate-500">
             <th className="p-3 font-mono text-[10px] uppercase tracking-widest">Field</th>
             {editions.map((edition, index) => (
-              <th key={eventKey(edition, index)} className="p-3 font-mono text-[10px] uppercase tracking-widest text-white">
-                {edition.year || edition.season}
+              <th key={eventKey(edition, index)} className="p-3 align-top">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-white">
+                    {edition.year || edition.season}
+                    <span className="mt-1 block normal-case tracking-normal text-slate-400">{edition.event}</span>
+                  </span>
+                  {onRemove && (
+                    <button
+                      type="button"
+                      aria-label={`Remove ${edition.event} from compare`}
+                      onClick={() => onRemove(edition.__compareKey)}
+                      className="shrink-0 text-slate-500 hover:text-white"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
               </th>
             ))}
           </tr>
@@ -270,19 +288,67 @@ function CompareTable({ editions, game }) {
   );
 }
 
+function CompareTray({ items, max, onRemove, onCompare, onClear, canCompare }) {
+  if (!items.length) return null;
+  return (
+    <div className="sticky bottom-4 z-20 mt-6 rounded-2xl border border-amber-400/40 bg-slate-950/95 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.55)] backdrop-blur">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="font-mono text-[10px] uppercase tracking-widest text-amber-300">
+          Compare list · {items.length}/{max}
+        </p>
+        <button
+          type="button"
+          onClick={onClear}
+          className="font-mono text-[10px] uppercase tracking-widest text-slate-500 hover:text-slate-300"
+        >
+          Clear
+        </button>
+      </div>
+      <ul className="mb-4 flex flex-wrap gap-2">
+        {items.map((item) => (
+          <li
+            key={item.key}
+            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 py-1 pl-3 pr-1 text-sm text-slate-200"
+          >
+            <span className="max-w-[160px] truncate">
+              {item.edition.year || item.edition.season} · {item.edition.event}
+            </span>
+            <button
+              type="button"
+              aria-label={`Remove ${item.edition.event}`}
+              onClick={() => onRemove(item.key)}
+              className="rounded-full p-1 text-slate-500 hover:bg-white/10 hover:text-white"
+            >
+              <X size={12} />
+            </button>
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        disabled={!canCompare}
+        onClick={onCompare}
+        className="w-full rounded-xl bg-amber-400 px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {canCompare ? `Compare ${items.length} events` : `Select ${COMPARE_MIN}–${max} events to compare`}
+      </button>
+    </div>
+  );
+}
+
 export default function EventTabs({ editions = [], game, heading = "", fallbackPoster, onSelectPoster }) {
   const ordered = useMemo(() => editionsNewestFirst(editions), [editions]);
   const [searchParams, setSearchParams] = useSearchParams();
   const eventParam = searchParams.get("event") || "";
   const compareParam = searchParams.get("compare") || "";
   const [picked, setPicked] = useState([]);
+  const [addingMore, setAddingMore] = useState(false);
   const initialVisible = 6;
 
   const activeIndex = useMemo(() => {
     if (!ordered.length || !eventParam) return -1;
     const exact = ordered.findIndex((edition, index) => eventKey(edition, index) === eventParam);
     if (exact >= 0) return exact;
-    // Championship → game vault deep links may omit a stable index.
     const loose = ordered.findIndex((edition) => {
       const base = `${edition.year}-${edition.event}-${edition.eventScope || ""}`;
       return eventParam === base || eventParam.startsWith(`${base}-`);
@@ -296,7 +362,7 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
         .split(",")
         .map((item) => item.trim())
         .filter(Boolean)
-        .slice(0, 3),
+        .slice(0, COMPARE_MAX),
     [compareParam],
   );
 
@@ -305,15 +371,20 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
       compareKeys
         .map((key) => {
           const index = ordered.findIndex((edition, i) => eventKey(edition, i) === key);
-          return index >= 0 ? ordered[index] : null;
+          if (index < 0) return null;
+          return { ...ordered[index], __compareKey: key };
         })
         .filter(Boolean),
     [compareKeys, ordered],
   );
 
   const focused = activeIndex >= 0 && compareEditions.length === 0;
-  const comparing = compareEditions.length >= 2;
+  const comparing = compareEditions.length >= COMPARE_MIN;
   const current = focused ? ordered[activeIndex] : null;
+
+  useEffect(() => {
+    if (compareKeys.length) setPicked(compareKeys);
+  }, [compareParam]);
 
   useEffect(() => {
     if (!current || !onSelectPoster) return;
@@ -326,6 +397,26 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
     [page.visible],
   );
 
+  const pickedItems = useMemo(
+    () =>
+      picked
+        .map((key) => {
+          const index = ordered.findIndex((edition, i) => eventKey(edition, i) === key);
+          if (index < 0) return null;
+          return { key, edition: ordered[index], index };
+        })
+        .filter(Boolean),
+    [picked, ordered],
+  );
+
+  const writeCompare = (keys) => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("event");
+    if (keys.length >= COMPARE_MIN) next.set("compare", keys.slice(0, COMPARE_MAX).join(","));
+    else next.delete("compare");
+    setSearchParams(next, { replace: false });
+  };
+
   const openEvent = (index) => {
     const edition = ordered[index];
     if (!edition) return;
@@ -335,37 +426,96 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
     setSearchParams(next, { replace: false });
   };
 
-  const togglePick = (index) => {
+  const addToCompare = (index) => {
     const key = eventKey(ordered[index], index);
     setPicked((currentPicks) => {
-      if (currentPicks.includes(key)) return currentPicks.filter((item) => item !== key);
-      if (currentPicks.length >= 3) return currentPicks;
+      if (currentPicks.includes(key)) return currentPicks;
+      if (currentPicks.length >= COMPARE_MAX) return currentPicks;
       return [...currentPicks, key];
     });
   };
 
+  const removeFromCompare = (key) => {
+    setPicked((currentPicks) => currentPicks.filter((item) => item !== key));
+    if (comparing || compareKeys.length) {
+      const nextKeys = (comparing ? compareKeys : picked).filter((item) => item !== key);
+      writeCompare(nextKeys);
+      if (nextKeys.length < COMPARE_MIN) setAddingMore(false);
+    }
+  };
+
   const startCompare = () => {
-    if (picked.length < 2) return;
-    const next = new URLSearchParams(searchParams);
-    next.delete("event");
-    next.set("compare", picked.join(","));
-    setSearchParams(next, { replace: false });
+    if (picked.length < COMPARE_MIN) return;
+    setAddingMore(false);
+    writeCompare(picked);
+  };
+
+  const clearPicks = () => {
+    setPicked([]);
+    if (compareParam) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("compare");
+      setSearchParams(next, { replace: false });
+    }
   };
 
   if (!ordered.length) return null;
 
-  if (comparing) {
+  if (comparing && !addingMore) {
     return (
-      <section className="mt-8 space-y-4">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
-          Comparing {compareEditions.length} editions
-        </p>
-        <CompareTable editions={compareEditions} game={game} />
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+            Comparing {compareEditions.length} of {COMPARE_MAX} max
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {compareEditions.length < COMPARE_MAX && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPicked(compareKeys);
+                  setAddingMore(true);
+                }}
+                className="font-mono text-[11px] uppercase tracking-widest text-neon"
+              >
+                Add event
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={clearPicks}
+              className="font-mono text-[11px] uppercase tracking-widest text-slate-500 hover:text-slate-300"
+            >
+              Clear compare
+            </button>
+          </div>
+        </div>
+        <ul className="flex flex-wrap gap-2">
+          {compareEditions.map((edition) => (
+            <li
+              key={edition.__compareKey}
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 py-1 pl-3 pr-1 text-sm text-slate-200"
+            >
+              <span className="max-w-[180px] truncate">
+                {edition.year || edition.season} · {edition.event}
+              </span>
+              <button
+                type="button"
+                aria-label={`Remove ${edition.event}`}
+                onClick={() => removeFromCompare(edition.__compareKey)}
+                className="rounded-full p-1 text-slate-500 hover:bg-white/10 hover:text-white"
+              >
+                <X size={12} />
+              </button>
+            </li>
+          ))}
+        </ul>
+        <CompareTable editions={compareEditions} game={game} onRemove={removeFromCompare} />
       </section>
     );
   }
 
-  if (focused && current) {
+  if (focused && current && !addingMore) {
     return (
       <section className="mt-8 space-y-4">
         <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
@@ -377,35 +527,47 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
   }
 
   return (
-    <section className="mt-8">
-      {(heading || game) && (
+    <section className={comparing || addingMore ? "space-y-4" : "mt-8"}>
+      {(heading || game) && !addingMore && (
         <h2 className="font-display text-2xl text-white md:text-3xl">{heading || `All ${game} events`}</h2>
+      )}
+      {addingMore && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-amber-300">
+            Add to compare · {picked.length}/{COMPARE_MAX}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setAddingMore(false);
+              if (picked.length >= COMPARE_MIN) writeCompare(picked);
+            }}
+            className="font-mono text-[11px] uppercase tracking-widest text-neon"
+          >
+            Done adding
+          </button>
+        </div>
       )}
       <div className="mb-3 mt-2 flex flex-wrap items-center justify-between gap-3">
         <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
           {ordered.length} editions · showing {Math.min(page.visible, ordered.length)}
+          {picked.length > 0 ? ` · ${picked.length} selected` : ""}
         </p>
-        {picked.length >= 2 && (
-          <button
-            type="button"
-            onClick={startCompare}
-            className="font-mono text-[11px] uppercase tracking-widest text-amber-300"
-          >
-            Compare {picked.length} editions
-          </button>
-        )}
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {visibleIndexes.map((index) => {
           const edition = ordered[index];
           const key = eventKey(edition, index);
           const selected = picked.includes(key);
+          const atMax = picked.length >= COMPARE_MAX && !selected;
           const champion =
             edition.champion || edition.payouts?.[0]?.team || edition.payouts?.[0]?.player || "";
           return (
             <article
               key={key}
-              className="flex flex-col border border-white/10 bg-white/[0.03] transition hover:border-amber-400/50 hover:bg-white/[0.05]"
+              className={`flex flex-col border bg-white/[0.03] transition ${
+                selected ? "border-amber-400/60" : "border-white/10 hover:border-amber-400/50 hover:bg-white/[0.05]"
+              }`}
             >
               <button
                 type="button"
@@ -440,12 +602,15 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
               <div className="flex items-center justify-between gap-2 border-t border-white/10 px-4 py-2">
                 <button
                   type="button"
-                  aria-label={selected ? "Remove from compare" : "Add to compare"}
-                  onClick={() => togglePick(index)}
-                  className={`inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest ${selected ? "text-neon" : "text-slate-600 hover:text-slate-400"}`}
+                  disabled={atMax}
+                  aria-label={selected ? "Remove from compare list" : "Add to compare list"}
+                  onClick={() => (selected ? removeFromCompare(key) : addToCompare(index))}
+                  className={`inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-40 ${
+                    selected ? "text-amber-300" : "text-slate-500 hover:text-slate-300"
+                  }`}
                 >
                   {selected ? <CheckSquare size={11} /> : <Square size={11} />}
-                  Compare
+                  {selected ? "Remove" : atMax ? "List full" : "Add"}
                 </button>
               </div>
             </article>
@@ -461,6 +626,14 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
         onMore={page.more}
         onAll={page.all}
         onLess={page.less}
+      />
+      <CompareTray
+        items={pickedItems}
+        max={COMPARE_MAX}
+        onRemove={removeFromCompare}
+        onClear={clearPicks}
+        onCompare={startCompare}
+        canCompare={pickedItems.length >= COMPARE_MIN && pickedItems.length <= COMPARE_MAX}
       />
     </section>
   );

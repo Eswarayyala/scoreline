@@ -18,7 +18,8 @@ export default function VaultDetailPage({
   onToggleBookmark,
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const eventFocused = Boolean(searchParams.get("event") || searchParams.get("compare"));
+  const compareFocused = Boolean(searchParams.get("compare"));
+  const eventFocused = Boolean(searchParams.get("event") || compareFocused);
   const titleFocused = searchParams.get("details") === "1" && Boolean(searchParams.get("game"));
 
   const clearEventFocus = () => {
@@ -97,10 +98,10 @@ export default function VaultDetailPage({
             onClick={clearEventFocus}
             className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-neon"
           >
-            <ArrowLeft size={14} /> All events
+            <ArrowLeft size={14} /> {compareFocused ? "Back to events" : "All events"}
           </button>
         )}
-        {titleFocused && (
+        {titleFocused && !compareFocused && (
           <button
             type="button"
             onClick={clearTitleFocus}
@@ -110,6 +111,16 @@ export default function VaultDetailPage({
           </button>
         )}
       </div>
+
+      {compareFocused && !isChampionship && !!slide.editions?.length ? (
+        <EventTabs
+          editions={slide.editions}
+          game={slide.game}
+          heading={`Compare · ${slide.game}`}
+          fallbackPoster={slide.poster}
+          onSelectPoster={setActiveFlyer}
+        />
+      ) : (
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -302,6 +313,7 @@ export default function VaultDetailPage({
           )}
         </div>
       </motion.div>
+      )}
     </article>
   );
 }

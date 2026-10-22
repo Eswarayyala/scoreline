@@ -208,7 +208,6 @@ function handleDocId(handle) {
 const handleDocRef = (handle) => doc(db, "handles", handleDocId(handle));
 
 const KNOWN_ACCOUNTS_KEY = "grindinfo-known-accounts";
-const DUMMY_TESTER_EMAIL = "dummybot.grindinfo@gmail.com";
 
 function readKnownAccounts() {
   try {
@@ -229,7 +228,18 @@ function randomPlayerTag() {
   return String(Math.floor(Math.random() * 10000)).padStart(4, "0");
 }
 
-async function claimUniqueHandle(user, displayName, currentTag = "") {
+function normalizePlayerTagInput(value) {
+  const digits = String(value || "").replace(/\D/g, "").slice(0, 8);
+  if (digits.length === 8 && PLAYER_TAG_PATTERN.test(digits)) return digits;
+  if (digits.length >= 4) {
+    const four = digits.slice(0, 4);
+    return PLAYER_TAG_PATTERN.test(four) ? four : "";
+  }
+  if (digits.length > 0) return digits.padStart(4, "0");
+  return "";
+}
+
+async function claimUniqueHandle(user, displayName, currentTag = "", preferredTag = "") {
   const name = playerNameFromInput(displayName);
   if (!user?.uid || !isValidPlayerName(name)) throw new Error("Choose a valid player name first.");
   const tryClaim = async (tag) => {
@@ -238,13 +248,22 @@ async function claimUniqueHandle(user, displayName, currentTag = "") {
     await setDoc(handleDocRef(handle), { uid: user.uid, handle, createdAt: Date.now() });
     return { tag, handle };
   };
-  if (currentTag && PLAYER_TAG_PATTERN.test(currentTag)) {
-    const handle = `${name.toLowerCase()}#${currentTag}`;
+  const claimOrOwn = async (tag) => {
+    if (!PLAYER_TAG_PATTERN.test(tag)) throw new Error("Use a 4-digit #code like #0000.");
+    const handle = `${name.toLowerCase()}#${tag}`;
     const existing = await getDoc(handleDocRef(handle));
-    if (!existing.exists()) return tryClaim(currentTag);
-    if (existing.data()?.uid === user.uid) return { tag: currentTag, handle };
-    throw new Error("That username plus code is already taken. Choose another name.");
+    if (!existing.exists()) return tryClaim(tag);
+    if (existing.data()?.uid === user.uid) return { tag, handle };
+    throw new Error("That name#code is already taken. Change the digits or the name.");
+  };
+
+  const wanted = normalizePlayerTagInput(preferredTag);
+  if (wanted && PLAYER_TAG_PATTERN.test(wanted)) return claimOrOwn(wanted);
+
+  if (currentTag && PLAYER_TAG_PATTERN.test(currentTag)) {
+    return claimOrOwn(currentTag);
   }
+
   for (let attempt = 0; attempt < 48; attempt += 1) {
     const tag = randomPlayerTag();
     const handle = `${name.toLowerCase()}#${tag}`;
@@ -253,7 +272,7 @@ async function claimUniqueHandle(user, displayName, currentTag = "") {
     try { return await tryClaim(tag); }
     catch { /* another player claimed this ID in the same moment */ }
   }
-  throw new Error("Couldn't assign a unique GrindInfo ID. Try a different name.");
+  throw new Error("Couldn't assign a unique GrindInfo ID. Try different digits or a different name.");
 }
 
 function normalizeGameName(game) {
@@ -731,12 +750,10 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowse
   const [email, setEmail] = useState("");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  const accountChoices = [
-    { email: DUMMY_TESTER_EMAIL, label: "Dummybot tester", handle: "dummybot", provider: "password" },
-    ...knownAccounts,
-  ].filter((item, index, list) => {
+  const accountChoices = knownAccounts.filter((item, index, list) => {
     const key = String(item.email || item.handle || "").toLowerCase();
-    return key && list.findIndex((other) => String(other.email || other.handle || "").toLowerCase() === key) === index;
+    if (!key || key.includes("dummybot")) return false;
+    return list.findIndex((other) => String(other.email || other.handle || "").toLowerCase() === key) === index;
   });
 
   const submit = (e) => {
@@ -756,7 +773,7 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowse
           {!requireChoice && <button type="button" aria-label="Close sign in" onClick={onClose} style={{ background: "none", border: 0, color: "var(--text-muted)", fontSize: 22, cursor: "pointer" }}>×</button>}
         </div>
 
-        <div style={{ color: "var(--text-muted)", fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}>Your main account uses Continue with Google. Dummybot uses email and password. Only one account is signed in at a time.</div>
+        <div style={{ color: "var(--text-muted)", fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}>Continue with Google for your main account, or use email and password below. Only one account is signed in at a time.</div>
 
         {accountChoices.length > 0 && mode === "signin" && (
           <div style={{ display: "grid", gap: 8, marginBottom: 14 }}>
@@ -814,9 +831,12 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowse
           {mode === "signup" && (
             <>
             <Field label="Player name">
-              <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="ghostpeak" maxLength={16} required />
+              <TextInput value={name} onChange={(e) => setName(e.target.value.replace(/#.*/, "").replace(/[^A-Za-z0-9_]/g, "").slice(0, 16))} placeholder="name" maxLength={16} required />
             </Field>
-            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -6 }}>3–16 letters, numbers, or underscore. GrindInfo adds a #4-digit code, like ghostpeak#4821.</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: "var(--accent-secondary)", marginTop: -6 }}>
+              {grindHandle(playerNameFromInput(name) || "name", "0000")}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Format is name#0000. Type only the name here. A random 4-digit code is generated in your profile setup — you can edit those digits anytime.</div>
             {name && !isValidPlayerName(name) && <div role="alert" style={{ fontSize: 12, color: "var(--danger)" }}>Use 3–16 letters, numbers, or underscore. Do not type the #code yourself.</div>}
             </>
           )}
@@ -951,7 +971,11 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
   const [discordHandle, setDiscordHandle] = useState(initialProfile?.discordHandle || "");
   const [avatar, setAvatar] = useState(initialProfile?.avatar || "🎮");
   const [discoverable, setDiscoverable] = useState(initialProfile?.discoverable === true);
+  const [playerTag, setPlayerTag] = useState(() => initialProfile?.playerTag || randomPlayerTag());
   const [error, setError] = useState("");
+  const usernameChanges = Number(initialProfile?.usernameChanges || 0);
+  const nameLocked = Boolean(initialProfile?.playerTag) && usernameChanges >= 1;
+  const previewTag = normalizePlayerTagInput(playerTag) || playerTag || "0000";
 
   const toggleGame = (g) => {
     setGames((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
@@ -963,7 +987,11 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
   const submit = () => {
     const name = playerNameFromInput(displayName);
     if (!isValidPlayerName(name) || isEmailLike(name)) {
-      setError("Use 3–16 letters, numbers, or underscore. Your public ID is Name#1234.");
+      setError("Use 3–16 letters, numbers, or underscore. Your public ID looks like name#0000.");
+      return;
+    }
+    if (nameLocked) {
+      setError("Username was already changed once and is locked.");
       return;
     }
     const nextLanguages = normalizeLanguages(languages);
@@ -973,8 +1001,14 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
       setError("Pick at least one game, a country, and a language");
       return;
     }
+    const tag = normalizePlayerTagInput(playerTag);
+    if (!PLAYER_TAG_PATTERN.test(tag)) {
+      setError("Use a 4-digit code like 0000, or tap Randomize.");
+      return;
+    }
     onSave({
       displayName: name,
+      playerTag: tag,
       games,
       region: country.slice(0, 60),
       languages: nextLanguages,
@@ -1020,9 +1054,9 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, margin: "4px 0 6px" }}>
           Set up your player profile
         </div>
-        <div style={{ color: "var(--accent-secondary)", fontFamily: "'JetBrains Mono', monospace", fontSize: 12, marginTop: 8 }}>Your GrindInfo ID: {grindHandle(displayName, initialProfile?.playerTag || "••••")}</div>
+        <div style={{ color: "var(--accent-secondary)", fontFamily: "'JetBrains Mono', monospace", fontSize: 12, marginTop: 8 }}>Your GrindInfo ID: {grindHandle(displayName || "name", previewTag)}</div>
         <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>
-          Your profile stays out of player search unless you choose to be discoverable. Use a gaming name. Optional Discord sync is for teammate LFG only — keep other personal contact private.
+          IDs use the name#0000 format. Your profile stays out of player search unless you choose to be discoverable. You can change the username once after it is assigned.
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -1110,9 +1144,42 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
             </div>
           </div>
           <Field label="Player name">
-            <TextInput value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={16} placeholder="ghostpeak" />
+            <TextInput
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value.replace(/#.*/, "").replace(/[^A-Za-z0-9_]/g, "").slice(0, 16))}
+              maxLength={16}
+              placeholder="name"
+              disabled={nameLocked}
+            />
           </Field>
-          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -8 }}>3–16 letters, numbers, or underscore. The #4-digit code is assigned after you save.</div>
+          <Field label="# code">
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--text-muted)" }}>#</span>
+              <TextInput
+                value={playerTag}
+                onChange={(e) => setPlayerTag(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                maxLength={4}
+                inputMode="numeric"
+                pattern="[0-9]{4}"
+                placeholder="0000"
+                aria-label="Four digit player code"
+                style={{ fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.12em", maxWidth: 120 }}
+              />
+              <Button type="button" variant="ghost" onClick={() => setPlayerTag(randomPlayerTag())}>
+                Randomize
+              </Button>
+            </div>
+          </Field>
+          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: "var(--accent-secondary)", marginTop: -8 }}>
+            {grindHandle(playerNameFromInput(displayName) || "name", previewTag)}
+          </div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+            {nameLocked
+              ? "Username is locked — it can only be changed once. You can still change the # digits."
+              : initialProfile?.playerTag
+                ? "You can change the username once. Edit or randomize the # digits anytime if that name#code is free."
+                : "If you leave the digits blank we assign a random #0000-style code. You can edit them before saving."}
+          </div>
           <Field label="Games you play">
             <MultiToggle options={gamesList} selected={games} onToggle={toggleGame} initialVisible={8} />
           </Field>
@@ -1792,7 +1859,7 @@ function FriendDock({ requests, currentUserId, onOpenChat, onOpenRequests, prese
   </aside>;
 }
 
-function FriendChat({ currentUser, friend, onClose, muted = false, onToggleMute, onBlock }) {
+function FriendChat({ currentUser, friend, onClose, muted = false, onToggleMute, onBlock, embedded = false }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [error, setError] = useState("");
@@ -1858,30 +1925,199 @@ function FriendChat({ currentUser, friend, onClose, muted = false, onToggleMute,
     }
   };
   const ghost = { border: 0, background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 12, padding: "4px 6px" };
-  return <section aria-label={`Chat with ${friend.name}`} style={{ position: "fixed", right: 14, bottom: 14, zIndex: 90, width: "min(360px, calc(100vw - 28px))", height: "min(460px, calc(100vh - 96px))", display: "flex", flexDirection: "column", background: "var(--panel-bg)", color: "var(--page-text)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)" }}>
-    <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: "1px solid var(--border)" }}>
-      <strong style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{friend.name}{muted ? " · muted" : ""}</strong>
-      <span style={{ display: "flex", gap: 2, flexShrink: 0 }}>
-        {onToggleMute && <button type="button" onClick={() => onToggleMute(friend.uid)} style={ghost}>{muted ? "Unmute" : "Mute"}</button>}
-        {onBlock && <button type="button" onClick={() => onBlock(friend)} style={{ ...ghost, color: "var(--danger)" }}>Block</button>}
-        <button type="button" onClick={onClose} style={ghost}>Close</button>
-      </span>
-    </header>
-    <div ref={logRef} aria-live="polite" style={{ flex: 1, overflowY: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-      {messages.map((message) => (
-        <div key={message.id} style={{ alignSelf: message.senderId === currentUser.uid ? "flex-end" : "flex-start", maxWidth: "85%", padding: "8px 10px", background: message.senderId === currentUser.uid ? "var(--panel-raised)" : "transparent", border: "1px solid var(--border)", whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontSize: 13 }}>
-          {message.text}
-        </div>
-      ))}
-      {!messages.length && ready && <span style={{ color: "var(--text-muted)", fontSize: 13, padding: 8 }}>Start the conversation.</span>}
-      {!ready && !error && <span style={{ color: "var(--text-muted)", fontSize: 13, padding: 8 }}>Opening chat…</span>}
+  return (
+    <section
+      aria-label={`Chat with ${friend.name}`}
+      style={
+        embedded
+          ? { display: "flex", flexDirection: "column", flex: 1, minHeight: 0, background: "var(--panel-bg)", color: "var(--page-text)" }
+          : {
+              position: "fixed",
+              right: 14,
+              bottom: 14,
+              zIndex: 90,
+              width: "min(360px, calc(100vw - 28px))",
+              height: "min(460px, calc(100vh - 96px))",
+              display: "flex",
+              flexDirection: "column",
+              background: "var(--panel-bg)",
+              color: "var(--page-text)",
+              border: "1px solid var(--border-strong)",
+              boxShadow: "var(--panel-shadow)",
+            }
+      }
+    >
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: "1px solid var(--border)" }}>
+        <strong style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{friend.name}{muted ? " · muted" : ""}</strong>
+        <span style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+          {onToggleMute && <button type="button" onClick={() => onToggleMute(friend.uid)} style={ghost}>{muted ? "Unmute" : "Mute"}</button>}
+          {onBlock && <button type="button" onClick={() => onBlock(friend)} style={{ ...ghost, color: "var(--danger)" }}>Block</button>}
+          {onClose && <button type="button" onClick={onClose} style={ghost}>{embedded ? "Remove" : "Close"}</button>}
+        </span>
+      </header>
+      <div ref={logRef} aria-live="polite" style={{ flex: 1, overflowY: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+        {messages.map((message) => (
+          <div key={message.id} style={{ alignSelf: message.senderId === currentUser.uid ? "flex-end" : "flex-start", maxWidth: "85%", padding: "8px 10px", background: message.senderId === currentUser.uid ? "var(--panel-raised)" : "transparent", border: "1px solid var(--border)", whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontSize: 13 }}>
+            {message.text}
+          </div>
+        ))}
+        {!messages.length && ready && <span style={{ color: "var(--text-muted)", fontSize: 13, padding: 8 }}>Start the conversation.</span>}
+        {!ready && !error && <span style={{ color: "var(--text-muted)", fontSize: 13, padding: 8 }}>Opening chat…</span>}
+      </div>
+      {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 12, padding: "0 10px 8px" }}>{error}</div>}
+      <form onSubmit={send} style={{ display: "flex", gap: 8, padding: 10, borderTop: "1px solid var(--border)", alignItems: "center" }}>
+        <TextInput ref={inputRef} aria-label="Message" value={text} maxLength={1000} onChange={(event) => setText(event.target.value)} placeholder="Write a message" autoComplete="off" style={{ flex: 1, minWidth: 0 }} />
+        <Button type="submit" disabled={!ready || sending || !text.trim()} style={{ flexShrink: 0 }}>Send</Button>
+      </form>
+    </section>
+  );
+}
+
+const CHAT_POPUP_MAX = 6;
+
+function ChatPopup({
+  open,
+  onClose,
+  currentUser,
+  chats = [],
+  focusedUid,
+  onFocus,
+  onRemove,
+  mutedIds = new Set(),
+  onToggleMute,
+  onBlock,
+}) {
+  if (!open) return null;
+  const focused = chats.find((item) => item.uid === focusedUid) || chats[0] || null;
+  return (
+    <div
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 95,
+        display: "grid",
+        placeItems: "center",
+        padding: 16,
+        background: "rgba(0,0,0,0.72)",
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Chats"
+        onMouseDown={(event) => event.stopPropagation()}
+        style={{
+          width: "min(720px, 100%)",
+          height: "min(560px, calc(100vh - 32px))",
+          display: "flex",
+          flexDirection: "column",
+          background: "var(--panel-bg)",
+          border: "1px solid var(--border-strong)",
+          boxShadow: "var(--panel-shadow)",
+          color: "var(--page-text)",
+        }}
+      >
+        <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 14px", borderBottom: "1px solid var(--border)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <strong style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, letterSpacing: "0.04em" }}>Chats</strong>
+            <span
+              aria-label={`${chats.length} active chats`}
+              style={{
+                minWidth: 22,
+                height: 22,
+                padding: "0 7px",
+                borderRadius: 999,
+                display: "inline-grid",
+                placeItems: "center",
+                background: "var(--accent)",
+                color: "var(--accent-contrast)",
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 11,
+                fontWeight: 700,
+              }}
+            >
+              {chats.length}
+            </span>
+          </div>
+          <button type="button" onClick={onClose} style={{ border: 0, background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 13 }}>
+            Close
+          </button>
+        </header>
+        {chats.length === 0 ? (
+          <div style={{ flex: 1, display: "grid", placeItems: "center", color: "var(--text-muted)", fontSize: 14, padding: 24, textAlign: "center" }}>
+            No active chats. Open Friends and tap Chat on someone to start one here.
+          </div>
+        ) : (
+          <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(140px, 200px) 1fr" }}>
+            <aside style={{ borderRight: "1px solid var(--border)", overflowY: "auto" }}>
+              {chats.map((friend) => {
+                const selected = focused?.uid === friend.uid;
+                return (
+                  <div
+                    key={friend.uid}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      borderBottom: "1px solid var(--border)",
+                      background: selected ? "var(--panel-raised)" : "transparent",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onFocus(friend.uid)}
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        textAlign: "left",
+                        border: 0,
+                        background: "transparent",
+                        color: "var(--page-text)",
+                        cursor: "pointer",
+                        padding: "12px 10px",
+                        fontSize: 13,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {friend.name}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Close chat with ${friend.name}`}
+                      onClick={() => onRemove(friend.uid)}
+                      style={{ border: 0, background: "transparent", color: "var(--text-muted)", cursor: "pointer", padding: "8px 10px" }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                );
+              })}
+            </aside>
+            <div style={{ minHeight: 0, display: "flex", flexDirection: "column" }}>
+              {focused ? (
+                <FriendChat
+                  key={focused.uid}
+                  embedded
+                  currentUser={currentUser}
+                  friend={focused}
+                  muted={mutedIds.has(focused.uid)}
+                  onToggleMute={onToggleMute}
+                  onBlock={onBlock}
+                  onClose={() => onRemove(focused.uid)}
+                />
+              ) : null}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
-    {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 12, padding: "0 10px 8px" }}>{error}</div>}
-    <form onSubmit={send} style={{ display: "flex", gap: 8, padding: 10, borderTop: "1px solid var(--border)", alignItems: "center" }}>
-      <TextInput ref={inputRef} aria-label="Message" value={text} maxLength={1000} onChange={(event) => setText(event.target.value)} placeholder="Write a message" autoComplete="off" style={{ flex: 1, minWidth: 0 }} />
-      <Button type="submit" disabled={!ready || sending || !text.trim()} style={{ flexShrink: 0 }}>Send</Button>
-    </form>
-  </section>;
+  );
 }
 
 function ReportCard({ report, archived = false, bans = [], role, onStatusChange, onSetPlayerAccess }) {
@@ -2682,7 +2918,9 @@ export default function App() {
   const [friendRequests, setFriendRequests] = useState([]);
   const [blockedUsers, setBlockedUsers] = useState([]);
   const [tournamentInvites, setTournamentInvites] = useState([]);
-  const [activeChatFriend, setActiveChatFriend] = useState(null);
+  const [activeChats, setActiveChats] = useState([]);
+  const [focusedChatUid, setFocusedChatUid] = useState(null);
+  const [chatPopupOpen, setChatPopupOpen] = useState(false);
   const [archiveEntries, setArchiveEntries] = useState([]);
   const [archiveSubmissions, setArchiveSubmissions] = useState([]);
   const [auditLog, setAuditLog] = useState([]);
@@ -2834,7 +3072,7 @@ export default function App() {
       }
       setAuthError(e?.code === "auth/unauthorized-domain"
         ? "This site isn't allowed for Google sign-in yet."
-        : "Couldn't finish Google sign-in — use Dummybot email/password, or try Google again.");
+        : "Couldn't finish Google sign-in — try Google again, or use email and password.");
       setAuthBusy(false);
     }
   }, []);
@@ -2845,7 +3083,7 @@ export default function App() {
     try {
       if (mode === "signup") {
         if (!isValidPlayerName(name)) {
-          setAuthError("Use 3–16 letters, numbers, or underscore. Your ID will be Name#1234.");
+          setAuthError("Use 3–16 letters, numbers, or underscore. Your ID will look like name#0000.");
           return;
         }
         const cred = await createUserWithEmailAndPassword(auth, email, password);
@@ -2861,7 +3099,7 @@ export default function App() {
     } catch (e) {
       const messages = {
         "auth/email-already-in-use": "That email is already registered — try signing in instead.",
-        "auth/invalid-credential": "Incorrect email or password. Your original GrindInfo account is usually Google — use Continue with Google. Dummybot uses its email and password.",
+        "auth/invalid-credential": "Incorrect email or password. If you signed up with Google, use Continue with Google.",
         "auth/wrong-password": "Incorrect password. Google accounts do not use this password box.",
         "auth/user-not-found": "No email/password account matches that. Try Continue with Google.",
         "auth/too-many-requests": "Too many attempts. Wait a minute, then try again.",
@@ -3299,26 +3537,44 @@ export default function App() {
     async (fields) => {
       if (!user) return;
       const displayName = playerNameFromInput(fields.displayName) || safeProfileName(fields.displayName, user.displayName);
+      const preferredTag = normalizePlayerTagInput(fields.playerTag);
+      const previousName = playerNameFromInput(myProfile?.displayName || "");
+      const hadTag = Boolean(myProfile?.playerTag);
+      const nameChanged = hadTag && previousName.toLowerCase() !== displayName.toLowerCase();
+      const usernameChanges = Number(myProfile?.usernameChanges || 0);
+      if (nameChanged && usernameChanges >= 1) {
+        showToast("Username can only be changed once.");
+        return;
+      }
+      const nextUsernameChanges = nameChanged ? 1 : usernameChanges;
       const profileBody = {
-        ...fields,
         displayName,
+        games: fields.games,
+        region: String(fields.region || "").trim().slice(0, 60),
         lookingFor: normalizeLookingFor(fields.lookingFor),
         styles: normalizeStyles(fields.styles, fields.style),
         style: normalizeStyles(fields.styles, fields.style)[0] || "",
         languages: normalizeLanguages(fields.languages, fields.language),
         language: normalizeLanguages(fields.languages, fields.language)[0] || "",
-        region: String(fields.region || "").trim().slice(0, 60),
         rank: normalizeRank(fields.rank),
         bio: String(fields.bio || "").slice(0, 200),
         discordHandle: String(fields.discordHandle || "").trim().slice(0, 40),
+        avatar: fields.avatar,
         discoverable: fields.discoverable === true,
         updatedAt: Date.now(),
       };
+      // Only persist usernameChanges after a rename (or if already set) so Firestore create/update stays valid.
+      if (nameChanged || usernameChanges > 0) profileBody.usernameChanges = nextUsernameChanges;
       try {
         if (!myProfile?.playerTag) {
           await setDoc(playerDocRef(user.uid), profileBody, { merge: true });
         }
-        const claimed = await claimUniqueHandle(user, displayName, myProfile?.playerTag || "");
+        const claimed = await claimUniqueHandle(
+          user,
+          displayName,
+          myProfile?.playerTag || "",
+          preferredTag || "",
+        );
         await setDoc(playerDocRef(user.uid), { ...profileBody, playerTag: claimed.tag, handle: claimed.handle }, { merge: true });
         if (myProfile?.handle && myProfile.handle !== claimed.handle) {
           try { await deleteDoc(handleDocRef(myProfile.handle)); } catch { /* previous ID mapping can stay until overwritten */ }
@@ -3780,7 +4036,16 @@ export default function App() {
     const batch = writeBatch(db);
     batch.set(doc(db, "userBlocks", `${user.uid}_${friend.uid}`), { blockerUid: user.uid, blockedUid: friend.uid, blockedName: String(friend.name || "Player").slice(0, 40), createdAt: Date.now() });
     if (relation) batch.update(doc(FRIEND_REQUESTS_COLLECTION, relation.id), { status: "removed", reviewedAt: Date.now() });
-    try { await batch.commit(); setActiveChatFriend((active) => active?.uid === friend.uid ? null : active); showToast(`${friend.name} blocked`); }
+    try {
+      await batch.commit();
+      setActiveChats((current) => {
+        const next = current.filter((item) => item.uid !== friend.uid);
+        setFocusedChatUid((focused) => (focused === friend.uid ? (next[0]?.uid || null) : focused));
+        if (!next.length) setChatPopupOpen(false);
+        return next;
+      });
+      showToast(`${friend.name} blocked`);
+    }
     catch { showToast("Couldn't block this player. Check that the latest Firestore rules are published."); }
   };
 
@@ -4201,7 +4466,15 @@ export default function App() {
                   placement="header"
                   requests={friendRequests}
                   currentUserId={user.uid}
-                  onOpenChat={(friend) => { setActiveChatFriend(friend); }}
+                  onOpenChat={(friend) => {
+                    setActiveChats((current) => {
+                      if (current.some((item) => item.uid === friend.uid)) return current;
+                      return [...current, friend].slice(-CHAT_POPUP_MAX);
+                    });
+                    setFocusedChatUid(friend.uid);
+                    setChatPopupOpen(true);
+                    document.querySelector("details[open]")?.removeAttribute("open");
+                  }}
                   onOpenRequests={() => setShowFriendRequests(true)}
                   presenceDb={realtimeDb}
                   onFriendOnline={notifyFriendOnline}
@@ -4214,6 +4487,8 @@ export default function App() {
                   onFriendRequest={(player) => requestFriend(player.uid, player.displayName)}
                 />
               ) : null}
+              chatCount={activeChats.length}
+              onOpenChats={() => setChatPopupOpen(true)}
             />
             <PublicNav pathname={routePath} />
             <div className={`mx-auto px-5 pb-24 ${routePath === "/" || routePath.startsWith("/vault") ? "max-w-6xl" : "max-w-5xl"}`}>
@@ -4373,7 +4648,29 @@ export default function App() {
           </div>
         </div>
       )}
-      {user && activeChatFriend && <FriendChat currentUser={user} friend={activeChatFriend} onClose={() => setActiveChatFriend(null)} muted={mutedFriendSet.has(activeChatFriend.uid)} onToggleMute={toggleMuteFriend} onBlock={(friend) => { blockFriend(friend); setActiveChatFriend(null); }} />}
+      {user && (
+        <ChatPopup
+          open={chatPopupOpen}
+          onClose={() => setChatPopupOpen(false)}
+          currentUser={user}
+          chats={activeChats}
+          focusedUid={focusedChatUid}
+          onFocus={setFocusedChatUid}
+          onRemove={(uid) => {
+            setActiveChats((current) => {
+              const next = current.filter((item) => item.uid !== uid);
+              setFocusedChatUid((focused) => (focused === uid ? (next[0]?.uid || null) : focused));
+              if (!next.length) setChatPopupOpen(false);
+              return next;
+            });
+          }}
+          mutedIds={mutedFriendSet}
+          onToggleMute={toggleMuteFriend}
+          onBlock={(friend) => {
+            blockFriend(friend);
+          }}
+        />
+      )}
       {!user && authDialogOpen && <AuthScreen onGoogleSignIn={handleGoogleSignIn} onEmailAuth={handleEmailAuth} authError={authError} authBusy={authBusy} onBrowseAsGuest={browseAsGuest} onClose={() => setAuthDialogOpen(false)} requireChoice={!guestMode} knownAccounts={knownAccounts} />}
       <SitePopup popup={currentPopup} onDismiss={dismissSitePopup} />
       <Toast message={toast} />
@@ -4388,7 +4685,7 @@ const shellStyle = {
   fontFamily: "'Inter', sans-serif",
 };
 
-function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAccount, onEditProfile, dashboardRole, friendsPanel = null, playerTag = "", profile = null }) {
+function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAccount, onEditProfile, dashboardRole, friendsPanel = null, playerTag = "", profile = null, chatCount = 0, onOpenChats = null }) {
   const location = useLocation();
   const friendsMenu = useRef(null);
   const accountMenu = useRef(null);
@@ -4442,6 +4739,50 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAcc
                     {friendsPanel}
                   </div>
                 </details>
+              ) : null}
+              {onOpenChats ? (
+                <button
+                  type="button"
+                  onClick={onOpenChats}
+                  aria-label={chatCount ? `Open chats, ${chatCount} active` : "Open chats"}
+                  style={{
+                    position: "relative",
+                    cursor: "pointer",
+                    color: "var(--page-text)",
+                    border: "1px solid var(--border)",
+                    background: "var(--panel-bg)",
+                    padding: "8px 12px",
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 11,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Chat
+                  {chatCount > 0 ? (
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        position: "absolute",
+                        top: -7,
+                        right: -7,
+                        minWidth: 18,
+                        height: 18,
+                        padding: "0 5px",
+                        borderRadius: 999,
+                        display: "inline-grid",
+                        placeItems: "center",
+                        background: "var(--accent)",
+                        color: "var(--accent-contrast)",
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: 0,
+                      }}
+                    >
+                      {chatCount > 9 ? "9+" : chatCount}
+                    </span>
+                  ) : null}
+                </button>
               ) : null}
               <details ref={accountMenu} style={{ position: "relative" }} onToggle={(event) => { if (event.currentTarget.open) closeOtherMenu(event.currentTarget); }}>
                 <summary

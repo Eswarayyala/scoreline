@@ -111,7 +111,8 @@ service cloud.firestore {
       return data.keys().hasOnly([
                'displayName', 'games', 'region', 'language', 'languages', 'style', 'styles',
                'lookingFor', 'rank',
-               'bio', 'discordHandle', 'avatar', 'discoverable', 'updatedAt', 'playerTag', 'handle'
+               'bio', 'discordHandle', 'avatar', 'discoverable', 'updatedAt', 'playerTag', 'handle',
+               'usernameChanges'
              ])
              && data.keys().hasAll([
                'displayName', 'games', 'region', 'language', 'style',
@@ -140,12 +141,35 @@ service cloud.firestore {
              && data.discoverable is bool
              && data.updatedAt is int
              && freshClientTimestamp(data.updatedAt)
+             && (!data.keys().hasAny(['usernameChanges'])
+                 || (data.usernameChanges is int && data.usernameChanges >= 0 && data.usernameChanges <= 1))
              && (!data.keys().hasAny(['playerTag']) || (data.playerTag is string && data.playerTag.matches('^[0-9]{4}$|^[0-9]{8}$')))
              && (!data.keys().hasAny(['handle'])
                  || (data.handle is string
                      && data.handle.size() <= 32
                      && data.keys().hasAny(['playerTag'])
                      && data.handle == data.displayName.lower() + '#' + data.playerTag));
+    }
+
+    // Initial name is free; after a tag exists, displayName may change once (usernameChanges 0 → 1).
+    function playerUsernameChangeAllowed() {
+      return !resource.data.keys().hasAny(['playerTag'])
+             || request.resource.data.displayName == resource.data.displayName
+             || (
+               (!resource.data.keys().hasAny(['usernameChanges']) || resource.data.usernameChanges == 0)
+               && request.resource.data.usernameChanges == 1
+             );
+    }
+
+    function playerUsernameChangeCountConsistent() {
+      return request.resource.data.displayName == resource.data.displayName
+             ? (
+               (!resource.data.keys().hasAny(['usernameChanges']) && !request.resource.data.keys().hasAny(['usernameChanges']))
+               || (resource.data.keys().hasAny(['usernameChanges'])
+                   && request.resource.data.keys().hasAny(['usernameChanges'])
+                   && request.resource.data.usernameChanges == resource.data.usernameChanges)
+             )
+             : request.resource.data.usernameChanges == 1;
     }
 
     function validReport(data) {
@@ -849,12 +873,12 @@ service cloud.firestore {
                     && request.auth.uid == userId
                     && (!isSiteRestricted() || request.resource.data.discoverable == false)
                     && validPlayerProfile(request.resource.data)
-                    && (!resource.data.keys().hasAny(['playerTag'])
-                        ? (!request.resource.data.keys().hasAny(['playerTag'])
-                           || (request.resource.data.playerTag.matches('^[0-9]{4}$|^[0-9]{8}$')
-                               && exists(/databases/$(database)/documents/handles/$(request.resource.data.displayName.lower() + '::' + request.resource.data.playerTag))
-                               && get(/databases/$(database)/documents/handles/$(request.resource.data.displayName.lower() + '::' + request.resource.data.playerTag)).data.uid == request.auth.uid))
-                        : request.resource.data.playerTag == resource.data.playerTag);
+                    && playerUsernameChangeAllowed()
+                    && playerUsernameChangeCountConsistent()
+                    && (!request.resource.data.keys().hasAny(['playerTag'])
+                        || (request.resource.data.playerTag.matches('^[0-9]{4}$|^[0-9]{8}$')
+                            && exists(/databases/$(database)/documents/handles/$(request.resource.data.displayName.lower() + '::' + request.resource.data.playerTag))
+                            && get(/databases/$(database)/documents/handles/$(request.resource.data.displayName.lower() + '::' + request.resource.data.playerTag)).data.uid == request.auth.uid));
 
       allow delete: if isActiveSiteUser() && request.auth.uid == userId;
     }
