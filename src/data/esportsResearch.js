@@ -80,20 +80,27 @@ export function groupEwcChampionships(editions = []) {
 }
 
 export function ewcFloatingSlides(slides = []) {
-  return groupEwcChampionships(flattenEwcEditions(slides)).map((group, index) => ({
-    slug: `ewc-year-${String(group.key).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
-    title: group.title,
-    game: "Esports World Cup",
-    kicker: "EWC",
-    eventScope: "ewc",
-    surface: "ewc-window",
-    floating: true,
-    season: group.year,
-    summary: `${group.games.length} titles in this championship.`,
-    poster: bannerForGame(group.games[0]?.game),
-    championship: group,
-    floatingPriority: 80 - index,
-  }));
+  const groups = groupEwcChampionships(flattenEwcEditions(slides));
+  const latestYear = groups.reduce((max, group) => Math.max(max, Number(group.year) || 0), 0);
+  return groups.map((group, index) => {
+    const year = Number(group.year) || 0;
+    const isLatest = year === latestYear && latestYear > 0;
+    return {
+      slug: `ewc-year-${String(group.key).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
+      title: group.title,
+      game: "Esports World Cup",
+      kicker: "EWC",
+      eventScope: "ewc",
+      surface: "ewc-window",
+      // Only the current championship year can float by default; older years stay Off until toggled Live.
+      floating: isLatest ? true : false,
+      season: group.year,
+      summary: `${group.games.length} titles in this championship.`,
+      poster: bannerForGame(group.games[0]?.game),
+      championship: group,
+      floatingPriority: isLatest ? 90 : Math.max(0, 40 - index),
+    };
+  });
 }
 
 export function seedResearchCmsRecords() {

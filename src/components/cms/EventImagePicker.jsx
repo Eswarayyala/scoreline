@@ -16,13 +16,14 @@ export default function EventImagePicker({
   onChange,
   heading = "Event poster and photos",
   role = "",
+  hideSuggestions = false,
 }) {
   const [urlDraft, setUrlDraft] = useState("");
   const [error, setError] = useState("");
   const extras = (images || []).filter(Boolean).slice(0, 6);
   const eventKey = { game, year, season, event };
   const uniqueDefault = defaultPosterForEvent(eventKey);
-  const presets = flyersForEvent(eventKey, extras).slice(0, 4);
+  const presets = hideSuggestions ? [] : flyersForEvent(eventKey, extras).slice(0, 4);
   const effectivePoster = poster || uniqueDefault;
   const supportQueued = String(role || "").toLowerCase() === "support";
 
@@ -47,18 +48,20 @@ export default function EventImagePicker({
       <p className="text-[11px] text-slate-500">
         Default for this event is unique until you pick a poster. Staff can override with a URL, upload, or library image.
       </p>
-      <div className="grid grid-cols-4 gap-2">
-        {presets.map((src, index) => (
-          <button
-            key={`${src}-${index}`}
-            type="button"
-            onClick={() => applyPoster(src, index === 0 ? "event-default" : "preset")}
-            className={`overflow-hidden rounded-lg border ${effectivePoster === src ? "border-neon" : "border-white/10"}`}
-          >
-            <img src={src} alt="" className="h-16 w-full object-cover" />
-          </button>
-        ))}
-      </div>
+      {!!presets.length && (
+        <div className="grid grid-cols-4 gap-2">
+          {presets.map((src, index) => (
+            <button
+              key={`${src}-${index}`}
+              type="button"
+              onClick={() => applyPoster(src, index === 0 ? "event-default" : "preset")}
+              className={`overflow-hidden rounded-lg border ${effectivePoster === src ? "border-neon" : "border-white/10"}`}
+            >
+              <img src={src} alt="" className="h-16 w-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         <input
           className={inputClass}
@@ -107,7 +110,7 @@ export default function EventImagePicker({
           />
         </label>
       </div>
-      <img src={effectivePoster} alt="" className="h-28 w-full rounded-xl object-cover" />
+      {effectivePoster && <img src={effectivePoster} alt="" className="h-28 w-full rounded-xl object-cover" />}
       {!!extras.length && (
         <div className="flex flex-wrap gap-2">
           {extras.map((src) => (
@@ -125,7 +128,9 @@ export default function EventImagePicker({
           ))}
         </div>
       )}
-      <CollectionPicker game={game} kinds={["event", "poster", "background"]} value={poster} onSelect={(url) => applyPoster(url, "library")} heading="Post a collection image onto this event" />
+      {!hideSuggestions && (
+        <CollectionPicker game={game} kinds={["event", "poster", "background"]} value={poster} onSelect={(url) => applyPoster(url, "library")} heading="Post a collection image onto this event" />
+      )}
       {error && <p className="text-sm text-rose-400">{error}</p>}
     </div>
   );

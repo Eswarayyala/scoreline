@@ -3,10 +3,11 @@ import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { VAULT_SLIDES } from "../../data/platformShowcase";
 import { publicScopeKicker } from "../../data/eventScope";
+import { HOME_WINDOW_LIMIT } from "../../data/floatingWindows";
 
 export default function VaultCarousel({ slides = VAULT_SLIDES }) {
   const reduce = useReducedMotion();
-  const items = useMemo(() => slides.slice(0, 12), [slides]);
+  const items = useMemo(() => slides.slice(0, HOME_WINDOW_LIMIT), [slides]);
 
   if (!items.length) {
     return (
@@ -31,19 +32,23 @@ export default function VaultCarousel({ slides = VAULT_SLIDES }) {
 
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+          display: "flex",
           gap: 14,
+          overflowX: "auto",
+          paddingBottom: 8,
+          scrollSnapType: "x mandatory",
+          WebkitOverflowScrolling: "touch",
         }}
       >
         {items.map((slide, index) => (
           <motion.div
-            key={slide.slug}
+            key={slide.slug || slide.id}
             initial={{ y: 10, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: reduce ? 0.2 : 0.35, delay: reduce ? 0 : index * 0.04 }}
             whileHover={reduce ? undefined : { y: -6 }}
             whileTap={{ scale: 0.98 }}
+            style={{ flex: "0 0 min(260px, 78vw)", scrollSnapAlign: "start" }}
           >
             <Link to={`/vault/${slide.slug}`} style={{ display: "block", color: "inherit", textDecoration: "none" }}>
               <div style={{ overflow: "hidden", borderRadius: 16, border: "1px solid var(--border)", background: "var(--panel-bg)", boxShadow: "var(--panel-shadow)" }}>

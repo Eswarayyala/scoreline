@@ -4,6 +4,7 @@ import { Bookmark, BookmarkCheck } from "lucide-react";
 import { VAULT_SLIDES, flyerForEvent } from "../../data/platformShowcase";
 import { publicScopeKicker } from "../../data/eventScope";
 import { canonicalFilterGame, gameMatchesFilter } from "../../data/gameCatalog";
+import { sortVaultCatalog } from "../../data/floatingWindows";
 import LoadMoreBar, { usePagedVisible } from "../shared/LoadMoreBar";
 import StickyFilterBar from "../shared/StickyFilterBar";
 
@@ -120,20 +121,27 @@ export default function VaultLibraryPage({
       })
       .sort((a, b) => a.localeCompare(b));
   }, [items]);
-  const visible = items.filter((slide) => {
+  const visible = useMemo(() => {
+    const filtered = items.filter((slide) => {
+      if (onlyBookmarks && !bookmarkSet.has(slide.slug)) return false;
+      if (slide.blog || slide.surface === "blog") return false;
+      const gameOk = game === "all" || gameMatchesFilter(slide.game, game);
+      if (scope === "all") return gameOk;
+      if (slide.eventScope === scope) return gameOk;
+      if ((slide.editions || []).some((edition) => edition.eventScope === scope)) return gameOk;
+      if (scope === "ewc" && (slide.floating === true || slide.surface === "ewc-window" || slide.featured)) return gameOk;
+      return false;
+    });
+    const featured = filtered.filter((slide) => slide.featured);
+    const rest = sortVaultCatalog(filtered.filter((slide) => !slide.featured));
+    // Keep home featured order first, then the rest of the catalog by year (2026 → past).
+    return [...featured, ...rest];
+  }, [items, onlyBookmarks, bookmarkSet, game, scope]);
+  const blogs = items.filter((slide) => {
+    if (!(slide.blog || slide.surface === "blog")) return false;
     if (onlyBookmarks && !bookmarkSet.has(slide.slug)) return false;
-    const gameOk = game === "all" || gameMatchesFilter(slide.game, game);
-    if (scope === "all") return gameOk;
-    if (slide.eventScope === scope) return gameOk;
-    if ((slide.editions || []).some((edition) => edition.eventScope === scope)) return gameOk;
-    if (scope === "ewc" && (slide.floating === true || slide.surface === "ewc-window")) return gameOk;
-    return false;
+    return game === "all" || gameMatchesFilter(slide.game, game);
   });
-  const floating = visible.filter((slide) => slide.floating === true);
-  const research = visible.filter(
-    (slide) => (slide.research || slide.surface === "research") && !slide.floating && slide.surface !== "ewc-window",
-  );
-  const blogs = visible.filter((slide) => slide.blog || slide.surface === "blog");
   return (
     <div className="pb-10 pt-6">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
@@ -187,17 +195,10 @@ export default function VaultLibraryPage({
           </select>
         </label>
       </StickyFilterBar>
-      {floating.length > 0 && (
-        <>
-          <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Floating windows</h2>
-          <PagedSlideGrid items={floating} bookmarkSet={bookmarkSet} onToggleBookmark={onToggleBookmark} />
-        </>
-      )}
-      {research.length > 0 && (
-        <>
-          <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Game vaults</h2>
-          <PagedSlideGrid items={research} bookmarkSet={bookmarkSet} onToggleBookmark={onToggleBookmark} />
-        </>
+      {visible.length > 0 ? (
+        <PagedSlideGrid items={visible} bookmarkSet={bookmarkSet} onToggleBookmark={onToggleBookmark} />
+      ) : (
+        <p className="mb-10 text-sm text-slate-400">No vault windows match these filters.</p>
       )}
       <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Published blogs</h2>
       {blogs.length === 0 ? (

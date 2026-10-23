@@ -193,7 +193,7 @@ service cloud.firestore {
 
     function validBlogPost(data) {
       return data.keys().hasOnly([
-               'title', 'game', 'content', 'source', 'authorId', 'authorName',
+               'title', 'game', 'content', 'source', 'authorId', 'authorName', 'anonymous',
                'status', 'createdAt', 'updatedAt', 'reviewedAt', 'reviewedBy', 'eventScope',
                'analysisType', 'analysisSubject', 'youtubeUrl', 'docsUrl', 'coverUrl'
              ])
@@ -207,7 +207,9 @@ service cloud.firestore {
              && data.source is string && data.source.size() <= 500
              && (data.source.size() == 0 || data.source.matches('^https://.*'))
              && data.authorId is string && data.authorId.size() > 0 && data.authorId.size() <= 128
-             && data.authorName is string && data.authorName.size() <= 40
+             && data.authorName is string && data.authorName.size() > 0 && data.authorName.size() <= 40
+             && (!data.keys().hasAny(['anonymous']) || data.anonymous is bool)
+             && (!data.keys().hasAny(['anonymous']) || data.anonymous != true || data.authorName == 'Anonymous')
              && data.status in ['pending', 'published', 'rejected']
              && data.createdAt is int
              && (!data.keys().hasAny(['updatedAt']) || data.updatedAt is int)
@@ -221,6 +223,15 @@ service cloud.firestore {
              && (!data.keys().hasAny(['coverUrl'])
                  || data.coverUrl.size() == 0
                  || isSafeImageUrl(data.coverUrl, 2000));
+    }
+
+    function validBlogPrivate(data) {
+      return data.keys().hasOnly(['authorId', 'requesterName', 'anonymous', 'createdAt'])
+             && data.keys().hasAll(['authorId', 'requesterName', 'anonymous', 'createdAt'])
+             && data.authorId is string && data.authorId.size() > 0 && data.authorId.size() <= 128
+             && data.requesterName is string && data.requesterName.size() > 0 && data.requesterName.size() <= 40
+             && data.anonymous is bool
+             && data.createdAt is int;
     }
 
     function validArchiveSubmission(data) {
@@ -602,12 +613,26 @@ service cloud.firestore {
                     && request.resource.data.authorId == request.auth.uid
                     && request.resource.data.status == 'pending'
                     && validBlogPost(request.resource.data)
-                    && freshClientTimestamp(request.resource.data.createdAt);
+                    && freshClientTimestamp(request.resource.data.createdAt)
+                    && existsAfter(/databases/$(database)/documents/blogPrivate/$(postId))
+                    && getAfter(/databases/$(database)/documents/blogPrivate/$(postId)).data.authorId == request.auth.uid
+                    && (
+                      (request.resource.data.keys().hasAny(['anonymous'])
+                        && request.resource.data.anonymous == true
+                        && getAfter(/databases/$(database)/documents/blogPrivate/$(postId)).data.anonymous == true)
+                      ||
+                      ((!request.resource.data.keys().hasAny(['anonymous']) || request.resource.data.anonymous == false)
+                        && getAfter(/databases/$(database)/documents/blogPrivate/$(postId)).data.anonymous == false)
+                    );
       allow update: if isActiveSiteUser()
                     && validBlogPost(request.resource.data)
                     && request.resource.data.authorId == resource.data.authorId
                     && request.resource.data.authorName == resource.data.authorName
                     && request.resource.data.createdAt == resource.data.createdAt
+                    && ((!resource.data.keys().hasAny(['anonymous']) && !request.resource.data.keys().hasAny(['anonymous']))
+                        || (resource.data.keys().hasAny(['anonymous'])
+                            && request.resource.data.keys().hasAny(['anonymous'])
+                            && request.resource.data.anonymous == resource.data.anonymous))
                     && (
                       (request.auth.uid == resource.data.authorId
                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
@@ -631,6 +656,22 @@ service cloud.firestore {
                     );
       allow delete: if isActiveSiteUser()
                     && (resource.data.authorId == request.auth.uid || isSiteStaff() || isModerator());
+    }
+
+    // Staff / author-only identity for anonymous blog requests (not guest-readable).
+    match /blogPrivate/{postId} {
+      allow get, list: if isSiteStaff() || isModerator()
+                       || (isActiveSiteUser() && resource.data.authorId == request.auth.uid);
+      allow create: if isActiveSiteUser()
+                    && accountSettled()
+                    && request.resource.data.authorId == request.auth.uid
+                    && validBlogPrivate(request.resource.data)
+                    && freshClientTimestamp(request.resource.data.createdAt)
+                    && existsAfter(/databases/$(database)/documents/blogPosts/$(postId))
+                    && getAfter(/databases/$(database)/documents/blogPosts/$(postId)).data.authorId == request.auth.uid;
+      allow update: if false;
+      allow delete: if isSiteStaff() || isModerator()
+                    || (isActiveSiteUser() && resource.data.authorId == request.auth.uid);
     }
 
     match /archiveSubmissions/{submissionId} {

@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { Pencil, Search } from "lucide-react";
 import { canWriteCircuitContent } from "../../lib/staffAccess";
-import { FILTER_GAMES, canonicalFilterGame } from "../../data/gameCatalog";
+import { FILTER_GAMES } from "../../data/gameCatalog";
 import { FLOATING_FEATURES, FLOATING_POLICY_ID, floatingPolicyFromRecords } from "../../data/floatingWindows";
 import { recordRecency, sortByRecency } from "../../lib/deskSort";
 import StickyFilterBar from "../shared/StickyFilterBar";
@@ -33,10 +32,15 @@ function matchesQuery(item, query) {
   return hay.includes(query);
 }
 
-/** Research/tournament opt in; EWC/blog/custom stay live unless explicitly off. */
-function isWindowLive(item) {
-  if (item.feature === "research" || item.feature === "tournament") return item.floating === true;
-  return item.floating !== false;
+function windowKey(item) {
+  return `${item.feature}-${item.slug || item.id}`;
+}
+
+/** Live only when explicitly toggled on (floating === true), with local overrides while saving. */
+function isWindowLive(item, overrides = {}) {
+  const key = windowKey(item);
+  if (Object.prototype.hasOwnProperty.call(overrides, key)) return overrides[key] === true;
+  return item.floating === true;
 }
 
 export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blogSlides = [], role, onSave, filterGames = FILTER_GAMES }) {
@@ -47,10 +51,16 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("newest");
   const [togglingKey, setTogglingKey] = useState("");
+  const [liveOverrides, setLiveOverrides] = useState({});
 
   const windows = useMemo(() => {
     const listed = [];
-    ewcWindows.forEach((slide) => listed.push({ ...slide, feature: "ewc", sourceLabel: "EWC year" }));
+    ewcWindows.forEach((slide) => listed.push({
+      ...slide,
+      feature: "ewc",
+      sourceLabel: "EWC year",
+      floating: slide.floating === true,
+    }));
     records.filter((item) => (item.research || item.surface === "research") && item.surface !== "floating-policy").forEach((item) => {
       listed.push({
         ...item,
@@ -60,40 +70,19 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
         displayTitle: item.fullName || item.title || item.game,
       });
     });
-    records.filter((item) => item.surface === "vault").forEach((item) => listed.push({ ...item, feature: "vault", sourceLabel: "Custom card" }));
+    records.filter((item) => item.surface === "vault").forEach((item) => listed.push({
+      ...item,
+      feature: "vault",
+      sourceLabel: "Custom card",
+      floating: item.floating === true,
+    }));
     blogSlides.forEach((blog) => {
       const overlay = records.find((item) => item.surface === "blog-window" && (item.blogId === blog.id || item.slug === blog.slug));
-      listed.push({ ...blog, ...overlay, feature: "blog", sourceLabel: "Blog", floating: blog.floating || overlay?.floating === true });
+      listed.push({ ...blog, ...overlay, feature: "blog", sourceLabel: "Blog", floating: blog.floating === true || overlay?.floating === true });
     });
     records.filter((item) => item.surface === "tournament").forEach((item) => listed.push({ ...item, feature: "tournament", sourceLabel: "Tournament", floating: item.floating === true }));
-
-    const present = new Set(
-      listed
-        .filter((item) => isGameFeature(item.feature))
-        .flatMap((item) => [item.game, item.fullName, item.title].filter(Boolean).map((name) => canonicalFilterGame(name).toLowerCase())),
-    );
-    filterGames
-      .filter((game) => game && game !== "Other")
-      .forEach((game) => {
-        const key = canonicalFilterGame(game).toLowerCase();
-        const covered = [...present].some((name) => name === key || name.includes(key) || key.includes(name));
-        if (covered) return;
-        listed.push({
-          id: `missing-game-${key.replace(/[^a-z0-9]+/g, "-")}`,
-          feature: "research",
-          sourceLabel: "Game vault",
-          title: game,
-          game,
-          displayTitle: game,
-          summary: "Missing from the desk — create a vault entry to edit seasons and posters.",
-          floating: false,
-          missing: true,
-        });
-        present.add(key);
-      });
-
     return listed;
-  }, [records, ewcWindows, blogSlides, filterGames]);
+  }, [records, ewcWindows, blogSlides]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -103,6 +92,7 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
       if (typeFilter === "games" && !isGameFeature(item.feature)) return false;
       return matchesQuery(item, q);
     });
+    // Stable desk order — do not jump Live cards to the top (that stuck the Off toggle on "…").
     return sortByRecency(filtered, sort, (item) => recordRecency(item) || (Number(item.floatingPriority) || 0));
   }, [windows, typeFilter, query, sort]);
 
@@ -118,6 +108,8 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
 
   const saveWindow = async (draft, { closeEditor = true } = {}) => {
     const feature = draft.feature;
+    const floating = draft.floating === true;
+    const floatingPriority = Number(draft.floatingPriority) || 0;
     if (feature === "ewc") {
       await onSave({
         id: draft.slug || draft.id,
@@ -130,9 +122,10 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
         game: draft.game || "Esports World Cup",
         kicker: draft.kicker || "EWC",
         season: draft.season,
-        floating: draft.floating === true,
-        floatingPriority: Number(draft.floatingPriority) || 0,
+        floating,
+        floatingPriority,
         eventScope: "ewc",
+        enabled: true,
       });
     } else if (feature === "blog") {
       await onSave({
@@ -144,8 +137,8 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
         summary: draft.summary,
         poster: draft.poster,
         game: draft.game,
-        floating: draft.floating === true,
-        floatingPriority: Number(draft.floatingPriority) || 0,
+        floating,
+        floatingPriority,
       });
     } else {
       const original = records.find((item) => item.id === draft.id) || draft;
@@ -154,8 +147,8 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
         title: draft.title,
         summary: draft.summary,
         poster: draft.poster,
-        floating: draft.floating === true,
-        floatingPriority: Number(draft.floatingPriority) || 0,
+        floating,
+        floatingPriority,
       });
     }
     if (closeEditor) setEditing(null);
@@ -163,12 +156,19 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
 
   const toggleLive = async (item) => {
     if (!canWrite || item.missing) return;
-    const key = `${item.feature}-${item.slug || item.id}`;
+    const key = windowKey(item);
+    if (togglingKey === key) return;
+    const nextLive = !isWindowLive(item, liveOverrides);
+    setLiveOverrides((current) => ({ ...current, [key]: nextLive }));
     setTogglingKey(key);
+    const safety = window.setTimeout(() => setTogglingKey((current) => (current === key ? "" : current)), 4000);
     try {
-      await saveWindow({ ...item, floating: !isWindowLive(item) }, { closeEditor: false });
+      await saveWindow({ ...item, floating: nextLive }, { closeEditor: false });
+    } catch {
+      setLiveOverrides((current) => ({ ...current, [key]: !nextLive }));
     } finally {
-      setTogglingKey("");
+      window.clearTimeout(safety);
+      setTogglingKey((current) => (current === key ? "" : current));
     }
   };
 
@@ -198,12 +198,12 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
-              onClick={() => setEditing({ ...editing, floating: !isWindowLive(editing) })}
+              onClick={() => setEditing({ ...editing, floating: !isWindowLive(editing, liveOverrides) })}
               className={`rounded-full px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest ${
-                isWindowLive(editing) ? "bg-neon text-slate-950" : "border border-white/20 text-slate-400"
+                isWindowLive(editing, liveOverrides) ? "bg-neon text-slate-950" : "border border-white/20 text-slate-400"
               }`}
             >
-              {isWindowLive(editing) ? "Live" : "Off"}
+              {isWindowLive(editing, liveOverrides) ? "Live" : "Off"}
             </button>
             <span className="text-sm text-slate-400">Show on home / vault carousel</span>
           </div>
@@ -268,57 +268,50 @@ export default function FloatingWindowsDesk({ records = [], ewcWindows = [], blo
       </StickyFilterBar>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        {visible.map((item) => (
+        {visible.map((item) => {
+          const key = windowKey(item);
+          const live = isWindowLive(item, liveOverrides);
+          const busy = togglingKey === key;
+          return (
           <article
-            key={`${item.feature}-${item.slug || item.id}`}
+            key={key}
             className="flex min-h-[6.5rem] flex-col justify-between rounded-xl border border-white/10 bg-slate-950/60 p-2.5 sm:min-h-[7rem] sm:p-3"
           >
             <div className="min-w-0">
               <p className="truncate font-mono text-[8px] uppercase tracking-widest text-slate-500 sm:text-[9px]">
                 {item.sourceLabel}
-                {isWindowLive(item) ? ` · live · p${item.floatingPriority || 0}` : " · off"}
+                {live ? ` · live · p${item.floatingPriority || 0}` : " · off"}
                 {policy[item.feature] ? "" : " · src off"}
-                {item.missing ? " · missing" : ""}
               </p>
               <h3 className="mt-1 line-clamp-2 font-display text-base leading-tight text-white sm:text-lg">
                 {item.displayTitle || item.title}
               </h3>
               <p className="mt-0.5 line-clamp-2 text-[10px] text-slate-500 sm:text-[11px]">{item.summary}</p>
             </div>
-            {item.missing ? (
-              canWrite ? (
-                <Link
-                  to={`/admin/portal/vault/new?game=${encodeURIComponent(item.game || item.title || "")}`}
-                  className="mt-2 inline-flex items-center gap-1 text-[11px] text-neon no-underline"
-                >
-                  <Pencil size={11} /> Create
-                </Link>
-              ) : null
-            ) : (
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  disabled={!canWrite || togglingKey === `${item.feature}-${item.slug || item.id}`}
-                  onClick={() => toggleLive(item)}
-                  className={`rounded-full px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest disabled:opacity-50 ${
-                    isWindowLive(item)
-                      ? "bg-neon text-slate-950"
-                      : "border border-white/20 text-slate-400 hover:border-white/40"
-                  }`}
-                >
-                  {togglingKey === `${item.feature}-${item.slug || item.id}`
-                    ? "…"
-                    : isWindowLive(item) ? "Live" : "Off"}
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={!canWrite || busy}
+                aria-pressed={live}
+                aria-busy={busy}
+                onClick={() => toggleLive(item)}
+                className={`min-w-[3.25rem] rounded-full px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest disabled:opacity-50 ${
+                  live
+                    ? "bg-neon text-slate-950"
+                    : "border border-white/20 text-slate-400 hover:border-white/40"
+                }`}
+              >
+                {live ? "Live" : "Off"}
+              </button>
+              {canWrite && (
+                <button type="button" className="inline-flex items-center gap-1 text-[11px] text-neon" onClick={() => setEditing(item)}>
+                  <Pencil size={11} /> Edit
                 </button>
-                {canWrite && (
-                  <button type="button" className="inline-flex items-center gap-1 text-[11px] text-neon" onClick={() => setEditing(item)}>
-                    <Pencil size={11} /> Edit
-                  </button>
-                )}
-              </div>
-            )}
+              )}
+            </div>
           </article>
-        ))}
+          );
+        })}
       </div>
       {!visible.length && <p className="text-sm text-slate-500">No windows match this filter.</p>}
     </section>

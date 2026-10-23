@@ -61,6 +61,9 @@ function mergeWithSeed(remote = []) {
       ...item,
       surface: "research",
       research: true,
+      // Keep owner Live/Off + priority across seed refreshes.
+      floating: existing.floating === true,
+      floatingPriority: existing.floatingPriority ?? item.floatingPriority ?? 0,
       editions: mergeEwcEditions(item.editions, existing.editions),
       yearlyStats: existing.yearlyStats?.length ? existing.yearlyStats : item.yearlyStats,
       relatedTournaments: existing.relatedTournaments?.length ? existing.relatedTournaments : item.relatedTournaments,

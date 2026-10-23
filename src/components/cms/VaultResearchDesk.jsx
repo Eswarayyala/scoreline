@@ -87,6 +87,7 @@ function EditionCard({ edition, game, role, onChange, onRemove }) {
         poster={edition.poster}
         images={edition.images}
         role={role}
+        hideSuggestions
         heading="This event's poster and photos"
         onChange={(patchIn) => onChange({
           ...edition,
@@ -417,17 +418,19 @@ function ResearchForm({ initial, canWrite, role, games, onSave, onCancel }) {
         </div>
       </details>
       <Field label="Overview"><textarea rows={3} className={inputClass} value={form.summary || ""} onChange={(e) => patch("summary", e.target.value)} /></Field>
-      <div>
-        <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">Avatars and posters</p>
-        <PosterPicker
-          game={form.game}
-          value={form.poster}
-          avatar={form.avatar}
-          flyers={form.flyers}
-          posterIndex={form.posterIndex}
-          onChange={(patchIn) => setForm((current) => ({ ...current, ...patchIn }))}
-        />
-      </div>
+      <details className="rounded-lg border border-white/10 p-3">
+        <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-widest text-slate-500">Avatars and posters</summary>
+        <div className="mt-2">
+          <PosterPicker
+            game={form.game}
+            value={form.poster}
+            avatar={form.avatar}
+            flyers={form.flyers}
+            posterIndex={form.posterIndex}
+            onChange={(patchIn) => setForm((current) => ({ ...current, ...patchIn }))}
+          />
+        </div>
+      </details>
       <div>
         <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">Tournaments held by year</p>
         {rows.map((row, index) => (
@@ -439,18 +442,6 @@ function ResearchForm({ initial, canWrite, role, games, onSave, onCancel }) {
           </div>
         ))}
         <button type="button" className="text-xs text-neon" onClick={() => patch("yearlyStats", [...rows, { year: "", tournamentCount: 1, circuit: "", region: "Global" }])}>+ Year</button>
-      </div>
-      <div>
-        <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-500">Related past tournaments</p>
-        {related.map((row, index) => (
-          <div key={index} className="mb-2 grid gap-2 sm:grid-cols-4">
-            <input placeholder="Year" className={inputClass} value={row.year || ""} onChange={(e) => patch("relatedTournaments", related.map((item, i) => i === index ? { ...item, year: e.target.value } : item))} />
-            <input placeholder="Event" className={inputClass} value={row.name || ""} onChange={(e) => patch("relatedTournaments", related.map((item, i) => i === index ? { ...item, name: e.target.value } : item))} />
-            <input placeholder="Region" className={inputClass} value={row.region || ""} onChange={(e) => patch("relatedTournaments", related.map((item, i) => i === index ? { ...item, region: e.target.value } : item))} />
-            <input placeholder="Result" className={inputClass} value={row.result || ""} onChange={(e) => patch("relatedTournaments", related.map((item, i) => i === index ? { ...item, result: e.target.value } : item))} />
-          </div>
-        ))}
-        <button type="button" className="text-xs text-neon" onClick={() => patch("relatedTournaments", [...related, { year: "", name: "", region: "", result: "" }])}>+ Related event</button>
       </div>
       <div className="grid gap-3">
         <div className="flex items-center justify-between gap-2">
@@ -494,6 +485,20 @@ function ResearchForm({ initial, canWrite, role, games, onSave, onCancel }) {
           ))}
         </div>
       </div>
+      <details className="rounded-lg border border-white/10 p-3">
+        <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-widest text-slate-500">Related past tournaments</summary>
+        <div className="mt-2">
+          {related.map((row, index) => (
+            <div key={index} className="mb-2 grid gap-2 sm:grid-cols-4">
+              <input placeholder="Year" className={inputClass} value={row.year || ""} onChange={(e) => patch("relatedTournaments", related.map((item, i) => i === index ? { ...item, year: e.target.value } : item))} />
+              <input placeholder="Event" className={inputClass} value={row.name || ""} onChange={(e) => patch("relatedTournaments", related.map((item, i) => i === index ? { ...item, name: e.target.value } : item))} />
+              <input placeholder="Region" className={inputClass} value={row.region || ""} onChange={(e) => patch("relatedTournaments", related.map((item, i) => i === index ? { ...item, region: e.target.value } : item))} />
+              <input placeholder="Result" className={inputClass} value={row.result || ""} onChange={(e) => patch("relatedTournaments", related.map((item, i) => i === index ? { ...item, result: e.target.value } : item))} />
+            </div>
+          ))}
+          <button type="button" className="text-xs text-neon" onClick={() => patch("relatedTournaments", [...related, { year: "", name: "", region: "", result: "" }])}>+ Related event</button>
+        </div>
+      </details>
       {error && <p className="text-sm text-rose-400">{error}</p>}
       {isSiteSupportRole(role) && (
         <p className="text-xs text-neon/90">Support saves (including event posters) wait for owner approval.</p>
@@ -506,67 +511,53 @@ function ResearchForm({ initial, canWrite, role, games, onSave, onCancel }) {
   );
 }
 
-function CatalogDesk({ records, role, permissions, games, onSave, onDelete }) {
+function CatalogDesk({ records, role, permissions, onSave, onDelete }) {
   const canWrite = canWriteCircuitContent(role);
   const canRemove = canProposeCmsDelete(role, permissions);
   const [name, setName] = useState("");
-  const [media, setMedia] = useState({ poster: "", flyers: [], avatar: "" });
   const extras = records.filter((item) => item.surface === "catalog");
   return (
-    <section className="space-y-3 rounded-2xl border border-white/10 p-4">
-      <h3 className="font-display text-2xl text-white">Filter catalog</h3>
-      <p className="text-sm text-slate-400">These names power Find players, create-tournament, and CMS dropdowns. Attach posters for games you add by hand.</p>
-      {isSiteSupportRole(role) && (
-        <p className="text-xs text-neon/90">Catalog edits and removals go to the owner queue — support never writes live.</p>
-      )}
-      <p className="text-xs text-slate-500">{games.join(" · ")}</p>
+    <section className="space-y-2 rounded-xl border border-white/10 px-3 py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Filter catalog</h3>
+        {isSiteSupportRole(role) && (
+          <p className="text-[10px] text-neon/90">Catalog edits wait for owner approval.</p>
+        )}
+      </div>
       {canWrite && (
-        <div className="grid gap-3">
-          <div className="flex gap-2">
-            <input className={inputClass} placeholder="Add a game to filters" value={name} onChange={(e) => setName(e.target.value)} />
-            <button
-              type="button"
-              className="shrink-0 rounded-full bg-neon px-3 text-sm font-semibold text-slate-950"
-              onClick={() => {
-                const game = name.trim();
-                if (!game) return;
-                onSave({
-                  surface: "catalog",
-                  title: game,
-                  game,
-                  inFilters: true,
-                  kicker: "Filter list",
-                  poster: media.poster,
-                  flyers: media.flyers,
-                  avatar: media.avatar,
-                  posterSource: media.posterSource || "upload",
-                });
-                ensureGameCollections(game).catch(() => {});
-                setName("");
-                setMedia({ poster: "", flyers: [], avatar: "" });
-              }}
-            >
-              Add
-            </button>
-          </div>
-          <PosterPicker
-            game={name || "Other"}
-            value={media.poster}
-            avatar={media.avatar}
-            flyers={media.flyers}
-            onChange={(patchIn) => setMedia((current) => ({ ...current, ...patchIn }))}
-          />
+        <div className="flex gap-2">
+          <input className={inputClass} placeholder="Add a game to filters" value={name} onChange={(e) => setName(e.target.value)} />
+          <button
+            type="button"
+            className="shrink-0 rounded-full bg-neon px-3 text-sm font-semibold text-slate-950"
+            onClick={() => {
+              const game = name.trim();
+              if (!game) return;
+              onSave({
+                surface: "catalog",
+                title: game,
+                game,
+                inFilters: true,
+                kicker: "Filter list",
+              });
+              ensureGameCollections(game).catch(() => {});
+              setName("");
+            }}
+          >
+            Add
+          </button>
         </div>
       )}
-      {extras.map((item) => (
-        <div key={item.id} className="flex items-center justify-between gap-3 text-sm text-slate-300">
-          <span className="flex items-center gap-2">
-            {(item.poster || item.avatar) && <img src={item.poster || item.avatar} alt="" className="h-8 w-8 rounded object-cover" />}
-            {item.game}
-          </span>
-          {canRemove && <button type="button" className="text-rose-400" onClick={() => onDelete(item.id)}>Remove</button>}
+      {!!extras.length && (
+        <div className="flex flex-wrap gap-x-3 gap-y-1">
+          {extras.map((item) => (
+            <div key={item.id} className="inline-flex items-center gap-2 text-xs text-slate-400">
+              <span>{item.game}</span>
+              {canRemove && <button type="button" className="text-rose-400" onClick={() => onDelete(item.id)}>Remove</button>}
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </section>
   );
 }
@@ -675,7 +666,7 @@ export default function VaultResearchDesk({
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-neon">Shared research desk</p>
           <h2 className="font-display text-3xl text-white">Game vaults</h2>
           <p className="mt-1 text-sm text-slate-400">
-            Missing titles (including Chess) stay listed so you can create them. Edit opens in this tab
+            Edit opens in this tab
             {isSiteSupportRole(role) ? " — support publishes only after owner approval" : ""}.
           </p>
         </div>
@@ -698,28 +689,27 @@ export default function VaultResearchDesk({
         </label>
         <DeskSortSelect value={sort} onChange={setSort} />
       </StickyFilterBar>
-      <CatalogDesk records={records} role={role} permissions={permissions} games={filterGames} onSave={onSave} onDelete={onDelete} />
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        {visible.map((item) => (
+        {visible.filter((item) => !item.missing).map((item) => (
           <article
             key={item.id}
             className="flex min-h-[6.5rem] flex-col justify-between rounded-xl border border-white/10 bg-slate-950/60 p-2.5 sm:min-h-[7.25rem] sm:p-3"
           >
             <div className="min-w-0">
               <p className="truncate font-mono text-[8px] uppercase tracking-widest text-slate-500 sm:text-[9px]">
-                {item.missing ? "Missing · create" : `${item.game} · ${item.region || "Global"} · ${(item.editions || []).length} EWC`}
+                {`${item.game} · ${item.region || "Global"} · ${(item.editions || []).length} EWC`}
               </p>
               <h3 className="mt-1 line-clamp-2 font-display text-base leading-tight text-white sm:text-lg">{item.displayTitle || item.title}</h3>
             </div>
             {canWrite && (
               <div className="mt-2 flex flex-wrap gap-2">
                 <Link
-                  to={item.missing ? `/admin/portal/vault/new?game=${encodeURIComponent(item.game || item.title || "")}` : `/admin/portal/vault/${item.id}`}
+                  to={`/admin/portal/vault/${item.id}`}
                   className="inline-flex items-center gap-1 text-[11px] text-neon no-underline"
                 >
-                  <Pencil size={11} /> {item.missing ? "Create" : "Edit"}
+                  <Pencil size={11} /> Edit
                 </Link>
-                {!item.missing && canRemove && (
+                {canRemove && (
                   <button type="button" onClick={() => onDelete(item.id)} className="inline-flex items-center gap-1 text-[11px] text-rose-400">
                     <Trash2 size={11} /> {isSiteSupportRole(role) && !supportWritesDirect(role, permissions, "vaultDelete") ? "Request remove" : "Move to bin"}
                   </button>
@@ -729,7 +719,8 @@ export default function VaultResearchDesk({
           </article>
         ))}
       </div>
-      {!visible.length && <p className="text-sm text-slate-500">No game vaults match that search.</p>}
+      {!visible.filter((item) => !item.missing).length && <p className="text-sm text-slate-500">No game vaults match that search.</p>}
+      <CatalogDesk records={records} role={role} permissions={permissions} onSave={onSave} onDelete={onDelete} />
       <DeskBin
         items={binned}
         title="Vault bin"

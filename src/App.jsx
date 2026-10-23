@@ -47,7 +47,7 @@ import StaffDeskGate from "./components/cms/StaffDeskGate";
 import { useCircuitCms } from "./hooks/useCircuitCms";
 import { useStaffChangeRequests } from "./hooks/useStaffChangeRequests";
 import { deskGateDocPath, hashDeskPassword, hashFieldForRole } from "./lib/deskGate";
-import { assembleFloatingSlides, floatingPolicyFromRecords, mergeEwcWindows } from "./data/floatingWindows";
+import { assembleFloatingSlides, buildFeaturedWindows, floatingPolicyFromRecords, mergeEwcWindows } from "./data/floatingWindows";
 import { useEsportsMedia } from "./hooks/useEsportsMedia";
 import { fetchGamePoster, mergeVaultMedia } from "./services/esportsMedia";
 import { FILTER_GAMES, PUBG_FAMILY_LABEL, canonicalFilterGame, filterGameAliases, isPubgFamily } from "./data/gameCatalog";
@@ -98,6 +98,21 @@ const CHAT_CONVERSATIONS_COLLECTION = collection(db, "conversations");
 const CHAT_MESSAGES_COLLECTION = (conversationId) => collection(db, "conversations", conversationId, "messages");
 const ARCHIVE_COLLECTION = collection(db, "esportsArchive");
 const BLOG_POSTS_COLLECTION = collection(db, "blogPosts");
+const BLOG_PRIVATE_COLLECTION = collection(db, "blogPrivate");
+const blogPrivateDocRef = (postId) => doc(db, "blogPrivate", postId);
+
+function blogCreditPublic(post) {
+  if (post?.anonymous) return "Anonymous";
+  return post?.authorName || "Player";
+}
+
+function blogCreditStaff(post, privateMeta) {
+  const requester = privateMeta?.requesterName || post?.requesterName || "";
+  if (post?.anonymous || privateMeta?.anonymous) {
+    return requester ? `Anonymous · requested by ${requester}` : "Anonymous";
+  }
+  return post?.authorName || requester || "Player";
+}
 const SITE_POPUPS_COLLECTION = collection(db, "sitePopups");
 const SITE_ROLES_COLLECTION = collection(db, "siteRoles");
 const SITE_BANS_COLLECTION = collection(db, "siteBans");
@@ -2387,7 +2402,7 @@ function SitePopup({ popup, onDismiss }) {
   );
 }
 
-function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerAccess, popups, onSavePopup, onDeletePopup, staff, onSetSupport, onSaveSupportPermissions, supportPermissions = null, tournaments, archiveEntries = [], blogPosts, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], deletedCircuitRecords = [], onSaveCircuit, onDeleteCircuit, onRestoreCircuit, onPurgeCircuit, onImportArchive, filterGames = FILTER_GAMES, ewcWindows = [], blogSlides = [], supportChanges = [], onReviewSupportChange, deskGate = null, onSaveDeskPassword }) {
+function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerAccess, popups, onSavePopup, onDeletePopup, staff, onSetSupport, onSaveSupportPermissions, supportPermissions = null, tournaments, archiveEntries = [], blogPosts, blogPrivateById = {}, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], deletedCircuitRecords = [], onSaveCircuit, onDeleteCircuit, onRestoreCircuit, onPurgeCircuit, onImportArchive, filterGames = FILTER_GAMES, ewcWindows = [], blogSlides = [], supportChanges = [], onReviewSupportChange, deskGate = null, onSaveDeskPassword }) {
   const isOwner = role === "owner";
   const perms = normalizeSupportPermissions(supportPermissions);
   const canVault = isOwner || supportHas(perms, "vaultEdit");
@@ -2511,7 +2526,7 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
       {tab === "tournaments" && canVault && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="tournament" records={circuitRecords} deletedRecords={deletedCircuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} onRestore={onRestoreCircuit} onPurge={onPurgeCircuit} games={filterGames} permissions={perms} /><TournamentMonitor tournaments={tournaments} onOpen={onOpenTournament} /></div>}
       {tab === "vault" && canVault && <div style={{ display: "grid", gap: 28 }}><VaultResearchDesk records={circuitRecords} deletedRecords={deletedCircuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} onRestore={onRestoreCircuit} onPurge={onPurgeCircuit} filterGames={filterGames} permissions={perms} /><VaultMonitor submissions={archiveSubmissions} blogPosts={blogPosts} onDecision={supportHas(perms, "archiveDecide") || isOwner ? onArchiveDecision : undefined} onPromote={supportHas(perms, "blogPromote") || isOwner ? onPromoteBlog : undefined} /></div>}
       {tab === "activity log" && isOwner && <StaffActivityLog actions={auditLog} />}
-      {tab === "blogs" && canBlogs && <section><p style={{ color: "var(--text-muted)", fontSize: 13 }}>Watch every community blog from this desk. Publish or decline pending posts, then promote a published story into The Vault from the Vault tab.</p><div style={{ display: "flex", gap: 16, margin: "0 0 14px", fontSize: 13, color: "var(--text-muted)" }}><span>Pending {pendingBlogs}</span><span>Published {blogPosts.filter((post) => post.status === "published").length}</span><span>Total {blogPosts.length}</span></div>{blogPosts.length === 0 ? <EmptyState title="No blog posts yet" body="Community submissions will appear here for preview." /> : <div style={{ display: "grid", gap: 10 }}>{[...blogPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 30).map((post) => <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}{post.eventScope ? ` · ${post.eventScope}` : ""} · by {post.authorName || "Player"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{post.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{post.content}</p>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{post.status === "pending" && (isOwner || supportHas(perms, "blogReview")) && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onBlogReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onBlogReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div>}</section>}
+      {tab === "blogs" && canBlogs && <section><p style={{ color: "var(--text-muted)", fontSize: 13 }}>Watch every community blog from this desk. Publish or decline pending posts, then promote a published story into The Vault from the Vault tab.</p><div style={{ display: "flex", gap: 16, margin: "0 0 14px", fontSize: 13, color: "var(--text-muted)" }}><span>Pending {pendingBlogs}</span><span>Published {blogPosts.filter((post) => post.status === "published").length}</span><span>Total {blogPosts.length}</span></div>{blogPosts.length === 0 ? <EmptyState title="No blog posts yet" body="Community submissions will appear here for preview." /> : <div style={{ display: "grid", gap: 10 }}>{[...blogPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 30).map((post) => <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}{post.eventScope ? ` · ${post.eventScope}` : ""} · by {blogCreditStaff(post, blogPrivateById[post.id])}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{post.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{post.content}</p>{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer">Source</a>}{post.status === "pending" && (isOwner || supportHas(perms, "blogReview")) && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onBlogReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onBlogReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div>}</section>}
       {tab === "popups" && isOwner && <section>
         <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Create plain-text safety reminders or general popups. General popups appear at random intervals of 15 to 30 minutes while someone is actively browsing.</p>
         <Button onClick={() => openEditor()}>Add popup</Button>
@@ -2755,7 +2770,7 @@ function blogLinkError(source, youtubeUrl, docsUrl) {
   return "";
 }
 
-function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDelete, onSignIn, embedded = false, manageInDrawer = false }) {
+function BlogPage({ posts, user, isModerator, blogPrivateById = {}, onSubmit, onReview, onEdit, onDelete, onSignIn, embedded = false, manageInDrawer = false }) {
   const [title, setTitle] = useState("");
   const [game, setGame] = useState("");
   const [eventScope, setEventScope] = useState("random");
@@ -2766,6 +2781,7 @@ function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDele
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [docsUrl, setDocsUrl] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
+  const [anonymous, setAnonymous] = useState(false);
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState("");
   const [manageOpen, setManageOpen] = useState(false);
@@ -2787,8 +2803,9 @@ function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDele
         youtubeUrl: youtubeUrl.trim(),
         docsUrl: docsUrl.trim(),
         coverUrl: coverUrl.trim(),
+        anonymous,
       });
-      setTitle(""); setGame(""); setEventScope("random"); setAnalysisType("event"); setAnalysisSubject(""); setContent(""); setSource(""); setYoutubeUrl(""); setDocsUrl(""); setCoverUrl(""); setError("");
+      setTitle(""); setGame(""); setEventScope("random"); setAnalysisType("event"); setAnalysisSubject(""); setContent(""); setSource(""); setYoutubeUrl(""); setDocsUrl(""); setCoverUrl(""); setAnonymous(false); setError("");
     }
     catch { setError("Could not submit this post. Please try again."); }
   };
@@ -2824,6 +2841,10 @@ function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDele
       <Field label="YouTube (optional)"><TextInput value={youtubeUrl} maxLength={500} onChange={(e) => setYoutubeUrl(e.target.value)} placeholder="https://youtube.com/..." /></Field>
       <Field label="Docs (optional)"><TextInput value={docsUrl} maxLength={500} onChange={(e) => setDocsUrl(e.target.value)} placeholder="https://docs.google.com/..." /></Field>
       <Field label="Source link (optional)"><TextInput value={source} maxLength={500} onChange={(e) => setSource(e.target.value)} placeholder="https://" /></Field>
+      <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: "var(--text-muted)" }}>
+        <input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} />
+        Post anonymously (public credit shows Anonymous; staff still see who requested)
+      </label>
       {error && !editingId && <span role="alert" style={{ color: "var(--danger)" }}>{error}</span>}
       <Button onClick={submit}>Request publication</Button>
     </section>
@@ -2874,7 +2895,9 @@ function BlogPage({ posts, user, isModerator, onSubmit, onReview, onEdit, onDele
                 )}
                 <h2 style={{ fontFamily: "'Bebas Neue',sans-serif" }}>{post.title}</h2>
                 <div style={{ color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{post.content}</div>
-                <div style={{ marginTop: 8, fontSize: 12 }}>By {post.authorName || "Player"}</div>
+                <div style={{ marginTop: 8, fontSize: 12 }}>
+                  By {isModerator ? blogCreditStaff(post, blogPrivateById[post.id]) : blogCreditPublic(post)}
+                </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 8 }}>
                   {post.youtubeUrl && <a href={post.youtubeUrl} target="_blank" rel="noopener noreferrer">YouTube</a>}
                   {post.docsUrl && <a href={post.docsUrl} target="_blank" rel="noopener noreferrer">Docs</a>}
@@ -2951,6 +2974,7 @@ export default function App() {
   const [archiveSubmissions, setArchiveSubmissions] = useState([]);
   const [auditLog, setAuditLog] = useState([]);
   const [blogPosts, setBlogPosts] = useState([]);
+  const [blogPrivateById, setBlogPrivateById] = useState({});
   const [privateReports, setPrivateReports] = useState([]);
   const [siteBans, setSiteBans] = useState([]);
   const [myAccess, setMyAccess] = useState(null);
@@ -3185,17 +3209,39 @@ export default function App() {
     }),
     [circuitCms.records, ewcWindows, blogSlides],
   );
+  const homeSlides = useMemo(
+    () => buildFeaturedWindows({
+      floating: floatingSlides,
+      research: circuitCms.researchSlides,
+    }),
+    [floatingSlides, circuitCms.researchSlides],
+  );
   const vaultSlides = useMemo(() => {
     const seen = new Set();
+    const featuredKeys = new Set(homeSlides.map((slide) => slide.slug || slide.id));
     const floatKeys = new Set(floatingSlides.map((slide) => slide.slug || slide.id));
-    return mergeVaultMedia([...floatingSlides, ...ewcWindows, ...circuitCms.researchSlides, ...blogSlides], liveEsportsBanners).filter((slide) => {
+    // Public vault: only Live EWC year windows (old Off years stay out of the catalog).
+    const liveEwcWindows = ewcWindows.filter((slide) => slide.floating === true);
+    const catalog = mergeVaultMedia(
+      [...homeSlides, ...floatingSlides, ...liveEwcWindows, ...circuitCms.researchSlides, ...blogSlides],
+      liveEsportsBanners,
+    ).filter((slide) => {
       const key = slide.slug || slide.id;
       if (!key || seen.has(key)) return false;
       seen.add(key);
       return true;
-    }).map((slide) => ({ ...slide, floating: floatKeys.has(slide.slug || slide.id) }));
-  }, [floatingSlides, ewcWindows, circuitCms.researchSlides, blogSlides, liveEsportsBanners]);
-  const homeSlides = floatingSlides;
+    }).map((slide) => ({
+      ...slide,
+      floating: floatKeys.has(slide.slug || slide.id),
+      featured: featuredKeys.has(slide.slug || slide.id),
+    }));
+    // Same order as home featured rail, then the rest of the catalog (2026 → past).
+    const featured = homeSlides
+      .map((home) => catalog.find((slide) => (slide.slug || slide.id) === (home.slug || home.id)))
+      .filter(Boolean);
+    const rest = catalog.filter((slide) => !featuredKeys.has(slide.slug || slide.id));
+    return [...featured, ...rest];
+  }, [homeSlides, floatingSlides, ewcWindows, circuitCms.researchSlides, blogSlides, liveEsportsBanners]);
   const [myProfile, setMyProfile] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
@@ -3352,6 +3398,35 @@ export default function App() {
     if (user) stops.push(onSnapshot(query(BLOG_POSTS_COLLECTION, where("authorId", "==", user.uid)), (snap) => { ownPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() })); publish(); }, () => { ownPosts = []; publish(); }));
     if (isModerator || siteRole === "owner" || siteRole === "support") stops.push(onSnapshot(query(BLOG_POSTS_COLLECTION, where("status", "==", "pending")), (snap) => { pendingPosts = snap.docs.map((d) => ({ id: d.id, ...d.data() })); publish(); }, () => { pendingPosts = []; publish(); }));
     return () => stops.forEach((stop) => stop());
+  }, [user, isModerator, siteRole]);
+
+  useEffect(() => {
+    const canReadPrivate = !!(user && (isModerator || siteRole === "owner" || siteRole === "support"));
+    if (!canReadPrivate && !user) {
+      setBlogPrivateById({});
+      return undefined;
+    }
+    if (!canReadPrivate) {
+      // Authors can read their own private meta for the posts they own.
+      return onSnapshot(
+        query(BLOG_PRIVATE_COLLECTION, where("authorId", "==", user.uid)),
+        (snap) => {
+          const next = {};
+          snap.docs.forEach((item) => { next[item.id] = item.data(); });
+          setBlogPrivateById(next);
+        },
+        () => setBlogPrivateById({}),
+      );
+    }
+    return onSnapshot(
+      BLOG_PRIVATE_COLLECTION,
+      (snap) => {
+        const next = {};
+        snap.docs.forEach((item) => { next[item.id] = item.data(); });
+        setBlogPrivateById(next);
+      },
+      () => setBlogPrivateById({}),
+    );
   }, [user, isModerator, siteRole]);
 
   useEffect(() => onSnapshot(ARCHIVE_COLLECTION, (snapshot) => {
@@ -3810,7 +3885,31 @@ export default function App() {
   };
 
   const submitBlogPost = async (post) => {
-    try { await addDoc(BLOG_POSTS_COLLECTION, { ...post, eventScope: post.eventScope || "random", authorId: user.uid, authorName: safeProfileName(myProfile?.displayName, user.displayName), status: "pending", createdAt: Date.now() }); showToast("Blog request sent for review"); }
+    try {
+      const requesterName = safeProfileName(myProfile?.displayName, user.displayName);
+      const anonymous = post.anonymous === true;
+      const { anonymous: _anonFlag, ...publicFields } = post;
+      const createdAt = Date.now();
+      const postRef = doc(BLOG_POSTS_COLLECTION);
+      const batch = writeBatch(db);
+      batch.set(postRef, {
+        ...publicFields,
+        eventScope: post.eventScope || "random",
+        authorId: user.uid,
+        authorName: anonymous ? "Anonymous" : requesterName,
+        anonymous,
+        status: "pending",
+        createdAt,
+      });
+      batch.set(blogPrivateDocRef(postRef.id), {
+        authorId: user.uid,
+        requesterName,
+        anonymous,
+        createdAt,
+      });
+      await batch.commit();
+      showToast(anonymous ? "Anonymous blog request sent for review" : "Blog request sent for review");
+    }
     catch (e) { showToast("Couldn\u2019t submit blog request. Firestore rules may need to be published."); }
   };
 
@@ -3919,6 +4018,7 @@ export default function App() {
     if (!user || (post.authorId !== user.uid && !isSiteStaff && !isModerator)) throw new Error("You cannot delete this post");
     const batch = writeBatch(db);
     batch.delete(doc(BLOG_POSTS_COLLECTION, post.id));
+    batch.delete(blogPrivateDocRef(post.id));
     appendStaffAction(batch, "blog_deleted", "blog", post.id, `Blog deleted: ${post.title}`);
     await batch.commit();
     showToast("Blog post deleted");
@@ -4456,6 +4556,7 @@ export default function App() {
                       tournaments={tournaments}
                       archiveEntries={archiveEntries}
                       blogPosts={blogPosts}
+                      blogPrivateById={blogPrivateById}
                       onBlogReview={reviewBlogPost}
                       onPromoteBlog={promoteBlogToArchive}
                       archiveSubmissions={archiveSubmissions}
@@ -4632,7 +4733,7 @@ export default function App() {
                     <Button onClick={() => setAuthDialogOpen(true)}>Sign in to find players</Button>
                   </div>
                 )} />
-                <Route path="/blog" element={<BlogPage manageInDrawer posts={blogPosts} user={user} isModerator={isSiteStaff || isModerator} onSubmit={submitBlogPost} onReview={reviewBlogPost} onEdit={editBlogPost} onDelete={deleteBlogPost} onSignIn={() => setAuthDialogOpen(true)} />} />
+                <Route path="/blog" element={<BlogPage manageInDrawer posts={blogPosts} user={user} isModerator={isSiteStaff || isModerator} blogPrivateById={blogPrivateById} onSubmit={submitBlogPost} onReview={reviewBlogPost} onEdit={editBlogPost} onDelete={deleteBlogPost} onSignIn={() => setAuthDialogOpen(true)} />} />
                 <Route path="*" element={
                   <div className="pt-10">
                     <h1 className="m-0 font-['Bebas_Neue',sans-serif] text-5xl">Page not found</h1>
