@@ -66,6 +66,16 @@ const GAME_ALIASES = {
   "pubg mobile (bgmi)": "BGMI",
   "bgmi and pubg mobile": "BGMI",
   "pubg / pubg mobile": "PUBG Mobile",
+  "call of duty (cdl & warzone)": "Call of Duty",
+  "call of duty: warzone": "Call of Duty",
+  "garena free fire": "Free Fire",
+  "free fire max": "Free Fire",
+  "honor of kings (hok)": "Honor of Kings",
+  "hok": "Honor of Kings",
+  "dota 2 (riyadh masters)": "Dota 2",
+  "mobile legends": "Mobile Legends: Bang Bang",
+  "mlbb": "Mobile Legends: Bang Bang",
+  "clash of clans": "Clash of Clans",
 };
 
 export function isPubgFamily(game = "") {

@@ -1,10 +1,10 @@
 import { useNavigate } from "react-router-dom";
 
-/** Sticky back control so users can return Home without scrolling to the top. */
+/** Fixed Home control so it stays visible while the page scrolls. */
 export default function SectionBackHome({ label = "Home", to = "/" } = {}) {
   const navigate = useNavigate();
   return (
-    <div className="sticky top-0 z-40 -mx-1 mb-3 border-b border-white/10 bg-slate-950/95 px-1 py-2 backdrop-blur-md supports-[backdrop-filter]:bg-slate-950/80">
+    <div className="sticky top-0 z-50 mb-3 border-b border-white/10 bg-slate-950/95 py-2 backdrop-blur-md">
       <button
         type="button"
         onClick={() => navigate(to, { replace: to === "/" })}

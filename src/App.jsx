@@ -2260,12 +2260,20 @@ function TournamentMonitor({ tournaments, onOpen }) {
   );
 }
 
+function blogMatchKey(game = "") {
+  const canonical = String(canonicalFilterGame(game) || game || "").trim().toLowerCase();
+  if (!canonical) return "";
+  // Strip parenthetical suffixes so "Call of Duty (CDL & Warzone)" ≈ "Call of Duty".
+  return canonical.replace(/\s*\([^)]*\)\s*/g, " ").replace(/\s+/g, " ").trim();
+}
+
 function latestBlogByGame(posts = []) {
   const byGame = new Map();
   posts
     .filter((post) => post.status === "published" && post.game)
     .forEach((post) => {
-      const key = String(canonicalFilterGame(post.game) || post.game).toLowerCase();
+      const key = blogMatchKey(post.game);
+      if (!key) return;
       const prev = byGame.get(key);
       if (!prev || (post.createdAt || 0) > (prev.createdAt || 0)) byGame.set(key, post);
     });
@@ -2277,7 +2285,7 @@ function applyBlogExcerptsToSlides(slides = [], posts = []) {
   if (!byGame.size) return slides;
   return slides.map((slide) => {
     if (slide.blog) return slide;
-    const key = String(canonicalFilterGame(slide.game) || slide.game || "").toLowerCase();
+    const key = blogMatchKey(slide.game);
     const post = key ? byGame.get(key) : null;
     if (!post?.content) return slide;
     const summary = excerptWords(post.content, { min: 30, max: 50 });

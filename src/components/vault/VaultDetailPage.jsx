@@ -197,16 +197,6 @@ export default function VaultDetailPage({
               </p>
             )}
 
-            {!slide.blog && !isChampionship && !!slide.editions?.length && (
-              <EventTabs
-                editions={slide.editions}
-                game={slide.game}
-                heading={`All ${slide.game} events`}
-                fallbackPoster={slide.poster}
-                onSelectPoster={setActiveFlyer}
-              />
-            )}
-
             {slide.eventStatus === "completed" && !slide.editions?.length && !isChampionship && (
               <dl className="mt-5 grid gap-2 text-sm text-slate-300">
                 {slide.winners && <div>Winners · {slide.winners}</div>}
