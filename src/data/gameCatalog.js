@@ -34,6 +34,7 @@ const PRESET_GAMES = [
   "Rainbow Six Siege",
   "Honor of Kings",
   "Clash Royale",
+  "Clash of Clans",
   "Brawl Stars",
   "StarCraft 2",
   "Teamfight Tactics",

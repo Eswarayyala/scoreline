@@ -32,9 +32,11 @@ export default function CompetitorDirectoryPage({ slides = [], kind = "franchise
 
   return (
     <div className="mx-auto max-w-5xl px-5 pb-20 pt-6">
-      <Link to="/vault" className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neon">
-        <ArrowLeft size={14} /> The Vault
-      </Link>
+      <div className="sticky top-0 z-40 mb-2 border-b border-white/10 bg-slate-950/95 py-2 backdrop-blur-md">
+        <Link to="/vault" className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neon">
+          <ArrowLeft size={14} /> The Vault
+        </Link>
+      </div>
       <div className="mt-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-4xl text-white md:text-5xl">{isFranchise ? "Franchises" : "Players"}</h1>

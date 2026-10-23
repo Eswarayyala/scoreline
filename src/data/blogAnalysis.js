@@ -11,6 +11,25 @@ export function analysisTypeLabel(id) {
   return BLOG_ANALYSIS_TYPES.find((item) => item.id === id)?.label || "Analysis";
 }
 
+/** First ~30–50 words of a blog for game vault overviews (strips Resources / URLs). */
+export function excerptWords(text, { min = 30, max = 50 } = {}) {
+  const cleaned = String(text || "")
+    .replace(/\n*Resources[\s\S]*$/i, "")
+    .replace(/https:\/\/\S+/gi, "")
+    .replace(/[•·]\s*/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!cleaned) return "";
+  const words = cleaned.split(" ").filter(Boolean);
+  if (words.length <= max) return cleaned;
+  const capped = words.slice(0, max).join(" ");
+  const sentence = capped.match(/^([\s\S]{20,}?[.!?])(?:\s|$)/);
+  if (sentence && sentence[1].split(/\s+/).filter(Boolean).length >= min) {
+    return sentence[1].trim();
+  }
+  return `${capped.replace(/[,:;–—-]+$/, "").trim()}…`;
+}
+
 export function isHttpsUrl(value) {
   return /^https:\/\//i.test(String(value || "").trim());
 }

@@ -72,10 +72,13 @@ export default function VaultDetailPage({
 
   return (
     <article className="mx-auto max-w-5xl px-5 pb-20 pt-6">
-      <div className="mb-5 space-y-2">
+      <div className="sticky top-0 z-40 mb-5 space-y-2 border-b border-white/10 bg-slate-950/95 py-3 backdrop-blur-md">
         <div className="flex flex-wrap items-center gap-4">
           <Link to="/vault" className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neon">
             <ArrowLeft size={14} /> The Vault
+          </Link>
+          <Link to="/" className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neon">
+            Home
           </Link>
           {(slide.research || slide.surface === "research" || slide.surface === "ewc-window") && (
             <Link to="/vault/ewc" className="font-mono text-xs uppercase tracking-widest text-neon">
@@ -192,32 +195,6 @@ export default function VaultDetailPage({
                   .filter(Boolean)
                   .join(" · ")}
               </p>
-            )}
-
-            {!slide.blog && !isChampionship && !!slide.yearlyStats?.length && (
-              <section className="mt-8">
-                <h2 className="font-display text-3xl text-white">Tournaments by year</h2>
-                <table className="mt-3 w-full text-left text-sm text-slate-300">
-                  <thead>
-                    <tr className="text-slate-500">
-                      <th className="py-1 pr-3 font-mono text-[10px] uppercase tracking-widest">Year</th>
-                      <th className="py-1 pr-3 font-mono text-[10px] uppercase tracking-widest">Held</th>
-                      <th className="py-1 pr-3 font-mono text-[10px] uppercase tracking-widest">Circuit</th>
-                      <th className="py-1 font-mono text-[10px] uppercase tracking-widest">Region</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {slide.yearlyStats.map((row) => (
-                      <tr key={`${row.year}-${row.circuit}`} className="border-t border-white/5">
-                        <td className="py-2 pr-3">{row.year}</td>
-                        <td className="py-2 pr-3">{row.tournamentCount}</td>
-                        <td className="py-2 pr-3">{row.circuit}</td>
-                        <td className="py-2">{row.region}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </section>
             )}
 
             {!slide.blog && !isChampionship && !!slide.editions?.length && (

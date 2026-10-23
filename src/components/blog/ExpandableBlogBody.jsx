@@ -1,13 +1,13 @@
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { linkifyHttpsText } from "../../data/blogAnalysis";
 
 const PREVIEW_LINES = 6;
-const PREVIEW_CHARS = PREVIEW_LINES * 90;
+const PREVIEW_CHARS = PREVIEW_LINES * 72;
 
 function needsExpand(text) {
-  const raw = String(text || "");
+  const raw = String(text || "").trim();
   if (!raw) return false;
-  if (raw.split(/\r?\n/).length > PREVIEW_LINES) return true;
+  if (raw.split(/\r?\n/).filter(Boolean).length > PREVIEW_LINES) return true;
   return raw.length > PREVIEW_CHARS;
 }
 
@@ -20,24 +20,49 @@ export default function ExpandableBlogBody({
   lessLabel = "Less",
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  const bodyRef = useRef(null);
   const raw = String(text || "");
-  const canExpand = useMemo(() => needsExpand(raw), [raw]);
+  const likelyLong = useMemo(() => needsExpand(raw), [raw]);
+  const canExpand = likelyLong || overflows;
   const clamped = canExpand && !expanded;
+
+  useLayoutEffect(() => {
+    setExpanded(false);
+    setOverflows(false);
+  }, [raw]);
+
+  useLayoutEffect(() => {
+    if (expanded || !bodyRef.current) return undefined;
+    const node = bodyRef.current;
+    const measure = () => {
+      // Line-clamp can fail with pre-wrap / nested links; measure actual overflow.
+      const clipped = node.scrollHeight > node.clientHeight + 2;
+      setOverflows(clipped || likelyLong);
+    };
+    measure();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    ro?.observe(node);
+    return () => ro?.disconnect();
+  }, [raw, expanded, likelyLong]);
 
   return (
     <div className={className}>
       <div
+        ref={bodyRef}
         style={{
           color: "var(--text-muted)",
-          whiteSpace: "pre-wrap",
           ...(clamped
             ? {
                 display: "-webkit-box",
                 WebkitLineClamp: PREVIEW_LINES,
                 WebkitBoxOrient: "vertical",
                 overflow: "hidden",
+                whiteSpace: "normal",
               }
-            : null),
+            : {
+                whiteSpace: "pre-wrap",
+              }),
           ...style,
         }}
       >

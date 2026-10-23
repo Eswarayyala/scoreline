@@ -67,7 +67,7 @@ import LfgNoticeBoard from "./components/ecosystem/LfgNoticeBoard";
 import Countdown from "./components/shared/Countdown";
 import DynamicPointsTable from "./components/shared/DynamicPointsTable";
 import AchievementBadges from "./components/shared/AchievementBadges";
-import { BLOG_ANALYSIS_TYPES, analysisTypeLabel, isHttpsUrl } from "./data/blogAnalysis";
+import { BLOG_ANALYSIS_TYPES, analysisTypeLabel, excerptWords, isHttpsUrl } from "./data/blogAnalysis";
 import ExpandableBlogBody from "./components/blog/ExpandableBlogBody";
 import { POSTER_PRESETS } from "./data/posterPresets";
 import { ewcFloatingSlides } from "./data/esportsResearch";
@@ -509,6 +509,7 @@ const GAME_ICONS = {
   "Rainbow Six Siege": "🛡️",
   "Honor of Kings": "👑",
   "Clash Royale": "👑",
+  "Clash of Clans": "🏰",
   "Brawl Stars": "⭐",
   "StarCraft 2": "🚀",
   "Teamfight Tactics": "♟️",
@@ -2259,6 +2260,32 @@ function TournamentMonitor({ tournaments, onOpen }) {
   );
 }
 
+function latestBlogByGame(posts = []) {
+  const byGame = new Map();
+  posts
+    .filter((post) => post.status === "published" && post.game)
+    .forEach((post) => {
+      const key = String(canonicalFilterGame(post.game) || post.game).toLowerCase();
+      const prev = byGame.get(key);
+      if (!prev || (post.createdAt || 0) > (prev.createdAt || 0)) byGame.set(key, post);
+    });
+  return byGame;
+}
+
+function applyBlogExcerptsToSlides(slides = [], posts = []) {
+  const byGame = latestBlogByGame(posts);
+  if (!byGame.size) return slides;
+  return slides.map((slide) => {
+    if (slide.blog) return slide;
+    const key = String(canonicalFilterGame(slide.game) || slide.game || "").toLowerCase();
+    const post = key ? byGame.get(key) : null;
+    if (!post?.content) return slide;
+    const summary = excerptWords(post.content, { min: 30, max: 50 });
+    if (!summary) return slide;
+    return { ...slide, summary, blogExcerptId: post.id };
+  });
+}
+
 function slidesFromBlogs(posts = []) {
   return posts
     .filter((post) => post.status === "published")
@@ -2268,7 +2295,7 @@ function slidesFromBlogs(posts = []) {
       id: post.id,
       title: post.title,
       game: post.game,
-      summary: String(post.content || "").slice(0, 400),
+      summary: excerptWords(post.content, { min: 30, max: 50 }) || String(post.content || "").slice(0, 280),
       fullContent: post.content,
       authorName: post.authorName,
       source: post.source,
@@ -3197,9 +3224,13 @@ export default function App() {
   const staffChanges = useStaffChangeRequests({ role: siteRole, user, permissions: supportPermissions });
   const liveEsportsBanners = useEsportsMedia();
   const blogSlides = useMemo(() => slidesFromBlogs(blogPosts), [blogPosts]);
+  const researchSlidesWithBlogCopy = useMemo(
+    () => applyBlogExcerptsToSlides(circuitCms.researchSlides, blogPosts),
+    [circuitCms.researchSlides, blogPosts],
+  );
   const ewcWindows = useMemo(
-    () => mergeEwcWindows(ewcFloatingSlides(circuitCms.researchSlides), circuitCms.records),
-    [circuitCms.researchSlides, circuitCms.records],
+    () => mergeEwcWindows(ewcFloatingSlides(researchSlidesWithBlogCopy), circuitCms.records),
+    [researchSlidesWithBlogCopy, circuitCms.records],
   );
   const floatingSlides = useMemo(
     () => assembleFloatingSlides({
@@ -3213,9 +3244,9 @@ export default function App() {
   const homeSlides = useMemo(
     () => buildFeaturedWindows({
       floating: floatingSlides,
-      research: circuitCms.researchSlides,
+      research: researchSlidesWithBlogCopy,
     }),
-    [floatingSlides, circuitCms.researchSlides],
+    [floatingSlides, researchSlidesWithBlogCopy],
   );
   const vaultSlides = useMemo(() => {
     const seen = new Set();
@@ -3223,26 +3254,29 @@ export default function App() {
     const floatKeys = new Set(floatingSlides.map((slide) => slide.slug || slide.id));
     // Public vault: only Live EWC year windows (old Off years stay out of the catalog).
     const liveEwcWindows = ewcWindows.filter((slide) => slide.floating === true);
-    const catalog = mergeVaultMedia(
-      [...homeSlides, ...floatingSlides, ...liveEwcWindows, ...circuitCms.researchSlides, ...blogSlides],
-      liveEsportsBanners,
-    ).filter((slide) => {
-      const key = slide.slug || slide.id;
-      if (!key || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    }).map((slide) => ({
-      ...slide,
-      floating: floatKeys.has(slide.slug || slide.id),
-      featured: featuredKeys.has(slide.slug || slide.id),
-    }));
+    const catalog = applyBlogExcerptsToSlides(
+      mergeVaultMedia(
+        [...homeSlides, ...floatingSlides, ...liveEwcWindows, ...researchSlidesWithBlogCopy, ...blogSlides],
+        liveEsportsBanners,
+      ).filter((slide) => {
+        const key = slide.slug || slide.id;
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }).map((slide) => ({
+        ...slide,
+        floating: floatKeys.has(slide.slug || slide.id),
+        featured: featuredKeys.has(slide.slug || slide.id),
+      })),
+      blogPosts,
+    );
     // Same order as home featured rail, then the rest of the catalog (2026 → past).
     const featured = homeSlides
       .map((home) => catalog.find((slide) => (slide.slug || slide.id) === (home.slug || home.id)))
       .filter(Boolean);
     const rest = catalog.filter((slide) => !featuredKeys.has(slide.slug || slide.id));
     return [...featured, ...rest];
-  }, [homeSlides, floatingSlides, ewcWindows, circuitCms.researchSlides, blogSlides, liveEsportsBanners]);
+  }, [homeSlides, floatingSlides, ewcWindows, researchSlidesWithBlogCopy, blogSlides, blogPosts, liveEsportsBanners]);
   const [myProfile, setMyProfile] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
@@ -5714,25 +5748,27 @@ function TournamentDetail(props) {
 
   return (
     <div style={{ paddingTop: 24 }}>
-      <button
-        onClick={onBack}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          alignSelf: "flex-start",
-          textAlign: "left",
-          background: "var(--panel-bg)",
-          border: "1px solid var(--border)",
-          color: "var(--text-muted)",
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: 12,
-          cursor: "pointer",
-          padding: "9px 12px",
-          marginBottom: 18,
-        }}
-      >
-        ← Back to all scrims
-      </button>
+      <div className="sticky top-0 z-40 mb-4 border-b border-white/10 bg-slate-950/95 py-2 backdrop-blur-md">
+        <button
+          type="button"
+          onClick={onBack}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            alignSelf: "flex-start",
+            textAlign: "left",
+            background: "var(--panel-bg)",
+            border: "1px solid var(--border)",
+            color: "var(--text-muted)",
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 12,
+            cursor: "pointer",
+            padding: "9px 12px",
+          }}
+        >
+          ← Back to all scrims
+        </button>
+      </div>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
         <div>

@@ -30,9 +30,11 @@ export default function EwcDirectoryPage({ slides = [], liveEntries = [] }) {
   const championships = groupEwcChampionships(editions);
   return (
     <div className="pb-16 pt-6">
-      <Link to="/vault" className="font-mono text-xs uppercase tracking-widest text-neon">
-        ← The Vault
-      </Link>
+      <div className="sticky top-0 z-40 mb-2 border-b border-white/10 bg-slate-950/95 py-2 backdrop-blur-md">
+        <Link to="/vault" className="font-mono text-xs uppercase tracking-widest text-neon">
+          ← The Vault
+        </Link>
+      </div>
       <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.18em] text-neon">Shared championship index</p>
       <h1 className="mt-1 font-['Bebas_Neue',sans-serif] text-5xl tracking-wide text-white">Esports World Cup</h1>
       <p className="mb-8 mt-2 max-w-2xl text-sm text-stone-400">
