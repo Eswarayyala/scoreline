@@ -67,7 +67,8 @@ import LfgNoticeBoard from "./components/ecosystem/LfgNoticeBoard";
 import Countdown from "./components/shared/Countdown";
 import DynamicPointsTable from "./components/shared/DynamicPointsTable";
 import AchievementBadges from "./components/shared/AchievementBadges";
-import { BLOG_ANALYSIS_TYPES, analysisTypeLabel, isHttpsUrl, linkifyHttpsText } from "./data/blogAnalysis";
+import { BLOG_ANALYSIS_TYPES, analysisTypeLabel, isHttpsUrl } from "./data/blogAnalysis";
+import ExpandableBlogBody from "./components/blog/ExpandableBlogBody";
 import { POSTER_PRESETS } from "./data/posterPresets";
 import { ewcFloatingSlides } from "./data/esportsResearch";
 import { EVENT_SCOPES, applyEventToVault, findGameVault, inferEventScope, normalizeGameKey, publicScopeKicker } from "./data/eventScope";
@@ -2298,7 +2299,7 @@ function VaultMonitor({ submissions, blogPosts, onDecision, onPromote }) {
               <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
                 <Eyebrow>{post.game} · {post.status}{post.eventScope ? ` · ${post.eventScope}` : ""}</Eyebrow>
                 <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "4px 0", fontSize: 22 }}>{post.title}</h2>
-                <p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{linkifyHttpsText(post.content)}</p>
+                <ExpandableBlogBody text={post.content} />
               </article>
             ))}
           </div>
@@ -2526,7 +2527,7 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
       {tab === "tournaments" && canVault && <div style={{ display: "grid", gap: 28 }}><CircuitCmsDesk surface="tournament" records={circuitRecords} deletedRecords={deletedCircuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} onRestore={onRestoreCircuit} onPurge={onPurgeCircuit} games={filterGames} permissions={perms} /><TournamentMonitor tournaments={tournaments} onOpen={onOpenTournament} /></div>}
       {tab === "vault" && canVault && <div style={{ display: "grid", gap: 28 }}><VaultResearchDesk records={circuitRecords} deletedRecords={deletedCircuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} onRestore={onRestoreCircuit} onPurge={onPurgeCircuit} filterGames={filterGames} permissions={perms} /><VaultMonitor submissions={archiveSubmissions} blogPosts={blogPosts} onDecision={supportHas(perms, "archiveDecide") || isOwner ? onArchiveDecision : undefined} onPromote={supportHas(perms, "blogPromote") || isOwner ? onPromoteBlog : undefined} /></div>}
       {tab === "activity log" && isOwner && <StaffActivityLog actions={auditLog} />}
-      {tab === "blogs" && canBlogs && <section><p style={{ color: "var(--text-muted)", fontSize: 13 }}>Watch every community blog from this desk. Publish or decline pending posts, then promote a published story into The Vault from the Vault tab.</p><div style={{ display: "flex", gap: 16, margin: "0 0 14px", fontSize: 13, color: "var(--text-muted)" }}><span>Pending {pendingBlogs}</span><span>Published {blogPosts.filter((post) => post.status === "published").length}</span><span>Total {blogPosts.length}</span></div>{blogPosts.length === 0 ? <EmptyState title="No blog posts yet" body="Community submissions will appear here for preview." /> : <div style={{ display: "grid", gap: 10 }}>{[...blogPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 30).map((post) => <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}{post.eventScope ? ` · ${post.eventScope}` : ""} · by {blogCreditStaff(post, blogPrivateById[post.id])}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{post.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{linkifyHttpsText(post.content)}</p>{post.docsUrl && <a href={post.docsUrl} target="_blank" rel="noopener noreferrer" className="text-neon" style={{ marginRight: 10 }}>Docs</a>}{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer" className="text-neon">Source</a>}{post.status === "pending" && (isOwner || supportHas(perms, "blogReview")) && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onBlogReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onBlogReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div>}</section>}
+      {tab === "blogs" && canBlogs && <section><p style={{ color: "var(--text-muted)", fontSize: 13 }}>Watch every community blog from this desk. Publish or decline pending posts, then promote a published story into The Vault from the Vault tab.</p><div style={{ display: "flex", gap: 16, margin: "0 0 14px", fontSize: 13, color: "var(--text-muted)" }}><span>Pending {pendingBlogs}</span><span>Published {blogPosts.filter((post) => post.status === "published").length}</span><span>Total {blogPosts.length}</span></div>{blogPosts.length === 0 ? <EmptyState title="No blog posts yet" body="Community submissions will appear here for preview." /> : <div style={{ display: "grid", gap: 10 }}>{[...blogPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 30).map((post) => <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}{post.eventScope ? ` · ${post.eventScope}` : ""} · by {blogCreditStaff(post, blogPrivateById[post.id])}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{post.title}</h2><ExpandableBlogBody text={post.content} />{post.docsUrl && <a href={post.docsUrl} target="_blank" rel="noopener noreferrer" className="text-neon" style={{ marginRight: 10 }}>Docs</a>}{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer" className="text-neon">Source</a>}{post.status === "pending" && (isOwner || supportHas(perms, "blogReview")) && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onBlogReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onBlogReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div>}</section>}
       {tab === "popups" && isOwner && <section>
         <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Create plain-text safety reminders or general popups. General popups appear at random intervals of 15 to 30 minutes while someone is actively browsing.</p>
         <Button onClick={() => openEditor()}>Add popup</Button>
@@ -2825,7 +2826,7 @@ function BlogPage({ posts, user, isModerator, blogPrivateById = {}, onSubmit, on
       <Field label="Event type"><Select value={eventScope} onChange={(e) => setEventScope(e.target.value)}>{EVENT_SCOPES.map((scope) => <option key={scope.id} value={scope.id}>{scope.label}</option>)}</Select></Field>
       <Field label="Analysis of"><Select value={analysisType} onChange={(e) => setAnalysisType(e.target.value)}>{BLOG_ANALYSIS_TYPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</Select></Field>
       <Field label="Subject (event, team, game, or match)"><TextInput value={analysisSubject} maxLength={80} onChange={(e) => setAnalysisSubject(e.target.value)} placeholder="EWC 2025 Final · Team Liquid · map 3" /></Field>
-      <Field label="Story or tournament update"><textarea value={content} maxLength={6000} onChange={(e) => setContent(e.target.value)} rows={6} style={{ ...inputStyle, resize: "vertical" }} /></Field>
+      <Field label="Story or tournament update"><textarea value={content} maxLength={12000} onChange={(e) => setContent(e.target.value)} rows={6} style={{ ...inputStyle, resize: "vertical" }} /></Field>
       {game.trim() && (
         <Field label="Cover from library">
           {coverUrl ? <img src={coverUrl} alt="" style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 10, marginBottom: 8 }} /> : null}
@@ -2870,7 +2871,7 @@ function BlogPage({ posts, user, isModerator, blogPrivateById = {}, onSubmit, on
                 <Field label="Event type"><Select value={draft.eventScope || "random"} onChange={(e) => setDraft({ ...draft, eventScope: e.target.value })}>{EVENT_SCOPES.map((scope) => <option key={scope.id} value={scope.id}>{scope.label}</option>)}</Select></Field>
                 <Field label="Analysis of"><Select value={draft.analysisType || "event"} onChange={(e) => setDraft({ ...draft, analysisType: e.target.value })}>{BLOG_ANALYSIS_TYPES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</Select></Field>
                 <Field label="Subject"><TextInput maxLength={80} value={draft.analysisSubject || ""} onChange={(e) => setDraft({ ...draft, analysisSubject: e.target.value })} /></Field>
-                <Field label="Story"><textarea maxLength={6000} rows={6} value={draft.content} onChange={(e) => setDraft({ ...draft, content: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} /></Field>
+                <Field label="Story"><textarea maxLength={12000} rows={6} value={draft.content} onChange={(e) => setDraft({ ...draft, content: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} /></Field>
                 {draft.game?.trim() && (
                   <Field label="Cover from library">
                     {draft.coverUrl ? <img src={draft.coverUrl} alt="" style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 10, marginBottom: 8 }} /> : null}
@@ -2894,7 +2895,7 @@ function BlogPage({ posts, user, isModerator, blogPrivateById = {}, onSubmit, on
                   <img src={post.coverUrl || bannerForGame(post.game)} alt="" style={{ width: "100%", height: 160, objectFit: "cover", borderRadius: 10, marginTop: 8 }} />
                 )}
                 <h2 style={{ fontFamily: "'Bebas Neue',sans-serif" }}>{post.title}</h2>
-                <div style={{ color: "var(--text-muted)", whiteSpace: "pre-wrap" }}>{linkifyHttpsText(post.content)}</div>
+                <ExpandableBlogBody text={post.content} />
                 <div style={{ marginTop: 8, fontSize: 12 }}>
                   By {isModerator ? blogCreditStaff(post, blogPrivateById[post.id]) : blogCreditPublic(post)}
                 </div>

@@ -203,7 +203,7 @@ service cloud.firestore {
              ])
              && data.title is string && data.title.size() > 0 && data.title.size() <= 120
              && data.game is string && data.game.size() > 0 && data.game.size() <= 60
-             && data.content is string && data.content.size() > 0 && data.content.size() <= 6000
+             && data.content is string && data.content.size() > 0 && data.content.size() <= 12000
              && data.source is string && data.source.size() <= 500
              && (data.source.size() == 0 || data.source.matches('^https://.*'))
              && data.authorId is string && data.authorId.size() > 0 && data.authorId.size() <= 128

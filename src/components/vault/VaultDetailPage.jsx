@@ -3,7 +3,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Bookmark, BookmarkCheck, ExternalLink, Trophy } from "lucide-react";
 import { bannerForGame, flyerForEvent, VAULT_SLIDES } from "../../data/platformShowcase";
-import { analysisTypeLabel, linkifyHttpsText } from "../../data/blogAnalysis";
+import { analysisTypeLabel } from "../../data/blogAnalysis";
+import ExpandableBlogBody from "../blog/ExpandableBlogBody";
 import { publicScopeKicker } from "../../data/eventScope";
 import EventTabs from "./EventTabs";
 import ChampionshipGameTabs from "./ChampionshipGameTabs";
@@ -139,9 +140,14 @@ export default function VaultDetailPage({
         </div>
         <div className={`grid gap-8 p-6 md:p-8 ${slide.blog || isChampionship ? "" : "md:grid-cols-[1.4fr_0.8fr]"}`}>
           <div>
-            <p className="whitespace-pre-wrap text-base leading-7 text-slate-200">
-              {slide.blog ? linkifyHttpsText(slide.fullContent || slide.summary) : slide.summary}
-            </p>
+            {slide.blog ? (
+              <ExpandableBlogBody
+                text={slide.fullContent || slide.summary}
+                style={{ color: "inherit", fontSize: "1rem", lineHeight: 1.75 }}
+              />
+            ) : (
+              <p className="whitespace-pre-wrap text-base leading-7 text-slate-200">{slide.summary}</p>
+            )}
 
             {!!slide.championship?.games?.length && (
               <ChampionshipGameTabs
