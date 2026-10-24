@@ -8,10 +8,23 @@ import LoadMoreBar, { usePagedVisible } from "../shared/LoadMoreBar";
 import StickyFilterBar from "../shared/StickyFilterBar";
 import TournamentWindowCard, { WINDOW_CARD_HEIGHT } from "./TournamentWindowCard";
 import SectionBackHome from "../layout/SectionBackHome";
-import { asEventSpotlight } from "../../data/eventSpotlight";
-
 /** Even page size so the 2-up window grid always fills complete rows. */
 const LIBRARY_PAGE = 8;
+
+/** Vault catalog shows game (or EWC year) windows — never home event spotlights. */
+function asVaultCatalogCard(slide = {}) {
+  if (!slide || slide.surface === "ewc-window") return slide;
+  const game = slide.game || slide.title || "";
+  return {
+    ...slide,
+    spotlight: false,
+    spotlightEdition: undefined,
+    spotlightEventKey: undefined,
+    eventName: "",
+    title: game || slide.title,
+    href: slide.slug ? `/vault/${slide.slug}` : slide.href || "/vault",
+  };
+}
 
 function PagedSlideGrid({ items, bookmarkSet, onToggleBookmark }) {
   const page = usePagedVisible(items.length, LIBRARY_PAGE, LIBRARY_PAGE);
@@ -47,7 +60,7 @@ function PagedSlideGrid({ items, bookmarkSet, onToggleBookmark }) {
 }
 
 function SlideCard({ slide, bookmarked, onToggleBookmark }) {
-  const card = asEventSpotlight(slide) || slide;
+  const card = asVaultCatalogCard(slide);
   return (
     <TournamentWindowCard
       slide={card}
@@ -84,7 +97,14 @@ export default function VaultLibraryPage({
   const [onlyBookmarks, setOnlyBookmarks] = useState(false);
   const bookmarkSet = useMemo(() => new Set(bookmarkSlugs), [bookmarkSlugs]);
   const catalogItems = useMemo(
-    () => items.filter((slide) => !(slide.blog || slide.surface === "blog")),
+    () => items.filter((slide) => {
+      if (slide.blog || slide.surface === "blog") return false;
+      // Prefer research game vaults + EWC years; skip event-named library presets (home-only).
+      if (slide.surface === "vault" && !slide.research && slide.title && slide.game && slide.title !== slide.game) {
+        return false;
+      }
+      return true;
+    }),
     [items],
   );
   const games = useMemo(() => {
@@ -121,7 +141,7 @@ export default function VaultLibraryPage({
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="m-0 font-['Bebas_Neue',sans-serif] text-4xl tracking-wide text-white md:text-5xl">The Vault</h1>
-          <p className="mt-1 max-w-xl text-xs text-slate-500">Championship windows and game vaults.</p>
+          <p className="mt-1 max-w-xl text-xs text-slate-500">Game vaults and live EWC years — open a card for every event on that title.</p>
         </div>
         <button
           type="button"

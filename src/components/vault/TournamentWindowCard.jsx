@@ -183,9 +183,10 @@ function buildFact(slide, edition, { champion, championPrize, prizePool, runnerU
 
 export function windowCardModel(slide = {}) {
   const championshipGames = slide.championship?.games || [];
+  const isGameVault = (slide.research || slide.surface === "research") && slide.spotlight !== true && slide.surface !== "ewc-window";
   const edition =
     slide.spotlightEdition
-    || (slide.editions || [])[0]
+    || (!isGameVault ? (slide.editions || [])[0] : null)
     || championshipGames[0]
     || null;
   const payouts = payoutRows(slide, edition, championshipGames);
@@ -248,21 +249,28 @@ export function windowCardModel(slide = {}) {
   const region = slide.region || slide.location || edition?.region || "";
   const mode = slide.mode || slide.format || (slide.online === false ? "LAN" : "");
 
-  const fact = buildFact(slide, edition, {
-    champion,
-    championPrize,
-    prizePool,
-    runnerUp,
-    mvp,
-    gameCount: championshipGames.length,
-  });
+  const fact = isGameVault
+    ? windowFactBlurb(slide.overview || slide.summary || "", { maxChars: 320, maxSentences: 3 })
+    : buildFact(slide, edition, {
+      champion,
+      championPrize,
+      prizePool,
+      runnerUp,
+      mvp,
+      gameCount: championshipGames.length,
+    });
 
   const game = slide.game || slide.name || "";
-  const eventName =
-    slide.eventName
-    || edition?.event
-    || (slide.title && slide.title !== game ? slide.title : "")
-    || "";
+  // Specific event names only on home spotlights / EWC year windows — vault game cards stay game-only.
+  const showEventName = slide.spotlight === true || slide.surface === "ewc-window";
+  const eventName = showEventName
+    ? (
+      slide.eventName
+      || edition?.event
+      || (slide.title && slide.title !== game ? slide.title : "")
+      || ""
+    )
+    : "";
 
   return {
     status,
@@ -270,9 +278,9 @@ export function windowCardModel(slide = {}) {
     header: game || slide.title || "Tournament",
     eventName,
     game,
-    kicker: publicScopeKicker({ ...slide, eventScope: edition?.eventScope || slide.eventScope }) || "",
+    kicker: isGameVault ? "" : (publicScopeKicker({ ...slide, eventScope: edition?.eventScope || slide.eventScope }) || ""),
     fact,
-    prizePool,
+    prizePool: isGameVault ? (slide.peakPrizePool || prizePool) : prizePool,
     champion,
     championPrize,
     runnerUp,

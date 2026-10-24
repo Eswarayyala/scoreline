@@ -294,7 +294,7 @@ export const VAULT_SLIDES = [
   },
   {
     slug: "bgmi-series",
-    title: "BGMI Series",
+    title: "BGMI",
     game: "BGMI",
     season: "National circuit",
     kicker: "Battle royale",

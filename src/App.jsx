@@ -53,12 +53,20 @@ import { useEsportsMedia } from "./hooks/useEsportsMedia";
 import { fetchGamePoster, mergeVaultMedia } from "./services/esportsMedia";
 import { FILTER_GAMES, PUBG_FAMILY_LABEL, canonicalFilterGame, filterGameAliases, isPubgFamily } from "./data/gameCatalog";
 import {
+  canSeeScrimInList,
   canViewScrimRoom,
   canViewScrimStats,
   isApprovedRegistrant,
+  isInviteOnlyScrim,
   isPublicScrim,
   scrimAccessLabel,
 } from "./data/scrimAccess";
+import { buildScrimAnnouncement, DEFAULT_SCRIM_ALERTS, normalizeScrimAlerts } from "./data/scrimAlerts";
+import ScrimBell from "./components/scrims/ScrimBell";
+import ScrimAlertPrefs from "./components/scrims/ScrimAlertPrefs";
+import RoomStagesPanel from "./components/scrims/RoomStagesPanel";
+import InvitePlayersPanel from "./components/scrims/InvitePlayersPanel";
+import HostOrgPanel from "./components/scrims/HostOrgPanel";
 import { useGameBanner, useMediaArt } from "./hooks/useMediaLibrary";
 import BlogGameCover from "./components/blog/BlogGameCover";
 import BlogOverlay from "./components/blog/BlogOverlay";
@@ -95,6 +103,12 @@ const matchesCollectionRef = (tid) => collection(db, "tournaments", tid, "matche
 const statsCollectionRef = (tid) => collection(db, "tournaments", tid, "stats");
 const registrationsCollectionRef = (tid) => collection(db, "tournaments", tid, "registrations");
 const lobbyCredentialsRef = (tid) => doc(db, "tournaments", tid, "lobby", "credentials");
+const roomsCollectionRef = (tid) => collection(db, "tournaments", tid, "rooms");
+const promotionsCollectionRef = (tid) => collection(db, "tournaments", tid, "promotions");
+const SCRIM_ANNOUNCEMENTS_COLLECTION = collection(db, "scrimAnnouncements");
+const OFFICIAL_HOSTS_COLLECTION = collection(db, "officialHosts");
+const HOST_REQUESTS_COLLECTION = collection(db, "hostRequests");
+const userPrefsDocRef = (uid) => doc(db, "userPrefs", uid);
 const REPORTS_COLLECTION = collection(db, "reports");
 const FRIEND_REQUESTS_COLLECTION = collection(db, "friendRequests");
 const TOURNAMENT_INVITES_COLLECTION = collection(db, "tournamentInvites");
@@ -1668,37 +1682,94 @@ function ReportModal({ target, onClose, onSubmit }) {
   );
 }
 
-function RegistrationPanel({ tournament, requests, currentUserId, currentUserName, isAdmin, onRequest, onDecision, disclaimer, onDisclaimerVisibilityChange, onSignIn }) {
+function RegistrationPanel({ tournament, requests, currentUserId, currentUserName, isAdmin, onRequest, onDecision, disclaimer, onDisclaimerVisibilityChange, onSignIn, friends = [] }) {
   const [showJoinDisclaimer, setShowJoinDisclaimer] = useState(false);
   const mine = requests.find((request) => request.playerId === currentUserId);
   const pending = requests.filter((request) => request.status === "pending");
   const approved = requests.filter((request) => request.status === "approved");
-  const openJoin = tournament.joinMode === "open";
+  const [entryType, setEntryType] = useState("solo");
+  const [squadMateIds, setSquadMateIds] = useState([]);
+  const openJoin = tournament.joinMode === "open" && tournament.requireRequest !== true;
+  const inviteOnly = isInviteOnlyScrim(tournament);
   const full = isTournamentFull(tournament, requests);
   const joiningOpen = tournament.registrationOpen !== false && !isTournamentArchived(tournament) && !full;
   const slotLabel = Number(tournament.maxSlots) > 0 ? `${approved.length}/${tournament.maxSlots} ${isCustomRoomEvent(tournament) ? "players" : "slots"}` : `${approved.length} joined`;
+  const toggleMate = (uid) => {
+    setSquadMateIds((list) => (list.includes(uid) ? list.filter((id) => id !== uid) : [...list, uid].slice(0, 7)));
+  };
+  const submitJoin = () => {
+    onRequest({
+      playerId: currentUserId,
+      displayName: currentUserName,
+      entryType,
+      squadMemberIds: entryType === "squad" ? squadMateIds : [],
+    });
+  };
   return (
     <section style={{ marginTop: isAdmin ? 0 : 20, padding: isAdmin ? 0 : 16, background: isAdmin ? "transparent" : "var(--panel-bg)", border: isAdmin ? "none" : "1px solid var(--border)" }}>
       {isAdmin ? (
-        <Eyebrow>{openJoin ? "Public registration" : "Private · request to join"} · {slotLabel}</Eyebrow>
+        <Eyebrow>{openJoin ? "Public registration" : inviteOnly ? "Invite only" : "Private · request to join"} · {slotLabel}</Eyebrow>
       ) : (
-        <Eyebrow>{mine ? `Your place · ${mine.status}` : joiningOpen ? (openJoin ? "Enter this public scrim" : "Request this private scrim") : "Registration"}</Eyebrow>
+        <Eyebrow>{mine ? `Your place · ${mine.status}` : joiningOpen ? (openJoin ? "Enter this public scrim" : inviteOnly ? "Invite-only scrim" : "Request this private scrim") : "Registration"}</Eyebrow>
       )}
       <div style={{ fontSize: 13, color: "var(--text-muted)", margin: "8px 0 12px" }}>
-        {full ? "This scrim is full." : mine ? `Your request is ${mine.status}.` : currentUserId
+        {full ? "This scrim is full." : mine ? `Your request is ${mine.status}${mine.entryType === "squad" ? " · squad" : ""}.` : currentUserId
           ? (isAdmin
-            ? (openJoin ? "Public join — no host approval needed. Room and stats can show to signed-in visitors." : "Private — players request a place. Room ID stays hidden until you approve them.")
-            : (openJoin ? "Public scrim. Join to play; room codes show when signed in after the host posts them." : "Private scrim. Register and wait for approval to see the room ID and match details."))
+            ? (openJoin ? "Public join — free seats auto-approve. Room and stats can show to signed-in visitors." : inviteOnly ? "Invite only — players you invite can request a place." : "Private — players request a place. Room ID stays hidden until you approve them.")
+            : (openJoin ? "Public scrim. Take a free seat or join as a GrindInfo squad." : inviteOnly ? "Invite-only. Accept your invite, then request a place." : "Private scrim. Register and wait for approval."))
           : "Sign in to take a place in this scrim."}
       </div>
       {!currentUserId && joiningOpen && <Button onClick={onSignIn}>Sign in to join</Button>}
-      {currentUserId && !isAdmin && !mine && joiningOpen && <Button onClick={() => { setShowJoinDisclaimer(true); onDisclaimerVisibilityChange(true); }}>Join</Button>}
+      {currentUserId && !isAdmin && !mine && joiningOpen && (
+        <div style={{ display: "grid", gap: 10, maxWidth: 420 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Button variant={entryType === "solo" ? "primary" : "ghost"} onClick={() => setEntryType("solo")}>Join solo</Button>
+            <Button variant={entryType === "squad" ? "primary" : "ghost"} onClick={() => setEntryType("squad")}>Join as squad</Button>
+          </div>
+          {entryType === "squad" && (
+            <div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: 6 }}>
+                Squad mates from friends ({squadMateIds.length}/7)
+              </div>
+              {friends.length === 0 ? (
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Add friends first, then pick them here. All squad members must be GrindInfo players.</div>
+              ) : (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {friends.map((friend) => (
+                    <button
+                      key={friend.uid}
+                      type="button"
+                      onClick={() => toggleMate(friend.uid)}
+                      style={{
+                        border: squadMateIds.includes(friend.uid) ? "1px solid var(--accent)" : "1px solid var(--border)",
+                        background: "transparent",
+                        color: squadMateIds.includes(friend.uid) ? "var(--accent)" : "var(--text-muted)",
+                        padding: "4px 8px",
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 10,
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {friend.name}{friend.playerTag ? ` #${friend.playerTag}` : ""}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          <Button onClick={() => { setShowJoinDisclaimer(true); onDisclaimerVisibilityChange(true); }}>
+            {openJoin ? (entryType === "squad" ? "Take free seats as squad" : "Take a free seat") : "Request to join"}
+          </Button>
+        </div>
+      )}
       {!isAdmin && !joiningOpen && !mine && <div style={{ color: "var(--text-dim)", fontSize: 12 }}>{full ? "No places left." : "Registration is closed."}</div>}
       {isAdmin && (
         <div style={{ display: "grid", gap: 8 }}>
           {pending.length === 0 ? <div style={{ fontSize: 13, color: "var(--text-dim)" }}>No requests waiting.</div> : pending.map((request) => (
             <div key={request.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", borderTop: "1px solid var(--border)", paddingTop: 9 }}>
-              <span>{request.displayName || "Player"}</span>
+              <span>{request.displayName || "Player"}{request.entryType === "squad" ? ` · squad (${(request.squadMemberIds || []).length})` : ""}</span>
               <span style={{ display: "flex", gap: 6 }}><Button onClick={() => onDecision(request.id, "approved")}>Approve</Button><Button variant="danger" onClick={() => onDecision(request.id, "declined")}>Decline</Button></span>
             </div>
           ))}
@@ -1712,7 +1783,7 @@ function RegistrationPanel({ tournament, requests, currentUserId, currentUserNam
           <p style={{ color: "var(--text-muted)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{disclaimer?.message || "Join only scrims hosted by people you trust. Verify the details directly with the host, never send money or account credentials, and report suspicious activity. GrindInfo cannot guarantee a host's conduct."}</p>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
             <Button variant="ghost" onClick={() => { setShowJoinDisclaimer(false); onDisclaimerVisibilityChange(false); }}>Cancel</Button>
-            <Button onClick={() => { setShowJoinDisclaimer(false); onDisclaimerVisibilityChange(false); onRequest({ playerId: currentUserId, displayName: currentUserName }); }}>{openJoin ? "Join this scrim" : "Continue to request"}</Button>
+            <Button onClick={() => { setShowJoinDisclaimer(false); onDisclaimerVisibilityChange(false); submitJoin(); }}>{openJoin ? "Join this scrim" : "Continue to request"}</Button>
           </div>
         </section>
       </div>}
@@ -3029,6 +3100,14 @@ export default function App() {
   const [selectedStats, setSelectedStats] = useState([]);
   const [selectedRegistrations, setSelectedRegistrations] = useState([]);
   const [selectedLobby, setSelectedLobby] = useState(null);
+  const [selectedRooms, setSelectedRooms] = useState([]);
+  const [selectedPromotions, setSelectedPromotions] = useState([]);
+  const [scrimAnnouncements, setScrimAnnouncements] = useState([]);
+  const [officialHosts, setOfficialHosts] = useState([]);
+  const [hostRequests, setHostRequests] = useState([]);
+  const [userPrefs, setUserPrefs] = useState(null);
+  const [showScrimAlertPrefs, setShowScrimAlertPrefs] = useState(false);
+  const [scrimDeskFilter, setScrimDeskFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
@@ -3301,33 +3380,41 @@ export default function App() {
   );
   const vaultSlides = useMemo(() => {
     const seen = new Set();
-    const featuredKeys = new Set(homeSlides.map((slide) => slide.slug || slide.id));
     const floatKeys = new Set(floatingSlides.map((slide) => slide.slug || slide.id));
-    // Public vault: only Live EWC year windows (old Off years stay out of the catalog).
+    // Public vault catalog: game vaults + live EWC years (no home event spotlights).
+    // Specific events stay on home floating windows via buildFeaturedWindows.
     const liveEwcWindows = ewcWindows.filter((slide) => slide.floating === true);
-    const catalog = applyBlogExcerptsToSlides(
+    const customVaultWindows = floatingSlides.filter(
+      (slide) => slide.surface === "vault" || slide.surface === "tournament",
+    );
+    return applyBlogExcerptsToSlides(
       mergeVaultMedia(
-        [...homeSlides, ...floatingSlides, ...liveEwcWindows, ...researchSlidesWithBlogCopy, ...blogSlides],
+        [...liveEwcWindows, ...researchSlidesWithBlogCopy, ...customVaultWindows, ...blogSlides],
         liveEsportsBanners,
       ).filter((slide) => {
         const key = slide.slug || slide.id;
         if (!key || seen.has(key)) return false;
+        // Drop event-spotlight clones — vault cards are game / EWC headers only.
+        if (slide.spotlight === true && slide.surface !== "ewc-window") return false;
         seen.add(key);
         return true;
       }).map((slide) => ({
         ...slide,
         floating: floatKeys.has(slide.slug || slide.id),
-        featured: featuredKeys.has(slide.slug || slide.id),
+        featured: false,
+        ...(slide.surface === "ewc-window"
+          ? {}
+          : {
+              spotlight: false,
+              spotlightEdition: undefined,
+              spotlightEventKey: undefined,
+              eventName: "",
+              title: slide.game || slide.title,
+            }),
       })),
       blogPosts,
     );
-    // Same order as home featured rail, then the rest of the catalog (2026 → past).
-    const featured = homeSlides
-      .map((home) => catalog.find((slide) => (slide.slug || slide.id) === (home.slug || home.id)))
-      .filter(Boolean);
-    const rest = catalog.filter((slide) => !featuredKeys.has(slide.slug || slide.id));
-    return [...featured, ...rest];
-  }, [homeSlides, floatingSlides, ewcWindows, researchSlidesWithBlogCopy, blogSlides, blogPosts, liveEsportsBanners]);
+  }, [floatingSlides, ewcWindows, researchSlidesWithBlogCopy, blogSlides, blogPosts, liveEsportsBanners]);
   const [myProfile, setMyProfile] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
@@ -3659,6 +3746,8 @@ export default function App() {
       setSelectedMatches([]);
       setSelectedStats([]);
       setSelectedLobby(null);
+      setSelectedRooms([]);
+      setSelectedPromotions([]);
       return;
     }
     const unsubs = [
@@ -3677,9 +3766,54 @@ export default function App() {
         (snap) => setSelectedStats(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
         () => setSelectedStats([]),
       ),
+      onSnapshot(
+        roomsCollectionRef(selectedId),
+        (snap) => setSelectedRooms(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+        () => setSelectedRooms([]),
+      ),
+      onSnapshot(
+        promotionsCollectionRef(selectedId),
+        (snap) => setSelectedPromotions(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+        () => setSelectedPromotions([]),
+      ),
     ];
     return () => unsubs.forEach((u) => u());
   }, [selectedId]);
+
+  useEffect(() => {
+    if (!user) {
+      setScrimAnnouncements([]);
+      setOfficialHosts([]);
+      setUserPrefs(null);
+      return undefined;
+    }
+    const stops = [
+      onSnapshot(SCRIM_ANNOUNCEMENTS_COLLECTION, (snap) => {
+        setScrimAnnouncements(snap.docs.map((item) => ({ id: item.id, ...item.data() })));
+      }, () => setScrimAnnouncements([])),
+      onSnapshot(OFFICIAL_HOSTS_COLLECTION, (snap) => {
+        setOfficialHosts(snap.docs.map((item) => ({ uid: item.id, ...item.data() })).filter((row) => row.enabled !== false));
+      }, () => setOfficialHosts([])),
+      onSnapshot(doc(HOST_REQUESTS_COLLECTION, user.uid), (snap) => {
+        if (snap.exists()) setHostRequests((prev) => {
+          const row = { id: snap.id, uid: snap.id, ...snap.data() };
+          const rest = prev.filter((item) => item.id !== snap.id && item.uid !== snap.id);
+          return [...rest, row];
+        });
+      }, () => {}),
+      onSnapshot(userPrefsDocRef(user.uid), (snap) => {
+        setUserPrefs(snap.exists() ? snap.data() : null);
+      }, () => setUserPrefs(null)),
+    ];
+    return () => stops.forEach((stop) => stop());
+  }, [user]);
+
+  useEffect(() => {
+    if (siteRole !== "owner" && siteRole !== "support") return undefined;
+    return onSnapshot(HOST_REQUESTS_COLLECTION, (snap) => {
+      setHostRequests(snap.docs.map((item) => ({ id: item.id, uid: item.id, ...item.data() })));
+    }, () => setHostRequests([]));
+  }, [siteRole]);
 
   useEffect(() => {
     if (!selectedId || !user) { setSelectedRegistrations([]); return undefined; }
@@ -3783,36 +3917,55 @@ export default function App() {
     if (myAccess?.restricted) { showToast("This account is restricted from hosting tournaments."); return; }
     setSaving(true);
     try {
-      const { roomId, roomPassword, ...event } = t;
-      const created = await addDoc(TOURNAMENTS_COLLECTION, {
-        ...event,
+      const { roomId, roomPassword, publishAnnouncement, ...event } = t;
+      const joinMode = event.joinMode === "open" ? "open" : event.joinMode === "invite" ? "invite" : "request";
+      const published = joinMode === "open" && publishAnnouncement !== false;
+      const hostName = grindHandle(safeProfileName(myProfile?.displayName, user.displayName), myProfile?.playerTag);
+      const payload = {
+        name: String(event.name || "").slice(0, 120),
+        game: String(event.game || "").slice(0, 60),
+        format: String(event.format || "").slice(0, 60),
+        startDate: String(event.startDate || "").slice(0, 40),
+        endDate: String(event.endDate || "").slice(0, 40),
         prizeAmount: Number(event.prizeAmount) || 0,
         prizeCurrency: event.prizeCurrency || "INR",
         registrationOpen: true,
         adminUserId: user.uid,
-        adminDisplayName: grindHandle(safeProfileName(myProfile?.displayName, user.displayName), myProfile?.playerTag),
+        adminDisplayName: hostName,
         coAdminUserIds: [],
         coAdminPlayerTags: {},
         status: event.status || "upcoming",
         kind: event.kind || (event.format === "Custom room" ? "custom_room" : "bracket"),
-        joinMode: event.joinMode === "open" ? "open" : "request",
-        publicStats: event.publicStats === true,
+        joinMode,
+        publicStats: joinMode === "open" ? true : event.publicStats === true,
+        requireRequest: event.requireRequest === true,
         maxSlots: Math.max(0, Math.min(256, Math.trunc(Number(event.maxSlots) || 0))),
         region: REGIONS.includes(event.region) ? event.region : "",
         rankBand: RANK_BANDS.includes(event.rankBand) ? event.rankBand : "",
         blurb: String(event.blurb || "").slice(0, 400),
         posterUrl: String(event.posterUrl || "").slice(0, 500000),
+        published,
+        publishedAt: published ? Date.now() : 0,
         isLegacyImport: false,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      });
+      };
+      const created = await addDoc(TOURNAMENTS_COLLECTION, payload);
       const nextRoom = String(roomId || "").trim();
       const nextPassword = String(roomPassword || "").trim();
       if (nextRoom && nextPassword) {
         await setDoc(lobbyCredentialsRef(created.id), { roomId: nextRoom.slice(0, 40), roomPassword: nextPassword.slice(0, 40), updatedAt: Date.now() });
       }
-      showToast("Scrim created");
+      if (published) {
+        try {
+          await setDoc(doc(SCRIM_ANNOUNCEMENTS_COLLECTION, created.id), buildScrimAnnouncement({ ...payload, id: created.id }, { tournamentId: created.id }));
+        } catch {
+          /* announcement is best-effort; scrim still created */
+        }
+      }
+      showToast(published ? "Scrim published" : joinMode === "invite" ? "Invite-only scrim created" : "Scrim created");
       setShowNewTournament(false);
+      navigate(`/tournaments/${created.id}`);
     } catch (e) {
       showToast(e?.message || "Couldn't create tournament — try again");
     } finally {
@@ -3924,11 +4077,23 @@ export default function App() {
       showToast("This tournament is full.");
       return;
     }
-    const openJoin = event?.joinMode === "open";
+    const openJoin = event?.joinMode === "open" && event?.requireRequest !== true;
+    const entryType = player?.entryType === "squad" ? "squad" : "solo";
+    const squadMemberIds = entryType === "squad"
+      ? [...new Set([user.uid, ...(player.squadMemberIds || [])].map(String).filter(Boolean))].slice(0, 8)
+      : [user.uid];
+    if (entryType === "squad" && squadMemberIds.length < 2) {
+      showToast("Add at least one more GrindInfo player for a squad join.");
+      return;
+    }
     try {
       await setDoc(doc(registrationsCollectionRef(tournamentId), user.uid), {
-        playerId: user.uid, displayName: safeProfileName(player.displayName),
-        status: openJoin ? "approved" : "pending", requestedAt: Date.now(),
+        playerId: user.uid,
+        displayName: safeProfileName(player.displayName),
+        status: openJoin ? "approved" : "pending",
+        requestedAt: Date.now(),
+        entryType,
+        squadMemberIds,
       });
       showToast(openJoin ? "You're in. Room details appear if the host posted them." : "Join request sent to the tournament host");
     } catch (e) {
@@ -4143,6 +4308,7 @@ export default function App() {
   const inviteFriendToTournament = async (tournament, friend) => {
     if (!user || !friend?.uid || !tournament?.id) return;
     const inviteRef = doc(TOURNAMENT_INVITES_COLLECTION, `${tournament.id}_${friend.uid}`);
+    const inviteeName = safeProfileName(friend.name || friend.displayName);
     try {
       await setDoc(inviteRef, {
         tournamentId: tournament.id,
@@ -4151,13 +4317,143 @@ export default function App() {
         invitedBy: user.uid,
         inviterName: safeProfileName(myProfile?.displayName, user.displayName),
         inviteeUid: friend.uid,
-        inviteeName: safeProfileName(friend.name),
+        inviteeName,
         status: "pending",
         createdAt: Date.now(),
       });
-      showToast(`Invitation sent to ${safeProfileName(friend.name)}`);
+      showToast(`Invitation sent to ${inviteeName}`);
     } catch (error) {
-      showToast(error?.code === "permission-denied" ? "Invite blocked. Confirm the latest Firestore rules are published and you are friends." : "An invite is already waiting or could not be sent.");
+      showToast(error?.code === "permission-denied"
+        ? "Invite blocked. Publish latest Firestore rules, or invite as host / accepted friend."
+        : "An invite is already waiting or could not be sent.");
+      throw error;
+    }
+  };
+
+  const scrimAlerts = useMemo(
+    () => normalizeScrimAlerts(userPrefs || {}, myProfile?.games || []),
+    [userPrefs, myProfile?.games],
+  );
+
+  const saveScrimAlerts = async (next) => {
+    if (!user) return;
+    const body = {
+      showWeeklyPanel: userPrefs?.showWeeklyPanel !== false,
+      digestOptIn: userPrefs?.digestOptIn === true,
+      scrimAlertsEnabled: next.enabled !== false,
+      scrimAlertModes: next.modes || "both",
+      scrimAlertGames: (next.games || []).slice(0, 20),
+      followedHosts: (next.followedHosts || []).slice(0, 80),
+      scrimAlertsLastSeenAt: Number(next.lastSeenAt) || Number(userPrefs?.scrimAlertsLastSeenAt) || 0,
+      updatedAt: Date.now(),
+    };
+    try {
+      await setDoc(userPrefsDocRef(user.uid), body, { merge: true });
+    } catch {
+      showToast("Couldn't save scrim alert prefs");
+    }
+  };
+
+  const markScrimAlertsSeen = async () => {
+    if (!user) return;
+    await saveScrimAlerts({ ...scrimAlerts, lastSeenAt: Date.now() });
+  };
+
+  const toggleFollowHost = async (hostUid, follow) => {
+    const followedHosts = follow
+      ? [...new Set([...(scrimAlerts.followedHosts || []), hostUid])].slice(0, 80)
+      : (scrimAlerts.followedHosts || []).filter((id) => id !== hostUid);
+    await saveScrimAlerts({ ...scrimAlerts, followedHosts });
+  };
+
+  const addTournamentRoom = async (tournamentId, room) => {
+    const code = String(room.roomCode || room.title || "1").slice(0, 16);
+    await addDoc(roomsCollectionRef(tournamentId), {
+      index: Number(room.index) || 0,
+      roomCode: code,
+      title: String(room.title || code).slice(0, 80),
+      stage: room.stage || "group",
+      status: "pending",
+      capacity: Math.max(0, Math.min(256, Number(room.capacity) || 0)),
+      updatedAt: Date.now(),
+    });
+  };
+
+  const activateTournamentRoom = async (tournamentId, roomId, credentials) => {
+    const now = Date.now();
+    const active = selectedRooms.filter((room) => room.status === "active");
+    await Promise.all(active.map((room) => updateDoc(doc(roomsCollectionRef(tournamentId), room.id), {
+      status: "collapsed",
+      collapsedAt: now,
+      updatedAt: now,
+    })));
+    await updateDoc(doc(roomsCollectionRef(tournamentId), roomId), {
+      status: "active",
+      roomId: String(credentials.roomId || "").slice(0, 40),
+      roomPassword: String(credentials.roomPassword || "").slice(0, 40),
+      publishedAt: now,
+      activatedAt: now,
+      updatedAt: now,
+    });
+    await setDoc(lobbyCredentialsRef(tournamentId), {
+      roomId: String(credentials.roomId || "").slice(0, 40),
+      roomPassword: String(credentials.roomPassword || "").slice(0, 40),
+      updatedAt: now,
+    });
+    showToast("Room activated — previous stage collapsed");
+  };
+
+  const promoteTournamentPlayers = async (tournamentId, { fromRoomId, toRoomId, playerIds, mode = "manual", unitCount = 0 }) => {
+    const ids = [...new Set((playerIds || []).map(String).filter(Boolean))].slice(0, 64);
+    if (!ids.length) return;
+    await addDoc(promotionsCollectionRef(tournamentId), {
+      fromRoomId,
+      toRoomId,
+      playerIds: ids,
+      promotedBy: user.uid,
+      at: Date.now(),
+      mode: mode === "auto" ? "auto" : "manual",
+      unitCount: Math.max(0, Math.min(64, Number(unitCount) || 0)),
+    });
+    await Promise.all(ids.map((playerId) => updateDoc(doc(registrationsCollectionRef(tournamentId), playerId), {
+      currentRoomId: toRoomId,
+    }).catch(() => null)));
+    showToast(`${mode === "auto" ? "Auto-allocated" : "Allocated"} ${ids.length} player(s)`);
+  };
+
+  const requestOfficialHost = async ({ orgName, message, displayName }) => {
+    if (!user) return;
+    await setDoc(doc(HOST_REQUESTS_COLLECTION, user.uid), {
+      uid: user.uid,
+      orgName: String(orgName || "").slice(0, 60),
+      displayName: String(displayName || "").slice(0, 40),
+      message: String(message || "").slice(0, 400),
+      status: "pending",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  };
+
+  const decideHostRequest = async (row, status) => {
+    if (!row?.uid && !row?.id) return;
+    const uid = row.uid || row.id;
+    await updateDoc(doc(HOST_REQUESTS_COLLECTION, uid), {
+      status,
+      reviewedAt: Date.now(),
+      reviewedBy: user.uid,
+      updatedAt: Date.now(),
+    });
+    if (status === "approved") {
+      await setDoc(doc(OFFICIAL_HOSTS_COLLECTION, uid), {
+        orgName: row.orgName || row.displayName || uid,
+        displayName: row.displayName || "",
+        enabled: true,
+        verifiedAt: Date.now(),
+        verifiedBy: user.uid,
+      }, { merge: true });
+      showToast("Official host approved");
+    } else {
+      showToast("Host request declined");
     }
   };
 
@@ -4675,6 +4971,15 @@ export default function App() {
                 dashboardRole={dashboardRole}
                 playerTag={myProfile?.playerTag}
                 profile={myProfile}
+                scrimBell={user ? (
+                  <ScrimBell
+                    announcements={scrimAnnouncements}
+                    alerts={scrimAlerts}
+                    onOpenTournament={(id) => navigate(`/tournaments/${id}`)}
+                    onMarkSeen={markScrimAlertsSeen}
+                    onOpenPrefs={() => setShowScrimAlertPrefs(true)}
+                  />
+                ) : null}
                 friendsPanel={user ? (
                   <FriendDock
                     placement="header"
@@ -4753,10 +5058,17 @@ export default function App() {
                       showingArchive={showArchivedTournaments}
                     />
                     <TournamentList
-                      hideCreate
+                      hideCreate={false}
                       archivedView={showArchivedTournaments}
                       onArchivedView={setShowArchivedTournaments}
-                      tournaments={tournaments}
+                      deskFilter={scrimDeskFilter}
+                      onDeskFilter={setScrimDeskFilter}
+                      followedHosts={scrimAlerts.followedHosts}
+                      alertGames={scrimAlerts.games}
+                      tournaments={tournaments.filter((item) => canSeeScrimInList(item, {
+                        uid: user?.uid,
+                        invites: tournamentInvites,
+                      }))}
                       currentUserId={user?.uid || null}
                       currentUserName={grindHandle(safeProfileName(myProfile?.displayName, user?.displayName), myProfile?.playerTag)}
                       pendingInvites={user ? tournamentInvites.filter((item) => item.inviteeUid === user.uid && item.status === "pending") : []}
@@ -4768,6 +5080,23 @@ export default function App() {
                         setShowNewTournament(true);
                       }}
                       onSignIn={() => setAuthDialogOpen(true)}
+                      hostPanel={(
+                        <HostOrgPanel
+                          user={user}
+                          myProfile={myProfile}
+                          officialHosts={officialHosts}
+                          hostRequests={hostRequests}
+                          isStaff={siteRole === "owner" || siteRole === "support"}
+                          followedHosts={scrimAlerts.followedHosts}
+                          onRequestOfficial={requestOfficialHost}
+                          onDecideRequest={decideHostRequest}
+                          onToggleFollow={toggleFollowHost}
+                          onOpenHostScrims={(hostUid) => {
+                            setScrimDeskFilter("following");
+                            toggleFollowHost(hostUid, true);
+                          }}
+                        />
+                      )}
                     />
                   </>
                 )} />
@@ -4783,6 +5112,11 @@ export default function App() {
                     currentUserName={grindHandle(safeProfileName(myProfile?.displayName, user?.displayName), myProfile?.playerTag)}
                     registrations={selectedRegistrations}
                     lobby={selectedLobby}
+                    rooms={selectedRooms}
+                    promotions={selectedPromotions}
+                    onAddRoom={(room) => addTournamentRoom(selected.id, room)}
+                    onActivateRoom={(roomId, credentials) => activateTournamentRoom(selected.id, roomId, credentials)}
+                    onPromote={(payload) => promoteTournamentPlayers(selected.id, payload)}
                     onSaveLobby={(credentials) => saveTournamentLobby(selected.id, credentials)}
                     friends={acceptedFriends}
                     tournamentInvites={tournamentInvites}
@@ -4859,6 +5193,17 @@ export default function App() {
       {user && showNewTournament && (
         <NewTournamentModal slides={vaultSlides} gameArt={circuitCms.records} gamesList={circuitCms.filterGames} onClose={() => setShowNewTournament(false)} onCreate={addTournament} />
       )}
+      {user && showScrimAlertPrefs && (
+        <ScrimAlertPrefs
+          open
+          onClose={() => setShowScrimAlertPrefs(false)}
+          alerts={scrimAlerts}
+          gamesList={circuitCms.filterGames}
+          officialHosts={officialHosts}
+          onSave={saveScrimAlerts}
+          onToggleFollow={toggleFollowHost}
+        />
+      )}
 
       {showProfileModal && (
         <ProfileModal
@@ -4917,7 +5262,7 @@ const shellStyle = {
   fontFamily: "'Inter', sans-serif",
 };
 
-function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAccount, onEditProfile, dashboardRole, friendsPanel = null, playerTag = "", profile = null, chatCount = 0, onOpenChats = null }) {
+function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAccount, onEditProfile, dashboardRole, friendsPanel = null, playerTag = "", profile = null, chatCount = 0, onOpenChats = null, scrimBell = null }) {
   const location = useLocation();
   const friendsMenu = useRef(null);
   const accountMenu = useRef(null);
@@ -4959,6 +5304,7 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAcc
             <Button variant="ghost" onClick={onSignInClick}>Sign in / join</Button>
           </div> : (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {scrimBell}
               {friendsPanel ? (
                 <details ref={friendsMenu} style={{ position: "relative" }} onToggle={(event) => { if (event.currentTarget.open) closeOtherMenu(event.currentTarget); }}>
                   <summary
@@ -5050,7 +5396,7 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAcc
     </div>
   );
 }
-function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, onNew, onSignIn, pendingInvites = [], onInviteDecision, embedded = false, hideCreate = false, archivedView, onArchivedView }) {
+function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, onNew, onSignIn, pendingInvites = [], onInviteDecision, embedded = false, hideCreate = false, archivedView, onArchivedView, deskFilter = "all", onDeskFilter, followedHosts = [], alertGames = [], hostPanel = null }) {
   const [localArchived, setLocalArchived] = useState(false);
   const [accessFilter, setAccessFilter] = useState("all");
   const [regionFilter, setRegionFilter] = useState("all");
@@ -5059,8 +5405,16 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
   const [openSlotsOnly, setOpenSlotsOnly] = useState(false);
   const showArchived = archivedView ?? localArchived;
   const setShowArchived = onArchivedView ?? setLocalArchived;
+  const followSet = useMemo(() => new Set(followedHosts || []), [followedHosts]);
+  const gameSet = useMemo(() => new Set((alertGames || []).map((game) => String(game).toLowerCase())), [alertGames]);
   const visibleTournaments = tournaments.filter((t) => {
     if (isTournamentArchived(t) !== showArchived) return false;
+    if (deskFilter === "following" && !followSet.has(t.adminUserId)) return false;
+    if (deskFilter === "foryou") {
+      const gameOk = !gameSet.size || gameSet.has(String(t.game || "").toLowerCase());
+      const followOk = followSet.has(t.adminUserId);
+      if (!gameOk && !followOk) return false;
+    }
     if (accessFilter === "public" && !isPublicScrim(t)) return false;
     if (accessFilter === "private" && isPublicScrim(t)) return false;
     if (regionFilter !== "all" && String(t.region || "") !== regionFilter) return false;
@@ -5102,17 +5456,31 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
             Scrims
           </h1>
         </div>
-        {currentUserId && !hideCreate && <Button onClick={onNew}>+ New scrim</Button>}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {currentUserId ? (
+            !hideCreate && <Button onClick={onNew}>Host scrim</Button>
+          ) : (
+            <Button onClick={onSignIn}>Sign in to host</Button>
+          )}
+        </div>
       </div>
 
       {!hideCreate && <div style={{ display: "flex", gap: 8, marginBottom: 14 }}><Button variant={showArchived ? "ghost" : "primary"} onClick={() => setShowArchived(false)}>Active</Button><Button variant={showArchived ? "primary" : "ghost"} onClick={() => setShowArchived(true)}>Archive</Button></div>}
+      {!showArchived && onDeskFilter && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+          <Button variant={deskFilter === "all" ? "primary" : "ghost"} onClick={() => onDeskFilter("all")}>All desk</Button>
+          <Button variant={deskFilter === "following" ? "primary" : "ghost"} onClick={() => onDeskFilter("following")}>Following</Button>
+          <Button variant={deskFilter === "foryou" ? "primary" : "ghost"} onClick={() => onDeskFilter("foryou")}>For your games</Button>
+        </div>
+      )}
       {!showArchived && (
         <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
           <Button variant={accessFilter === "all" ? "primary" : "ghost"} onClick={() => setAccessFilter("all")}>All</Button>
           <Button variant={accessFilter === "public" ? "primary" : "ghost"} onClick={() => setAccessFilter("public")}>Public</Button>
-          <Button variant={accessFilter === "private" ? "primary" : "ghost"} onClick={() => setAccessFilter("private")}>Private</Button>
+          <Button variant={accessFilter === "private" ? "primary" : "ghost"} onClick={() => setAccessFilter("private")}>Private / invite</Button>
         </div>
       )}
+      {hostPanel}
       {!showArchived && (
         <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
           <label style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)" }}>
@@ -5191,6 +5559,8 @@ function NewTournamentModal({ onClose, onCreate, slides = [], gameArt = [], game
   const [format, setFormat] = useState(FORMATS[0]);
   const [joinMode, setJoinMode] = useState("open");
   const [publicStats, setPublicStats] = useState(false);
+  const [publishAnnouncement, setPublishAnnouncement] = useState(true);
+  const [requireRequest, setRequireRequest] = useState(false);
   const [maxSlots, setMaxSlots] = useState("16");
   const [region, setRegion] = useState("");
   const [rankBand, setRankBand] = useState("");
@@ -5216,12 +5586,10 @@ function NewTournamentModal({ onClose, onCreate, slides = [], gameArt = [], game
 
   useEffect(() => {
     if (posterLocked) return;
-    const fromDesk = catalogArt?.poster || vaultSlide?.poster;
-    setPosterUrl(fromDesk || bannerForGame(game));
-    let active = true;
-    fetchGamePoster(game).then((url) => { if (active && !posterLocked && url) setPosterUrl(url); });
-    return () => { active = false; };
-  }, [game, catalogArt?.poster, vaultSlide?.poster, posterLocked]);
+    const packDefault = flyersForGame(game, [catalogArt?.poster, vaultSlide?.poster, ...(catalogArt?.flyers || []), ...(vaultSlide?.flyers || [])])[0]
+      || bannerForGame(game);
+    setPosterUrl(packDefault);
+  }, [game, posterLocked, catalogArt?.poster, vaultSlide?.poster]);
 
   const submit = () => {
     if (!name.trim()) {
@@ -5243,6 +5611,8 @@ function NewTournamentModal({ onClose, onCreate, slides = [], gameArt = [], game
       format: nextKind === "custom_room" ? "Custom room" : format,
       joinMode,
       publicStats: joinMode === "open" ? true : publicStats === true,
+      publishAnnouncement: joinMode === "open" && publishAnnouncement,
+      requireRequest: joinMode === "open" && requireRequest,
       maxSlots: slots,
       region: region || "",
       rankBand: rankBand || "",
@@ -5285,11 +5655,11 @@ function NewTournamentModal({ onClose, onCreate, slides = [], gameArt = [], game
           overflowY: "auto",
         }}
       >
-        <Eyebrow>New entry</Eyebrow>
+        <Eyebrow>Host desk</Eyebrow>
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, margin: "4px 0 8px" }}>
-          Create scrim
+          Host a scrim
         </div>
-        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-muted)" }}>Pick or upload a poster. Choose public or private registration, team cap, and optional room codes.</p>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-muted)" }}>Publish a public flyer to interested players, or keep it invite-only. Poster defaults to the selected game pack.</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <Field label="Scrim name">
             <TextInput
@@ -5422,8 +5792,9 @@ function NewTournamentModal({ onClose, onCreate, slides = [], gameArt = [], game
             <div style={{ flex: 1, minWidth: 150 }}>
               <Field label="Access">
                 <Select value={joinMode} onChange={(e) => setJoinMode(e.target.value)}>
-                  <option value="open">Public — free join, room + stats visible when signed in</option>
-                  <option value="request">Private — registration required, host approves each player</option>
+                  <option value="open">Public — listed, free join / flyer publish</option>
+                  <option value="invite">Invite only — hidden from public list</option>
+                  <option value="request">Private — listed, host approves requests</option>
                 </Select>
               </Field>
             </div>
@@ -5433,10 +5804,25 @@ function NewTournamentModal({ onClose, onCreate, slides = [], gameArt = [], game
               </Field>
             </div>
           </div>
-          {joinMode === "request" && (
+          {joinMode === "open" && (
+            <>
+              <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: "var(--text-muted)" }}>
+                <input type="checkbox" checked={publishAnnouncement} onChange={(e) => setPublishAnnouncement(e.target.checked)} style={{ marginTop: 3 }} />
+                <span>Publish flyer announcement to players following this game / official hosts.</span>
+              </label>
+              <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: "var(--text-muted)" }}>
+                <input type="checkbox" checked={requireRequest} onChange={(e) => setRequireRequest(e.target.checked)} style={{ marginTop: 3 }} />
+                <span>Require host approval even on public (otherwise free seats auto-approve).</span>
+              </label>
+            </>
+          )}
+          {joinMode === "invite" && (
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Invite-only scrims stay off the public Scrims list. Invite friends or Find players after create.</div>
+          )}
+          {(joinMode === "request" || joinMode === "invite") && (
             <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: "var(--text-muted)" }}>
               <input type="checkbox" checked={publicStats} onChange={(e) => setPublicStats(e.target.checked)} style={{ marginTop: 3 }} />
-              <span>Allow public view of stats (teams, matches, leaderboard) without joining. Room ID stays private until approved.</span>
+              <span>Allow public view of stats without joining. Room ID stays private until approved.</span>
             </label>
           )}
           <div style={{ display: "grid", gap: 10 }}>
@@ -5498,7 +5884,7 @@ function NewTournamentModal({ onClose, onCreate, slides = [], gameArt = [], game
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={submit}>Create tournament</Button>
+          <Button onClick={submit}>{joinMode === "open" && publishAnnouncement ? "Publish scrim" : "Create scrim"}</Button>
         </div>
       </div>
     </div>
@@ -5612,7 +5998,7 @@ function TournamentInvitePanel({ tournament, friends, invites, onInvite }) {
 }
 
 function HostControls({ tournament, requests, lobby, onUpdateSettings, onCloseTournament, onSaveLobby }) {
-  const [joinMode, setJoinMode] = useState(tournament.joinMode === "open" ? "open" : "request");
+  const [joinMode, setJoinMode] = useState(tournament.joinMode === "open" ? "open" : tournament.joinMode === "invite" ? "invite" : "request");
   const [publicStats, setPublicStats] = useState(tournament.publicStats === true);
   const [maxSlots, setMaxSlots] = useState(String(tournament.maxSlots ?? 0));
   const [blurb, setBlurb] = useState(tournament.blurb || "");
@@ -5622,7 +6008,7 @@ function HostControls({ tournament, requests, lobby, onUpdateSettings, onCloseTo
   const [roomError, setRoomError] = useState("");
   const [roomBusy, setRoomBusy] = useState(false);
   useEffect(() => {
-    setJoinMode(tournament.joinMode === "open" ? "open" : "request");
+    setJoinMode(tournament.joinMode === "open" ? "open" : tournament.joinMode === "invite" ? "invite" : "request");
     setPublicStats(tournament.publicStats === true);
     setMaxSlots(String(tournament.maxSlots ?? 0));
     setBlurb(tournament.blurb || "");
@@ -5673,11 +6059,12 @@ function HostControls({ tournament, requests, lobby, onUpdateSettings, onCloseTo
         </Field>
         <Field label="Access">
           <Select value={joinMode} onChange={(event) => setJoinMode(event.target.value)}>
-            <option value="open">Public — free join, room + stats visible when signed in</option>
-            <option value="request">Private — registration required, host approves each player</option>
+            <option value="open">Public — listed, free join / flyer publish</option>
+            <option value="invite">Invite only — hidden from public list</option>
+            <option value="request">Private — listed, host approves requests</option>
           </Select>
         </Field>
-        {joinMode === "request" && (
+        {(joinMode === "request" || joinMode === "invite") && (
           <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: "var(--text-muted)" }}>
             <input type="checkbox" checked={publicStats} onChange={(event) => setPublicStats(event.target.checked)} style={{ marginTop: 3 }} />
             <span>Allow public view of stats without joining. Room ID stays private until approved.</span>
@@ -5733,6 +6120,11 @@ function TournamentDetail(props) {
     currentUserName,
     registrations,
     lobby = null,
+    rooms = [],
+    promotions = [],
+    onAddRoom,
+    onActivateRoom,
+    onPromote,
     onSaveLobby,
     friends = [],
     tournamentInvites = [],
@@ -5829,12 +6221,12 @@ function TournamentDetail(props) {
         <DeskFold title="Host desk · access, cap, room codes" defaultOpen>
           <HostControls tournament={tournament} requests={registrations || []} lobby={lobby} onUpdateSettings={onUpdateSettings} onCloseTournament={onCloseTournament} onSaveLobby={onSaveLobby} />
           <div style={{ marginTop: 18 }}>
-            <RegistrationPanel tournament={tournament} requests={registrations || []} currentUserId={currentUserId} currentUserName={currentUserName} isAdmin={isAdmin} onRequest={onRequestRegistration} onDecision={onRegistrationDecision} disclaimer={props.registrationDisclaimer} onDisclaimerVisibilityChange={props.onJoinDisclaimerVisibilityChange} onSignIn={onSignIn} />
+            <RegistrationPanel tournament={tournament} requests={registrations || []} currentUserId={currentUserId} currentUserName={currentUserName} isAdmin={isAdmin} onRequest={onRequestRegistration} onDecision={onRegistrationDecision} disclaimer={props.registrationDisclaimer} onDisclaimerVisibilityChange={props.onJoinDisclaimerVisibilityChange} onSignIn={onSignIn} friends={friends} />
           </div>
         </DeskFold>
       )}
       {!isAdmin && (
-        <RegistrationPanel tournament={tournament} requests={registrations || []} currentUserId={currentUserId} currentUserName={currentUserName} isAdmin={isAdmin} onRequest={onRequestRegistration} onDecision={onRegistrationDecision} disclaimer={props.registrationDisclaimer} onDisclaimerVisibilityChange={props.onJoinDisclaimerVisibilityChange} onSignIn={onSignIn} />
+        <RegistrationPanel tournament={tournament} requests={registrations || []} currentUserId={currentUserId} currentUserName={currentUserName} isAdmin={isAdmin} onRequest={onRequestRegistration} onDecision={onRegistrationDecision} disclaimer={props.registrationDisclaimer} onDisclaimerVisibilityChange={props.onJoinDisclaimerVisibilityChange} onSignIn={onSignIn} friends={friends} />
       )}
       {(tournament.startDate || tournament.endDate) && (
         <div style={{ marginTop: 12, maxWidth: 280 }}>
@@ -5863,7 +6255,24 @@ function TournamentDetail(props) {
           </p>
         </section>
       )}
-      {currentUserId && <TournamentInvitePanel tournament={tournament} friends={friends} invites={tournamentInvites} onInvite={(friend) => onInviteFriend(tournament, friend)} />}
+      {(isAdmin || currentUserId) && (
+        <InvitePlayersPanel
+          tournament={tournament}
+          friends={friends}
+          invites={tournamentInvites}
+          closed={tournament.registrationOpen === false || isTournamentArchived(tournament)}
+          onInvite={(player) => onInviteFriend(tournament, player)}
+        />
+      )}
+      <RoomStagesPanel
+        rooms={rooms}
+        promotions={promotions}
+        registrations={registrations || []}
+        isAdmin={isAdmin}
+        onAddRoom={onAddRoom}
+        onActivateRoom={onActivateRoom}
+        onPromote={onPromote}
+      />
       {isOwner && (
         <DeskFold title="Co-host">
           <CoAdminPanel tournament={tournament} isOwner={isOwner} onChange={(ids, tags) => onCoAdminsChange(ids, tags)} onAddByPlayerId={(playerTag) => onAddCoAdmin(tournament, playerTag)} />

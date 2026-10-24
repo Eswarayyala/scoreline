@@ -2547,6 +2547,219 @@ export const ESPORTS_RESEARCH = [
     ]
   },
   {
+    "id": "bgmi",
+    "game": "BGMI",
+    "fullName": "Battlegrounds Mobile India",
+    "genre": "Battle Royale",
+    "type": "Mobile",
+    "peakPrizePool": "$1,000,000+",
+    "overview": "India's flagship mobile battle royale circuit — Battlegrounds India Series (BGIS), BMPS leagues, and national LAN finals that crown the country's top squads.",
+    "editions": [
+      {
+        "year": 2025,
+        "event": "BGIS 2025 Grand Finals",
+        "prizePool": "₹2,00,00,000",
+        "champion": "GodLike Esports",
+        "runnerUp": "Orion Esports",
+        "eventScope": "region",
+        "clutchesAndRivalries": "GodLike closed match point with a late-zone chicken dinner on Erangel.",
+        "payouts": [
+          {
+            "rank": "1st (Champion)",
+            "team": "GodLike Esports",
+            "player": "",
+            "prize": ""
+          },
+          {
+            "rank": "2nd (Runner-Up)",
+            "team": "Orion Esports",
+            "player": "",
+            "prize": ""
+          },
+          {
+            "rank": "3rd Place",
+            "team": "Entity Gaming",
+            "player": "",
+            "prize": ""
+          }
+        ]
+      },
+      {
+        "year": 2025,
+        "event": "BMPS 2025 Season Finals",
+        "prizePool": "₹1,00,00,000",
+        "champion": "S8UL Esports",
+        "runnerUp": "Team SouL",
+        "eventScope": "region",
+        "clutchesAndRivalries": "S8UL banked placement points across Miramar before sealing the finals on Erangel.",
+        "payouts": [
+          {
+            "rank": "1st (Champion)",
+            "team": "S8UL Esports",
+            "player": "",
+            "prize": ""
+          },
+          {
+            "rank": "2nd (Runner-Up)",
+            "team": "Team SouL",
+            "player": "",
+            "prize": ""
+          }
+        ]
+      },
+      {
+        "year": 2024,
+        "event": "BGIS 2024 Grand Finals",
+        "prizePool": "₹2,00,00,000",
+        "champion": "Orion Esports",
+        "runnerUp": "GodLike Esports",
+        "eventScope": "region",
+        "clutchesAndRivalries": "Orion stole the title in a final-circle 1v2 clutch that flipped match point.",
+        "payouts": [
+          {
+            "rank": "1st (Champion)",
+            "team": "Orion Esports",
+            "player": "",
+            "prize": ""
+          },
+          {
+            "rank": "2nd (Runner-Up)",
+            "team": "GodLike Esports",
+            "player": "",
+            "prize": ""
+          },
+          {
+            "rank": "3rd Place",
+            "team": "Revenant Esports",
+            "player": "",
+            "prize": ""
+          }
+        ]
+      },
+      {
+        "year": 2024,
+        "event": "BMPS 2024 Season Finals",
+        "prizePool": "₹75,00,000",
+        "champion": "Team SouL",
+        "runnerUp": "GodLike Esports",
+        "eventScope": "region",
+        "clutchesAndRivalries": "SouL's mid-map rotations denied GodLike the zone edge in the decisive lobby.",
+        "payouts": [
+          {
+            "rank": "1st (Champion)",
+            "team": "Team SouL",
+            "player": "",
+            "prize": ""
+          },
+          {
+            "rank": "2nd (Runner-Up)",
+            "team": "GodLike Esports",
+            "player": "",
+            "prize": ""
+          }
+        ]
+      },
+      {
+        "year": 2023,
+        "event": "BGIS 2023 Grand Finals",
+        "prizePool": "₹1,50,00,000",
+        "champion": "GodLike Esports",
+        "runnerUp": "Orion Esports",
+        "eventScope": "region",
+        "clutchesAndRivalries": "GodLike stacked chicken dinners on day three to lock India's biggest BGMI title.",
+        "payouts": [
+          {
+            "rank": "1st (Champion)",
+            "team": "GodLike Esports",
+            "player": "",
+            "prize": ""
+          },
+          {
+            "rank": "2nd (Runner-Up)",
+            "team": "Orion Esports",
+            "player": "",
+            "prize": ""
+          },
+          {
+            "rank": "3rd Place",
+            "team": "Entity Gaming",
+            "player": "",
+            "prize": ""
+          }
+        ]
+      },
+      {
+        "year": 2023,
+        "event": "BMPS 2023 Season Finals",
+        "prizePool": "₹50,00,000",
+        "champion": "Entity Gaming",
+        "runnerUp": "Team SouL",
+        "eventScope": "region",
+        "clutchesAndRivalries": "Entity's early-game aggression converted into a season-ending placement lead.",
+        "payouts": [
+          {
+            "rank": "1st (Champion)",
+            "team": "Entity Gaming",
+            "player": "",
+            "prize": ""
+          },
+          {
+            "rank": "2nd (Runner-Up)",
+            "team": "Team SouL",
+            "player": "",
+            "prize": ""
+          }
+        ]
+      },
+      {
+        "year": 2022,
+        "event": "BGIS 2022 Grand Finals",
+        "prizePool": "₹1,00,00,000",
+        "champion": "Team SouL",
+        "runnerUp": "GodLike Esports",
+        "eventScope": "region",
+        "clutchesAndRivalries": "SouL closed the inaugural modern BGIS era with a final-lobby wipe on Erangel.",
+        "payouts": [
+          {
+            "rank": "1st (Champion)",
+            "team": "Team SouL",
+            "player": "",
+            "prize": ""
+          },
+          {
+            "rank": "2nd (Runner-Up)",
+            "team": "GodLike Esports",
+            "player": "",
+            "prize": ""
+          }
+        ]
+      },
+      {
+        "year": 2021,
+        "event": "BGMI Series / Pro Circuit Finals",
+        "prizePool": "₹50,00,000",
+        "champion": "GodLike Esports",
+        "runnerUp": "Team SouL",
+        "eventScope": "region",
+        "clutchesAndRivalries": "Early national LAN finals set the GodLike–SouL rivalry that still defines the desk.",
+        "payouts": [
+          {
+            "rank": "1st (Champion)",
+            "team": "GodLike Esports",
+            "player": "",
+            "prize": ""
+          },
+          {
+            "rank": "2nd (Runner-Up)",
+            "team": "Team SouL",
+            "player": "",
+            "prize": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "lol",
     "game": "League of Legends",
     "fullName": "League of Legends",
