@@ -36,7 +36,25 @@ function formatDateRange(startAt, endAt) {
   return fmt(ok(start) ? start : end);
 }
 
-function payoutRows(slide, edition) {
+function clipFact(text, max = 132) {
+  const raw = String(text || "").replace(/\s+/g, " ").trim();
+  if (!raw) return "";
+  if (raw.length <= max) return raw;
+  const cut = raw.slice(0, max - 1);
+  const at = cut.lastIndexOf(" ");
+  return `${(at > 60 ? cut.slice(0, at) : cut).trim()}…`;
+}
+
+function championOf(edition = {}) {
+  return (
+    edition.champion
+    || edition.payouts?.[0]?.team
+    || edition.payouts?.[0]?.player
+    || ""
+  );
+}
+
+function payoutRows(slide, edition, championshipGames = []) {
   const fromEdition = (edition?.payouts || [])
     .map((row) => ({
       team: row.team || row.player || "—",
@@ -47,40 +65,143 @@ function payoutRows(slide, edition) {
   if (fromEdition.length) return fromEdition.slice(0, 4);
 
   const fallback = [
-    { team: slide.winners || edition?.champion, placement: "1st (Champions)", prize: edition?.payouts?.[0]?.prize || "" },
-    { team: slide.runnerUps || edition?.runnerUp, placement: "2nd (Runner-up)", prize: edition?.payouts?.[1]?.prize || "" },
-    { team: slide.secondRunnerUps, placement: "3rd Place", prize: edition?.payouts?.[2]?.prize || "" },
+    {
+      team: slide.winners || edition?.champion,
+      placement: "1st · Champions",
+      prize: edition?.payouts?.[0]?.prize || "",
+    },
+    {
+      team: slide.runnerUps || edition?.runnerUp,
+      placement: "2nd · Runner-up",
+      prize: edition?.payouts?.[1]?.prize || "",
+    },
+    {
+      team: slide.secondRunnerUps,
+      placement: "3rd Place",
+      prize: edition?.payouts?.[2]?.prize || "",
+    },
   ].filter((row) => row.team);
-  return fallback;
+  if (fallback.length) return fallback;
+
+  // EWC year windows: surface title champions across games.
+  return championshipGames
+    .map((game) => {
+      const team = championOf(game);
+      if (!team) return null;
+      return {
+        team,
+        placement: game.game || "Title",
+        prize: game.payouts?.[0]?.prize || game.prizePool || "",
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 4);
 }
 
-function resolveStatus(slide, edition) {
+function resolveStatus(slide, edition, payouts) {
   const raw = String(slide.eventStatus || slide.status || "").toLowerCase();
   if (raw === "live" || raw === "upcoming" || raw === "completed") return raw;
-  if (slide.winners || edition?.champion || (edition?.payouts || []).length) return "completed";
-  if (slide.registrationUrl || slide.startAt) return "upcoming";
+  if (slide.winners || edition?.champion || payouts.length) return "completed";
+  if (slide.registrationUrl || slide.startAt || slide.startDate) return "upcoming";
+  if (slide.surface === "ewc-window") {
+    const year = Number(slide.championship?.year || slide.season || 0);
+    return year && year > new Date().getFullYear() ? "upcoming" : "completed";
+  }
   return "completed";
 }
 
+/** Punchy one-liner — highlight fact first, then forged from results. */
+function buildFact(slide, edition, { champion, championPrize, prizePool, runnerUp, mvp, gameCount }) {
+  const highlights = edition?.highlights || {};
+  const candidates = [
+    highlights.madeItLookEasy,
+    edition?.madeItLookEasy,
+    highlights.clutchesAndRivalries,
+    edition?.clutchesAndRivalries,
+    edition?.bestClutches,
+    slide.bestClutches,
+    slide.extraHighlights?.[0]?.milestone,
+  ]
+    .map((line) => clipFact(line))
+    .filter(Boolean);
+
+  if (candidates[0]) return candidates[0];
+
+  if (champion && championPrize) {
+    return `${champion} walked away with ${championPrize}.`;
+  }
+  if (champion && prizePool) {
+    return `${champion} closed a ${prizePool} prize pool.`;
+  }
+  if (champion && runnerUp) {
+    return `${champion} beat ${runnerUp} to lift the trophy.`;
+  }
+  if (champion && mvp) {
+    return `${champion} crowned champions · MVP ${mvp}.`;
+  }
+  if (champion) {
+    return `${champion} stand as the reigning champions.`;
+  }
+  if (gameCount > 1 && prizePool) {
+    return `${gameCount} titles · peak pool ${prizePool}.`;
+  }
+  if (gameCount > 1) {
+    return `${gameCount} championship titles under one roof.`;
+  }
+  if (prizePool) {
+    return `Prize pool locked at ${prizePool}.`;
+  }
+  if (slide.peakPrizePool) {
+    return `Peak prize pool hit ${slide.peakPrizePool}.`;
+  }
+  return clipFact(slide.summary || edition?.event || "");
+}
+
 export function windowCardModel(slide = {}) {
-  const edition = (slide.editions || [])[0] || null;
-  const status = resolveStatus(slide, edition);
+  const championshipGames = slide.championship?.games || [];
+  const edition = (slide.editions || [])[0] || championshipGames[0] || null;
+  const payouts = payoutRows(slide, edition, championshipGames);
+  const status = resolveStatus(slide, edition, payouts);
+
   const prizePool =
     edition?.prizePool
     || slide.prizePool
     || slide.peakPrizePool
     || slide.totalPrize
     || "";
+
   const champion =
     slide.winners
     || edition?.champion
     || edition?.payouts?.[0]?.team
     || edition?.payouts?.[0]?.player
+    || payouts[0]?.team
     || "";
+
   const championPrize =
     edition?.payouts?.[0]?.prize
     || slide.championPrize
+    || payouts[0]?.prize
     || "";
+
+  const runnerUp =
+    slide.runnerUps
+    || edition?.runnerUp
+    || edition?.payouts?.[1]?.team
+    || edition?.payouts?.[1]?.player
+    || payouts[1]?.team
+    || "";
+
+  const thirdPlace =
+    slide.secondRunnerUps
+    || edition?.payouts?.[2]?.team
+    || edition?.payouts?.[2]?.player
+    || payouts[2]?.team
+    || "";
+
+  const mvp = slide.mvp || edition?.mvp || "";
+  const mvpPrize = slide.mvpPrize || "";
+
   const dateLabel =
     formatDateRange(slide.startAt, slide.endAt)
     || formatDateRange(slide.startDate, slide.endDate)
@@ -88,35 +209,45 @@ export function windowCardModel(slide = {}) {
     || edition?.year
     || edition?.event
     || "";
+
   const teams =
     slide.teamCount
     || slide.maxSlots
     || slide.teams
     || edition?.teamCount
+    || edition?.totalTeams
     || "";
+
   const region = slide.region || slide.location || edition?.region || "";
-  const mode = slide.mode || slide.format || (slide.online === false ? "LAN" : "Online");
-  const payouts = payoutRows(slide, edition);
-  const runnerPrize = payouts[1]?.prize || "";
-  const thirdPrize = payouts[2]?.prize || "";
-  const mvpPrize = slide.mvpPrize || "";
-  const mvp = slide.mvp || edition?.mvp || "";
+  const mode = slide.mode || slide.format || (slide.online === false ? "LAN" : "");
+
+  const fact = buildFact(slide, edition, {
+    champion,
+    championPrize,
+    prizePool,
+    runnerUp,
+    mvp,
+    gameCount: championshipGames.length,
+  });
 
   return {
     status,
     title: slide.title || slide.name || slide.game || "Tournament",
     game: slide.game || "",
     kicker: publicScopeKicker(slide) || slide.kicker || "",
+    fact,
     prizePool,
     champion,
     championPrize,
+    runnerUp,
+    thirdPlace,
     dateLabel,
     teams,
     region,
-    mode,
+    mode: mode || "Online",
     payouts,
-    runnerPrize,
-    thirdPrize,
+    runnerPrize: payouts[1]?.prize || "",
+    thirdPrize: payouts[2]?.prize || "",
     mvp,
     mvpPrize,
     registrationUrl: slide.registrationUrl || "",
@@ -165,9 +296,22 @@ function FeatureOrb({ label, icon: Icon }) {
   );
 }
 
+function FactLine({ fact }) {
+  if (!fact) return null;
+  return (
+    <p
+      className="mt-2 text-[13px] leading-snug text-slate-100/95"
+      style={{ textShadow: "0 1px 10px rgba(0,0,0,0.55)" }}
+    >
+      {fact}
+    </p>
+  );
+}
+
 function UpcomingBody({ model, compact }) {
   return (
     <>
+      <FactLine fact={model.fact} />
       <div className={`mt-3 flex flex-wrap gap-x-4 gap-y-2 ${compact ? "text-[11px]" : ""}`}>
         <MetaChip icon={Calendar}>{model.dateLabel}</MetaChip>
         <MetaChip icon={Gamepad2}>{model.game}</MetaChip>
@@ -208,87 +352,122 @@ function UpcomingBody({ model, compact }) {
   );
 }
 
+function ChampionSpotlight({ model, compact }) {
+  if (!model.champion && !model.championPrize) return null;
+  return (
+    <div className={`mt-3 flex items-center gap-3 ${compact ? "gap-2" : ""}`}>
+      <span
+        className="grid h-11 w-11 shrink-0 place-items-center rounded-full"
+        style={{
+          background: "linear-gradient(145deg, #f6d365, #fda085)",
+          boxShadow: "0 0 18px rgba(253, 160, 133, 0.45)",
+        }}
+      >
+        <Trophy size={20} className="text-[#3a2208]" />
+      </span>
+      <div className="min-w-0">
+        {model.champion ? (
+          <div className={`font-['Bebas_Neue',sans-serif] uppercase tracking-wide text-white ${compact ? "text-2xl" : "text-3xl"}`}>
+            Champions: {model.champion}
+          </div>
+        ) : null}
+        {model.championPrize ? (
+          <div
+            className={`font-['Bebas_Neue',sans-serif] tracking-wide text-[var(--accent-secondary)] ${compact ? "text-2xl" : "text-3xl"}`}
+            style={{ textShadow: "0 0 18px rgba(59, 130, 255, 0.45)" }}
+          >
+            {model.championPrize} won
+          </div>
+        ) : model.prizePool ? (
+          <div
+            className={`font-['Bebas_Neue',sans-serif] tracking-wide text-[var(--accent-secondary)] ${compact ? "text-xl" : "text-2xl"}`}
+            style={{ textShadow: "0 0 18px rgba(59, 130, 255, 0.45)" }}
+          >
+            {model.prizePool} circuit
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function PayoutStrip({ model }) {
+  const hasStrip = model.runnerUp || model.runnerPrize || model.thirdPlace || model.thirdPrize || model.mvp || model.mvpPrize;
+  if (!hasStrip) return null;
+  return (
+    <div
+      className="mt-3 grid grid-cols-3 gap-2 rounded-lg border px-2 py-2"
+      style={{ borderColor: "rgba(59, 130, 255, 0.28)", background: "rgba(5, 10, 24, 0.55)" }}
+    >
+      <div className="min-w-0 text-center">
+        <div className="font-mono text-[8px] uppercase tracking-widest text-slate-400">Runner-up</div>
+        <div className="mt-0.5 truncate text-xs text-slate-100">
+          {model.runnerUp || model.runnerPrize || "—"}
+        </div>
+        {model.runnerUp && model.runnerPrize ? (
+          <div className="truncate text-[10px] text-[var(--accent-secondary)]">{model.runnerPrize}</div>
+        ) : null}
+      </div>
+      <div className="min-w-0 text-center">
+        <div className="font-mono text-[8px] uppercase tracking-widest text-slate-400">3rd place</div>
+        <div className="mt-0.5 truncate text-xs text-slate-100">
+          {model.thirdPlace || model.thirdPrize || "—"}
+        </div>
+        {model.thirdPlace && model.thirdPrize ? (
+          <div className="truncate text-[10px] text-[var(--accent-secondary)]">{model.thirdPrize}</div>
+        ) : null}
+      </div>
+      <div className="min-w-0 text-center">
+        <div className="font-mono text-[8px] uppercase tracking-widest text-slate-400">MVP</div>
+        <div className="mt-0.5 truncate text-xs text-slate-100">
+          {model.mvp || model.mvpPrize || "—"}
+        </div>
+        {model.mvp && model.mvpPrize ? (
+          <div className="truncate text-[10px] text-[var(--accent-secondary)]">{model.mvpPrize}</div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function FinalistsTable({ rows, compact }) {
+  if (!rows.length) return null;
+  return (
+    <div
+      className={`mt-3 overflow-hidden rounded-lg border ${compact ? "mt-2" : ""}`}
+      style={{ borderColor: "rgba(59, 130, 255, 0.28)", background: "rgba(5, 10, 24, 0.62)" }}
+    >
+      <div className="grid grid-cols-[1.4fr_1fr_0.8fr] gap-2 border-b border-white/10 px-3 py-1.5 font-mono text-[9px] uppercase tracking-widest text-slate-400">
+        <span>Team</span>
+        <span>Placement</span>
+        <span className="text-right">Prize</span>
+      </div>
+      {rows.slice(0, compact ? 3 : 4).map((row, index) => (
+        <div
+          key={`${row.team}-${index}`}
+          className="grid grid-cols-[1.4fr_1fr_0.8fr] gap-2 px-3 py-1.5 text-[11px]"
+          style={
+            index === 0
+              ? { background: "linear-gradient(90deg, rgba(246, 211, 101, 0.28), rgba(246, 211, 101, 0.06))" }
+              : undefined
+          }
+        >
+          <span className="truncate font-medium text-white">{row.team}</span>
+          <span className="truncate text-slate-300">{row.placement || "—"}</span>
+          <span className="truncate text-right text-slate-200">{row.prize || "—"}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function CompletedBody({ model, compact }) {
-  const rows = model.payouts;
   return (
     <>
-      {(model.champion || model.championPrize) && (
-        <div className={`mt-3 flex items-center gap-3 ${compact ? "gap-2" : ""}`}>
-          <span
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full"
-            style={{
-              background: "linear-gradient(145deg, #f6d365, #fda085)",
-              boxShadow: "0 0 18px rgba(253, 160, 133, 0.45)",
-            }}
-          >
-            <Trophy size={20} className="text-[#3a2208]" />
-          </span>
-          <div className="min-w-0">
-            {model.champion ? (
-              <div className={`font-['Bebas_Neue',sans-serif] uppercase tracking-wide text-white ${compact ? "text-2xl" : "text-3xl"}`}>
-                Champions: {model.champion}
-              </div>
-            ) : null}
-            {model.championPrize ? (
-              <div
-                className={`font-['Bebas_Neue',sans-serif] tracking-wide text-[var(--accent-secondary)] ${compact ? "text-2xl" : "text-3xl"}`}
-                style={{ textShadow: "0 0 18px rgba(59, 130, 255, 0.45)" }}
-              >
-                {model.championPrize} won
-              </div>
-            ) : null}
-          </div>
-        </div>
-      )}
-
-      {(model.runnerPrize || model.thirdPrize || model.mvp) && !compact ? (
-        <div
-          className="mt-3 grid grid-cols-3 gap-2 rounded-lg border px-2 py-2"
-          style={{ borderColor: "rgba(59, 130, 255, 0.28)", background: "rgba(5, 10, 24, 0.55)" }}
-        >
-          <div className="text-center">
-            <div className="font-mono text-[8px] uppercase tracking-widest text-slate-400">Runner-up</div>
-            <div className="mt-0.5 text-xs text-slate-100">{model.runnerPrize || "—"}</div>
-          </div>
-          <div className="text-center">
-            <div className="font-mono text-[8px] uppercase tracking-widest text-slate-400">3rd place</div>
-            <div className="mt-0.5 text-xs text-slate-100">{model.thirdPrize || "—"}</div>
-          </div>
-          <div className="text-center">
-            <div className="font-mono text-[8px] uppercase tracking-widest text-slate-400">MVP</div>
-            <div className="mt-0.5 text-xs text-slate-100">{model.mvpPrize || model.mvp || "—"}</div>
-          </div>
-        </div>
-      ) : null}
-
-      {rows.length > 0 ? (
-        <div
-          className={`mt-3 overflow-hidden rounded-lg border ${compact ? "mt-2" : ""}`}
-          style={{ borderColor: "rgba(59, 130, 255, 0.28)", background: "rgba(5, 10, 24, 0.62)" }}
-        >
-          <div className="grid grid-cols-[1.4fr_1fr_0.8fr] gap-2 border-b border-white/10 px-3 py-1.5 font-mono text-[9px] uppercase tracking-widest text-slate-400">
-            <span>Team</span>
-            <span>Placement</span>
-            <span className="text-right">Prize</span>
-          </div>
-          {rows.slice(0, compact ? 3 : 4).map((row, index) => (
-            <div
-              key={`${row.team}-${index}`}
-              className="grid grid-cols-[1.4fr_1fr_0.8fr] gap-2 px-3 py-1.5 text-[11px]"
-              style={
-                index === 0
-                  ? { background: "linear-gradient(90deg, rgba(246, 211, 101, 0.28), rgba(246, 211, 101, 0.06))" }
-                  : undefined
-              }
-            >
-              <span className="truncate font-medium text-white">{row.team}</span>
-              <span className="truncate text-slate-300">{row.placement || "—"}</span>
-              <span className="truncate text-right text-slate-200">{row.prize || "—"}</span>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
+      <ChampionSpotlight model={model} compact={compact} />
+      <FactLine fact={model.fact} />
+      <PayoutStrip model={model} />
+      <FinalistsTable rows={model.payouts} compact={compact} />
       {compact ? (
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-300">
           <MetaChip icon={Calendar}>{model.dateLabel}</MetaChip>
@@ -302,6 +481,7 @@ function CompletedBody({ model, compact }) {
 function LiveBody({ model, compact }) {
   return (
     <>
+      <FactLine fact={model.fact} />
       <div className={`mt-3 flex flex-wrap gap-x-4 gap-y-2 ${compact ? "text-[11px]" : ""}`}>
         <MetaChip icon={Calendar}>{model.dateLabel}</MetaChip>
         <MetaChip icon={Gamepad2}>{model.game}</MetaChip>
@@ -354,7 +534,7 @@ export default function TournamentWindowCard({
       style={{
         borderColor: "rgba(59, 130, 255, 0.45)",
         boxShadow: "0 0 0 1px rgba(59, 130, 255, 0.12), 0 18px 40px rgba(0, 0, 0, 0.45), 0 0 32px rgba(59, 130, 255, 0.12)",
-        minHeight: compact ? 360 : 420,
+        minHeight: compact ? 420 : 460,
       }}
     >
       <div className="absolute inset-0">
@@ -372,7 +552,7 @@ export default function TournamentWindowCard({
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(105deg, rgba(5,10,24,0.94) 0%, rgba(5,10,24,0.82) 42%, rgba(5,10,24,0.45) 68%, rgba(5,10,24,0.25) 100%)",
+              "linear-gradient(105deg, rgba(5,10,24,0.94) 0%, rgba(5,10,24,0.84) 40%, rgba(5,10,24,0.5) 68%, rgba(5,10,24,0.28) 100%)",
           }}
         />
         <div
@@ -405,10 +585,6 @@ export default function TournamentWindowCard({
         >
           {model.title}
         </h3>
-
-        {model.kicker ? (
-          <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400">{model.kicker}</p>
-        ) : null}
 
         <div className="mt-1 flex-1">
           {model.status === "completed" ? (

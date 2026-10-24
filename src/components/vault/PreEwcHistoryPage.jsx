@@ -10,7 +10,7 @@ export default function PreEwcHistoryPage() {
 
   return (
     <div className="pb-10 pt-6">
-      <div className="sticky top-0 z-40 mb-2 border-b border-white/10 bg-slate-950/95 py-2 backdrop-blur-md">
+      <div className="relative mb-2 border-b border-white/10 py-2">
         <Link to="/vault" className="font-mono text-xs uppercase tracking-widest text-neon">← The Vault</Link>
       </div>
       <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.18em] text-neon">Launch-era majors · not merged yet</p>

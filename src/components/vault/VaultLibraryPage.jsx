@@ -7,6 +7,7 @@ import { sortVaultCatalog } from "../../data/floatingWindows";
 import LoadMoreBar, { usePagedVisible } from "../shared/LoadMoreBar";
 import StickyFilterBar from "../shared/StickyFilterBar";
 import TournamentWindowCard from "./TournamentWindowCard";
+import SectionBackHome from "../layout/SectionBackHome";
 
 const LIBRARY_PAGE = 9;
 
@@ -109,6 +110,7 @@ export default function VaultLibraryPage({
   });
   return (
     <div className="pb-10 pt-6">
+      <SectionBackHome />
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="m-0 font-['Bebas_Neue',sans-serif] text-4xl tracking-wide text-white md:text-5xl">The Vault</h1>

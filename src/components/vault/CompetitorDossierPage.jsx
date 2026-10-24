@@ -55,7 +55,7 @@ export default function CompetitorDossierPage({ slides = [], name = "" }) {
 
   return (
     <article className="mx-auto max-w-4xl px-5 pb-20 pt-6">
-      <div className="sticky top-0 z-40 mb-2 flex flex-wrap items-center gap-4 border-b border-white/10 bg-slate-950/95 py-2 backdrop-blur-md">
+      <div className="relative mb-2 flex flex-wrap items-center gap-4 border-b border-white/10 py-2">
         <Link to="/vault" className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neon">
           <ArrowLeft size={14} /> The Vault
         </Link>
