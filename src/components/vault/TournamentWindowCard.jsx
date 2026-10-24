@@ -261,23 +261,29 @@ export function windowCardModel(slide = {}) {
     });
 
   const game = slide.game || slide.name || "";
+  const isScrim = slide.surface === "scrim" || Boolean(slide.joinMode);
   // Specific event names only on home spotlights / EWC year windows — vault game cards stay game-only.
   const showEventName = slide.spotlight === true || slide.surface === "ewc-window";
-  const eventName = showEventName
-    ? (
-      slide.eventName
-      || edition?.event
-      || (slide.title && slide.title !== game ? slide.title : "")
-      || ""
-    )
-    : "";
+  const scrimTitle = slide.title || slide.name || "";
+  const eventName = isScrim
+    ? (game && game !== scrimTitle ? game : "")
+    : showEventName
+      ? (
+        slide.eventName
+        || edition?.event
+        || (slide.title && slide.title !== game ? slide.title : "")
+        || ""
+      )
+      : "";
+  const flyerBadges = Array.isArray(slide.flyerBadges) ? slide.flyerBadges : [];
 
   return {
     status,
-    /** Single display header — always the game, never duplicated as a second title. */
-    header: game || slide.title || "Tournament",
+    /** Scrims use event name as header; vault/EWC keep the game / championship title. */
+    header: isScrim ? (scrimTitle || game || "Scrim") : (game || slide.title || "Tournament"),
     eventName,
     game,
+    flyerBadges,
     kicker: isGameVault ? "" : (publicScopeKicker({ ...slide, eventScope: edition?.eventScope || slide.eventScope }) || ""),
     fact,
     prizePool: isGameVault ? (slide.peakPrizePool || prizePool) : prizePool,
@@ -310,6 +316,34 @@ function StatusPill({ status }) {
     >
       {style.label}
     </span>
+  );
+}
+
+const FLYER_BADGE_TONES = {
+  neon: { bg: "rgba(57, 255, 20, 0.16)", border: "rgba(57, 255, 20, 0.45)", color: "#b8ff9a" },
+  pink: { bg: "rgba(255, 45, 149, 0.18)", border: "rgba(255, 45, 149, 0.5)", color: "#ff9fd0" },
+  blue: { bg: "rgba(59, 130, 255, 0.18)", border: "rgba(59, 130, 255, 0.5)", color: "#9ec5ff" },
+  amber: { bg: "rgba(251, 191, 36, 0.16)", border: "rgba(251, 191, 36, 0.45)", color: "#fcd34d" },
+  slate: { bg: "rgba(148, 163, 184, 0.14)", border: "rgba(148, 163, 184, 0.35)", color: "#cbd5e1" },
+};
+
+function FlyerBadges({ badges = [], compact }) {
+  if (!badges.length) return null;
+  return (
+    <div className={`flex flex-wrap gap-1 ${compact ? "mt-1.5" : "mt-2"}`}>
+      {badges.map((badge) => {
+        const tone = FLYER_BADGE_TONES[badge.tone] || FLYER_BADGE_TONES.slate;
+        return (
+          <span
+            key={badge.id || badge.label}
+            className="inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.12em]"
+            style={{ background: tone.bg, border: `1px solid ${tone.border}`, color: tone.color }}
+          >
+            {badge.label}
+          </span>
+        );
+      })}
+    </div>
   );
 }
 
@@ -648,7 +682,10 @@ export default function TournamentWindowCard({
 
       <div className={`relative z-[2] flex min-h-0 flex-1 flex-col pointer-events-none ${compact ? "p-3" : "p-5 md:p-6"}`}>
         <div className="flex items-start justify-between gap-2">
-          <StatusPill status={model.status} />
+          <div className="min-w-0">
+            <StatusPill status={model.status} />
+            <FlyerBadges badges={model.flyerBadges} compact={compact} />
+          </div>
           {bookmark ? <div className="pointer-events-auto">{bookmark}</div> : null}
         </div>
 

@@ -60,6 +60,7 @@ import {
   isInviteOnlyScrim,
   isPublicScrim,
   scrimAccessLabel,
+  scrimFlyerBadges,
 } from "./data/scrimAccess";
 import { buildScrimAnnouncement, DEFAULT_SCRIM_ALERTS, normalizeScrimAlerts } from "./data/scrimAlerts";
 import ScrimBell from "./components/scrims/ScrimBell";
@@ -67,6 +68,7 @@ import ScrimAlertPrefs from "./components/scrims/ScrimAlertPrefs";
 import RoomStagesPanel from "./components/scrims/RoomStagesPanel";
 import InvitePlayersPanel from "./components/scrims/InvitePlayersPanel";
 import HostOrgPanel from "./components/scrims/HostOrgPanel";
+import HostProfilePage from "./components/scrims/HostProfilePage";
 import { useGameBanner, useMediaArt } from "./hooks/useMediaLibrary";
 import BlogGameCover from "./components/blog/BlogGameCover";
 import BlogOverlay from "./components/blog/BlogOverlay";
@@ -5091,15 +5093,36 @@ export default function App() {
                           onRequestOfficial={requestOfficialHost}
                           onDecideRequest={decideHostRequest}
                           onToggleFollow={toggleFollowHost}
-                          onOpenHostScrims={(hostUid) => {
-                            setScrimDeskFilter("following");
-                            toggleFollowHost(hostUid, true);
-                          }}
+                          onOpenHostScrims={(hostUid) => navigate(`/hosts/${hostUid}`)}
                         />
                       )}
                     />
                   </>
                 )} />
+                <Route path="/hosts/:uid" element={(() => {
+                  const hostUid = routePath.replace(/^\/hosts\//, "").split("/")[0];
+                  const official = officialHosts.find((row) => row.uid === hostUid && row.enabled !== false);
+                  const fromTournament = tournaments.find((item) => item.adminUserId === hostUid);
+                  const host = official || {
+                    uid: hostUid,
+                    orgName: fromTournament?.adminDisplayName || "Host",
+                    displayName: fromTournament?.adminDisplayName || "",
+                    adminDisplayName: fromTournament?.adminDisplayName || "",
+                  };
+                  return (
+                    <HostProfilePage
+                      hostUid={hostUid}
+                      host={host}
+                      official={Boolean(official)}
+                      tournaments={tournaments}
+                      currentUserId={user?.uid || null}
+                      following={(scrimAlerts.followedHosts || []).includes(hostUid)}
+                      onToggleFollow={toggleFollowHost}
+                      onOpenTournament={(id) => navigate(`/tournaments/${id}`)}
+                      onSignIn={() => setAuthDialogOpen(true)}
+                    />
+                  );
+                })()} />
                 <Route path="/tournaments/:id" element={selected ? (
                   <TournamentDetail
                     tournament={selected}
@@ -5527,14 +5550,17 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
           {visibleTournaments.map((t) => {
             const slide = {
               ...t,
+              surface: "scrim",
               title: t.name,
               eventStatus: t.status || "upcoming",
               kicker: `Hosted by ${t.adminDisplayName || (t.adminUserId === currentUserId ? currentUserName : "Scrim host")}`,
               region: [t.region, t.rankBand].filter(Boolean).join(" · ") || t.region,
               mode: isPublicScrim(t) ? "Public" : "Private",
+              flyerBadges: scrimFlyerBadges(t),
               teamCount: t.maxSlots || "",
               startAt: t.startDate,
               endAt: t.endDate,
+              prizePool: Number(t.prizeAmount) > 0 ? `₹${Number(t.prizeAmount).toLocaleString()}` : "",
             };
             return (
               <TournamentWindowCard
@@ -6164,7 +6190,17 @@ function TournamentDetail(props) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
         <div>
           <Eyebrow color="var(--text-dim)">
-            Hosted by {tournament.adminDisplayName || (tournament.adminUserId === currentUserId ? currentUserName : "Scrim host")}
+            Hosted by{" "}
+            {tournament.adminUserId ? (
+              <Link
+                to={`/hosts/${tournament.adminUserId}`}
+                style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: 3 }}
+              >
+                {tournament.adminDisplayName || (tournament.adminUserId === currentUserId ? currentUserName : "Scrim host")}
+              </Link>
+            ) : (
+              tournament.adminDisplayName || (tournament.adminUserId === currentUserId ? currentUserName : "Scrim host")
+            )}
           </Eyebrow>
           <div className="mb-3 aspect-video max-w-sm overflow-hidden rounded-xl border border-white/10">
             <img src={flyerForEvent(tournament)} alt="" className="h-full w-full object-cover" />

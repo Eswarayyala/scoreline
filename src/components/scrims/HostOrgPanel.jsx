@@ -87,7 +87,7 @@ export default function HostOrgPanel({
               <div className="flex gap-2">
                 {onOpenHostScrims ? (
                   <button type="button" className="font-mono text-[10px] uppercase tracking-widest text-slate-400" onClick={() => onOpenHostScrims(host.uid)}>
-                    Scrims
+                    Profile
                   </button>
                 ) : null}
                 {user && host.uid !== user.uid ? (
