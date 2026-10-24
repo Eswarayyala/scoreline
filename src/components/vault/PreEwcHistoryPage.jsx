@@ -29,7 +29,7 @@ export default function PreEwcHistoryPage() {
         {circuits.map((circuit) => (
           <section key={circuit.id} className="border border-white/10 bg-black/20 p-5">
             <p className="m-0 font-mono text-[10px] uppercase tracking-widest text-cyan-300">{circuit.editions.length} events · region related</p>
-            <h2 className="mt-1 font-['Bebas_Neue',sans-serif] text-4xl text-white">{circuit.circuit || circuit.game}</h2>
+            <h2 className="mt-1 font-['Bebas_Neue',sans-serif] text-5xl tracking-wide text-white md:text-6xl">{circuit.circuit || circuit.game}</h2>
             {circuit.origin && <p className="mt-2 text-sm text-stone-400">{circuit.origin}</p>}
             <div className="mt-4 overflow-x-auto">
               <table className="w-full text-left text-sm text-stone-300">

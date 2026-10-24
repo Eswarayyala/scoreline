@@ -52,6 +52,10 @@ const PACK_ALIAS = {
   "Chess (EWC Invitational)": "Chess",
   BGMI: "PUBG",
   "PUBG PC": "PUBG",
+  "Counter-Strike 2": "CS2",
+  "Counter-Strike": "CS2",
+  "CS:GO": "CS2",
+  CSGO: "CS2",
 };
 
 export function generatedPackName(game) {

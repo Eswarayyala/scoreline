@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { collection, collectionGroup, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
-import { FILTER_GAMES } from "../data/gameCatalog";
+import { FILTER_GAMES, canonicalFilterGame } from "../data/gameCatalog";
 import { SITE_KIND_IDS } from "../data/mediaCollections";
-import { allGeneratedCollections, generatedAssetsFor } from "../data/generatedGameArt";
+import { allGeneratedCollections, generatedAssetsFor, generatedPackName } from "../data/generatedGameArt";
 
 const MediaArtContext = createContext({ covers: {}, collections: [] });
 
@@ -40,7 +40,16 @@ export function useMediaCovers() {
     const unsub = onSnapshot(collection(db, "mediaCollections"), (snap) => {
       const rows = snap.docs.map((item) => ({ id: item.id, ...item.data() }));
       const byId = new Map(allGeneratedCollections(FILTER_GAMES).map((item) => [item.id, item]));
-      rows.forEach((row) => byId.set(row.id, { ...byId.get(row.id), ...row }));
+      rows.forEach((row) => {
+        const prev = byId.get(row.id) || {};
+        byId.set(row.id, {
+          ...prev,
+          ...row,
+          // Keep generated pack art when Firestore left cover/default blank.
+          coverUrl: row.coverUrl || prev.coverUrl || "",
+          defaultUrl: row.defaultUrl || prev.defaultUrl || "",
+        });
+      });
       const merged = [...byId.values()];
       setCollections(merged);
       setCovers(coversFrom(merged));
@@ -62,10 +71,52 @@ export function useMediaArt() {
   return useContext(MediaArtContext);
 }
 
+/** Resolve library covers for a game name, including aliases / pack names. */
+export function libraryCoversForGame(covers = {}, game = "") {
+  const raw = String(game || "").trim();
+  if (!raw || !covers) return null;
+  const candidates = [
+    raw,
+    canonicalFilterGame(raw),
+    generatedPackName(raw),
+    generatedPackName(canonicalFilterGame(raw) || raw),
+  ].filter(Boolean);
+  for (const name of candidates) {
+    if (covers[name]) return covers[name];
+  }
+  const lower = new Set(candidates.map((name) => name.toLowerCase()));
+  const hit = Object.keys(covers).find((key) => lower.has(key.toLowerCase()));
+  return hit ? covers[hit] : null;
+}
+
+export function libraryImageForGame(covers = {}, game = "", { prefer = "banner" } = {}) {
+  const pack = libraryCoversForGame(covers, game);
+  if (!pack) return "";
+  if (prefer === "avatar") {
+    return pack.avatar || pack.poster || pack.background || pack.event || pack.flyer || "";
+  }
+  return pack.poster || pack.background || pack.avatar || pack.event || pack.flyer || "";
+}
+
 export function useGameBanner(game, fallback) {
   const { covers } = useMediaArt();
-  const live = covers?.[game]?.background || covers?.[game]?.poster || covers?.[game]?.flyer;
+  const live = libraryImageForGame(covers, game, { prefer: "banner" });
   return live || fallback;
+}
+
+function isLibraryMediaUrl(url = "") {
+  return /\/media\/|firebasestorage\.googleapis\.com|googleapis\.com\/.*\/o\//i.test(String(url || ""));
+}
+
+/** Blog / card art: prefer that game's library avatar, then poster / background. */
+export function useGameLibraryAvatar(game, override) {
+  const { covers } = useMediaArt();
+  return useMemo(() => {
+    const library = libraryImageForGame(covers, game, { prefer: "avatar" });
+    // Staff-picked library URLs win; generic Unsplash / remote covers yield to the game pack.
+    if (override && isLibraryMediaUrl(override)) return override;
+    return library || override || "";
+  }, [covers, game, override]);
 }
 
 export function useCollectionAssets(collectionId) {

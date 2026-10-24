@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bookmark, BookmarkCheck } from "lucide-react";
-import { VAULT_SLIDES, flyerForEvent } from "../../data/platformShowcase";
-import { publicScopeKicker } from "../../data/eventScope";
+import { VAULT_SLIDES } from "../../data/platformShowcase";
 import { canonicalFilterGame, gameMatchesFilter } from "../../data/gameCatalog";
 import { sortVaultCatalog } from "../../data/floatingWindows";
 import LoadMoreBar, { usePagedVisible } from "../shared/LoadMoreBar";
 import StickyFilterBar from "../shared/StickyFilterBar";
+import TournamentWindowCard from "./TournamentWindowCard";
 
 const LIBRARY_PAGE = 9;
 
@@ -15,7 +15,7 @@ function PagedSlideGrid({ items, bookmarkSet, onToggleBookmark }) {
   const shown = items.slice(0, page.visible);
   return (
     <>
-      <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="mb-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {shown.map((slide) => (
           <SlideCard
             key={slide.slug || slide.id}
@@ -38,62 +38,27 @@ function PagedSlideGrid({ items, bookmarkSet, onToggleBookmark }) {
   );
 }
 
-function previewMeta(slide) {
-  const edition = (slide.editions || [])[0];
-  const champion =
-    edition?.champion
-    || edition?.payouts?.[0]?.team
-    || edition?.payouts?.[0]?.player
-    || slide.winners
-    || "";
-  const year = edition?.year || edition?.season || slide.season || "";
-  const event = edition?.event || slide.season || slide.summary || "";
-  return {
-    kicker: [year, publicScopeKicker(slide) || slide.eventScope, slide.game].filter(Boolean).join(" · "),
-    title: slide.title || slide.game || "Vault",
-    detail: [
-      event && event !== slide.title ? event : null,
-      champion && `Champion ${champion}`,
-      slide.peakPrizePool && `Peak ${slide.peakPrizePool}`,
-      edition?.prizePool,
-    ]
-      .filter(Boolean)
-      .join(" · "),
-  };
-}
-
 function SlideCard({ slide, bookmarked, onToggleBookmark }) {
-  const meta = previewMeta(slide);
-  const art = flyerForEvent(slide);
   return (
-    <article className="relative flex flex-col border border-white/10 bg-white/[0.03] transition hover:border-neon/50 hover:bg-white/[0.05]">
-      <Link to={`/vault/${slide.slug}`} className="flex flex-1 flex-col p-4 text-inherit no-underline">
-        {art && (
-          <div className="mb-3 aspect-[16/7] overflow-hidden border border-white/5 bg-black/40">
-            <img src={art} alt="" className="h-full w-full object-cover opacity-80" />
-          </div>
-        )}
-        <p className="font-mono text-[10px] uppercase tracking-widest text-neon">
-          {meta.kicker}
-        </p>
-        <h3 className="mt-1 font-['Bebas_Neue',sans-serif] text-2xl leading-tight text-white md:text-3xl">
-          {meta.title}
-        </h3>
-        {meta.detail && (
-          <p className="mt-2 line-clamp-2 text-sm text-slate-400">{meta.detail}</p>
-        )}
-      </Link>
-      {onToggleBookmark && (
-        <button
-          type="button"
-          aria-label={bookmarked ? "Remove bookmark" : "Bookmark"}
-          onClick={() => onToggleBookmark(slide.slug)}
-          className="absolute right-2 top-2 rounded-full border border-white/15 bg-black/70 p-1.5 text-neon"
-        >
-          {bookmarked ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
-        </button>
-      )}
-    </article>
+    <TournamentWindowCard
+      slide={slide}
+      bookmark={
+        onToggleBookmark ? (
+          <button
+            type="button"
+            aria-label={bookmarked ? "Remove bookmark" : "Bookmark"}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggleBookmark(slide.slug);
+            }}
+            className="rounded-full border border-white/15 bg-black/70 p-1.5 text-neon"
+          >
+            {bookmarked ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
+          </button>
+        ) : null
+      }
+    />
   );
 }
 

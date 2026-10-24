@@ -1,5 +1,11 @@
 import { Newspaper } from "lucide-react";
 import { SHOWCASE_BLOGS, bannerForGame } from "../../data/platformShowcase";
+import { useGameLibraryAvatar } from "../../hooks/useMediaLibrary";
+
+function ShowcaseCover({ game, coverUrl }) {
+  const library = useGameLibraryAvatar(game, coverUrl || "");
+  return <img src={library || coverUrl || bannerForGame(game)} alt="" className="h-24 w-24 shrink-0 object-cover" />;
+}
 
 export default function CommunityBlogShowcase({ posts = [], onBrowseAll }) {
   const live = posts
@@ -11,7 +17,7 @@ export default function CommunityBlogShowcase({ posts = [], onBrowseAll }) {
       game: post.game,
       kicker: "Community",
       excerpt: post.content,
-      cover: bannerForGame(post.game),
+      cover: post.coverUrl || "",
     }));
   const cards = live.length ? live : SHOWCASE_BLOGS;
 
@@ -27,7 +33,7 @@ export default function CommunityBlogShowcase({ posts = [], onBrowseAll }) {
       <div className="grid gap-3">
         {cards.map((post) => (
           <article key={post.id} className="flex gap-3 overflow-hidden rounded-2xl border border-white/10">
-            <img src={post.cover} alt="" className="h-24 w-24 shrink-0 object-cover" />
+            <ShowcaseCover game={post.game} coverUrl={post.cover} />
             <div className="min-w-0 py-2 pr-3">
               <p className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-slate-400">
                 <Newspaper size={10} /> {post.kicker} · {post.game}

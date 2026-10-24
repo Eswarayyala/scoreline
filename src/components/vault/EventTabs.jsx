@@ -13,6 +13,7 @@ import {
 import { flyerForEvent } from "../../data/platformShowcase";
 import { dossierPath } from "../../data/competitorIndex";
 import ShareEventCard from "./ShareEventCard";
+import TournamentWindowCard from "./TournamentWindowCard";
 
 const COMPARE_MAX = 4;
 const COMPARE_MIN = 2;
@@ -563,7 +564,7 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
           Tap Add on 2–{COMPARE_MAX} events, then Compare at the bottom
         </p>
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {visibleIndexes.map((index) => {
           const edition = ordered[index];
           const key = eventKey(edition, index);
@@ -571,58 +572,45 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
           const atMax = picked.length >= COMPARE_MAX && !selected;
           const champion =
             edition.champion || edition.payouts?.[0]?.team || edition.payouts?.[0]?.player || "";
+          const slide = {
+            ...edition,
+            title: edition.event || game || "Event",
+            game: edition.game || game,
+            eventStatus: champion || (edition.payouts || []).length ? "completed" : "upcoming",
+            season: edition.year || edition.season,
+            kicker: [edition.year || edition.season, edition.eventScope].filter(Boolean).join(" · "),
+            teamCount: edition.totalTeams,
+            poster: eventPoster(edition, fallbackPoster, game),
+            editions: [edition],
+          };
           return (
-            <article
-              key={key}
-              className={`flex flex-col border bg-white/[0.03] transition ${
-                selected ? "border-neon/60" : "border-white/10 hover:border-neon/50 hover:bg-white/[0.05]"
-              }`}
-            >
-              <button
-                type="button"
-                onClick={() => openEvent(index)}
-                className="flex flex-1 flex-col p-4 text-left"
-              >
-                {eventPoster(edition, fallbackPoster, game) && (
-                  <div className="mb-3 aspect-[16/7] overflow-hidden border border-white/5 bg-black/40">
-                    <img
-                      src={eventPoster(edition, fallbackPoster, game)}
-                      alt=""
-                      className="h-full w-full object-cover opacity-85"
-                    />
-                  </div>
+            <div key={key} className={selected ? "ring-1 ring-neon/60 rounded-2xl" : undefined}>
+              <TournamentWindowCard
+                slide={slide}
+                compact
+                to="#"
+                onOpen={() => openEvent(index)}
+                bookmark={(
+                  <button
+                    type="button"
+                    disabled={atMax}
+                    aria-label={selected ? "Remove from compare list" : "Add to compare list"}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (selected) removeFromCompare(key);
+                      else addToCompare(index);
+                    }}
+                    className={`inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-black/70 px-2 py-1 font-mono text-[10px] uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-40 ${
+                      selected ? "text-neon" : "text-slate-300"
+                    }`}
+                  >
+                    {selected ? <CheckSquare size={11} /> : <Square size={11} />}
+                    {selected ? "Remove" : atMax ? "Full" : "Add"}
+                  </button>
                 )}
-                <p className="font-mono text-[10px] uppercase tracking-widest text-neon">
-                  {[edition.year || edition.season, edition.eventScope].filter(Boolean).join(" · ")}
-                </p>
-                <h3 className="mt-1 font-display text-2xl leading-tight text-white md:text-3xl">
-                  {edition.event || game || "Event"}
-                </h3>
-                <p className="mt-2 line-clamp-2 text-sm text-slate-400">
-                  {[
-                    champion && `Champion ${champion}`,
-                    edition.prizePool,
-                    edition.totalTeams && `${edition.totalTeams} teams`,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-              </button>
-              <div className="flex items-center justify-between gap-2 border-t border-white/10 px-4 py-2">
-                <button
-                  type="button"
-                  disabled={atMax}
-                  aria-label={selected ? "Remove from compare list" : "Add to compare list"}
-                  onClick={() => (selected ? removeFromCompare(key) : addToCompare(index))}
-                  className={`inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-40 ${
-                    selected ? "text-neon" : "text-slate-500 hover:text-slate-300"
-                  }`}
-                >
-                  {selected ? <CheckSquare size={11} /> : <Square size={11} />}
-                  {selected ? "Remove" : atMax ? "List full" : "Add"}
-                </button>
-              </div>
-            </article>
+              />
+            </div>
           );
         })}
       </div>

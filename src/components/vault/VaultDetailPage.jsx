@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Bookmark, BookmarkCheck, ExternalLink, Trophy } from "lucide-react";
 import { bannerForGame, flyerForEvent, VAULT_SLIDES } from "../../data/platformShowcase";
@@ -18,6 +18,7 @@ export default function VaultDetailPage({
   bookmarked = false,
   onToggleBookmark,
 }) {
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const compareFocused = Boolean(searchParams.get("compare"));
   const eventFocused = Boolean(searchParams.get("event") || compareFocused);
@@ -49,7 +50,7 @@ export default function VaultDetailPage({
   );
   const gameBackground = useGameBanner(slide?.game, bannerForGame(slide?.game));
   const defaultPoster = useMemo(
-    () => slide?.poster || flyerForEvent(slide || {}) || gameBackground || "",
+    () => slide?.poster || gameBackground || flyerForEvent(slide || {}) || "",
     [slide, gameBackground],
   );
   const [activeFlyer, setActiveFlyer] = useState(defaultPoster);
@@ -72,13 +73,10 @@ export default function VaultDetailPage({
 
   return (
     <article className="mx-auto max-w-5xl px-5 pb-20 pt-6">
-      <div className="sticky top-0 z-40 mb-5 space-y-2 border-b border-white/10 bg-slate-950/95 py-3 backdrop-blur-md">
+      <div className="mb-5 space-y-2 border-b border-white/10 py-3">
         <div className="flex flex-wrap items-center gap-4">
           <Link to="/vault" className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neon">
             <ArrowLeft size={14} /> The Vault
-          </Link>
-          <Link to="/" className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neon">
-            Home
           </Link>
           {(slide.research || slide.surface === "research" || slide.surface === "ewc-window") && (
             <Link to="/vault/ewc" className="font-mono text-xs uppercase tracking-widest text-neon">
@@ -115,6 +113,34 @@ export default function VaultDetailPage({
           </button>
         )}
       </div>
+      <Link
+        to="/"
+        aria-label="Back to Home"
+        style={{
+          position: "fixed",
+          left: 16,
+          bottom: 20,
+          zIndex: 70,
+          display: "inline-flex",
+          minHeight: 40,
+          alignItems: "center",
+          gap: 6,
+          padding: "10px 14px",
+          color: "var(--page-text, #edf1f4)",
+          background: "rgba(2, 6, 23, 0.96)",
+          border: "1px solid rgba(255,255,255,0.18)",
+          boxShadow: "0 8px 28px rgba(0,0,0,0.45)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          fontFamily: "ui-monospace, monospace",
+          fontSize: 11,
+          letterSpacing: "0.16em",
+          textTransform: "uppercase",
+          textDecoration: "none",
+        }}
+      >
+        ← Home
+      </Link>
 
       {compareFocused && !isChampionship && !!slide.editions?.length ? (
         <EventTabs
@@ -135,8 +161,11 @@ export default function VaultDetailPage({
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
             <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-neon">
-              {[publicScopeKicker(slide), isChampionship ? "Championship" : slide.game].filter(Boolean).join(" · ")}
+              {[publicScopeKicker(slide), isChampionship ? "Championship" : null].filter(Boolean).join(" · ") || "Vault"}
             </p>
+            {!isChampionship && slide.game ? (
+              <p className="mt-1 font-display text-4xl leading-none tracking-wide text-neon md:text-5xl">{slide.game}</p>
+            ) : null}
             <h1 className="font-display text-5xl text-white md:text-7xl">{slide.title}</h1>
             <p className="mt-1 text-slate-300">{slide.season}</p>
           </div>
@@ -150,6 +179,53 @@ export default function VaultDetailPage({
               />
             ) : (
               <p className="whitespace-pre-wrap text-base leading-7 text-slate-200">{slide.summary}</p>
+            )}
+
+            {!!slide.relatedBlogs?.length && !slide.blog && (
+              <section className="mt-8 space-y-6 border-t border-white/10 pt-6">
+                <div>
+                  <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-neon">From the blog</p>
+                  <h2 className="font-display text-3xl text-white">
+                    {slide.relatedBlogs.length === 1 ? "Latest story" : `${slide.relatedBlogs.length} community stories`}
+                  </h2>
+                </div>
+                {slide.relatedBlogs.map((post) => (
+                  <article key={post.id} className="space-y-2 border-b border-white/10 pb-6 last:border-b-0 last:pb-0">
+                    <h3 className="font-display text-2xl text-white">{post.title}</h3>
+                    <ExpandableBlogBody
+                      text={post.content}
+                      style={{ color: "inherit", fontSize: "0.95rem", lineHeight: 1.7 }}
+                    />
+                    {(post.authorName || post.analysisType) && (
+                      <p className="text-sm text-slate-400">
+                        {[post.authorName && `By ${post.authorName}`, post.analysisType && `${analysisTypeLabel(post.analysisType)} analysis`, post.analysisSubject]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-3 text-sm">
+                      {post.youtubeUrl && (
+                        <a href={post.youtubeUrl} target="_blank" rel="noreferrer" className="text-neon">
+                          YouTube
+                        </a>
+                      )}
+                      {post.docsUrl && (
+                        <a href={post.docsUrl} target="_blank" rel="noreferrer" className="text-neon">
+                          Docs
+                        </a>
+                      )}
+                      {post.source && (
+                        <a href={post.source} target="_blank" rel="noreferrer" className="text-neon">
+                          Source
+                        </a>
+                      )}
+                      <Link to="/blog" state={{ background: location }} className="text-neon">
+                        Open blog
+                      </Link>
+                    </div>
+                  </article>
+                ))}
+              </section>
             )}
 
             {!!slide.championship?.games?.length && (

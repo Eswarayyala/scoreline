@@ -76,6 +76,10 @@ const GAME_ALIASES = {
   "mobile legends": "Mobile Legends: Bang Bang",
   "mlbb": "Mobile Legends: Bang Bang",
   "clash of clans": "Clash of Clans",
+  "counter-strike 2": "CS2",
+  "counter-strike": "CS2",
+  "cs:go": "CS2",
+  "csgo": "CS2",
 };
 
 export function isPubgFamily(game = "") {

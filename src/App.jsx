@@ -31,6 +31,7 @@ import SectionBackHome from "./components/layout/SectionBackHome";
 import TournamentOpsRail from "./components/layout/TournamentOpsRail";
 import VaultDetailPage from "./components/vault/VaultDetailPage";
 import VaultLibraryPage from "./components/vault/VaultLibraryPage";
+import TournamentWindowCard from "./components/vault/TournamentWindowCard";
 import CompetitorDossierPage from "./components/vault/CompetitorDossierPage";
 import CompetitorDirectoryPage from "./components/vault/CompetitorDirectoryPage";
 import EwcDirectoryPage from "./components/vault/EwcDirectoryPage";
@@ -59,6 +60,8 @@ import {
   scrimAccessLabel,
 } from "./data/scrimAccess";
 import { useGameBanner, useMediaArt } from "./hooks/useMediaLibrary";
+import BlogGameCover from "./components/blog/BlogGameCover";
+import BlogOverlay from "./components/blog/BlogOverlay";
 import CollectionPicker from "./components/cms/CollectionPicker";
 import AvatarRosterPicker from "./components/cms/AvatarRosterPicker";
 import MediaLibraryDesk from "./components/cms/MediaLibraryDesk";
@@ -2267,30 +2270,59 @@ function blogMatchKey(game = "") {
   return canonical.replace(/\s*\([^)]*\)\s*/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function latestBlogByGame(posts = []) {
+const RELATED_BLOGS_PER_GAME = 3;
+
+function blogsByGame(posts = [], limit = RELATED_BLOGS_PER_GAME) {
   const byGame = new Map();
-  posts
-    .filter((post) => post.status === "published" && post.game)
+  [...posts]
+    .filter((post) => post.status === "published" && post.game && post.content)
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
     .forEach((post) => {
       const key = blogMatchKey(post.game);
       if (!key) return;
-      const prev = byGame.get(key);
-      if (!prev || (post.createdAt || 0) > (prev.createdAt || 0)) byGame.set(key, post);
+      const list = byGame.get(key) || [];
+      if (list.length >= limit) return;
+      list.push(post);
+      byGame.set(key, list);
     });
   return byGame;
 }
 
+function relatedBlogCard(post) {
+  return {
+    id: post.id,
+    title: post.title || "Untitled",
+    content: post.content || "",
+    summary: excerptWords(post.content, { min: 30, max: 50 }),
+    authorName: post.authorName || "",
+    analysisType: post.analysisType || "",
+    analysisSubject: post.analysisSubject || "",
+    docsUrl: post.docsUrl || "",
+    source: post.source || "",
+    youtubeUrl: post.youtubeUrl || "",
+    createdAt: post.createdAt || 0,
+  };
+}
+
 function applyBlogExcerptsToSlides(slides = [], posts = []) {
-  const byGame = latestBlogByGame(posts);
+  const byGame = blogsByGame(posts, RELATED_BLOGS_PER_GAME);
   if (!byGame.size) return slides;
   return slides.map((slide) => {
     if (slide.blog) return slide;
     const key = blogMatchKey(slide.game);
-    const post = key ? byGame.get(key) : null;
-    if (!post?.content) return slide;
-    const summary = excerptWords(post.content, { min: 30, max: 50 });
+    const related = key ? byGame.get(key) : null;
+    if (!related?.length) return slide;
+    const primary = related[0];
+    const summary = excerptWords(primary.content, { min: 30, max: 50 });
     if (!summary) return slide;
-    return { ...slide, summary, blogExcerptId: post.id };
+    return {
+      ...slide,
+      summary,
+      relatedBlogs: related.map(relatedBlogCard),
+      blogExcerptId: primary.id,
+      docsUrl: slide.docsUrl || primary.docsUrl || "",
+      source: slide.source || primary.source || "",
+    };
   });
 }
 
@@ -2309,7 +2341,7 @@ function slidesFromBlogs(posts = []) {
       source: post.source,
       eventScope: post.eventScope,
       kicker: [analysisTypeLabel(post.analysisType), publicScopeKicker(post) || "Blog"].filter(Boolean).join(" · "),
-      poster: post.coverUrl || bannerForGame(post.game),
+      poster: post.coverUrl || "",
       analysisType: post.analysisType || "event",
       analysisSubject: post.analysisSubject || "",
       youtubeUrl: post.youtubeUrl || "",
@@ -2806,7 +2838,7 @@ function blogLinkError(source, youtubeUrl, docsUrl) {
   return "";
 }
 
-function BlogPage({ posts, user, isModerator, blogPrivateById = {}, onSubmit, onReview, onEdit, onDelete, onSignIn, embedded = false, manageInDrawer = false }) {
+function BlogPage({ posts, user, isModerator, blogPrivateById = {}, onSubmit, onReview, onEdit, onDelete, onSignIn, embedded = false, manageInDrawer = false, overlay = false }) {
   const [title, setTitle] = useState("");
   const [game, setGame] = useState("");
   const [eventScope, setEventScope] = useState("random");
@@ -2864,13 +2896,13 @@ function BlogPage({ posts, user, isModerator, blogPrivateById = {}, onSubmit, on
       <Field label="Story or tournament update"><textarea value={content} maxLength={12000} onChange={(e) => setContent(e.target.value)} rows={6} style={{ ...inputStyle, resize: "vertical" }} /></Field>
       {game.trim() && (
         <Field label="Cover from library">
-          {coverUrl ? <img src={coverUrl} alt="" style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 10, marginBottom: 8 }} /> : null}
+          <BlogGameCover game={game.trim()} coverUrl={coverUrl} height={120} style={{ marginTop: 0, marginBottom: 8 }} />
           <CollectionPicker
             game={game.trim()}
-            kinds={["poster", "event", "background"]}
+            kinds={["avatar", "poster", "background", "event"]}
             value={coverUrl}
             onSelect={setCoverUrl}
-            heading="Poster / event / background packs"
+            heading="Avatar / poster / background packs"
           />
         </Field>
       )}
@@ -2891,8 +2923,9 @@ function BlogPage({ posts, user, isModerator, blogPrivateById = {}, onSubmit, on
     </section>
   );
   return (
-    <div style={{ paddingTop: embedded ? 16 : 32, paddingBottom: manageInDrawer ? 88 : 0 }}>
-      {!embedded && (<><SectionBackHome /><Eyebrow>Community stories</Eyebrow><h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42 }}>Esports blog</h1><p style={{ color: "var(--text-muted)" }}>Read community stories, tournament recaps, and esports updates.</p></>)}
+    <div style={{ paddingTop: overlay || embedded ? 0 : 32, paddingBottom: manageInDrawer ? 88 : 0 }}>
+      {!embedded && !overlay && (<><SectionBackHome /><Eyebrow>Community stories</Eyebrow><h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42 }}>Esports blog</h1><p style={{ color: "var(--text-muted)" }}>Read community stories, tournament recaps, and esports updates.</p></>)}
+      {overlay && <p style={{ color: "var(--text-muted)", margin: "0 0 8px", fontSize: 14 }}>Read community stories, tournament recaps, and esports updates.</p>}
       {embedded && <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, margin: "0 0 12px" }}>Community blog</h2>}
       {!manageInDrawer && compose}
       <div style={{ display: "grid", gap: 12, marginTop: 20 }}>
@@ -2909,13 +2942,13 @@ function BlogPage({ posts, user, isModerator, blogPrivateById = {}, onSubmit, on
                 <Field label="Story"><textarea maxLength={12000} rows={6} value={draft.content} onChange={(e) => setDraft({ ...draft, content: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} /></Field>
                 {draft.game?.trim() && (
                   <Field label="Cover from library">
-                    {draft.coverUrl ? <img src={draft.coverUrl} alt="" style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 10, marginBottom: 8 }} /> : null}
+                    <BlogGameCover game={draft.game.trim()} coverUrl={draft.coverUrl} height={120} style={{ marginTop: 0, marginBottom: 8 }} />
                     <CollectionPicker
                       game={draft.game.trim()}
-                      kinds={["poster", "event", "background"]}
+                      kinds={["avatar", "poster", "background", "event"]}
                       value={draft.coverUrl || ""}
                       onSelect={(url) => setDraft({ ...draft, coverUrl: url })}
-                      heading="Poster / event / background packs"
+                      heading="Avatar / poster / background packs"
                     />
                   </Field>
                 )}
@@ -2926,9 +2959,7 @@ function BlogPage({ posts, user, isModerator, blogPrivateById = {}, onSubmit, on
               </div>
             ) : (
               <>
-                {(post.coverUrl || bannerForGame(post.game)) && (
-                  <img src={post.coverUrl || bannerForGame(post.game)} alt="" style={{ width: "100%", height: 160, objectFit: "cover", borderRadius: 10, marginTop: 8 }} />
-                )}
+                <BlogGameCover game={post.game} coverUrl={post.coverUrl} />
                 <h2 style={{ fontFamily: "'Bebas Neue',sans-serif" }}>{post.title}</h2>
                 <ExpandableBlogBody text={post.content} />
                 <div style={{ marginTop: 8, fontSize: 12 }}>
@@ -2980,6 +3011,18 @@ export default function App() {
   const location = useLocation();
   const windowLocation = useWindowLocation();
   const routePath = windowLocation.pathname || location.pathname;
+  const blogOpen = routePath === "/blog";
+  const blogBackground = blogOpen
+    ? (windowLocation.state?.background || location.state?.background || { pathname: "/", search: "", hash: "", state: null, key: "blog-bg" })
+    : null;
+  const routesLocation = blogOpen ? blogBackground : windowLocation;
+  const closeBlogOverlay = () => {
+    if (windowLocation.state?.background || location.state?.background) {
+      navigate(-1);
+      return;
+    }
+    navigate("/", { replace: true });
+  };
   const [tournaments, setTournaments] = useState([]);
   const [selectedTeams, setSelectedTeams] = useState([]);
   const [selectedMatches, setSelectedMatches] = useState([]);
@@ -4620,49 +4663,58 @@ export default function App() {
 
         {!needsAuthChoice && !routePath.startsWith("/admin") && (
           <>
-            <Header
-              saving={saving}
-              user={user}
-              guestMode={guestMode}
-              onSignInClick={() => { setKnownAccounts(readKnownAccounts()); setAuthDialogOpen((open) => !open); }}
-              onSignOut={handleSignOut}
-              onSwitchAccount={handleSwitchAccount}
-              onEditProfile={() => setShowProfileModal(true)}
-              dashboardRole={dashboardRole}
-              playerTag={myProfile?.playerTag}
-              profile={myProfile}
-              friendsPanel={user ? (
-                <FriendDock
-                  placement="header"
-                  requests={friendRequests}
-                  currentUserId={user.uid}
-                  onOpenChat={(friend) => {
-                    setActiveChats((current) => {
-                      if (current.some((item) => item.uid === friend.uid)) return current;
-                      return [...current, friend].slice(-CHAT_POPUP_MAX);
-                    });
-                    setFocusedChatUid(friend.uid);
-                    setChatPopupOpen(true);
-                    document.querySelector("details[open]")?.removeAttribute("open");
-                  }}
-                  onOpenRequests={() => setShowFriendRequests(true)}
-                  presenceDb={realtimeDb}
-                  onFriendOnline={notifyFriendOnline}
-                  blockedUsers={blockedUsers}
-                  onRemoveFriend={removeFriend}
-                  onBlockFriend={blockFriend}
-                  onUnblockFriend={unblockFriend}
-                  mutedIds={mutedFriendSet}
-                  onToggleMute={toggleMuteFriend}
-                  onFriendRequest={(player) => requestFriend(player.uid, player.displayName)}
-                />
-              ) : null}
-              chatCount={activeChats.length}
-              onOpenChats={() => setChatPopupOpen(true)}
-            />
-            <PublicNav pathname={routePath} />
-            <div className={`mx-auto px-5 pb-24 ${routePath === "/" || routePath.startsWith("/vault") ? "max-w-6xl" : "max-w-5xl"}`}>
-              <Routes location={windowLocation}>
+            <div
+              style={{
+                position: "sticky",
+                top: 0,
+                zIndex: 55,
+                background: "var(--page-bg-solid, #020617)",
+              }}
+            >
+              <Header
+                saving={saving}
+                user={user}
+                guestMode={guestMode}
+                onSignInClick={() => { setKnownAccounts(readKnownAccounts()); setAuthDialogOpen((open) => !open); }}
+                onSignOut={handleSignOut}
+                onSwitchAccount={handleSwitchAccount}
+                onEditProfile={() => setShowProfileModal(true)}
+                dashboardRole={dashboardRole}
+                playerTag={myProfile?.playerTag}
+                profile={myProfile}
+                friendsPanel={user ? (
+                  <FriendDock
+                    placement="header"
+                    requests={friendRequests}
+                    currentUserId={user.uid}
+                    onOpenChat={(friend) => {
+                      setActiveChats((current) => {
+                        if (current.some((item) => item.uid === friend.uid)) return current;
+                        return [...current, friend].slice(-CHAT_POPUP_MAX);
+                      });
+                      setFocusedChatUid(friend.uid);
+                      setChatPopupOpen(true);
+                      document.querySelector("details[open]")?.removeAttribute("open");
+                    }}
+                    onOpenRequests={() => setShowFriendRequests(true)}
+                    presenceDb={realtimeDb}
+                    onFriendOnline={notifyFriendOnline}
+                    blockedUsers={blockedUsers}
+                    onRemoveFriend={removeFriend}
+                    onBlockFriend={blockFriend}
+                    onUnblockFriend={unblockFriend}
+                    mutedIds={mutedFriendSet}
+                    onToggleMute={toggleMuteFriend}
+                    onFriendRequest={(player) => requestFriend(player.uid, player.displayName)}
+                  />
+                ) : null}
+                chatCount={activeChats.length}
+                onOpenChats={() => setChatPopupOpen(true)}
+              />
+              <PublicNav pathname={routePath} />
+            </div>
+            <div className={`mx-auto px-5 pb-24 ${(routesLocation.pathname || "/") === "/" || String(routesLocation.pathname || "").startsWith("/vault") ? "max-w-6xl" : "max-w-5xl"}`}>
+              <Routes location={routesLocation}>
                 <Route path="/" element={(
                   <PlatformHome slides={homeSlides}>
                     <HubSections />
@@ -4776,7 +4828,7 @@ export default function App() {
                     <Button onClick={() => setAuthDialogOpen(true)}>Sign in to find players</Button>
                   </div>
                 )} />
-                <Route path="/blog" element={<BlogPage manageInDrawer posts={blogPosts} user={user} isModerator={isSiteStaff || isModerator} blogPrivateById={blogPrivateById} onSubmit={submitBlogPost} onReview={reviewBlogPost} onEdit={editBlogPost} onDelete={deleteBlogPost} onSignIn={() => setAuthDialogOpen(true)} />} />
+                <Route path="/blog" element={null} />
                 <Route path="*" element={
                   <div className="pt-10">
                     <h1 className="m-0 font-['Bebas_Neue',sans-serif] text-5xl">Page not found</h1>
@@ -4785,12 +4837,29 @@ export default function App() {
                       <Link to="/" className="font-mono text-xs uppercase tracking-wider text-neon">Home</Link>
                       <Link to="/find-players" className="font-mono text-xs uppercase tracking-wider text-neon">Find players</Link>
                       <Link to="/tournaments" className="font-mono text-xs uppercase tracking-wider text-neon">Scrims</Link>
-                      <Link to="/blog" className="font-mono text-xs uppercase tracking-wider text-neon">Community blog</Link>
+                      <Link to="/blog" state={{ background: routesLocation }} className="font-mono text-xs uppercase tracking-wider text-neon">Community blog</Link>
                     </div>
                   </div>
                 } />
               </Routes>
             </div>
+            {blogOpen && (
+              <BlogOverlay onClose={closeBlogOverlay}>
+                <BlogPage
+                  overlay
+                  manageInDrawer
+                  posts={blogPosts}
+                  user={user}
+                  isModerator={isSiteStaff || isModerator}
+                  blogPrivateById={blogPrivateById}
+                  onSubmit={submitBlogPost}
+                  onReview={reviewBlogPost}
+                  onEdit={editBlogPost}
+                  onDelete={deleteBlogPost}
+                  onSignIn={() => setAuthDialogOpen(true)}
+                />
+              </BlogOverlay>
+            )}
           </>
         )}
 
@@ -5094,77 +5163,26 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
             gap: 14,
           }}
         >
-          {visibleTournaments.map((t, i) => {
+          {visibleTournaments.map((t) => {
+            const slide = {
+              ...t,
+              title: t.name,
+              eventStatus: t.status || "upcoming",
+              kicker: `Hosted by ${t.adminDisplayName || (t.adminUserId === currentUserId ? currentUserName : "Scrim host")}`,
+              region: [t.region, t.rankBand].filter(Boolean).join(" · ") || t.region,
+              mode: isPublicScrim(t) ? "Public" : "Private",
+              teamCount: t.maxSlots || "",
+              startAt: t.startDate,
+              endAt: t.endDate,
+            };
             return (
-              <Link
+              <TournamentWindowCard
                 key={t.id}
+                slide={slide}
+                compact
                 to={`/tournaments/${t.id}`}
-                className="sl-card"
-                onClick={() => onOpen(t.id)}
-                style={{
-                  textAlign: "left",
-                  background: "var(--panel-bg)",
-                  border: "1px solid var(--border)",
-                  padding: "18px 18px 16px",
-                  cursor: "pointer",
-                  color: "inherit",
-                  textDecoration: "none",
-                  display: "block",
-                  animationDelay: `${i * 30}ms`,
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--accent-secondary)")}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
-                onFocus={(e) => (e.currentTarget.style.outline = "2px solid var(--accent-secondary)")}
-                onBlur={(e) => (e.currentTarget.style.outline = "none")}
-              >
-                <Eyebrow color="var(--text-dim)">
-                  Hosted by {t.adminDisplayName || (t.adminUserId === currentUserId ? currentUserName : "Scrim host")}
-                </Eyebrow>
-                <div className="aspect-video my-3 overflow-hidden border border-white/10">
-                  <img src={flyerForEvent(t)} alt="" className="h-full w-full object-cover" />
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 8px" }}>
-                  <GameIcon game={t.game} size={32} />
-                  <Eyebrow color="var(--text-muted)">{t.game || "Game TBD"}</Eyebrow>
-                </div>
-                <div
-                  style={{
-                    fontFamily: "'Bebas Neue', sans-serif",
-                    fontSize: 24,
-                    margin: "4px 0 10px",
-                    lineHeight: 1.1,
-                  }}
-                >
-                  {t.name}
-                </div>
-                <div style={{ display: "inline-block", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: isPublicScrim(t) ? "var(--accent-secondary)" : "var(--text-muted)", border: "1px solid var(--border)", padding: "3px 8px", marginBottom: 6 }}>
-                  {scrimAccessLabel(t)}
-                </div>
-                {(t.region || t.rankBand) && (
-                  <div style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 4 }}>
-                    {[t.region, t.rankBand].filter(Boolean).join(" · ")}
-                  </div>
-                )}
-                {t.isLegacyImport && (
-                  <div
-                    style={{
-                      fontFamily: "'JetBrains Mono', monospace",
-                      fontSize: 10,
-                      color: "var(--text-dim)",
-                      marginBottom: 6,
-                    }}
-                  >
-                    LEGACY IMPORT
-                  </div>
-                )}
-                <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-dim)" }}>
-                  {(t.status || "upcoming").toUpperCase()}
-                  {managesTournament(t, currentUserId) ? ` · ${isPublicScrim(t) ? "Public registration" : "Private · registration required"}${Number(t.maxSlots) > 0 ? ` · ${t.maxSlots} slots` : ""}` : ` · ${isPublicScrim(t) ? "Public" : "Private"}`}
-                </div>
-                <div style={{ marginTop: 6, fontSize: 12, color: "var(--text-dim)" }}>
-                  {fmtDate(t.startDate)} {t.endDate ? `– ${fmtDate(t.endDate)}` : ""}
-                </div>
-              </Link>
+                onOpen={() => onOpen(t.id)}
+              />
             );
           })}
         </div>
@@ -5756,27 +5774,34 @@ function TournamentDetail(props) {
 
   return (
     <div style={{ paddingTop: 24 }}>
-      <div className="sticky top-0 z-40 mb-4 border-b border-white/10 bg-slate-950/95 py-2 backdrop-blur-md">
-        <button
-          type="button"
-          onClick={onBack}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            alignSelf: "flex-start",
-            textAlign: "left",
-            background: "var(--panel-bg)",
-            border: "1px solid var(--border)",
-            color: "var(--text-muted)",
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: 12,
-            cursor: "pointer",
-            padding: "9px 12px",
-          }}
-        >
-          ← Back to all scrims
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={onBack}
+        aria-label="Back to all scrims"
+        style={{
+          position: "fixed",
+          left: 16,
+          bottom: 20,
+          zIndex: 70,
+          display: "inline-flex",
+          minHeight: 40,
+          alignItems: "center",
+          padding: "10px 14px",
+          cursor: "pointer",
+          color: "var(--page-text, #edf1f4)",
+          background: "rgba(2, 6, 23, 0.96)",
+          border: "1px solid rgba(255,255,255,0.18)",
+          boxShadow: "0 8px 28px rgba(0,0,0,0.45)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: 11,
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+        }}
+      >
+        ← Back to all scrims
+      </button>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
         <div>

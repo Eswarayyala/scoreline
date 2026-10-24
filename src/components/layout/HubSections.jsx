@@ -11,6 +11,11 @@ export default function HubSections() {
   const location = useLocation();
 
   const openSection = (to) => {
+    if (to === "/blog") {
+      if (location.pathname === "/blog") return;
+      navigate("/blog", { state: { background: location, fromHome: location.pathname === "/" } });
+      return;
+    }
     // Keep Home under this page in history so Back returns to Home, not Vault.
     if (location.pathname !== "/") {
       navigate("/", { replace: true });

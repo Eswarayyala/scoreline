@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { findGameVault } from "../../data/eventScope";
 import LoadMoreBar, { usePagedVisible } from "../shared/LoadMoreBar";
 import { EventBody } from "./EventTabs";
+import TournamentWindowCard from "./TournamentWindowCard";
 
 function editionKey(edition, index) {
   return `${edition.game || ""}-${edition.year || ""}-${edition.event || ""}-${index}`;
@@ -154,50 +155,38 @@ export default function ChampionshipGameTabs({
       <p className="mt-1 text-sm text-slate-500">
         {editions.length} titles · showing {Math.min(page.visible, editions.length)}. Use More, All, or Less when the list is long.
       </p>
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {visibleIndexes.map((index) => {
           const edition = editions[index];
-          const champion = championOf(edition);
           const vaultSlug = vaultSlugFor(edition, slides);
           const allEventsHref = vaultSlug ? `/vault/${vaultSlug}` : "";
+          const slide = {
+            ...edition,
+            title: edition.event || edition.game,
+            game: edition.game,
+            eventStatus: championOf(edition) || (edition.payouts || []).length ? "completed" : "upcoming",
+            season: edition.year,
+            kicker: [edition.year, edition.eventScope || "ewc"].filter(Boolean).join(" · "),
+            poster: edition.poster || edition.posterUrl || edition.images?.[0],
+            editions: [edition],
+          };
           return (
-            <article
-              key={editionKey(edition, index)}
-              className="flex flex-col border border-white/10 bg-white/[0.03] transition hover:border-neon/50 hover:bg-white/[0.05]"
-            >
-              <button
-                type="button"
-                onClick={() => openDetails(index)}
-                className="flex flex-1 flex-col p-4 text-left"
-              >
-                {(edition.poster || edition.posterUrl || edition.images?.[0]) && (
-                  <div className="mb-3 aspect-[16/7] overflow-hidden border border-white/5 bg-black/40">
-                    <img
-                      src={edition.poster || edition.posterUrl || edition.images[0]}
-                      alt=""
-                      className="h-full w-full object-cover opacity-85"
-                    />
-                  </div>
-                )}
-                <p className="font-mono text-[10px] uppercase tracking-widest text-neon">
-                  {[edition.year, edition.eventScope || "ewc", "this championship"].filter(Boolean).join(" · ")}
-                </p>
-                <h3 className="mt-1 font-display text-2xl leading-tight text-white md:text-3xl">{edition.game}</h3>
-                <p className="mt-2 line-clamp-2 text-sm text-slate-400">
-                  {[edition.event, champion && `Champion ${champion}`, edition.prizePool].filter(Boolean).join(" · ")}
-                </p>
-              </button>
-              {allEventsHref && (
-                <div className="border-t border-white/10 px-4 py-2">
-                  <Link
-                    to={allEventsHref}
-                    className="font-mono text-[10px] uppercase tracking-widest text-neon no-underline hover:text-white"
-                  >
-                    All {edition.game} events →
-                  </Link>
-                </div>
-              )}
-            </article>
+            <div key={editionKey(edition, index)} className="flex flex-col gap-2">
+              <TournamentWindowCard
+                slide={slide}
+                compact
+                to={allEventsHref || "#"}
+                onOpen={() => openDetails(index)}
+              />
+              {allEventsHref ? (
+                <Link
+                  to={allEventsHref}
+                  className="font-mono text-[10px] uppercase tracking-widest text-neon no-underline hover:text-white"
+                >
+                  All {edition.game} events →
+                </Link>
+              ) : null}
+            </div>
           );
         })}
       </div>

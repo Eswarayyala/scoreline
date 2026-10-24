@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { linkifyHttpsText } from "../../data/blogAnalysis";
 
 const PREVIEW_LINES = 6;
@@ -11,6 +11,14 @@ function needsExpand(text) {
   return raw.length > PREVIEW_CHARS;
 }
 
+function previewText(text) {
+  const raw = String(text || "");
+  if (!needsExpand(raw)) return raw;
+  const byChars = raw.slice(0, PREVIEW_CHARS);
+  const limited = byChars.split(/\r?\n/).slice(0, PREVIEW_LINES).join("\n");
+  return `${limited.replace(/\s+$/, "")}…`;
+}
+
 /** Show ~5–6 lines of blog text, with More / Less to reveal the full post. */
 export default function ExpandableBlogBody({
   text,
@@ -20,53 +28,20 @@ export default function ExpandableBlogBody({
   lessLabel = "Less",
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [overflows, setOverflows] = useState(false);
-  const bodyRef = useRef(null);
   const raw = String(text || "");
-  const likelyLong = useMemo(() => needsExpand(raw), [raw]);
-  const canExpand = likelyLong || overflows;
-  const clamped = canExpand && !expanded;
-
-  useLayoutEffect(() => {
-    setExpanded(false);
-    setOverflows(false);
-  }, [raw]);
-
-  useLayoutEffect(() => {
-    if (expanded || !bodyRef.current) return undefined;
-    const node = bodyRef.current;
-    const measure = () => {
-      // Line-clamp can fail with pre-wrap / nested links; measure actual overflow.
-      const clipped = node.scrollHeight > node.clientHeight + 2;
-      setOverflows(clipped || likelyLong);
-    };
-    measure();
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
-    ro?.observe(node);
-    return () => ro?.disconnect();
-  }, [raw, expanded, likelyLong]);
+  const canExpand = useMemo(() => needsExpand(raw), [raw]);
+  const display = !canExpand || expanded ? raw : previewText(raw);
 
   return (
     <div className={className}>
       <div
-        ref={bodyRef}
         style={{
           color: "var(--text-muted)",
-          ...(clamped
-            ? {
-                display: "-webkit-box",
-                WebkitLineClamp: PREVIEW_LINES,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-                whiteSpace: "normal",
-              }
-            : {
-                whiteSpace: "pre-wrap",
-              }),
+          whiteSpace: "pre-wrap",
           ...style,
         }}
       >
-        {linkifyHttpsText(raw)}
+        {linkifyHttpsText(display)}
       </div>
       {canExpand && (
         <button
