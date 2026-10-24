@@ -37,13 +37,16 @@ export function allocationUnits(registrations = [], { roomId = "" } = {}) {
   inRoom.forEach((row) => {
     const captain = row.playerId;
     if (!captain || used.has(captain)) return;
-    if (row.entryType === "squad" && Array.isArray(row.squadMemberIds) && row.squadMemberIds.length > 1) {
+    if ((row.entryType === "squad" || row.entryType === "roster") && Array.isArray(row.squadMemberIds) && row.squadMemberIds.length > 1) {
       const members = [...new Set(row.squadMemberIds.map(String).filter(Boolean))];
       members.forEach((id) => used.add(id));
+      const labelBase = row.entryType === "roster" && row.rosterName
+        ? row.rosterName
+        : (row.displayName || "Squad");
       units.push({
         id: `squad:${captain}`,
         kind: "squad",
-        label: `${row.displayName || "Squad"} (+${Math.max(0, members.length - 1)})`,
+        label: `${labelBase} (+${Math.max(0, members.length - 1)})`,
         playerIds: members,
       });
       return;

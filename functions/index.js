@@ -152,6 +152,26 @@ export const syncMyFriendPresenceLinks = onCall({ maxInstances: 3 }, async (requ
   return { synced: friendUids.length };
 });
 
+/** When a host publishes a flyer, stamp a lightweight fan-out marker for client push/digest. */
+export const onScrimAnnouncementWritten = onDocumentWritten("scrimAnnouncements/{announcementId}", async (event) => {
+  const after = event.data?.after?.data();
+  if (!after || after.published !== true) return;
+  const before = event.data?.before?.data();
+  if (before?.published === true && before?.publishedAt === after.publishedAt) return;
+  const announcementId = event.params.announcementId;
+  await db.doc(`scrimAnnouncementMeta/${announcementId}`).set({
+    tournamentId: after.tournamentId || announcementId,
+    tournamentName: String(after.tournamentName || "").slice(0, 120),
+    game: String(after.game || "").slice(0, 60),
+    hostUid: String(after.hostUid || "").slice(0, 128),
+    hostName: String(after.hostName || "").slice(0, 40),
+    joinMode: String(after.joinMode || "open").slice(0, 20),
+    paid: after.paid === true,
+    publishedAt: Number(after.publishedAt) || Date.now(),
+    fanOutAt: Date.now(),
+  }, { merge: true });
+});
+
 export const setPlayerBan = onCall({ maxInstances: 3 }, async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Sign in to manage player access.");
   const actorUid = request.auth.uid;

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell } from "lucide-react";
 import { announcementMatchesViewer } from "../../data/scrimAlerts";
 
@@ -10,6 +10,7 @@ export default function ScrimBell({
   onOpenPrefs,
 }) {
   const [open, setOpen] = useState(false);
+  const seenPushIds = useRef(new Set());
   const matching = useMemo(
     () =>
       [...announcements]
@@ -19,6 +20,29 @@ export default function ScrimBell({
     [announcements, alerts],
   );
   const unread = matching.filter((item) => (item.publishedAt || 0) > (alerts?.lastSeenAt || 0));
+
+  useEffect(() => {
+    if (!alerts?.browserPushOptIn || typeof window === "undefined" || !("Notification" in window)) return;
+    if (Notification.permission !== "granted") return;
+    unread.forEach((item) => {
+      const id = item.tournamentId || item.id;
+      if (!id || seenPushIds.current.has(id)) return;
+      if ((item.publishedAt || 0) <= (alerts?.lastSeenAt || 0)) return;
+      seenPushIds.current.add(id);
+      try {
+        const note = new Notification(item.tournamentName || "New scrim flyer", {
+          body: [item.game, item.hostName].filter(Boolean).join(" · ") || "Open GrindInfo Scrims",
+          tag: `scrim-${id}`,
+        });
+        note.onclick = () => {
+          window.focus();
+          onOpenTournament?.(item.tournamentId);
+        };
+      } catch {
+        /* ignore notification failures */
+      }
+    });
+  }, [unread, alerts?.browserPushOptIn, alerts?.lastSeenAt, onOpenTournament]);
 
   return (
     <div className="relative">

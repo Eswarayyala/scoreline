@@ -9,8 +9,8 @@ function scoreRow(row, placementPoints = [10, 6, 4, 2, 1]) {
   return placePts + kills;
 }
 
-/** Host-side points table: placement + kills → auto total + sort. Local React state. */
-export default function DynamicPointsTable({ initialRows, placementPoints, readOnly = false }) {
+/** Host-side points table: placement + kills → auto total + sort. Persist via onSave. */
+export default function DynamicPointsTable({ initialRows, placementPoints, readOnly = false, onSave }) {
   const [rows, setRows] = useState(() =>
     (initialRows?.length ? initialRows : [EMPTY_ROW(), EMPTY_ROW(), EMPTY_ROW()]).map((row) => ({
       ...EMPTY_ROW(),
@@ -18,6 +18,8 @@ export default function DynamicPointsTable({ initialRows, placementPoints, readO
       id: row.id || EMPTY_ROW().id,
     })),
   );
+  const [saving, setSaving] = useState(false);
+  const [note, setNote] = useState("");
 
   const ranked = useMemo(
     () =>
@@ -31,6 +33,27 @@ export default function DynamicPointsTable({ initialRows, placementPoints, readO
     setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)));
   };
 
+  const persist = async () => {
+    if (!onSave) return;
+    setSaving(true);
+    setNote("");
+    try {
+      const payload = ranked.map((row) => ({
+        id: String(row.id || "").slice(0, 64),
+        team: String(row.team || "").slice(0, 40),
+        placement: String(row.placement || "1").slice(0, 4),
+        kills: String(row.kills || "0").slice(0, 4),
+        total: Number(row.total) || 0,
+      })).slice(0, 64);
+      await onSave(payload);
+      setNote("Standings saved");
+    } catch (issue) {
+      setNote(issue?.message || "Couldn't save standings");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <section className="mt-4 rounded-2xl border border-white/10 bg-slate-950/50 p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -39,15 +62,28 @@ export default function DynamicPointsTable({ initialRows, placementPoints, readO
           <h3 className="font-display text-2xl text-white">Match standings</h3>
         </div>
         {!readOnly && (
-          <button
-            type="button"
-            onClick={() => setRows((current) => [...current, EMPTY_ROW()])}
-            className="font-mono text-[11px] uppercase tracking-widest text-neon"
-          >
-            + Add row
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => setRows((current) => [...current, EMPTY_ROW()])}
+              className="font-mono text-[11px] uppercase tracking-widest text-neon"
+            >
+              + Add row
+            </button>
+            {onSave ? (
+              <button
+                type="button"
+                disabled={saving}
+                onClick={persist}
+                className="font-mono text-[11px] uppercase tracking-widest text-white disabled:opacity-40"
+              >
+                {saving ? "Saving…" : "Save standings"}
+              </button>
+            ) : null}
+          </div>
         )}
       </div>
+      {note ? <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-slate-400">{note}</p> : null}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[520px] text-left text-sm text-slate-300">
           <thead>

@@ -26,6 +26,34 @@ export default function ScrimAlertPrefs({
           Receive scrim flyer alerts
         </label>
 
+        <label className="mt-3 flex items-center gap-2 text-sm text-slate-200">
+          <input
+            type="checkbox"
+            checked={alerts.browserPushOptIn === true}
+            onChange={async (e) => {
+              const on = e.target.checked;
+              if (on && typeof window !== "undefined" && "Notification" in window) {
+                const permission = await Notification.requestPermission();
+                if (permission !== "granted") {
+                  onSave({ ...alerts, browserPushOptIn: false });
+                  return;
+                }
+              }
+              onSave({ ...alerts, browserPushOptIn: on });
+            }}
+          />
+          Browser push when a matching flyer publishes
+        </label>
+
+        <label className="mt-3 flex items-center gap-2 text-sm text-slate-200">
+          <input
+            type="checkbox"
+            checked={alerts.digestOptIn === true}
+            onChange={(e) => onSave({ ...alerts, digestOptIn: e.target.checked })}
+          />
+          Weekly digest opt-in (email when sender is configured)
+        </label>
+
         <label className="mt-3 grid gap-1 font-mono text-[10px] uppercase tracking-widest text-slate-500">
           Which flyers
           <select

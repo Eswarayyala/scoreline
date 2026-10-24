@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import TournamentWindowCard from "../vault/TournamentWindowCard";
 import SectionBackHome from "../layout/SectionBackHome";
 import { isPublicScrim, scrimFlyerBadges, scrimAccessLabel } from "../../data/scrimAccess";
+import { rollupHostAnalytics, formatHostAnalyticsLine } from "../../data/hostAnalytics";
 
 function isPastScrim(item) {
   return item?.archived === true || item?.status === "completed" || item?.status === "closed";
@@ -22,6 +23,7 @@ export default function HostProfilePage({
   const hosted = tournaments.filter((item) => item.adminUserId === hostUid);
   const live = hosted.filter((item) => !isPastScrim(item));
   const past = hosted.filter((item) => isPastScrim(item)).slice(0, 24);
+  const analytics = rollupHostAnalytics(tournaments, hostUid);
   const followerHint = official ? "Official host" : "Community host";
 
   return (
@@ -32,7 +34,7 @@ export default function HostProfilePage({
           <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">{followerHint}</p>
           <h1 className="m-0 font-['Bebas_Neue',sans-serif] text-5xl tracking-wide text-white md:text-6xl">{name}</h1>
           <p className="mt-2 max-w-xl text-sm text-slate-400">
-            {live.length} live / upcoming · {past.length} past on GrindInfo
+            {formatHostAnalyticsLine(analytics)}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -57,6 +59,20 @@ export default function HostProfilePage({
           </Link>
         </div>
       </div>
+
+      <section className="mb-8 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          ["Live", analytics.live],
+          ["Completed", analytics.completed],
+          ["Published flyers", analytics.published],
+          ["Results rate", `${analytics.resultsRate}%`],
+        ].map(([label, value]) => (
+          <div key={label} className="rounded-lg border border-white/10 px-3 py-3">
+            <p className="m-0 font-mono text-[10px] uppercase tracking-widest text-slate-500">{label}</p>
+            <p className="m-0 mt-1 font-display text-3xl text-white">{value}</p>
+          </div>
+        ))}
+      </section>
 
       <section className="mb-10">
         <h2 className="m-0 font-display text-2xl text-white">Live / upcoming</h2>
@@ -107,6 +123,8 @@ export default function HostProfilePage({
                   <span className="block font-display text-xl text-white">{t.name}</span>
                   <span className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
                     {t.game} · {scrimAccessLabel(t)} · {t.status || "closed"}
+                    {t.results?.winner ? ` · Winner ${t.results.winner}` : ""}
+                    {Array.isArray(t.standings) && t.standings.length ? ` · ${t.standings.length} standings` : ""}
                   </span>
                 </span>
                 <span className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Open</span>

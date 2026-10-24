@@ -1,3 +1,5 @@
+import { isPlayerCheckedIn, scrimRequiresCheckIn } from "./scrimAttendance";
+
 /** Public scrims use free join (`joinMode: "open"`). */
 export function isPublicScrim(scrim) {
   return String(scrim?.joinMode || "") === "open";
@@ -44,12 +46,17 @@ export function canSeeScrimInList(scrim, { uid, invites = [] } = {}) {
   );
 }
 
-/** Room codes: public → signed-in; invite/private → approved joiners (and hosts). */
+/** Room codes: public → signed-in; invite/private → approved joiners (and hosts). Check-in may gate unlock. */
 export function canViewScrimRoom(scrim, { uid, registrations = [], isAdmin = false } = {}) {
   if (isAdmin) return true;
   if (!uid) return false;
-  if (isPublicScrim(scrim)) return true;
-  return isApprovedRegistrant(registrations, uid);
+  if (isPublicScrim(scrim)) {
+    if (!scrimRequiresCheckIn(scrim)) return true;
+    return isPlayerCheckedIn(registrations, uid);
+  }
+  if (!isApprovedRegistrant(registrations, uid)) return false;
+  if (scrimRequiresCheckIn(scrim)) return isPlayerCheckedIn(registrations, uid);
+  return true;
 }
 
 /** Stats / brackets / match details. */

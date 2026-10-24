@@ -12,6 +12,8 @@ export const DEFAULT_SCRIM_ALERTS = {
   games: [],
   followedHosts: [],
   lastSeenAt: 0,
+  browserPushOptIn: false,
+  digestOptIn: false,
 };
 
 export function normalizeScrimAlerts(prefs = {}, profileGames = []) {
@@ -29,6 +31,8 @@ export function normalizeScrimAlerts(prefs = {}, profileGames = []) {
       ? prefs.followedHosts.map(String).filter(Boolean).slice(0, 80)
       : [],
     lastSeenAt: Number(prefs.scrimAlertsLastSeenAt) || 0,
+    browserPushOptIn: prefs.browserPushOptIn === true,
+    digestOptIn: prefs.digestOptIn === true,
   };
 }
 
