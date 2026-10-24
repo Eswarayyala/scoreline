@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { findGameVault } from "../../data/eventScope";
+import { posterForEdition as posterForEwcEdition } from "../../data/eventPoster";
 import LoadMoreBar, { usePagedVisible } from "../shared/LoadMoreBar";
 import { EventBody } from "./EventTabs";
-import TournamentWindowCard from "./TournamentWindowCard";
+import EwcTitleCard from "./EwcTitleCard";
+import TournamentWindowCard, { WINDOW_CARD_HEIGHT } from "./TournamentWindowCard";
 
 function editionKey(edition, index) {
   return `${edition.game || ""}-${edition.year || ""}-${edition.event || ""}-${index}`;
@@ -34,7 +36,7 @@ export default function ChampionshipGameTabs({
   games = [],
   slides = [],
   heading = "Titles in this championship",
-  initialVisible = 9,
+  initialVisible = 8,
   onSelectPoster,
   urlSync = true,
 }) {
@@ -45,7 +47,7 @@ export default function ChampionshipGameTabs({
   const [searchParams, setSearchParams] = useSearchParams();
   const [localIndex, setLocalIndex] = useState(0);
   const [localDetails, setLocalDetails] = useState(false);
-  const page = usePagedVisible(editions.length, initialVisible, 9);
+  const page = usePagedVisible(editions.length, initialVisible, 8);
 
   const gameFromUrl = String(searchParams.get("game") || "").toLowerCase();
   const detailsFromUrl = searchParams.get("details") === "1";
@@ -77,7 +79,11 @@ export default function ChampionshipGameTabs({
   useEffect(() => {
     if (!current || !onSelectPoster) return;
     onSelectPoster(
-      current.poster || current.posterUrl || (Array.isArray(current.images) && current.images[0]) || "",
+      posterForEwcEdition(current)
+      || current.poster
+      || current.posterUrl
+      || (Array.isArray(current.images) && current.images[0])
+      || "",
     );
   }, [current, onSelectPoster]);
 
@@ -155,33 +161,53 @@ export default function ChampionshipGameTabs({
       <p className="mt-1 text-sm text-slate-500">
         {editions.length} titles · showing {Math.min(page.visible, editions.length)}. Use More, All, or Less when the list is long.
       </p>
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-4 grid grid-cols-2 gap-3">
         {visibleIndexes.map((index) => {
           const edition = editions[index];
           const vaultSlug = vaultSlugFor(edition, slides);
           const allEventsHref = vaultSlug ? `/vault/${vaultSlug}` : "";
+          const isEwc = String(edition.eventScope || "ewc").toLowerCase() === "ewc"
+            || /esports world cup|gamers8/i.test(edition.event || "");
+          const winnerPoster = posterForEwcEdition(edition);
           const slide = {
             ...edition,
-            title: edition.event || edition.game,
+            title: edition.game,
+            eventName: edition.event || "",
             game: edition.game,
             eventStatus: championOf(edition) || (edition.payouts || []).length ? "completed" : "upcoming",
             season: edition.year,
             kicker: [edition.year, edition.eventScope || "ewc"].filter(Boolean).join(" · "),
-            poster: edition.poster || edition.posterUrl || edition.images?.[0],
+            poster: winnerPoster || edition.poster || edition.posterUrl || edition.images?.[0],
+            eventPoster: winnerPoster,
             editions: [edition],
+            spotlightEdition: {
+              ...edition,
+              poster: winnerPoster || edition.poster,
+              posterUrl: winnerPoster || edition.posterUrl,
+            },
           };
           return (
-            <div key={editionKey(edition, index)} className="flex flex-col gap-2">
-              <TournamentWindowCard
-                slide={slide}
-                compact
-                to={allEventsHref || "#"}
-                onOpen={() => openDetails(index)}
-              />
+            <div key={editionKey(edition, index)} className="flex flex-col gap-1.5">
+              <div className="overflow-hidden" style={{ height: WINDOW_CARD_HEIGHT }}>
+                {isEwc ? (
+                  <EwcTitleCard
+                    edition={edition}
+                    to={allEventsHref || "#"}
+                    onOpen={() => openDetails(index)}
+                  />
+                ) : (
+                  <TournamentWindowCard
+                    slide={slide}
+                    compact
+                    to={allEventsHref || "#"}
+                    onOpen={() => openDetails(index)}
+                  />
+                )}
+              </div>
               {allEventsHref ? (
                 <Link
                   to={allEventsHref}
-                  className="font-mono text-[10px] uppercase tracking-widest text-neon no-underline hover:text-white"
+                  className="font-mono text-[10px] uppercase tracking-widest text-[#d4af37] no-underline hover:text-white"
                 >
                   All {edition.game} events →
                 </Link>
@@ -194,7 +220,7 @@ export default function ChampionshipGameTabs({
         className="mt-3"
         total={editions.length}
         shown={page.visible}
-        pageSize={9}
+        pageSize={8}
         initial={initialVisible}
         onMore={page.more}
         onLess={page.less}

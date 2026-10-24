@@ -195,6 +195,9 @@ export async function uploadMediaFiles(collectionRecord, files) {
       createdAt: Date.now(),
       createdBy: actor,
       isDefault: false,
+      // Site library uploads stay staff-only until assigned onto a public event.
+      // Tournament host uploads stay public so lobby cards can load them.
+      visibility: target.scope === "tournament" ? "public" : "staff",
     };
     const saved = await addDoc(collection(db, COLLECTIONS, target.id, "assets"), asset);
     uploaded.push({ id: saved.id, ...asset });

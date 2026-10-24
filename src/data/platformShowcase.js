@@ -1,4 +1,24 @@
-export const GAME_BANNERS = {
+import { GENERATED_PACKS, generatedAssetPath, generatedPackName } from "./generatedGameArt";
+
+/** Stock Unsplash / shared arcade placeholders — never treat as official game art. */
+export function isStockBannerUrl(url = "") {
+  return /images\.unsplash\.com/i.test(String(url || ""));
+}
+
+/** Prefer each game's generated poster pack over shared Unsplash stand-ins. */
+export function packPosterForGame(game, index = 1) {
+  const pack = generatedPackName(game);
+  if (!pack || !GENERATED_PACKS.includes(pack)) return "";
+  return generatedAssetPath(pack, "poster", index);
+}
+
+export function packBackgroundForGame(game, index = 1) {
+  const pack = generatedPackName(game);
+  if (!pack || !GENERATED_PACKS.includes(pack)) return "";
+  return generatedAssetPath(pack, "background", index);
+}
+
+const STOCK_BANNERS = {
   Valorant: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1600&q=80",
   "Apex Legends": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1600&q=80",
   CS2: "https://images.unsplash.com/photo-1542751110-97427bbecf20?auto=format&fit=crop&w=1600&q=80",
@@ -19,6 +39,8 @@ export const GAME_BANNERS = {
   "Rainbow Six Siege": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1600&q=80",
   "Honor of Kings": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1600&q=80",
   "Honor of Kings (HoK)": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1600&q=80",
+  "Clash Royale": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1600&q=80",
+  "Brawl Stars": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1600&q=80",
   "Free Fire": "https://images.unsplash.com/photo-1593305841991-05c297ba4575?auto=format&fit=crop&w=1600&q=80",
   "Garena Free Fire": "https://images.unsplash.com/photo-1593305841991-05c297ba4575?auto=format&fit=crop&w=1600&q=80",
   "Street Fighter 6": "https://images.unsplash.com/photo-1511882150382-421056c8eccc?auto=format&fit=crop&w=1600&q=80",
@@ -39,6 +61,11 @@ export const GAME_BANNERS = {
   "Fatal Fury": "https://images.unsplash.com/photo-1511882150382-421056c8eccc?auto=format&fit=crop&w=1600&q=80",
   "Sim Racing": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1600&q=80",
 };
+
+/** Public map kept for callers that read keys; values resolve through bannerForGame. */
+export const GAME_BANNERS = Object.fromEntries(
+  Object.keys(STOCK_BANNERS).map((game) => [game, packPosterForGame(game) || STOCK_BANNERS[game]]),
+);
 
 export const GAME_AVATARS = {
   Valorant: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=256&h=256&q=80",
@@ -95,7 +122,13 @@ export function isImageSrc(value) {
 }
 
 export function bannerForGame(game) {
-  return GAME_BANNERS[game] || fallbackBanner;
+  return (
+    packPosterForGame(game)
+    || GAME_BANNERS[game]
+    || STOCK_BANNERS[game]
+    || packPosterForGame(generatedPackName(game))
+    || fallbackBanner
+  );
 }
 
 const FLYER_POOL = [
@@ -129,6 +162,9 @@ export function eventPosterSeed(item = {}) {
 export function defaultPosterForEvent(item = {}) {
   const seed = eventPosterSeed(item) || String(item.game || "event");
   const hash = hashSeed(seed);
+  const packIndex = (hash % 3) + 1;
+  const pack = packPosterForGame(item.game, packIndex) || packBackgroundForGame(item.game, packIndex);
+  if (pack) return pack;
   if (FLYER_POOL.length) return FLYER_POOL[hash % FLYER_POOL.length];
   return bannerForGame(item.game);
 }
@@ -164,8 +200,13 @@ export function flyerForEvent(item = {}) {
   const pack = flyersForEvent(item, item.flyers || item.images);
   const index = Number(item.posterIndex);
   const chosen = Number.isFinite(index) && index > 0 ? pack[index] : undefined;
-  const url = [item.posterUrl, item.flyer, item.poster, chosen, item.banner, item.cover, item.artwork].find(isImageSrc);
-  if (url) return url;
+  const candidates = [item.posterUrl, item.flyer, item.poster, chosen, item.banner, item.cover, item.artwork].filter(isImageSrc);
+  // Staff / library / pack art wins; shared Unsplash arcade placeholders lose to game packs.
+  const preferred = candidates.find((url) => !isStockBannerUrl(url));
+  if (preferred) return preferred;
+  const gamePack = packPosterForGame(item.game) || packBackgroundForGame(item.game);
+  if (gamePack) return gamePack;
+  if (candidates[0]) return candidates[0];
   return defaultPosterForEvent(item) || bannerForGame(item.game);
 }
 

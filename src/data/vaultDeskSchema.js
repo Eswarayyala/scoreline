@@ -219,6 +219,8 @@ export function emptyEdition(game = "", structureId) {
     payouts: [{ rank: "1st (Champion)", team: "", player: "", prize: "" }],
     poster: "",
     posterSource: "",
+    winnerPoster: "",
+    momentPoster: "",
     images: [],
     youtubeUrls: [],
   };
@@ -254,6 +256,8 @@ export function normalizeEdition(edition = {}, game = "") {
     payouts: payouts.length ? payouts : emptyEdition(game).payouts,
     poster: edition.poster || "",
     posterSource: edition.posterSource || "",
+    winnerPoster: edition.winnerPoster || "",
+    momentPoster: edition.momentPoster || "",
     images: Array.isArray(edition.images) ? edition.images.filter(Boolean).slice(0, 6) : [],
     youtubeUrls: Array.isArray(edition.youtubeUrls)
       ? edition.youtubeUrls.map((url) => String(url || "").trim()).filter(Boolean).slice(0, 12)

@@ -12,23 +12,59 @@ import {
 } from "../../data/vaultDeskSchema";
 import { flyerForEvent } from "../../data/platformShowcase";
 import { dossierPath } from "../../data/competitorIndex";
+import { posterForEdition } from "../../data/eventPoster";
+import { isEwcEdition } from "../../data/eventScope";
 import ShareEventCard from "./ShareEventCard";
-import TournamentWindowCard from "./TournamentWindowCard";
+import EwcTitleCard from "./EwcTitleCard";
+import TournamentWindowCard, { WINDOW_CARD_HEIGHT, windowFactBlurb } from "./TournamentWindowCard";
+import { editionEventKey } from "../../data/eventSpotlight";
+
+function editionHighlightMap(edition = {}) {
+  const nested = edition.highlights || {};
+  return {
+    madeItLookEasy: nested.madeItLookEasy || edition.madeItLookEasy || "",
+    clutchesAndRivalries: nested.clutchesAndRivalries || edition.clutchesAndRivalries || "",
+    lostComposure: nested.lostComposure || edition.lostComposure || "",
+    droppedOut: nested.droppedOut || edition.earlyExits || edition.droppedOut || "",
+  };
+}
+
+function editionFactLead(edition = {}, game = "") {
+  const map = editionHighlightMap(edition);
+  const pieces = [
+    map.madeItLookEasy,
+    map.clutchesAndRivalries,
+    edition.bestClutches,
+    map.lostComposure,
+  ].filter(Boolean);
+  if (pieces.length) return windowFactBlurb(pieces.slice(0, 3).join(" "), { maxChars: 360, maxSentences: 3 });
+  if (edition.champion && edition.prizePool) {
+    return windowFactBlurb(
+      `${edition.champion} took the ${edition.event || "title"} with a ${edition.prizePool} prize pool on the ${game || "circuit"}.`,
+      { maxChars: 280, maxSentences: 2 },
+    );
+  }
+  return "";
+}
 
 const COMPARE_MAX = 4;
 const COMPARE_MIN = 2;
 
 function eventKey(edition, index) {
-  return `${edition.year}-${edition.event}-${edition.eventScope || ""}-${index}`;
+  return editionEventKey(edition, index);
 }
 
 function eventPoster(edition, fallback, game) {
-  return flyerForEvent({
-    game: edition.game || game,
-    poster: edition.poster,
-    flyers: edition.images,
-    posterUrl: edition.poster,
-  }) || fallback;
+  return (
+    posterForEdition({ ...edition, game: edition.game || game }, { game: edition.game || game })
+    || flyerForEvent({
+      game: edition.game || game,
+      poster: edition.poster,
+      flyers: edition.images,
+      posterUrl: edition.poster,
+    })
+    || fallback
+  );
 }
 
 function NameLink({ children }) {
@@ -53,6 +89,9 @@ export function EventBody({ edition, game, compact = false }) {
   const showPrizes = payouts.some((row) => String(row.prize || "").trim());
   const showPayouts = payouts.some((row) => !/^1st|^2nd/i.test(String(row.rank || "")) || showPrizes);
   const photos = (edition.images || []).filter(Boolean);
+  const highlightMap = editionHighlightMap(edition);
+  const hasHighlights = researchHighlightLabels().some(([key]) => highlightMap[key]);
+  const factLead = !compact ? editionFactLead(edition, game) : "";
 
   return (
     <div className={`relative overflow-hidden rounded-2xl border border-white/10 ${compact ? "" : ""}`}>
@@ -71,6 +110,9 @@ export function EventBody({ edition, game, compact = false }) {
           </div>
           {!compact && <ShareEventCard edition={edition} game={game} fallbackPoster="" />}
         </div>
+        {factLead ? (
+          <p className="mt-4 text-base leading-7 text-slate-100">{factLead}</p>
+        ) : null}
         {(edition.champion || edition.runnerUp || edition.mvp || edition.bestIgl) && (
           <dl className={`mt-4 grid gap-2 text-sm text-slate-300 ${compact ? "" : "sm:grid-cols-2"}`}>
             {edition.champion && (
@@ -208,13 +250,13 @@ export function EventBody({ edition, game, compact = false }) {
             </tbody>
           </table>
         )}
-        {edition.highlights && !compact && (
+        {hasHighlights && !compact && (
           <dl className="mt-4 grid gap-3 sm:grid-cols-2">
             {researchHighlightLabels().map(([key, label]) =>
-              edition.highlights[key] ? (
+              highlightMap[key] ? (
                 <div key={key} className="rounded-xl border border-white/10 bg-white/5 p-3">
                   <dt className="font-mono text-[10px] uppercase tracking-widest text-neon">{label}</dt>
-                  <dd className="mt-1 text-sm leading-6 text-slate-200">{edition.highlights[key]}</dd>
+                  <dd className="mt-1 text-sm leading-6 text-slate-200">{highlightMap[key]}</dd>
                 </div>
               ) : null,
             )}
@@ -343,14 +385,14 @@ function CompareTray({ items, max, onRemove, onCompare, onClear, canCompare }) {
   );
 }
 
-export default function EventTabs({ editions = [], game, heading = "", fallbackPoster, onSelectPoster }) {
+export default function EventTabs({ editions = [], game, heading = "", fallbackPoster, onSelectPoster, vaultSlug = "" }) {
   const ordered = useMemo(() => editionsNewestFirst(editions), [editions]);
   const [searchParams, setSearchParams] = useSearchParams();
   const eventParam = searchParams.get("event") || "";
   const compareParam = searchParams.get("compare") || "";
   const [picked, setPicked] = useState([]);
   const [addingMore, setAddingMore] = useState(false);
-  const initialVisible = 9;
+  const initialVisible = 8;
 
   const activeIndex = useMemo(() => {
     if (!ordered.length || !eventParam) return -1;
@@ -398,7 +440,7 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
     onSelectPoster(eventPoster(current, fallbackPoster, game));
   }, [current, fallbackPoster, game, onSelectPoster]);
 
-  const page = usePagedVisible(ordered.length, initialVisible, 9);
+  const page = usePagedVisible(ordered.length, initialVisible, 8);
   const visibleIndexes = useMemo(
     () => Array.from({ length: page.visible }, (_, index) => index),
     [page.visible],
@@ -523,12 +565,27 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
   }
 
   if (focused && current && !addingMore) {
+    const clearFocus = () => {
+      const next = new URLSearchParams(searchParams);
+      next.delete("event");
+      next.delete("compare");
+      setSearchParams(next, { replace: false });
+    };
     return (
-      <section className="mt-8 space-y-4">
+      <section className="mt-4 space-y-3">
         <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
           Event {activeIndex + 1} of {ordered.length}
         </p>
         <EventBody edition={current} game={game} />
+        <div className="flex justify-end pt-1">
+          <button
+            type="button"
+            onClick={clearFocus}
+            className="font-mono text-[11px] uppercase tracking-widest text-neon hover:text-white"
+          >
+            view all events →
+          </button>
+        </div>
       </section>
     );
   }
@@ -564,7 +621,7 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
           Tap Add on 2–{COMPARE_MAX} events, then Compare at the bottom
         </p>
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3">
         {visibleIndexes.map((index) => {
           const edition = ordered[index];
           const key = eventKey(edition, index);
@@ -572,44 +629,71 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
           const atMax = picked.length >= COMPARE_MAX && !selected;
           const champion =
             edition.champion || edition.payouts?.[0]?.team || edition.payouts?.[0]?.player || "";
+          const ewc = isEwcEdition(edition);
+          const winnerArt = posterForEdition({ ...edition, game: edition.game || game }, { game: edition.game || game });
+          const official = winnerArt || edition.poster || edition.posterUrl || edition.images?.[0] || "";
+          const eventHref = vaultSlug
+            ? `/vault/${vaultSlug}?event=${encodeURIComponent(key)}`
+            : `#event-${encodeURIComponent(key)}`;
           const slide = {
             ...edition,
-            title: edition.event || game || "Event",
+            title: edition.game || game || "Event",
+            eventName: edition.event || "",
             game: edition.game || game,
             eventStatus: champion || (edition.payouts || []).length ? "completed" : "upcoming",
             season: edition.year || edition.season,
             kicker: [edition.year || edition.season, edition.eventScope].filter(Boolean).join(" · "),
             teamCount: edition.totalTeams,
-            poster: eventPoster(edition, fallbackPoster, game),
+            poster: official || eventPoster(edition, fallbackPoster, game),
+            posterSource: edition.posterSource || (official ? "event" : ""),
+            eventPoster: official,
             editions: [edition],
+            spotlightEdition: { ...edition, poster: official || edition.poster },
+            href: eventHref,
           };
+          const compareBookmark = (
+            <button
+              type="button"
+              disabled={atMax}
+              aria-label={selected ? "Remove from compare list" : "Add to compare list"}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (selected) removeFromCompare(key);
+                else addToCompare(index);
+              }}
+              className={`pointer-events-auto inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-black/70 px-2 py-1 font-mono text-[10px] uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-40 ${
+                selected ? "text-neon" : "text-slate-300"
+              }`}
+            >
+              {selected ? <CheckSquare size={11} /> : <Square size={11} />}
+              {selected ? "Remove" : atMax ? "Full" : "Add"}
+            </button>
+          );
           return (
-            <div key={key} className={selected ? "ring-1 ring-neon/60 rounded-2xl" : undefined}>
-              <TournamentWindowCard
-                slide={slide}
-                compact
-                to="#"
-                onOpen={() => openEvent(index)}
-                bookmark={(
-                  <button
-                    type="button"
-                    disabled={atMax}
-                    aria-label={selected ? "Remove from compare list" : "Add to compare list"}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      if (selected) removeFromCompare(key);
-                      else addToCompare(index);
-                    }}
-                    className={`inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-black/70 px-2 py-1 font-mono text-[10px] uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-40 ${
-                      selected ? "text-neon" : "text-slate-300"
-                    }`}
-                  >
-                    {selected ? <CheckSquare size={11} /> : <Square size={11} />}
-                    {selected ? "Remove" : atMax ? "Full" : "Add"}
-                  </button>
-                )}
-              />
+            <div
+              key={key}
+              className={`relative overflow-hidden ${selected ? "ring-1 ring-[#d4af37]/60 rounded-2xl" : ""}`}
+              style={{ height: WINDOW_CARD_HEIGHT }}
+            >
+              {ewc ? (
+                <>
+                  <EwcTitleCard
+                    edition={{ ...edition, game: edition.game || game }}
+                    to={eventHref}
+                    onOpen={() => openEvent(index)}
+                  />
+                  <div className="absolute right-2 top-2 z-[3]">{compareBookmark}</div>
+                </>
+              ) : (
+                <TournamentWindowCard
+                  slide={slide}
+                  compact
+                  to={eventHref}
+                  onOpen={() => openEvent(index)}
+                  bookmark={compareBookmark}
+                />
+              )}
             </div>
           );
         })}
@@ -618,7 +702,7 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
         className="mt-3"
         total={ordered.length}
         shown={page.visible}
-        pageSize={9}
+        pageSize={8}
         initial={initialVisible}
         onMore={page.more}
         onLess={page.less}

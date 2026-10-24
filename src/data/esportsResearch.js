@@ -1,5 +1,6 @@
 import { avatarForGame, bannerForGame, flyersForGame } from "./platformShowcase";
 import { isEwcEdition } from "./eventScope";
+import { posterForEwcChampionship } from "./ewcPoster";
 import { normalizeEdition } from "./vaultDeskSchema";
 import { ESPORTS_RESEARCH } from "./vaultResearchSeed";
 
@@ -85,6 +86,7 @@ export function ewcFloatingSlides(slides = []) {
   return groups.map((group, index) => {
     const year = Number(group.year) || 0;
     const isLatest = year === latestYear && latestYear > 0;
+    const winnerPoster = posterForEwcChampionship(group);
     return {
       slug: `ewc-year-${String(group.key).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
       title: group.title,
@@ -96,7 +98,7 @@ export function ewcFloatingSlides(slides = []) {
       floating: isLatest ? true : false,
       season: group.year,
       summary: `${group.games.length} titles in this championship.`,
-      poster: bannerForGame(group.games[0]?.game),
+      poster: winnerPoster || bannerForGame(group.games[0]?.game),
       championship: group,
       floatingPriority: isLatest ? 90 : Math.max(0, 40 - index),
     };

@@ -22,9 +22,18 @@ service firebase.storage {
         && request.resource.contentType.matches('image/jpeg|image/png|image/webp|image/gif');
     }
 
+    function supportMayManageLibrary() {
+      return signedIn()
+        && firestore.get(/databases/(default)/documents/siteRoles/$(request.auth.uid)).data.role == 'support'
+        && firestore.get(/databases/(default)/documents/siteRoles/$(request.auth.uid)).data.enabled == true
+        && firestore.get(/databases/(default)/documents/siteRoles/$(request.auth.uid)).data.keys().hasAny(['permissions'])
+        && firestore.get(/databases/(default)/documents/siteRoles/$(request.auth.uid)).data.permissions.libraryManage == true;
+    }
+
     match /media/site/{allPaths=**} {
+      // URLs assigned onto public events still load for everyone; listing stays gated in Firestore.
       allow read: if true;
-      allow write: if isSiteOwner() && isSafeImageUpload();
+      allow write: if isSafeImageUpload() && (isSiteOwner() || supportMayManageLibrary());
     }
 
     match /media/tournaments/{tid}/{allPaths=**} {

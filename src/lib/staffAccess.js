@@ -13,7 +13,7 @@ export const SUPPORT_CHANGE_ACTIONS = [
 /** Max chars for a single image field in a support change payload (prefer https / library ids). */
 export const SUPPORT_IMAGE_MAX_CHARS = 180000;
 
-/** Toggleable support capabilities (owner never grants ban/popups/media-manage via these). */
+/** Toggleable support capabilities (owner never grants ban/popups via these). */
 export const SUPPORT_PERMISSION_KEYS = [
   "vaultEdit",
   "vaultDelete",
@@ -22,6 +22,7 @@ export const SUPPORT_PERMISSION_KEYS = [
   "blogPromote",
   "reportsTriage",
   "libraryView",
+  "libraryManage",
   "httpsPostersOnly",
 ];
 
@@ -41,7 +42,8 @@ export const SUPPORT_PERMISSION_LABELS = {
   archiveDecide: "Vault archive approve / reject",
   blogPromote: "Promote published blog → vault",
   reportsTriage: "Reports triage (change status)",
-  libraryView: "View media library (no manage)",
+  libraryView: "View media library",
+  libraryManage: "Upload / edit media library (staff-only assets)",
   httpsPostersOnly: "HTTPS / library posters only (block data-URL uploads in proposals)",
 };
 
@@ -54,6 +56,7 @@ export const DEFAULT_SUPPORT_PERMISSIONS = {
   blogPromote: true,
   reportsTriage: true,
   libraryView: true,
+  libraryManage: true,
   httpsPostersOnly: true,
   vaultEditMode: "propose",
   vaultDeleteMode: "propose",
@@ -86,9 +89,21 @@ export function isSiteSupportRole(role) {
   return String(role || "").toLowerCase() === "support";
 }
 
-/** Site media packs: owner only (Firestore already enforces). */
-export function canManageMediaLibrary(role) {
-  return isSiteOwnerRole(role);
+/**
+ * Site media packs: owner always; support when libraryManage is on.
+ * New uploads are staff-visibility until published onto a public event.
+ */
+export function canManageMediaLibrary(role, permissions) {
+  if (isSiteOwnerRole(role)) return true;
+  if (!isSiteSupportRole(role)) return false;
+  return supportHas(permissions, "libraryManage");
+}
+
+/** Owner or support with library view/manage may open the library desk. */
+export function canViewMediaLibrary(role, permissions) {
+  if (isSiteOwnerRole(role)) return true;
+  if (!isSiteSupportRole(role)) return false;
+  return supportHas(permissions, "libraryView") || supportHas(permissions, "libraryManage");
 }
 
 /** Live circuitCms delete: owner only. Support may still propose cms_delete when permitted. */

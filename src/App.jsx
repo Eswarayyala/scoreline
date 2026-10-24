@@ -38,7 +38,7 @@ import EwcDirectoryPage from "./components/vault/EwcDirectoryPage";
 import PreEwcHistoryPage from "./components/vault/PreEwcHistoryPage";
 import { useVaultBookmarks } from "./hooks/useVaultBookmarks";
 import VaultResearchDesk from "./components/cms/VaultResearchDesk";
-import { avatarForGamer, bannerForGame, flyerForEvent, flyersForGame } from "./data/platformShowcase";
+import { avatarForGamer, bannerForGame, flyerForEvent, flyersForGame, isStockBannerUrl } from "./data/platformShowcase";
 import { readImageFile } from "./lib/readImageFile";
 import CircuitCmsDesk from "./components/cms/CircuitCmsDesk";
 import FloatingWindowsDesk from "./components/cms/FloatingWindowsDesk";
@@ -2341,7 +2341,7 @@ function slidesFromBlogs(posts = []) {
       source: post.source,
       eventScope: post.eventScope,
       kicker: [analysisTypeLabel(post.analysisType), publicScopeKicker(post) || "Blog"].filter(Boolean).join(" · "),
-      poster: post.coverUrl || "",
+      poster: (!isStockBannerUrl(post.coverUrl) && post.coverUrl) || bannerForGame(post.game) || post.coverUrl || "",
       analysisType: post.analysisType || "event",
       analysisSubject: post.analysisSubject || "",
       youtubeUrl: post.youtubeUrl || "",
@@ -2474,7 +2474,7 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
   const isOwner = role === "owner";
   const perms = normalizeSupportPermissions(supportPermissions);
   const canVault = isOwner || supportHas(perms, "vaultEdit");
-  const canLibrary = isOwner || supportHas(perms, "libraryView");
+  const canLibrary = isOwner || supportHas(perms, "libraryView") || supportHas(perms, "libraryManage");
   const canBlogs = isOwner || supportHas(perms, "blogReview") || supportHas(perms, "blogPromote");
   const canReports = isOwner || supportHas(perms, "reportsTriage");
   const supportTabs = useMemo(
@@ -2587,7 +2587,7 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
         </p>
       </>}
       {tab === "windows" && canVault && <FloatingWindowsDesk records={circuitRecords} ewcWindows={ewcWindows} blogSlides={blogSlides} role={role} onSave={onSaveCircuit} filterGames={filterGames} />}
-      {tab === "library" && canLibrary && <MediaLibraryDesk games={filterGames} canManage={canManageMediaLibrary(role)} />}
+      {tab === "library" && canLibrary && <MediaLibraryDesk games={filterGames} canManage={canManageMediaLibrary(role, perms)} />}
       {tab === "live matrix" && isOwner && <LiveMatrixDesk role={role} onMergeCircuit={onSaveCircuit} />}
       {(tab === "support changes" || tab === "my requests") && <SupportChangeQueue requests={supportChanges} role={role} onReview={onReviewSupportChange} />}
       {tab === "reports" && canReports && <ReportsInbox reports={reports} onStatusChange={onStatusChange} bans={bans} role={role} onSetPlayerAccess={onSetPlayerAccess} />}

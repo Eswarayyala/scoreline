@@ -1,9 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { collection, collectionGroup, onSnapshot } from "firebase/firestore";
+import { collection, collectionGroup, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../firebase";
 import { FILTER_GAMES, canonicalFilterGame } from "../data/gameCatalog";
 import { SITE_KIND_IDS } from "../data/mediaCollections";
 import { allGeneratedCollections, generatedAssetsFor, generatedPackName } from "../data/generatedGameArt";
+import { isStockBannerUrl, packBackgroundForGame, packPosterForGame } from "../data/platformShowcase";
+import { posterForEdition } from "../data/eventPoster";
 
 const MediaArtContext = createContext({ covers: {}, collections: [] });
 
@@ -95,6 +97,9 @@ export function libraryImageForGame(covers = {}, game = "", { prefer = "banner" 
   if (prefer === "avatar") {
     return pack.avatar || pack.poster || pack.background || pack.event || pack.flyer || "";
   }
+  if (prefer === "event") {
+    return pack.event || pack.poster || pack.background || pack.avatar || pack.flyer || "";
+  }
   return pack.poster || pack.background || pack.avatar || pack.event || pack.flyer || "";
 }
 
@@ -106,6 +111,78 @@ export function useGameBanner(game, fallback) {
 
 function isLibraryMediaUrl(url = "") {
   return /\/media\/|firebasestorage\.googleapis\.com|googleapis\.com\/.*\/o\//i.test(String(url || ""));
+}
+
+export function isGeneratedMediaUrl(url = "") {
+  return /\/media\/generated\//i.test(String(url || ""));
+}
+
+function isHttpImage(url = "") {
+  const raw = String(url || "").trim();
+  return /^https?:\/\//i.test(raw) || raw.startsWith("data:image/") || raw.startsWith("/media/");
+}
+
+/**
+ * Window / event card art: official event poster first, never let generated game packs
+ * override a staff or edition poster.
+ */
+export function useEventWindowPoster(slide = {}) {
+  const { covers } = useMediaArt();
+  return useMemo(() => {
+    const game = slide.game || slide.spotlightEdition?.game || "";
+    const edition = slide.spotlightEdition || (slide.editions || [])[0] || null;
+    // Per-event winner / moment / staff art — never fall back to the game main banner alone.
+    if (edition || slide.eventName || slide.champion || slide.winners) {
+      const keyed = posterForEdition(
+        {
+          ...(edition || {}),
+          game: edition?.game || game,
+          event: edition?.event || slide.eventName || slide.title,
+          champion: edition?.champion || slide.winners || slide.champion,
+          mvp: edition?.mvp || slide.mvp,
+          poster: edition?.poster || slide.eventPoster || "",
+          winnerPoster: edition?.winnerPoster || slide.winnerPoster || "",
+          momentPoster: edition?.momentPoster || slide.momentPoster || "",
+          images: edition?.images || slide.images,
+        },
+        { game },
+      );
+      if (keyed) return keyed;
+    }
+
+    const editionCandidates = [
+      edition?.momentPoster,
+      edition?.winnerPoster,
+      edition?.posterUrl,
+      edition?.poster,
+      ...(Array.isArray(edition?.images) ? edition.images : []),
+      slide.posterUrl,
+      slide.flyer,
+      slide.eventPoster,
+      slide.spotlightPoster,
+      slide.posterSource === "upload" || slide.posterSource === "url" || slide.posterSource === "library"
+        ? slide.poster
+        : "",
+    ].filter(isHttpImage);
+
+    const official = editionCandidates.find(
+      (url) => !isGeneratedMediaUrl(url) && !isStockBannerUrl(url),
+    );
+    if (official) return official;
+
+    const pack = libraryCoversForGame(covers, game || edition?.game);
+    // Prefer event-kind library art over the game's main poster/banner cover.
+    const libraryOfficial = [pack?.event]
+      .filter(isHttpImage)
+      .find((url) => !isGeneratedMediaUrl(url) && !isStockBannerUrl(url));
+    if (libraryOfficial) return libraryOfficial;
+
+    const seeded = packPosterForGame(game || edition?.game) || packBackgroundForGame(game || edition?.game);
+    if (seeded) return seeded;
+
+    const stock = editionCandidates.find((url) => isStockBannerUrl(url));
+    return stock || "";
+  }, [covers, slide]);
 }
 
 /** Blog / card art: prefer that game's library avatar, then poster / background. */
@@ -171,11 +248,20 @@ export function useCollectionsFor({ game, kinds, tournamentId, scope } = {}) {
   }), [collections, game, kinds, scope, tournamentId]);
 }
 
-export function useRemoteLibraryAssets() {
+/**
+ * @param {{ includeStaff?: boolean }} opts
+ * includeStaff: owner/support desk — see staff-only uploads.
+ * Public / player pickers only receive visibility === "public" (or legacy docs without the field via client filter after a public query).
+ */
+export function useRemoteLibraryAssets({ includeStaff = false } = {}) {
   const [remote, setRemote] = useState([]);
   useEffect(() => {
+    const assetsGroup = collectionGroup(db, "assets");
+    const q = includeStaff
+      ? assetsGroup
+      : query(assetsGroup, where("visibility", "==", "public"));
     const unsub = onSnapshot(
-      collectionGroup(db, "assets"),
+      q,
       (snap) => setRemote(
         snap.docs.map((item) => ({
           id: item.id,
@@ -186,14 +272,14 @@ export function useRemoteLibraryAssets() {
       () => setRemote([]),
     );
     return unsub;
-  }, []);
+  }, [includeStaff]);
   return remote;
 }
 
 /** Flat library assets for the current game/kind filters (seeded packs + uploaded). */
-export function useLibraryAssetIndex({ game = "", kind = "", tournamentId = "" } = {}) {
+export function useLibraryAssetIndex({ game = "", kind = "", tournamentId = "", includeStaff = false } = {}) {
   const { collections } = useMediaArt();
-  const remote = useRemoteLibraryAssets();
+  const remote = useRemoteLibraryAssets({ includeStaff });
 
   return useMemo(() => {
     const visibleCollections = (collections || []).filter((row) => {
@@ -221,6 +307,7 @@ export function useLibraryAssetIndex({ game = "", kind = "", tournamentId = "" }
     });
     const uploaded = remote
       .filter((asset) => byId.has(asset.collectionId) && !asset.trashed)
+      .filter((asset) => includeStaff || asset.visibility !== "staff")
       .map((asset) => {
         const row = byId.get(asset.collectionId);
         const hidden = new Set(row.hiddenAssetIds || []);
@@ -240,13 +327,13 @@ export function useLibraryAssetIndex({ game = "", kind = "", tournamentId = "" }
       }
     });
     return { assets: merged, collections: visibleCollections };
-  }, [collections, game, kind, remote, tournamentId]);
+  }, [collections, game, includeStaff, kind, remote, tournamentId]);
 }
 
 /** Soft-deleted / hidden images across site packs for the library Bin tab. */
-export function useLibraryBinIndex({ game = "" } = {}) {
+export function useLibraryBinIndex({ game = "", includeStaff = true } = {}) {
   const { collections } = useMediaArt();
-  const remote = useRemoteLibraryAssets();
+  const remote = useRemoteLibraryAssets({ includeStaff });
 
   return useMemo(() => {
     const site = (collections || []).filter((row) => row.scope === "site" && SITE_KIND_IDS.has(row.kind));

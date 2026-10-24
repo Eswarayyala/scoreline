@@ -1,3 +1,5 @@
+import { asEventSpotlight } from "./eventSpotlight";
+
 export const FLOATING_FEATURES = [
   { id: "ewc", label: "EWC championship years" },
   { id: "research", label: "Game vaults" },
@@ -17,7 +19,13 @@ export const DEFAULT_FLOATING_POLICY = {
 export const HOME_WINDOW_LIMIT = 7;
 
 function slideYear(slide) {
-  const editionYear = Number(slide?.editions?.[0]?.year || slide?.championship?.year || slide?.season || 0);
+  const editionYear = Number(
+    slide?.spotlightEdition?.year
+    || slide?.editions?.[0]?.year
+    || slide?.championship?.year
+    || slide?.season
+    || 0,
+  );
   if (editionYear) return editionYear;
   const match = String(slide?.title || slide?.season || "").match(/(20\d{2})/);
   return match ? Number(match[1]) : 0;
@@ -65,26 +73,27 @@ export function sortVaultCatalog(slides = []) {
   });
 }
 
-/** Home + vault featured rail: Live windows first, then fill with 2026→past game vaults (one per game). */
+/**
+ * Home rail: one recent non-EWC event per game (opens that event in the vault).
+ * Skips EWC year windows — those stay on the EWC index / when floated separately.
+ */
 export function buildFeaturedWindows({ floating = [], research = [], limit = HOME_WINDOW_LIMIT } = {}) {
-  const live = curateHomeWindows(
-    floating.filter((slide) => slide.floating === true || slide.surface !== "ewc-window" || slideYear(slide) >= 2026),
-    limit,
-  );
-  if (live.length >= limit) return live;
-  const liveKeys = new Set(live.map((slide) => slide.slug || slide.id));
-  const liveGames = new Set(live.map(slideGameKey).filter(Boolean));
-  const fillers = sortVaultCatalog(research).filter((slide) => {
-    const key = slide.slug || slide.id;
-    if (!key || liveKeys.has(key)) return false;
-    if (slide.surface === "ewc-window") return false;
-    const year = slideYear(slide);
-    if (year && year < 2026) return false;
+  const pool = sortVaultCatalog([
+    ...floating.filter((slide) => slide.floating === true && slide.surface !== "ewc-window"),
+    ...research.filter((slide) => slide.surface !== "ewc-window"),
+  ]);
+  const picked = [];
+  const games = new Set();
+  for (const slide of pool) {
+    if (picked.length >= limit) break;
     const game = slideGameKey(slide);
-    if (game && liveGames.has(game)) return false;
-    return true;
-  });
-  return curateHomeWindows([...live, ...fillers], limit);
+    if (!game || games.has(game)) continue;
+    const spotlight = asEventSpotlight(slide);
+    if (!spotlight) continue;
+    games.add(game);
+    picked.push(spotlight);
+  }
+  return picked;
 }
 
 export const FLOATING_POLICY_ID = "floating-policy";

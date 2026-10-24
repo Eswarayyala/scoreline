@@ -170,12 +170,17 @@ export default function MediaLibraryDesk({
     game: tournamentId ? "" : activeGame,
     kind: tournamentId ? "poster" : kind,
     tournamentId,
+    // Owner / support site desk sees staff-only uploads; tournament hosts only see public tournament art.
+    includeStaff: !tournamentId && canManage,
   });
   const libraryAssets = useMemo(
     () => sortByRecency(libraryAssetsRaw, sort, (item) => Number(item.createdAt || 0)),
     [libraryAssetsRaw, sort],
   );
-  const libraryBinRaw = useLibraryBinIndex({ game: tournamentId ? "" : activeGame });
+  const libraryBinRaw = useLibraryBinIndex({
+    game: tournamentId ? "" : activeGame,
+    includeStaff: !tournamentId && canManage,
+  });
   const libraryBin = useMemo(
     () => sortByRecency(libraryBinRaw, sort, (item) => Number(item.createdAt || 0)),
     [libraryBinRaw, sort],
@@ -316,7 +321,8 @@ export default function MediaLibraryDesk({
             <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-neon">Image collections</p>
             <h2 className="font-display text-3xl text-white">Library</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Browse packs by game. Edit any image to rename, change category, or move it to Bin.
+              Browse packs by game. New uploads are staff-only (owner + support) until you place them on an event.
+              Edit any image to rename, change category, or move it to Bin.
             </p>
           </div>
           {!tournamentId && (

@@ -6,24 +6,31 @@ import { canonicalFilterGame, gameMatchesFilter } from "../../data/gameCatalog";
 import { sortVaultCatalog } from "../../data/floatingWindows";
 import LoadMoreBar, { usePagedVisible } from "../shared/LoadMoreBar";
 import StickyFilterBar from "../shared/StickyFilterBar";
-import TournamentWindowCard from "./TournamentWindowCard";
+import TournamentWindowCard, { WINDOW_CARD_HEIGHT } from "./TournamentWindowCard";
 import SectionBackHome from "../layout/SectionBackHome";
+import { asEventSpotlight } from "../../data/eventSpotlight";
 
-const LIBRARY_PAGE = 9;
+/** Even page size so the 2-up window grid always fills complete rows. */
+const LIBRARY_PAGE = 8;
 
 function PagedSlideGrid({ items, bookmarkSet, onToggleBookmark }) {
   const page = usePagedVisible(items.length, LIBRARY_PAGE, LIBRARY_PAGE);
   const shown = items.slice(0, page.visible);
   return (
     <>
-      <div className="mb-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="mb-3 grid auto-rows-fr grid-cols-2 gap-3">
         {shown.map((slide) => (
-          <SlideCard
+          <div
             key={slide.slug || slide.id}
-            slide={slide}
-            bookmarked={bookmarkSet.has(slide.slug)}
-            onToggleBookmark={onToggleBookmark}
-          />
+            className="overflow-hidden"
+            style={{ height: WINDOW_CARD_HEIGHT }}
+          >
+            <SlideCard
+              slide={slide}
+              bookmarked={bookmarkSet.has(slide.slug)}
+              onToggleBookmark={onToggleBookmark}
+            />
+          </div>
         ))}
       </div>
       <LoadMoreBar
@@ -40,9 +47,11 @@ function PagedSlideGrid({ items, bookmarkSet, onToggleBookmark }) {
 }
 
 function SlideCard({ slide, bookmarked, onToggleBookmark }) {
+  const card = asEventSpotlight(slide) || slide;
   return (
     <TournamentWindowCard
-      slide={slide}
+      slide={card}
+      compact
       bookmark={
         onToggleBookmark ? (
           <button
@@ -74,9 +83,13 @@ export default function VaultLibraryPage({
   const [scope, setScope] = useState("all");
   const [onlyBookmarks, setOnlyBookmarks] = useState(false);
   const bookmarkSet = useMemo(() => new Set(bookmarkSlugs), [bookmarkSlugs]);
+  const catalogItems = useMemo(
+    () => items.filter((slide) => !(slide.blog || slide.surface === "blog")),
+    [items],
+  );
   const games = useMemo(() => {
     const seen = new Set();
-    return items
+    return catalogItems
       .map((slide) => canonicalFilterGame(slide.game))
       .filter((name) => {
         const gameName = String(name || "").trim();
@@ -86,11 +99,10 @@ export default function VaultLibraryPage({
         return true;
       })
       .sort((a, b) => a.localeCompare(b));
-  }, [items]);
+  }, [catalogItems]);
   const visible = useMemo(() => {
-    const filtered = items.filter((slide) => {
+    const filtered = catalogItems.filter((slide) => {
       if (onlyBookmarks && !bookmarkSet.has(slide.slug)) return false;
-      if (slide.blog || slide.surface === "blog") return false;
       const gameOk = game === "all" || gameMatchesFilter(slide.game, game);
       if (scope === "all") return gameOk;
       if (slide.eventScope === scope) return gameOk;
@@ -102,19 +114,14 @@ export default function VaultLibraryPage({
     const rest = sortVaultCatalog(filtered.filter((slide) => !slide.featured));
     // Keep home featured order first, then the rest of the catalog by year (2026 → past).
     return [...featured, ...rest];
-  }, [items, onlyBookmarks, bookmarkSet, game, scope]);
-  const blogs = items.filter((slide) => {
-    if (!(slide.blog || slide.surface === "blog")) return false;
-    if (onlyBookmarks && !bookmarkSet.has(slide.slug)) return false;
-    return game === "all" || gameMatchesFilter(slide.game, game);
-  });
+  }, [catalogItems, onlyBookmarks, bookmarkSet, game, scope]);
   return (
     <div className="pb-10 pt-6">
       <SectionBackHome />
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="m-0 font-['Bebas_Neue',sans-serif] text-4xl tracking-wide text-white md:text-5xl">The Vault</h1>
-          <p className="mt-1 max-w-xl text-xs text-slate-500">Championship windows, game vaults, and recaps.</p>
+          <p className="mt-1 max-w-xl text-xs text-slate-500">Championship windows and game vaults.</p>
         </div>
         <button
           type="button"
@@ -166,12 +173,6 @@ export default function VaultLibraryPage({
         <PagedSlideGrid items={visible} bookmarkSet={bookmarkSet} onToggleBookmark={onToggleBookmark} />
       ) : (
         <p className="mb-10 text-sm text-slate-400">No vault windows match these filters.</p>
-      )}
-      <h2 className="mb-3 font-['Bebas_Neue',sans-serif] text-3xl text-white">Published blogs</h2>
-      {blogs.length === 0 ? (
-        <p className="text-sm text-slate-400">No published recaps in The Vault yet.</p>
-      ) : (
-        <PagedSlideGrid items={blogs} bookmarkSet={bookmarkSet} onToggleBookmark={onToggleBookmark} />
       )}
       {children ? <div className="mt-10 border-t border-white/10 pt-6">{children}</div> : null}
     </div>

@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Calendar, Gamepad2, MapPin, Monitor, Trophy, Users } from "lucide-react";
 import { flyerForEvent } from "../../data/platformShowcase";
 import { publicScopeKicker } from "../../data/eventScope";
-import { useGameBanner } from "../../hooks/useMediaLibrary";
+import { useEventWindowPoster } from "../../hooks/useMediaLibrary";
 
 const STATUS_STYLES = {
   upcoming: {
@@ -36,13 +36,44 @@ function formatDateRange(startAt, endAt) {
   return fmt(ok(start) ? start : end);
 }
 
-function clipFact(text, max = 132) {
-  const raw = String(text || "").replace(/\s+/g, " ").trim();
+/**
+ * 3–4 line fact blurb. Cuts on sentence/word boundaries and never appends "...".
+ */
+export function windowFactBlurb(text, { maxChars = 300, maxSentences = 3 } = {}) {
+  const raw = String(text || "")
+    .replace(/\s+/g, " ")
+    .replace(/(?:\.\.\.|…)+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   if (!raw) return "";
-  if (raw.length <= max) return raw;
-  const cut = raw.slice(0, max - 1);
+
+  const sentences = raw
+    .match(/[^.!?]+[.!?]+|[^.!?]+$/g)
+    ?.map((part) => part.trim())
+    .filter(Boolean) || [raw];
+
+  let out = "";
+  for (const sentence of sentences.slice(0, maxSentences)) {
+    const next = out ? `${out} ${sentence}` : sentence;
+    if (next.length > maxChars) break;
+    out = next;
+  }
+
+  // Prefer complete sentences only — never trail with "..." / "…".
+  if (out && /[.!?]$/.test(out)) return out;
+  if (out) {
+    const complete = out.match(/^[\s\S]+[.!?]/);
+    if (complete) return complete[0].trim();
+  }
+
+  // Fall back to the first full sentence even if it runs a bit long.
+  const first = sentences[0] || raw;
+  if (/[.!?]$/.test(first) && first.length <= maxChars + 80) return first;
+  if (first.length <= maxChars) return first.replace(/(?:\.\.\.|…)+\s*$/g, "").trim();
+
+  const cut = first.slice(0, maxChars);
   const at = cut.lastIndexOf(" ");
-  return `${(at > 60 ? cut.slice(0, at) : cut).trim()}…`;
+  return (at > 90 ? cut.slice(0, at) : cut).trim();
 }
 
 function championOf(edition = {}) {
@@ -110,56 +141,53 @@ function resolveStatus(slide, edition, payouts) {
   return "completed";
 }
 
-/** Punchy one-liner — highlight fact first, then forged from results. */
+/** Past-event highlight or game fact — about 3–4 lines, complete sentences, no trailing "...". */
 function buildFact(slide, edition, { champion, championPrize, prizePool, runnerUp, mvp, gameCount }) {
   const highlights = edition?.highlights || {};
-  const candidates = [
-    highlights.madeItLookEasy,
-    edition?.madeItLookEasy,
-    highlights.clutchesAndRivalries,
-    edition?.clutchesAndRivalries,
-    edition?.bestClutches,
-    slide.bestClutches,
+  const pieces = [
+    highlights.madeItLookEasy || edition?.madeItLookEasy,
+    highlights.clutchesAndRivalries || edition?.clutchesAndRivalries,
+    edition?.bestClutches || slide.bestClutches,
     slide.extraHighlights?.[0]?.milestone,
+    highlights.lostComposure || edition?.lostComposure,
   ]
-    .map((line) => clipFact(line))
+    .map((line) => String(line || "").replace(/\s+/g, " ").trim())
     .filter(Boolean);
 
-  if (candidates[0]) return candidates[0];
+  if (pieces.length) {
+    // Prefer stacking 1–3 highlight beats into a short fact block.
+    return windowFactBlurb(pieces.slice(0, 3).join(" "), { maxChars: 320, maxSentences: 3 });
+  }
 
-  if (champion && championPrize) {
-    return `${champion} walked away with ${championPrize}.`;
+  const forged = [];
+  if (champion && championPrize) forged.push(`${champion} walked away with ${championPrize}.`);
+  else if (champion && prizePool) forged.push(`${champion} closed a ${prizePool} prize pool.`);
+  else if (champion && runnerUp && String(runnerUp).length <= 36 && !/[.!]/.test(runnerUp)) {
+    forged.push(`${champion} beat ${runnerUp} to lift the trophy.`);
+  } else if (champion && mvp) forged.push(`${champion} crowned champions · MVP ${mvp}.`);
+  else if (champion) forged.push(`${champion} stand as the reigning champions.`);
+
+  if (edition?.event && edition?.year) {
+    forged.push(`${edition.event} (${edition.year}) remains a landmark stop on the ${slide.game || "circuit"} calendar.`);
+  } else if (prizePool) {
+    forged.push(`Prize pool locked at ${prizePool}.`);
+  } else if (slide.peakPrizePool) {
+    forged.push(`Peak prize pool hit ${slide.peakPrizePool}.`);
+  } else if (gameCount > 1) {
+    forged.push(`${gameCount} championship titles under one roof.`);
   }
-  if (champion && prizePool) {
-    return `${champion} closed a ${prizePool} prize pool.`;
-  }
-  if (champion && runnerUp) {
-    return `${champion} beat ${runnerUp} to lift the trophy.`;
-  }
-  if (champion && mvp) {
-    return `${champion} crowned champions · MVP ${mvp}.`;
-  }
-  if (champion) {
-    return `${champion} stand as the reigning champions.`;
-  }
-  if (gameCount > 1 && prizePool) {
-    return `${gameCount} titles · peak pool ${prizePool}.`;
-  }
-  if (gameCount > 1) {
-    return `${gameCount} championship titles under one roof.`;
-  }
-  if (prizePool) {
-    return `Prize pool locked at ${prizePool}.`;
-  }
-  if (slide.peakPrizePool) {
-    return `Peak prize pool hit ${slide.peakPrizePool}.`;
-  }
-  return clipFact(slide.summary || edition?.event || "");
+
+  if (forged.length) return windowFactBlurb(forged.join(" "), { maxChars: 320, maxSentences: 3 });
+  return windowFactBlurb(slide.summary || slide.overview || edition?.event || "", { maxChars: 320, maxSentences: 3 });
 }
 
 export function windowCardModel(slide = {}) {
   const championshipGames = slide.championship?.games || [];
-  const edition = (slide.editions || [])[0] || championshipGames[0] || null;
+  const edition =
+    slide.spotlightEdition
+    || (slide.editions || [])[0]
+    || championshipGames[0]
+    || null;
   const payouts = payoutRows(slide, edition, championshipGames);
   const status = resolveStatus(slide, edition, payouts);
 
@@ -205,9 +233,8 @@ export function windowCardModel(slide = {}) {
   const dateLabel =
     formatDateRange(slide.startAt, slide.endAt)
     || formatDateRange(slide.startDate, slide.endDate)
-    || slide.season
     || edition?.year
-    || edition?.event
+    || slide.season
     || "";
 
   const teams =
@@ -230,11 +257,20 @@ export function windowCardModel(slide = {}) {
     gameCount: championshipGames.length,
   });
 
+  const game = slide.game || slide.name || "";
+  const eventName =
+    slide.eventName
+    || edition?.event
+    || (slide.title && slide.title !== game ? slide.title : "")
+    || "";
+
   return {
     status,
-    title: slide.title || slide.name || slide.game || "Tournament",
-    game: slide.game || "",
-    kicker: publicScopeKicker(slide) || slide.kicker || "",
+    /** Single display header — always the game, never duplicated as a second title. */
+    header: game || slide.title || "Tournament",
+    eventName,
+    game,
+    kicker: publicScopeKicker({ ...slide, eventScope: edition?.eventScope || slide.eventScope }) || "",
     fact,
     prizePool,
     champion,
@@ -252,7 +288,8 @@ export function windowCardModel(slide = {}) {
     mvpPrize,
     registrationUrl: slide.registrationUrl || "",
     href: slide.href || (slide.slug ? `/vault/${slide.slug}` : slide.id ? `/tournaments/${slide.id}` : "/vault"),
-    ctaLabel: status === "completed" ? "View match details" : "View tournament",
+    ctaLabel: status === "completed" ? "Open event" : "View tournament",
+    vaultHref: slide.slug ? `/vault/${slide.slug}` : "",
   };
 }
 
@@ -296,14 +333,18 @@ function FeatureOrb({ label, icon: Icon }) {
   );
 }
 
-function FactLine({ fact }) {
+function FactLine({ fact, compact }) {
   if (!fact) return null;
+  const text = compact
+    ? windowFactBlurb(fact, { maxChars: 160, maxSentences: 2 })
+    : fact;
+  if (!text) return null;
   return (
     <p
-      className="mt-2 text-[13px] leading-snug text-slate-100/95"
+      className={`mt-1.5 text-slate-100/95 ${compact ? "text-[12px] leading-[1.4]" : "mt-2 text-[13px] leading-snug"}`}
       style={{ textShadow: "0 1px 10px rgba(0,0,0,0.55)" }}
     >
-      {fact}
+      {text}
     </p>
   );
 }
@@ -311,29 +352,31 @@ function FactLine({ fact }) {
 function UpcomingBody({ model, compact }) {
   return (
     <>
-      <FactLine fact={model.fact} />
-      <div className={`mt-3 flex flex-wrap gap-x-4 gap-y-2 ${compact ? "text-[11px]" : ""}`}>
-        <MetaChip icon={Calendar}>{model.dateLabel}</MetaChip>
-        <MetaChip icon={Gamepad2}>{model.game}</MetaChip>
-        {model.teams ? <MetaChip icon={Users}>{`${model.teams} teams`}</MetaChip> : null}
-        <MetaChip icon={Monitor}>{model.mode}</MetaChip>
-        {model.region ? <MetaChip icon={MapPin}>{model.region}</MetaChip> : null}
-      </div>
+      <FactLine fact={model.fact} compact={compact} />
+      {!compact ? (
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+          <MetaChip icon={Calendar}>{model.dateLabel}</MetaChip>
+          <MetaChip icon={Gamepad2}>{model.game}</MetaChip>
+          {model.teams ? <MetaChip icon={Users}>{`${model.teams} teams`}</MetaChip> : null}
+          <MetaChip icon={Monitor}>{model.mode}</MetaChip>
+          {model.region ? <MetaChip icon={MapPin}>{model.region}</MetaChip> : null}
+        </div>
+      ) : null}
 
       {model.prizePool ? (
         <div
-          className={`mt-4 rounded-xl border px-4 py-3 text-center ${compact ? "py-2.5" : "py-4"}`}
+          className={`mt-2 rounded-xl border px-3 text-center ${compact ? "py-2" : "mt-4 px-4 py-4"}`}
           style={{
             borderColor: "rgba(59, 130, 255, 0.55)",
             background: "rgba(5, 10, 24, 0.78)",
             boxShadow: "0 0 24px rgba(59, 130, 255, 0.2), inset 0 0 20px rgba(59, 130, 255, 0.08)",
           }}
         >
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--accent-secondary)]">
+          <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--accent-secondary)]">
             Total prize pool
           </div>
           <div
-            className={`mt-1 font-['Bebas_Neue',sans-serif] tracking-wide text-white ${compact ? "text-4xl" : "text-5xl md:text-6xl"}`}
+            className={`mt-0.5 font-['Bebas_Neue',sans-serif] tracking-wide text-white ${compact ? "text-2xl" : "text-5xl md:text-6xl"}`}
             style={{ textShadow: "0 0 28px rgba(255,255,255,0.25)" }}
           >
             {model.prizePool}
@@ -352,38 +395,49 @@ function UpcomingBody({ model, compact }) {
   );
 }
 
+function moneyKey(value = "") {
+  return String(value || "").replace(/[\s,$]/g, "").toLowerCase();
+}
+
 function ChampionSpotlight({ model, compact }) {
-  if (!model.champion && !model.championPrize) return null;
+  const pool = String(model.prizePool || "").trim();
+  const won = String(model.championPrize || "").trim();
+  const showPool = Boolean(pool);
+  // Avoid duplicating the same figure as both pool and winner take.
+  const showWon = Boolean(won) && moneyKey(won) !== moneyKey(pool);
+  if (!model.champion && !showPool && !showWon) return null;
+
+  const moneyClass = `font-['Bebas_Neue',sans-serif] tracking-wide text-[var(--accent-secondary)] ${
+    compact ? "text-sm leading-tight" : "text-2xl"
+  }`;
+  const moneyShadow = { textShadow: "0 0 18px rgba(59, 130, 255, 0.45)" };
+
   return (
-    <div className={`mt-3 flex items-center gap-3 ${compact ? "gap-2" : ""}`}>
+    <div className={`mt-2 flex items-start gap-2 ${compact ? "gap-1.5" : "mt-3 gap-3"}`}>
       <span
-        className="grid h-11 w-11 shrink-0 place-items-center rounded-full"
+        className={`grid shrink-0 place-items-center rounded-full ${compact ? "h-7 w-7" : "h-11 w-11"}`}
         style={{
           background: "linear-gradient(145deg, #f6d365, #fda085)",
           boxShadow: "0 0 18px rgba(253, 160, 133, 0.45)",
         }}
       >
-        <Trophy size={20} className="text-[#3a2208]" />
+        <Trophy size={compact ? 13 : 20} className="text-[#3a2208]" />
       </span>
       <div className="min-w-0">
         {model.champion ? (
-          <div className={`font-['Bebas_Neue',sans-serif] uppercase tracking-wide text-white ${compact ? "text-2xl" : "text-3xl"}`}>
+          <div className={`font-['Bebas_Neue',sans-serif] uppercase tracking-wide text-white ${compact ? "text-[1.05rem] leading-tight" : "text-3xl"}`}>
             Champions: {model.champion}
           </div>
         ) : null}
-        {model.championPrize ? (
-          <div
-            className={`font-['Bebas_Neue',sans-serif] tracking-wide text-[var(--accent-secondary)] ${compact ? "text-2xl" : "text-3xl"}`}
-            style={{ textShadow: "0 0 18px rgba(59, 130, 255, 0.45)" }}
-          >
-            {model.championPrize} won
+        {/* Same labels on every card: prize pool, then winner take when it differs. */}
+        {showPool ? (
+          <div className={moneyClass} style={moneyShadow}>
+            {pool} prize pool
           </div>
-        ) : model.prizePool ? (
-          <div
-            className={`font-['Bebas_Neue',sans-serif] tracking-wide text-[var(--accent-secondary)] ${compact ? "text-xl" : "text-2xl"}`}
-            style={{ textShadow: "0 0 18px rgba(59, 130, 255, 0.45)" }}
-          >
-            {model.prizePool} circuit
+        ) : null}
+        {showWon ? (
+          <div className={moneyClass} style={moneyShadow}>
+            {won} won
           </div>
         ) : null}
       </div>
@@ -465,14 +519,13 @@ function CompletedBody({ model, compact }) {
   return (
     <>
       <ChampionSpotlight model={model} compact={compact} />
-      <FactLine fact={model.fact} />
-      <PayoutStrip model={model} />
-      <FinalistsTable rows={model.payouts} compact={compact} />
-      {compact ? (
-        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-300">
-          <MetaChip icon={Calendar}>{model.dateLabel}</MetaChip>
-          <MetaChip icon={Gamepad2}>{model.game}</MetaChip>
-        </div>
+      <FactLine fact={model.fact} compact={compact} />
+      {/* Dense compact windows: champion + fact only so 2 cards fit on screen */}
+      {!compact ? (
+        <>
+          <PayoutStrip model={model} />
+          <FinalistsTable rows={model.payouts} compact={false} />
+        </>
       ) : null}
     </>
   );
@@ -481,23 +534,25 @@ function CompletedBody({ model, compact }) {
 function LiveBody({ model, compact }) {
   return (
     <>
-      <FactLine fact={model.fact} />
-      <div className={`mt-3 flex flex-wrap gap-x-4 gap-y-2 ${compact ? "text-[11px]" : ""}`}>
-        <MetaChip icon={Calendar}>{model.dateLabel}</MetaChip>
-        <MetaChip icon={Gamepad2}>{model.game}</MetaChip>
-        {model.teams ? <MetaChip icon={Users}>{`${model.teams} teams`}</MetaChip> : null}
-      </div>
+      <FactLine fact={model.fact} compact={compact} />
+      {!compact ? (
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+          <MetaChip icon={Calendar}>{model.dateLabel}</MetaChip>
+          <MetaChip icon={Gamepad2}>{model.game}</MetaChip>
+          {model.teams ? <MetaChip icon={Users}>{`${model.teams} teams`}</MetaChip> : null}
+        </div>
+      ) : null}
       {model.prizePool ? (
         <div
-          className="mt-4 rounded-xl border px-4 py-3 text-center"
+          className={`mt-2 rounded-xl border px-3 text-center ${compact ? "py-2" : "mt-4 px-4 py-3"}`}
           style={{
             borderColor: "rgba(255, 45, 149, 0.45)",
             background: "rgba(5, 10, 24, 0.78)",
             boxShadow: "0 0 24px rgba(255, 45, 149, 0.18)",
           }}
         >
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--accent)]">On air · prize pool</div>
-          <div className={`mt-1 font-['Bebas_Neue',sans-serif] tracking-wide text-white ${compact ? "text-4xl" : "text-5xl"}`}>
+          <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--accent)]">On air · prize pool</div>
+          <div className={`mt-0.5 font-['Bebas_Neue',sans-serif] tracking-wide text-white ${compact ? "text-2xl" : "text-5xl"}`}>
             {model.prizePool}
           </div>
         </div>
@@ -505,6 +560,9 @@ function LiveBody({ model, compact }) {
     </>
   );
 }
+
+/** Shared compact window height — 2-up grid with room for a 3–4 line fact. */
+export const WINDOW_CARD_HEIGHT = 340;
 
 /**
  * Neon tournament window — full-bleed game poster, upcoming / live / completed layouts.
@@ -519,8 +577,15 @@ export default function TournamentWindowCard({
 }) {
   const model = windowCardModel(slide);
   const href = to || model.href;
-  const resolved = flyerForEvent(slide);
-  const poster = useGameBanner(slide.game, resolved);
+  // Official event poster (edition / library event pack) wins; generated game art is last resort.
+  const eventPoster = useEventWindowPoster(slide);
+  const poster = eventPoster || flyerForEvent({
+    ...slide,
+    poster: slide.spotlightEdition?.poster || slide.poster,
+    posterUrl: slide.spotlightEdition?.posterUrl || slide.posterUrl,
+    images: slide.spotlightEdition?.images || slide.images,
+    game: slide.game,
+  });
 
   const open = (event) => {
     if (!onOpen) return;
@@ -530,11 +595,13 @@ export default function TournamentWindowCard({
 
   const shell = (
     <article
-      className={`group relative flex h-full flex-col overflow-hidden rounded-2xl border transition ${className}`}
+      className={`group relative flex h-full max-h-full flex-col overflow-hidden rounded-2xl border transition ${className}`}
       style={{
         borderColor: "rgba(59, 130, 255, 0.45)",
         boxShadow: "0 0 0 1px rgba(59, 130, 255, 0.12), 0 18px 40px rgba(0, 0, 0, 0.45), 0 0 32px rgba(59, 130, 255, 0.12)",
-        minHeight: compact ? 420 : 460,
+        height: "100%",
+        minHeight: compact ? 0 : 420,
+        maxHeight: compact ? "100%" : undefined,
       }}
     >
       <div className="absolute inset-0">
@@ -566,27 +633,34 @@ export default function TournamentWindowCard({
 
       <Link
         to={href}
-        aria-label={model.title}
+        aria-label={`${model.header}${model.eventName ? ` · ${model.eventName}` : ""}`}
         className="absolute inset-0 z-[1]"
         onClick={onOpen ? open : undefined}
       />
 
-      <div className={`relative z-[2] flex flex-1 flex-col pointer-events-none ${compact ? "p-4" : "p-5 md:p-6"}`}>
+      <div className={`relative z-[2] flex min-h-0 flex-1 flex-col pointer-events-none ${compact ? "p-3" : "p-5 md:p-6"}`}>
         <div className="flex items-start justify-between gap-2">
           <StatusPill status={model.status} />
           {bookmark ? <div className="pointer-events-auto">{bookmark}</div> : null}
         </div>
 
+        {/* One game header (fixed size) + small event name — never a second duplicate title */}
         <h3
-          className={`mt-3 max-w-[92%] font-['Bebas_Neue',sans-serif] uppercase leading-[0.92] tracking-wide text-white ${
-            compact ? "text-[2rem]" : "text-[2.35rem] md:text-[2.75rem]"
+          className={`mt-2 line-clamp-2 max-w-[94%] font-['Bebas_Neue',sans-serif] uppercase leading-none tracking-wide text-[var(--accent)] ${
+            compact ? "text-[1.45rem]" : "mt-3 text-[2rem]"
           }`}
           style={{ textShadow: "0 2px 18px rgba(0,0,0,0.65)" }}
         >
-          {model.title}
+          {model.header}
         </h3>
+        {model.eventName ? (
+          <p className={`mt-1 line-clamp-2 font-mono uppercase tracking-[0.08em] text-slate-200/90 ${compact ? "text-[10px]" : "mt-1.5 text-[11px]"}`}>
+            {model.eventName}
+            {model.dateLabel ? ` · ${model.dateLabel}` : ""}
+          </p>
+        ) : null}
 
-        <div className="mt-1 flex-1">
+        <div className="mt-1 min-h-0 flex-1 overflow-hidden">
           {model.status === "completed" ? (
             <CompletedBody model={model} compact={compact} />
           ) : model.status === "live" ? (
@@ -596,35 +670,36 @@ export default function TournamentWindowCard({
           )}
         </div>
 
-        <div className={`pointer-events-auto mt-4 flex flex-wrap gap-2 ${compact ? "mt-3" : ""}`}>
-          <Link
-            to={href}
-            onClick={onOpen ? open : undefined}
-            className="inline-flex flex-1 items-center justify-center rounded-lg border px-3 py-2.5 text-center font-mono text-[10px] uppercase tracking-[0.14em] no-underline transition hover:bg-[rgba(59,130,255,0.12)]"
-            style={{
-              borderColor: "rgba(59, 130, 255, 0.65)",
-              color: "#9ec5ff",
-              minWidth: compact ? "100%" : 140,
-            }}
-          >
-            {model.ctaLabel}
-          </Link>
-          {model.status === "upcoming" && model.registrationUrl ? (
-            <a
-              href={model.registrationUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex flex-1 items-center justify-center rounded-lg px-3 py-2.5 text-center font-mono text-[10px] uppercase tracking-[0.14em] text-white no-underline"
+        {/* Compact windows are fully clickable — no footer CTAs crowding the poster. */}
+        {!compact ? (
+          <div className="pointer-events-auto mt-auto mt-4 flex flex-col gap-2 pt-2">
+            <Link
+              to={href}
+              onClick={onOpen ? open : undefined}
+              className="inline-flex w-full items-center justify-center rounded-lg border px-3 py-2.5 text-center font-mono text-[10px] uppercase tracking-[0.14em] no-underline transition hover:bg-[rgba(59,130,255,0.12)]"
               style={{
-                background: "linear-gradient(90deg, #ff2d95, #ff5eb0)",
-                boxShadow: "0 0 22px rgba(255, 45, 149, 0.35)",
-                minWidth: compact ? "100%" : 120,
+                borderColor: "rgba(59, 130, 255, 0.65)",
+                color: "#9ec5ff",
               }}
             >
-              Register
-            </a>
-          ) : null}
-        </div>
+              {model.ctaLabel}
+            </Link>
+            {model.status === "upcoming" && model.registrationUrl ? (
+              <a
+                href={model.registrationUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-full items-center justify-center rounded-lg px-3 py-2.5 text-center font-mono text-[10px] uppercase tracking-[0.14em] text-white no-underline"
+                style={{
+                  background: "linear-gradient(90deg, #ff2d95, #ff5eb0)",
+                  boxShadow: "0 0 22px rgba(255, 45, 149, 0.35)",
+                }}
+              >
+                Register
+              </a>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </article>
   );

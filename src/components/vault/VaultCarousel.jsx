@@ -3,7 +3,10 @@ import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { VAULT_SLIDES } from "../../data/platformShowcase";
 import { HOME_WINDOW_LIMIT } from "../../data/floatingWindows";
-import TournamentWindowCard from "./TournamentWindowCard";
+import TournamentWindowCard, { WINDOW_CARD_HEIGHT } from "./TournamentWindowCard";
+
+/** Fit at least 2 windows across the home rail. */
+const WINDOW_WIDTH = "min(280px, calc(50vw - 1.75rem))";
 
 export default function VaultCarousel({ slides = VAULT_SLIDES }) {
   const reduce = useReducedMotion();
@@ -33,7 +36,8 @@ export default function VaultCarousel({ slides = VAULT_SLIDES }) {
       <div
         style={{
           display: "flex",
-          gap: 16,
+          alignItems: "stretch",
+          gap: 12,
           overflowX: "auto",
           paddingBottom: 10,
           scrollSnapType: "x mandatory",
@@ -42,13 +46,19 @@ export default function VaultCarousel({ slides = VAULT_SLIDES }) {
       >
         {items.map((slide, index) => (
           <motion.div
-            key={slide.slug || slide.id}
+            key={slide.slug || slide.id || `${slide.game}-${slide.spotlightEventKey || index}`}
             initial={{ y: 12, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: reduce ? 0.2 : 0.4, delay: reduce ? 0 : index * 0.05 }}
-            whileHover={reduce ? undefined : { y: -6 }}
+            whileHover={reduce ? undefined : { y: -4 }}
             whileTap={{ scale: 0.985 }}
-            style={{ flex: "0 0 min(380px, 86vw)", scrollSnapAlign: "start" }}
+            style={{
+              flex: `0 0 ${WINDOW_WIDTH}`,
+              width: WINDOW_WIDTH,
+              height: WINDOW_CARD_HEIGHT,
+              overflow: "hidden",
+              scrollSnapAlign: "start",
+            }}
           >
             <TournamentWindowCard slide={slide} compact />
           </motion.div>

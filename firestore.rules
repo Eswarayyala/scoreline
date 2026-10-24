@@ -511,12 +511,12 @@ service cloud.firestore {
       return data is map
              && data.keys().hasOnly([
                   'vaultEdit', 'vaultDelete', 'blogReview', 'archiveDecide', 'blogPromote',
-                  'reportsTriage', 'libraryView', 'httpsPostersOnly',
+                  'reportsTriage', 'libraryView', 'libraryManage', 'httpsPostersOnly',
                   'vaultEditMode', 'vaultDeleteMode', 'blogReviewMode', 'archiveDecideMode', 'blogPromoteMode'
                 ])
              && data.keys().hasAll([
                   'vaultEdit', 'vaultDelete', 'blogReview', 'archiveDecide', 'blogPromote',
-                  'reportsTriage', 'libraryView', 'httpsPostersOnly',
+                  'reportsTriage', 'libraryView', 'libraryManage', 'httpsPostersOnly',
                   'vaultEditMode', 'vaultDeleteMode', 'blogReviewMode', 'archiveDecideMode', 'blogPromoteMode'
                 ])
              && data.vaultEdit is bool
@@ -526,6 +526,7 @@ service cloud.firestore {
              && data.blogPromote is bool
              && data.reportsTriage is bool
              && data.libraryView is bool
+             && data.libraryManage is bool
              && data.httpsPostersOnly is bool
              && data.vaultEditMode in ['propose', 'direct']
              && data.vaultDeleteMode in ['propose', 'direct']
@@ -1000,6 +1001,7 @@ service cloud.firestore {
 
     function canManageMediaCollection(data) {
       return isSiteOwner()
+             || (data.scope == 'site' && supportPerm(request.auth.uid, 'libraryManage'))
              || (data.scope == 'tournament'
                  && data.tournamentId.size() > 0
                  && exists(/databases/$(database)/documents/tournaments/$(data.tournamentId))
@@ -1007,7 +1009,7 @@ service cloud.firestore {
     }
 
     function validMediaAsset(data) {
-      return data.keys().hasOnly(['url', 'path', 'name', 'contentType', 'bytes', 'createdAt', 'createdBy', 'isDefault', 'trashed', 'trashedAt'])
+      return data.keys().hasOnly(['url', 'path', 'name', 'contentType', 'bytes', 'createdAt', 'createdBy', 'isDefault', 'trashed', 'trashedAt', 'visibility'])
              && isSafeImageUrl(data.url, 500000)
              && data.path is string && data.path.size() > 0 && data.path.size() <= 800
              && data.name is string && data.name.size() <= 200
@@ -1018,7 +1020,16 @@ service cloud.firestore {
              && (!data.keys().hasAny(['bytes']) || ((data.bytes is int || data.bytes is float) && data.bytes >= 0 && data.bytes <= 5000000))
              && (!data.keys().hasAny(['isDefault']) || data.isDefault is bool)
              && (!data.keys().hasAny(['trashed']) || data.trashed is bool)
-             && (!data.keys().hasAny(['trashedAt']) || (data.trashedAt is int && data.trashedAt >= 0));
+             && (!data.keys().hasAny(['trashedAt']) || (data.trashedAt is int && data.trashedAt >= 0))
+             && (!data.keys().hasAny(['visibility'])
+                 || data.visibility in ['staff', 'public']);
+    }
+
+    function canReadMediaAsset(collectionId, data) {
+      return isSiteStaff()
+             || canManageMediaCollection(get(/databases/$(database)/documents/mediaCollections/$(collectionId)).data)
+             || !data.keys().hasAny(['visibility'])
+             || data.visibility == 'public';
     }
 
     match /mediaCollections/{collectionId} {
@@ -1035,7 +1046,9 @@ service cloud.firestore {
       allow delete: if canManageMediaCollection(resource.data);
 
       match /assets/{assetId} {
-        allow get, list: if canBrowsePublicData();
+        // New library uploads use visibility == 'staff' (owner + support only).
+        // Public / tournament art uses visibility == 'public' (or legacy docs without the field).
+        allow get, list: if canBrowsePublicData() && canReadMediaAsset(collectionId, resource.data);
         allow create: if validMediaAsset(request.resource.data)
                       && request.resource.data.createdBy == request.auth.uid
                       && canManageMediaCollection(get(/databases/$(database)/documents/mediaCollections/$(collectionId)).data);

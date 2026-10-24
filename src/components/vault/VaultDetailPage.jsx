@@ -11,6 +11,7 @@ import ChampionshipGameTabs from "./ChampionshipGameTabs";
 import StreamEmbed from "../shared/StreamEmbed";
 import { useGameBanner } from "../../hooks/useMediaLibrary";
 import SectionBackHome from "../layout/SectionBackHome";
+import { windowFactBlurb } from "./TournamentWindowCard";
 
 export default function VaultDetailPage({
   liveEntries = [],
@@ -95,13 +96,13 @@ export default function VaultDetailPage({
             </button>
           )}
         </div>
-        {eventFocused && (
+        {compareFocused && (
           <button
             type="button"
             onClick={clearEventFocus}
             className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-neon"
           >
-            <ArrowLeft size={14} /> {compareFocused ? "Back to events" : "All events"}
+            <ArrowLeft size={14} /> Back to events
           </button>
         )}
         {titleFocused && !compareFocused && (
@@ -116,11 +117,12 @@ export default function VaultDetailPage({
       </div>
       <SectionBackHome />
 
-      {compareFocused && !isChampionship && !!slide.editions?.length ? (
+      {!isChampionship && !!slide.editions?.length && eventFocused ? (
         <EventTabs
           editions={slide.editions}
           game={slide.game}
-          heading={`Compare · ${slide.game}`}
+          vaultSlug={slide.slug}
+          heading={compareFocused ? `Compare · ${slide.game}` : slide.game}
           fallbackPoster={slide.poster}
           onSelectPoster={setActiveFlyer}
         />
@@ -128,78 +130,66 @@ export default function VaultDetailPage({
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950 shadow-[0_30px_80px_rgba(0,0,0,0.45)]"
+        className="overflow-hidden rounded-3xl border bg-slate-950 shadow-[0_30px_80px_rgba(0,0,0,0.45)]"
+        style={
+          isChampionship
+            ? {
+                borderColor: "rgba(212, 175, 55, 0.35)",
+                boxShadow: "0 0 48px rgba(212, 175, 55, 0.1), 0 30px 80px rgba(0,0,0,0.45)",
+              }
+            : { borderColor: "rgba(255,255,255,0.1)" }
+        }
       >
-        <div className="relative aspect-video max-h-[420px]">
+        <div className={`relative ${slide.editions?.length && !slide.blog ? "aspect-[21/9] max-h-[260px]" : "aspect-video max-h-[420px]"}`}>
           <img src={activeFlyer || slide.poster} alt="" className="h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: isChampionship
+                ? "linear-gradient(180deg, rgba(8,6,2,0.2) 0%, rgba(8,6,2,0.55) 45%, rgba(8,6,2,0.95) 100%)"
+                : undefined,
+            }}
+          />
+          {!isChampionship ? (
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+          ) : null}
           <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-neon">
+            <p
+              className="font-mono text-[11px] uppercase tracking-[0.22em]"
+              style={{ color: isChampionship ? "#f0d78c" : "var(--accent)" }}
+            >
               {[publicScopeKicker(slide), isChampionship ? "Championship" : null].filter(Boolean).join(" · ") || "Vault"}
             </p>
-            {!isChampionship && slide.game ? (
-              <p className="mt-1 font-display text-4xl leading-none tracking-wide text-neon md:text-5xl">{slide.game}</p>
+            <h1
+              className="mt-1 font-display text-5xl leading-none tracking-wide md:text-6xl"
+              style={{ color: isChampionship ? "#fff" : "var(--accent)" }}
+            >
+              {isChampionship ? (slide.title || slide.game) : (slide.game || slide.title)}
+            </h1>
+            {!isChampionship && slide.title && slide.game && slide.title !== slide.game ? (
+              <p className="mt-2 font-mono text-sm uppercase tracking-[0.08em] text-slate-200">{slide.title}</p>
             ) : null}
-            <h1 className="font-display text-5xl text-white md:text-7xl">{slide.title}</h1>
-            <p className="mt-1 text-slate-300">{slide.season}</p>
+            {slide.season ? <p className="mt-1 text-sm text-stone-300">{slide.season}</p> : null}
+            {isChampionship && slide.championship?.games?.length ? (
+              <p className="mt-2 font-mono text-[11px] uppercase tracking-widest text-[#c4a35a]">
+                {slide.championship.games.length} titles · open a card for the winning team, player, or moment
+              </p>
+            ) : null}
           </div>
         </div>
-        <div className={`grid gap-8 p-6 md:p-8 ${slide.blog || isChampionship ? "" : "md:grid-cols-[1.4fr_0.8fr]"}`}>
+        <div className={`grid gap-8 p-6 md:p-8 ${slide.blog || isChampionship || slide.editions?.length ? "" : "md:grid-cols-[1.4fr_0.8fr]"}`}>
           <div>
             {slide.blog ? (
               <ExpandableBlogBody
                 text={slide.fullContent || slide.summary}
                 style={{ color: "inherit", fontSize: "1rem", lineHeight: 1.75 }}
               />
+            ) : slide.editions?.length ? (
+              <p className="text-base leading-7 text-slate-200">
+                {windowFactBlurb(slide.overview || slide.summary || "", { maxChars: 340, maxSentences: 3 })}
+              </p>
             ) : (
               <p className="whitespace-pre-wrap text-base leading-7 text-slate-200">{slide.summary}</p>
-            )}
-
-            {!!slide.relatedBlogs?.length && !slide.blog && (
-              <section className="mt-8 space-y-6 border-t border-white/10 pt-6">
-                <div>
-                  <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-neon">From the blog</p>
-                  <h2 className="font-display text-3xl text-white">
-                    {slide.relatedBlogs.length === 1 ? "Latest story" : `${slide.relatedBlogs.length} community stories`}
-                  </h2>
-                </div>
-                {slide.relatedBlogs.map((post) => (
-                  <article key={post.id} className="space-y-2 border-b border-white/10 pb-6 last:border-b-0 last:pb-0">
-                    <h3 className="font-display text-2xl text-white">{post.title}</h3>
-                    <ExpandableBlogBody
-                      text={post.content}
-                      style={{ color: "inherit", fontSize: "0.95rem", lineHeight: 1.7 }}
-                    />
-                    {(post.authorName || post.analysisType) && (
-                      <p className="text-sm text-slate-400">
-                        {[post.authorName && `By ${post.authorName}`, post.analysisType && `${analysisTypeLabel(post.analysisType)} analysis`, post.analysisSubject]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </p>
-                    )}
-                    <div className="flex flex-wrap gap-3 text-sm">
-                      {post.youtubeUrl && (
-                        <a href={post.youtubeUrl} target="_blank" rel="noreferrer" className="text-neon">
-                          YouTube
-                        </a>
-                      )}
-                      {post.docsUrl && (
-                        <a href={post.docsUrl} target="_blank" rel="noreferrer" className="text-neon">
-                          Docs
-                        </a>
-                      )}
-                      {post.source && (
-                        <a href={post.source} target="_blank" rel="noreferrer" className="text-neon">
-                          Source
-                        </a>
-                      )}
-                      <Link to="/blog" state={{ background: location }} className="text-neon">
-                        Open blog
-                      </Link>
-                    </div>
-                  </article>
-                ))}
-              </section>
             )}
 
             {!!slide.championship?.games?.length && (
@@ -239,7 +229,7 @@ export default function VaultDetailPage({
             )}
             {slide.blog && <StreamEmbed url={slide.youtubeUrl} title="Match clip / stream" />}
 
-            {!isChampionship && (slide.fullName || slide.peakPrizePool || slide.region) && (
+            {!isChampionship && !slide.editions?.length && (slide.fullName || slide.peakPrizePool || slide.region) && (
               <p className="mt-3 text-sm text-slate-400">
                 {[slide.fullName, slide.region, slide.peakPrizePool && `Peak prize pool ${slide.peakPrizePool}`]
                   .filter(Boolean)
@@ -305,7 +295,7 @@ export default function VaultDetailPage({
               </div>
             )}
           </div>
-          {!slide.blog && !isChampionship && (
+          {!slide.blog && !isChampionship && !slide.editions?.length && (
             <aside className="rounded-2xl border border-white/10 bg-white/5 p-4">
               <p className="mb-3 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-volt">
                 <Trophy size={14} /> Live Vault records
@@ -337,6 +327,62 @@ export default function VaultDetailPage({
         </div>
       </motion.div>
       )}
+      {!isChampionship && !!slide.editions?.length && !eventFocused ? (
+        <EventTabs
+          editions={slide.editions}
+          game={slide.game}
+          vaultSlug={slide.slug}
+          heading={`${slide.game} events`}
+          fallbackPoster={slide.poster}
+          onSelectPoster={setActiveFlyer}
+        />
+      ) : null}
+      {!isChampionship && !!slide.editions?.length && !eventFocused && !!slide.relatedBlogs?.length && !slide.blog ? (
+        <section className="mt-10 space-y-6 border-t border-white/10 pt-6">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-neon">From the blog</p>
+            <h2 className="font-display text-3xl text-white">
+              {slide.relatedBlogs.length === 1 ? "Latest story" : `${slide.relatedBlogs.length} community stories`}
+            </h2>
+          </div>
+          {slide.relatedBlogs.map((post) => (
+            <article key={post.id} className="space-y-2 border-b border-white/10 pb-6 last:border-b-0 last:pb-0">
+              <h3 className="font-display text-2xl text-white">{post.title}</h3>
+              <ExpandableBlogBody
+                text={post.content}
+                style={{ color: "inherit", fontSize: "0.95rem", lineHeight: 1.7 }}
+              />
+              {(post.authorName || post.analysisType) && (
+                <p className="text-sm text-slate-400">
+                  {[post.authorName && `By ${post.authorName}`, post.analysisType && `${analysisTypeLabel(post.analysisType)} analysis`, post.analysisSubject]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              )}
+              <div className="flex flex-wrap gap-3 text-sm">
+                {post.youtubeUrl && (
+                  <a href={post.youtubeUrl} target="_blank" rel="noreferrer" className="text-neon">
+                    YouTube
+                  </a>
+                )}
+                {post.docsUrl && (
+                  <a href={post.docsUrl} target="_blank" rel="noreferrer" className="text-neon">
+                    Docs
+                  </a>
+                )}
+                {post.source && (
+                  <a href={post.source} target="_blank" rel="noreferrer" className="text-neon">
+                    Source
+                  </a>
+                )}
+                <Link to="/blog" state={{ background: location }} className="text-neon">
+                  Open blog
+                </Link>
+              </div>
+            </article>
+          ))}
+        </section>
+      ) : null}
     </article>
   );
 }

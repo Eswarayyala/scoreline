@@ -84,15 +84,20 @@ function EditionCard({ edition, game, role, onChange, onRemove }) {
         year={edition.year}
         season={edition.season}
         event={edition.event}
+        champion={edition.champion}
+        mvp={edition.mvp}
         poster={edition.poster}
+        winnerPoster={edition.winnerPoster}
+        momentPoster={edition.momentPoster}
         images={edition.images}
         role={role}
-        hideSuggestions
-        heading="This event's poster and photos"
+        heading="This event's posters (winner / moment / card)"
         onChange={(patchIn) => onChange({
           ...edition,
           poster: patchIn.poster ?? edition.poster,
           posterSource: patchIn.posterSource || edition.posterSource,
+          winnerPoster: patchIn.winnerPoster ?? edition.winnerPoster,
+          momentPoster: patchIn.momentPoster ?? edition.momentPoster,
           images: patchIn.images ?? edition.images,
         })}
       />
