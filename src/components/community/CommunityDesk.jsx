@@ -29,13 +29,25 @@ export default function CommunityDesk({
   onDecideRequest,
   onToggleFollow,
   onOpenHostScrims,
+  verification = null,
+  verifyPromptDismissed = false,
+  onDismissVerifyPrompt = null,
 }) {
   const reduce = useReducedMotion();
   const flyers = [...announcements]
     .filter((item) => announcementMatchesViewer(item, alerts))
     .sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0))
     .slice(0, 8);
-  const followingHosts = officialHosts.filter((host) => (alerts?.followedHosts || []).includes(host.uid));
+  const followingHosts = (alerts?.followedHosts || []).map((uid) => {
+    const official = officialHosts.find((host) => host.uid === uid);
+    if (official) return official;
+    const flyer = announcements.find((item) => item.hostUid === uid);
+    return {
+      uid,
+      orgName: flyer?.hostName || uid.slice(0, 10),
+      displayName: flyer?.hostName || "",
+    };
+  });
   const quickLinks = [
     { to: "/find-players", label: "Find players", copy: "Match teammates" },
     { to: "/me/history", label: "Scrim history", copy: `${historyCount} joined` },
@@ -98,9 +110,9 @@ export default function CommunityDesk({
           </div>
 
           <motion.section className="mt-10" {...fadeUp(reduce, 0.12)}>
-            <h2 className="m-0 font-display text-2xl text-white">Following · official hosts</h2>
+            <h2 className="m-0 font-display text-2xl text-white">Following · hosts</h2>
             {followingHosts.length === 0 ? (
-              <p className="mt-3 text-sm text-slate-500">Follow verified hosts from scrim history or the Scrims org panel.</p>
+              <p className="mt-3 text-sm text-slate-500">Follow hosts from a scrim desk or their profile — flyers land on your bell.</p>
             ) : (
               <div className="mt-3 flex flex-wrap gap-2">
                 {followingHosts.map((host, index) => (
@@ -177,6 +189,9 @@ export default function CommunityDesk({
               hostRequests={hostRequests}
               isStaff={isStaff}
               followedHosts={alerts?.followedHosts || []}
+              verification={verification}
+              verifyPromptDismissed={verifyPromptDismissed}
+              onDismissVerifyPrompt={onDismissVerifyPrompt}
               onRequestOfficial={onRequestOfficial}
               onDecideRequest={onDecideRequest}
               onToggleFollow={onToggleFollow}

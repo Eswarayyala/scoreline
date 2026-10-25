@@ -9,6 +9,7 @@ import {
   roomDisplayName,
   stageLabel,
 } from "../../data/scrimRooms";
+import { gameProcessLabel, internationalPathLabel } from "../../data/hostVerification";
 
 function Button({ children, variant = "primary", ...props }) {
   const base = "inline-flex items-center justify-center rounded-md px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest disabled:opacity-40";
@@ -28,6 +29,8 @@ export default function RoomStagesPanel({
   onAddRoom,
   onActivateRoom,
   onPromote,
+  game = "",
+  track = null,
 }) {
   const [roomCode, setRoomCode] = useState("1");
   const [title, setTitle] = useState("");
@@ -126,8 +129,20 @@ export default function RoomStagesPanel({
         <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Multi-room stages</p>
         <h3 className="m-0 font-display text-2xl text-white">Rooms &amp; stages</h3>
         <p className="mt-1 text-xs text-slate-500">
-          Name rooms (1, 1a, a1, s1…) and mark the stage. Allocate teams manually or auto-fill the next room by capacity. Activating a lobby collapses the previous room.
+          {game ? `${game} process` : "Game process"}: {internationalPathLabel(game) || "Group → Semis → Finals"}
+          {game ? ` · ${gameProcessLabel(game)}` : ""}.
+          Activate each stage; collapsing a room marks it complete. Post final results within 24 hours of the last room.
         </p>
+        {track ? (
+          <p className={`mt-2 font-mono text-[10px] uppercase tracking-widest ${track.complete ? "text-neon" : "text-slate-400"}`}>
+            {track.complete
+              ? `Complete ${track.game || game || "desk"} process`
+              : track.missingStages?.length
+                ? `Progress · need ${track.missingStages.join(", ")}`
+                : track.reason || "In progress"}
+            {track.resultsWithin24h ? " · results on time" : ""}
+          </p>
+        ) : null}
       </div>
 
       {isAdmin ? (
@@ -166,7 +181,7 @@ export default function RoomStagesPanel({
       {error ? <p className="mb-3 text-sm text-rose-300">{error}</p> : null}
 
       {ordered.length === 0 ? (
-        <p className="text-sm text-slate-500">{isAdmin ? "Add Room 1 (group) as the open lobby, then later rooms for qualifiers / semis." : "Host has not set up staged rooms yet."}</p>
+        <p className="text-sm text-slate-500">{isAdmin ? "Add Group first, then Semis, Survival if your game needs it, then Finals." : "Host has not set up staged rooms yet."}</p>
       ) : (
         <div className="grid gap-2">
           {ordered.map((room) => {

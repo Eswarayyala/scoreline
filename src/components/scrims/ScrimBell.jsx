@@ -88,7 +88,7 @@ export default function ScrimBell({
           </div>
           <div className="max-h-80 overflow-y-auto">
             {matching.length === 0 ? (
-              <p className="px-3 py-4 text-sm text-slate-500">No flyer alerts yet. Follow an official host or enable game alerts.</p>
+              <p className="px-3 py-4 text-sm text-slate-500">No flyer alerts yet. Follow a host or a game from Scrims prefs.</p>
             ) : (
               matching.map((item) => (
                 <button

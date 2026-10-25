@@ -92,6 +92,31 @@ export default function ScrimAlertPrefs({
         </div>
 
         <div className="mt-4 border-t border-white/10 pt-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Hosts you follow</p>
+          {(alerts.followedHosts || []).length === 0 ? (
+            <p className="mt-2 text-sm text-slate-500">Follow any host from their profile or a scrim desk — their flyers bypass game filters.</p>
+          ) : (
+            <div className="mt-2 grid gap-2">
+              {(alerts.followedHosts || []).map((uid) => {
+                const host = officialHosts.find((row) => row.uid === uid);
+                return (
+                  <div key={uid} className="flex items-center justify-between gap-2 rounded border border-white/10 px-2 py-1.5">
+                    <span className="text-sm text-slate-200">{host?.orgName || host?.displayName || uid.slice(0, 10)}</span>
+                    <button
+                      type="button"
+                      className="font-mono text-[10px] uppercase tracking-widest text-neon"
+                      onClick={() => onToggleFollow?.(uid, false)}
+                    >
+                      Following
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 border-t border-white/10 pt-3">
           <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Official hosts</p>
           {officialHosts.length === 0 ? (
             <p className="mt-2 text-sm text-slate-500">No verified hosts yet. Staff can badge official orgs.</p>

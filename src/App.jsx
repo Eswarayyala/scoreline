@@ -76,6 +76,14 @@ import HostProfilePage from "./components/scrims/HostProfilePage";
 import PlayerScrimHistory from "./components/scrims/PlayerScrimHistory";
 import SpectatorPage from "./components/scrims/SpectatorPage";
 import ScrimWindowsGrid from "./components/scrims/ScrimWindowsGrid";
+import ScrimTodayStrip from "./components/scrims/ScrimTodayStrip";
+import HostVerifyPrompt from "./components/scrims/HostVerifyPrompt";
+import {
+  buildInternationalTrack,
+  evaluateHostVerification,
+  hostVerificationRequestMeta,
+  hostVerifyGamesNeedingNotify,
+} from "./data/hostVerification";
 import CommunityDesk from "./components/community/CommunityDesk";
 import PageEnter from "./components/motion/PageEnter";
 import GamesDirectoryPage from "./components/games/GamesDirectoryPage";
@@ -4422,14 +4430,79 @@ export default function App() {
     }
   };
 
+  const refreshInternationalTrack = async (tournamentId, {
+    rooms = null,
+    results = null,
+    standings = null,
+    resultsPostedAt = null,
+  } = {}) => {
+    const tournament = tournaments.find((item) => item.id === tournamentId) || selected;
+    if (!tournament || tournament.id !== tournamentId) return null;
+    const roomList = rooms || selectedRooms;
+    const nextResults = results !== null ? results : tournament.results;
+    const nextStandings = standings !== null ? standings : tournament.standings;
+    const postedAt = resultsPostedAt != null
+      ? resultsPostedAt
+      : (tournament.resultsPostedAt || (hasPostedResults({ results: nextResults }) ? tournament.archivedAt : null));
+    const track = buildInternationalTrack({
+      game: tournament.game,
+      rooms: roomList,
+      results: nextResults,
+      standings: nextStandings,
+      resultsPostedAt: postedAt,
+      previous: tournament.internationalTrack,
+    });
+    await updateDoc(tournamentDocRef(tournamentId), {
+      internationalTrack: track,
+      ...(postedAt ? { resultsPostedAt: postedAt } : {}),
+      updatedAt: Date.now(),
+    });
+    return track;
+  };
+
   const saveTournamentResults = async (id, results) => {
     setSaving(true);
     try {
-      await updateDoc(tournamentDocRef(id), {
-        results, status: "completed", registrationOpen: false, archived: true,
-        archivedAt: Date.now(), updatedAt: Date.now(),
+      const now = Date.now();
+      const rooms = selectedRooms.map((room) => (
+        room.status === "active"
+          ? { ...room, status: "collapsed", collapsedAt: room.collapsedAt || now }
+          : room
+      ));
+      const track = buildInternationalTrack({
+        game: selected?.game || tournaments.find((item) => item.id === id)?.game,
+        rooms,
+        results,
+        standings: selected?.standings,
+        resultsPostedAt: now,
+        previous: selected?.internationalTrack,
       });
-      showToast("Tournament results posted");
+      await updateDoc(tournamentDocRef(id), {
+        results,
+        status: "completed",
+        registrationOpen: false,
+        archived: true,
+        archivedAt: now,
+        resultsPostedAt: now,
+        internationalTrack: track,
+        updatedAt: now,
+      });
+      await Promise.all(
+        selectedRooms
+          .filter((room) => room.status === "active")
+          .map((room) => updateDoc(doc(roomsCollectionRef(id), room.id), {
+            status: "collapsed",
+            collapsedAt: room.collapsedAt || now,
+            updatedAt: now,
+          }).catch(() => null)),
+      );
+      showToast(
+        track.complete
+          ? "Results posted · international desk complete"
+          : track.reason
+            ? `Results posted · ${track.reason}`
+            : "Tournament results posted",
+      );
     } catch (e) {
       showToast("Couldn't post tournament results — try again");
     } finally {
@@ -4607,7 +4680,19 @@ export default function App() {
 
   const saveTournamentStandings = async (tournamentId, standings) => {
     try {
-      await updateDoc(tournamentDocRef(tournamentId), { standings: standings || [], updatedAt: Date.now() });
+      const track = buildInternationalTrack({
+        game: selected?.game || tournaments.find((item) => item.id === tournamentId)?.game,
+        rooms: selectedRooms,
+        results: selected?.results,
+        standings,
+        resultsPostedAt: selected?.resultsPostedAt,
+        previous: selected?.internationalTrack,
+      });
+      await updateDoc(tournamentDocRef(tournamentId), {
+        standings: standings || [],
+        internationalTrack: track,
+        updatedAt: Date.now(),
+      });
       showToast("Standings saved");
     } catch {
       showToast("Couldn't save standings. Publish latest Firestore rules.");
@@ -4835,6 +4920,68 @@ export default function App() {
 
   const savedSquad = useMemo(() => normalizeSavedSquad(userPrefs || {}), [userPrefs]);
 
+  const hostVerifyNotifiedGames = useMemo(() => {
+    const map = userPrefs?.hostVerifyNotifiedGames;
+    if (map && typeof map === "object") return map;
+    // Legacy single notify → treat as notified for current best only after migration write.
+    return {};
+  }, [userPrefs?.hostVerifyNotifiedGames]);
+
+  const hostVerification = useMemo(
+    () => (user
+      ? evaluateHostVerification(tournaments, user.uid, { notifiedGames: hostVerifyNotifiedGames })
+      : evaluateHostVerification([], null)),
+    [tournaments, user, hostVerifyNotifiedGames],
+  );
+
+  const hostVerifyPromptDismissed = Boolean(userPrefs?.hostVerifyPromptDismissedAt);
+  const isVerifiedHost = Boolean(user && officialHosts.some((host) => host.uid === user.uid && host.enabled !== false));
+  const hostVerifyPending = Boolean(
+    user && hostRequests.some((row) => (row.uid === user.uid || row.id === user.uid) && row.status === "pending"),
+  );
+  const showHostVerifyPrompt = Boolean(
+    user && hostVerification.eligible && !isVerifiedHost && !hostVerifyPending && !hostVerifyPromptDismissed,
+  );
+
+  useEffect(() => {
+    if (!user || isVerifiedHost || hostVerifyPending) return;
+    const needing = hostVerifyGamesNeedingNotify(hostVerification, hostVerifyNotifiedGames);
+    if (!needing.length) return;
+    let cancelled = false;
+    (async () => {
+      const now = Date.now();
+      const nextNotified = { ...hostVerifyNotifiedGames };
+      needing.forEach((row) => {
+        nextNotified[row.game] = now;
+      });
+      try {
+        await setDoc(userPrefsDocRef(user.uid), {
+          hostVerifyNotifiedAt: now,
+          hostVerifyNotifiedGames: nextNotified,
+          // Re-surface banner when a new game unlocks review.
+          hostVerifyPromptDismissedAt: null,
+          updatedAt: now,
+        }, { merge: true });
+        if (!cancelled) {
+          needing.forEach((row) => {
+            showToast(
+              `Verification review · ${row.game} (${row.count}/${row.threshold}) · ${row.pathLabel}`,
+            );
+          });
+        }
+      } catch {
+        /* prefs write is best-effort */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [
+    user,
+    hostVerification,
+    hostVerifyNotifiedGames,
+    isVerifiedHost,
+    hostVerifyPending,
+  ]);
+
   const saveScrimAlerts = async (next) => {
     if (!user) return;
     const body = {
@@ -4911,23 +5058,58 @@ export default function App() {
   };
 
   const toggleFollowHost = async (hostUid, follow) => {
+    if (!user || !hostUid) return;
     const followedHosts = follow
       ? [...new Set([...(scrimAlerts.followedHosts || []), hostUid])].slice(0, 80)
       : (scrimAlerts.followedHosts || []).filter((id) => id !== hostUid);
-    await saveScrimAlerts({ ...scrimAlerts, followedHosts });
+    await saveScrimAlerts({
+      ...scrimAlerts,
+      followedHosts,
+      enabled: follow ? true : scrimAlerts.enabled,
+      notifyChannelsChosen: true,
+      notifyFriends: notifyPrefs.friends,
+      notifyChats: notifyPrefs.chats,
+      notifyBlogs: notifyPrefs.blogs,
+    });
+    showToast(follow ? "Following host — flyers hit your bell" : "Unfollowed host");
+  };
+
+  const toggleAlertGame = async (game, follow) => {
+    if (!user || !game) return;
+    const key = String(game);
+    const current = scrimAlerts.games || [];
+    const games = follow
+      ? [...new Set([...current, key])].slice(0, 20)
+      : current.filter((item) => String(item).toLowerCase() !== key.toLowerCase());
+    await saveScrimAlerts({
+      ...scrimAlerts,
+      games,
+      enabled: follow ? true : scrimAlerts.enabled,
+      notifyChannelsChosen: true,
+      notifyFriends: notifyPrefs.friends,
+      notifyChats: notifyPrefs.chats,
+      notifyBlogs: notifyPrefs.blogs,
+    });
+    showToast(follow ? `Following ${key} scrims` : `Stopped ${key} alerts`);
   };
 
   const addTournamentRoom = async (tournamentId, room) => {
     const code = String(room.roomCode || room.title || "1").slice(0, 16);
+    const stage = room.stage || "group";
     await addDoc(roomsCollectionRef(tournamentId), {
       index: Number(room.index) || 0,
       roomCode: code,
       title: String(room.title || code).slice(0, 80),
-      stage: room.stage || "group",
+      stage,
       status: "pending",
       capacity: Math.max(0, Math.min(256, Number(room.capacity) || 0)),
       updatedAt: Date.now(),
     });
+    const nextRooms = [
+      ...selectedRooms,
+      { stage, status: "pending", roomCode: code, title: room.title || code },
+    ];
+    await refreshInternationalTrack(tournamentId, { rooms: nextRooms });
   };
 
   const activateTournamentRoom = async (tournamentId, roomId, credentials) => {
@@ -4951,7 +5133,21 @@ export default function App() {
       roomPassword: String(credentials.roomPassword || "").slice(0, 40),
       updatedAt: now,
     });
-    showToast("Room activated — previous stage collapsed");
+    const nextRooms = selectedRooms.map((room) => {
+      if (room.id === roomId) {
+        return { ...room, status: "active", activatedAt: now, publishedAt: now };
+      }
+      if (active.some((item) => item.id === room.id)) {
+        return { ...room, status: "collapsed", collapsedAt: now };
+      }
+      return room;
+    });
+    const track = await refreshInternationalTrack(tournamentId, { rooms: nextRooms });
+    showToast(
+      track?.missingStages?.length
+        ? `Room live · still need ${track.missingStages.join(", ")} for a complete desk`
+        : "Room activated — previous stage collapsed",
+    );
   };
 
   const promoteTournamentPlayers = async (tournamentId, { fromRoomId, toRoomId, playerIds, mode = "manual", unitCount = 0 }) => {
@@ -4972,17 +5168,39 @@ export default function App() {
     showToast(`${mode === "auto" ? "Auto-allocated" : "Allocated"} ${ids.length} player(s)`);
   };
 
-  const requestOfficialHost = async ({ orgName, message, displayName }) => {
+  const requestOfficialHost = async ({ orgName, message, displayName, verification } = {}) => {
     if (!user) return;
+    const evalState = verification || hostVerification;
+    if (!evalState?.eligible) {
+      throw new Error(evalState?.summary || "Host more successful full-scale scrims before requesting a badge.");
+    }
+    if (officialHosts.some((host) => host.uid === user.uid && host.enabled !== false)) {
+      throw new Error("You are already a verified host.");
+    }
+    const meta = hostVerificationRequestMeta(evalState);
     await setDoc(doc(HOST_REQUESTS_COLLECTION, user.uid), {
       uid: user.uid,
       orgName: String(orgName || "").slice(0, 60),
       displayName: String(displayName || "").slice(0, 40),
       message: String(message || "").slice(0, 400),
       status: "pending",
+      ...meta,
+      statusTrack: evalState.byGame?.slice(0, 8) || [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
+  };
+
+  const dismissHostVerifyPrompt = async () => {
+    if (!user) return;
+    try {
+      await setDoc(userPrefsDocRef(user.uid), {
+        hostVerifyPromptDismissedAt: Date.now(),
+        updatedAt: Date.now(),
+      }, { merge: true });
+    } catch {
+      /* ignore */
+    }
   };
 
   const decideHostRequest = async (row, status) => {
@@ -5655,11 +5873,17 @@ export default function App() {
                       onDeskFilter={setScrimDeskFilter}
                       followedHosts={scrimAlerts.followedHosts}
                       alertGames={scrimAlerts.games}
+                      profileGames={myProfile?.games || []}
+                      onToggleAlertGame={user ? toggleAlertGame : null}
+                      notifyChosen={notifyPrefs.chosen}
                       notifyEnabled={notifyPrefs.scrims}
                       onNotifyChange={user ? (on) => setNotifyChannel("scrims", on) : null}
                       showNotifyPrompt={Boolean(user && !notifyPrefs.chosen)}
                       onNotifyPromptYes={() => chooseScrimNotifyPrompt(true)}
                       onNotifyPromptNo={() => chooseScrimNotifyPrompt(false)}
+                      hostVerification={hostVerification}
+                      showHostVerifyPrompt={showHostVerifyPrompt}
+                      onDismissHostVerify={dismissHostVerifyPrompt}
                       tournaments={tournaments.filter((item) => canSeeScrimInList(item, {
                         uid: user?.uid,
                         invites: tournamentInvites,
@@ -5735,6 +5959,9 @@ export default function App() {
                     historyCount={myScrimHistory.length}
                     officialHosts={officialHosts}
                     hostRequests={hostRequests}
+                    verification={hostVerification}
+                    verifyPromptDismissed={!showHostVerifyPrompt}
+                    onDismissVerifyPrompt={dismissHostVerifyPrompt}
                     isStaff={siteRole === "owner" || siteRole === "support"}
                     onOpenTournament={(id) => navigate(`/tournaments/${id}`)}
                     onOpenChats={() => setChatPopupOpen(true)}
@@ -5793,6 +6020,8 @@ export default function App() {
                     onDeleteMatch={(matchId) => deleteMatch(selected.id, matchId)}
                     onAddStat={(s) => addStat(selected.id, s)}
                     onDeleteStat={(statId) => deleteStat(selected.id, statId)}
+                    following={(scrimAlerts.followedHosts || []).includes(selected?.adminUserId)}
+                    onToggleFollow={toggleFollowHost}
                   />
                 ) : <EmptyState title="Scrim not found" body="This event is missing or was removed." actionLabel="Back to scrims" onAction={() => navigate("/tournaments")} />} />
                 <Route path="/find-players" element={user ? (
@@ -6184,12 +6413,18 @@ function TournamentList({
   onDeskFilter,
   followedHosts = [],
   alertGames = [],
+  profileGames = [],
+  onToggleAlertGame = null,
+  notifyChosen = false,
   hostPanel = null,
   notifyEnabled = true,
   onNotifyChange = null,
   showNotifyPrompt = false,
   onNotifyPromptYes = null,
   onNotifyPromptNo = null,
+  hostVerification = null,
+  showHostVerifyPrompt = false,
+  onDismissHostVerify = null,
 }) {
   const [localArchived, setLocalArchived] = useState(false);
   const [accessFilter, setAccessFilter] = useState("all");
@@ -6200,7 +6435,7 @@ function TournamentList({
   const showArchived = archivedView ?? localArchived;
   const setShowArchived = onArchivedView ?? setLocalArchived;
   const followSet = useMemo(() => new Set(followedHosts || []), [followedHosts]);
-  const gameSet = useMemo(() => new Set((alertGames || []).map((game) => String(game).toLowerCase())), [alertGames]);
+  const alertGameList = useMemo(() => (alertGames || []).map(String).filter(Boolean), [alertGames]);
   const listLocation = useLocation();
   const queryGame = useMemo(
     () => canonicalFilterGame(new URLSearchParams(listLocation.search).get("game") || ""),
@@ -6211,7 +6446,10 @@ function TournamentList({
     if (queryGame && !gameMatchesFilter(t.game, queryGame)) return false;
     if (deskFilter === "following" && !followSet.has(t.adminUserId)) return false;
     if (deskFilter === "foryou") {
-      const gameOk = !gameSet.size || gameSet.has(String(t.game || "").toLowerCase());
+      const focusGames = alertGameList.length
+        ? alertGameList
+        : (profileGames || []).map(String).filter(Boolean);
+      const gameOk = !focusGames.length || focusGames.some((game) => gameMatchesFilter(t.game, game));
       const followOk = followSet.has(t.adminUserId);
       if (!gameOk && !followOk) return false;
     }
@@ -6295,6 +6533,27 @@ function TournamentList({
             <Button variant="ghost" onClick={onNotifyPromptNo}>Not now</Button>
           </div>
         </div>
+      ) : null}
+
+      {showHostVerifyPrompt ? (
+        <HostVerifyPrompt
+          evaluation={hostVerification}
+          onDismiss={onDismissHostVerify}
+        />
+      ) : null}
+
+      {!showArchived ? (
+        <ScrimTodayStrip
+          tournaments={tournaments.filter((t) => !isTournamentArchived(t))}
+          alertGames={alertGameList}
+          profileGames={profileGames}
+          queryGame={queryGame}
+          currentUserId={currentUserId}
+          currentUserName={currentUserName}
+          onOpen={onOpen}
+          onToggleAlertGame={onToggleAlertGame}
+          notifyChosen={notifyChosen}
+        />
       ) : null}
 
       <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap", alignItems: "center" }}>
@@ -6966,6 +7225,8 @@ function TournamentDetail(props) {
     onDeleteMatch,
     onAddStat,
     onDeleteStat,
+    following = false,
+    onToggleFollow = null,
   } = props;
 
   const accessOpts = { uid: currentUserId, registrations: registrations || [], isAdmin };
@@ -7028,6 +7289,14 @@ function TournamentDetail(props) {
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {isAdmin && !isTournamentArchived(tournament) && <Button variant="ghost" onClick={onCloseTournament}>Close scrim</Button>}
+          {currentUserId && tournament.adminUserId && currentUserId !== tournament.adminUserId && onToggleFollow ? (
+            <Button
+              variant={following ? "primary" : "ghost"}
+              onClick={() => onToggleFollow(tournament.adminUserId, !following)}
+            >
+              {following ? "Following host" : "Follow host"}
+            </Button>
+          ) : null}
           {currentUserId && <Button variant="ghost" onClick={onShare}>Share scrim</Button>}
           {currentUserId ? <Button variant="danger" onClick={onReport}>Report scrim</Button> : <Button variant="ghost" onClick={onSignIn}>Sign in to report</Button>}
           {currentUserId && !isOwner && <Button variant="ghost" onClick={onRequestFriend}>Request host as friend</Button>}
@@ -7114,6 +7383,8 @@ function TournamentDetail(props) {
         onAddRoom={onAddRoom}
         onActivateRoom={onActivateRoom}
         onPromote={onPromote}
+        game={tournament.game}
+        track={tournament.internationalTrack}
       />
       {isOwner && (
         <DeskFold title="Co-host">

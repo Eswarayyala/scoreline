@@ -77,7 +77,7 @@ export default function SpectatorPage({
             {official ? " · Official" : ""}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {official && currentUserId && currentUserId !== tournament.adminUserId ? (
+            {currentUserId && currentUserId !== tournament.adminUserId ? (
               <button
                 type="button"
                 onClick={() => onToggleFollow?.(tournament.adminUserId, !following)}
@@ -88,7 +88,7 @@ export default function SpectatorPage({
                 {following ? "Following host" : "Follow host"}
               </button>
             ) : null}
-            {!currentUserId && official ? (
+            {!currentUserId ? (
               <button type="button" onClick={onSignIn} className="rounded-md border border-white/20 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-slate-300">
                 Sign in to follow
               </button>

@@ -43,7 +43,7 @@ export default function HostProfilePage({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {currentUserId && currentUserId !== hostUid && official ? (
+          {currentUserId && currentUserId !== hostUid ? (
             <motion.button
               type="button"
               onClick={() => onToggleFollow?.(hostUid, !following)}
@@ -52,10 +52,10 @@ export default function HostProfilePage({
               }`}
               whileTap={tapPress}
             >
-              {following ? "Following" : "Follow"}
+              {following ? "Following" : "Follow host"}
             </motion.button>
           ) : null}
-          {!currentUserId && official ? (
+          {!currentUserId ? (
             <button type="button" onClick={onSignIn} className="rounded-md border border-white/20 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-slate-300">
               Sign in to follow
             </button>

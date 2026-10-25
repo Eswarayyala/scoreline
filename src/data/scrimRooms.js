@@ -4,10 +4,36 @@ export const SCRIM_STAGES = [
   { id: "round_of_16", label: "Round of 16" },
   { id: "quarters", label: "Quarterfinals" },
   { id: "semifinals", label: "Semifinals" },
+  { id: "survival", label: "Survival" },
   { id: "finals", label: "Finals" },
   { id: "grand_finals", label: "Grand finals" },
   { id: "custom", label: "Custom" },
 ];
+
+/** Map loose stage ids onto the international model keys. */
+export function normalizeInternationalStage(stage = "") {
+  const raw = String(stage || "").toLowerCase().trim().replace(/\s+/g, "_");
+  if (!raw) return "";
+  if (raw === "group" || raw === "groups" || raw === "qualifiers" || raw === "qualifier") return "group";
+  if (raw === "round_of_16" || raw === "r16" || raw === "ro16") return "round_of_16";
+  if (raw === "quarters" || raw === "quarterfinals" || raw === "quarter" || raw === "qf") return "quarters";
+  if (raw === "semifinals" || raw === "semi" || raw === "semis" || raw === "sf") return "semifinals";
+  if (raw === "survival" || raw === "survial" || raw === "survive") return "survival";
+  if (raw === "finals" || raw === "final" || raw === "grand_finals" || raw === "grand_final" || raw === "gf") return "finals";
+  return raw;
+}
+
+/** Whether a completed stage set satisfies a required stage (with common substitutes). */
+export function stageSatisfiesRequirement(completedStages = [], required = "") {
+  const set = new Set((completedStages || []).map(normalizeInternationalStage).filter(Boolean));
+  const need = normalizeInternationalStage(required);
+  if (!need) return false;
+  if (set.has(need)) return true;
+  if (need === "quarters" && set.has("round_of_16")) return true;
+  if (need === "group" && (set.has("qualifiers") || set.has("group"))) return true;
+  if (need === "finals" && (set.has("grand_finals") || set.has("finals"))) return true;
+  return false;
+}
 
 export const ROOM_CODE_PRESETS = ["1", "1a", "1b", "2", "2a", "a1", "a2", "b1", "s1", "s2", "qf1", "sf1", "f1"];
 
