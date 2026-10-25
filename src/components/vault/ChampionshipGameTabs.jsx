@@ -172,15 +172,19 @@ export default function ChampionshipGameTabs({
           const winnerPoster = posterForEwcEdition(edition);
           const slide = {
             ...edition,
-            title: edition.game,
+            title: edition.event || edition.game,
             eventName: edition.event || "",
             game: edition.game,
             eventStatus: championOf(edition) || (edition.payouts || []).length ? "completed" : "upcoming",
             season: edition.year,
             kicker: [edition.year, edition.eventScope || "ewc"].filter(Boolean).join(" · "),
+            winners: championOf(edition),
+            championPrize: edition.payouts?.[0]?.prize || "",
+            prizePool: edition.prizePool || "",
             poster: winnerPoster || edition.poster || edition.posterUrl || edition.images?.[0],
             eventPoster: winnerPoster,
             editions: [edition],
+            spotlight: true,
             spotlightEdition: {
               ...edition,
               poster: winnerPoster || edition.poster,

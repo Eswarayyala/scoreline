@@ -262,25 +262,34 @@ export function windowCardModel(slide = {}) {
 
   const game = slide.game || slide.name || "";
   const isScrim = slide.surface === "scrim" || Boolean(slide.joinMode);
-  // Specific event names only on home spotlights / EWC year windows — vault game cards stay game-only.
-  const showEventName = slide.spotlight === true || slide.surface === "ewc-window";
   const scrimTitle = slide.title || slide.name || "";
+  // Per-edition windows (spotlights, EventTabs, championship titles) — not bare game-catalog cards.
+  const eventFocused = Boolean(
+    slide.spotlight === true
+    || slide.surface === "ewc-window"
+    || slide.spotlightEdition
+    || (slide.eventName && !isGameVault),
+  );
+  const eventLabel = String(
+    slide.eventName
+    || edition?.event
+    || (slide.title && slide.title !== game ? slide.title : "")
+    || "",
+  ).trim();
+  const flyerBadges = Array.isArray(slide.flyerBadges) ? slide.flyerBadges : [];
+  // Event windows: event name is the hero header; game · year sits underneath.
+  const header = isScrim
+    ? (scrimTitle || game || "Scrim")
+    : (eventFocused && eventLabel ? eventLabel : (game || slide.title || "Tournament"));
   const eventName = isScrim
     ? (game && game !== scrimTitle ? game : "")
-    : showEventName
-      ? (
-        slide.eventName
-        || edition?.event
-        || (slide.title && slide.title !== game ? slide.title : "")
-        || ""
-      )
-      : "";
-  const flyerBadges = Array.isArray(slide.flyerBadges) ? slide.flyerBadges : [];
+    : (eventFocused && eventLabel
+      ? [game, dateLabel].filter((part) => part && String(part) !== eventLabel).join(" · ")
+      : "");
 
   return {
     status,
-    /** Scrims use event name as header; vault/EWC keep the game / championship title. */
-    header: isScrim ? (scrimTitle || game || "Scrim") : (game || slide.title || "Tournament"),
+    header,
     eventName,
     game,
     flyerBadges,

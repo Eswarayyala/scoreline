@@ -60,6 +60,7 @@ export function asEventSpotlight(slide = {}) {
     winners: champion,
     runnerUps: runnerUp,
     mvp: edition.mvp || slide.mvp || "",
+    championPrize: edition.payouts?.[0]?.prize || "",
     prizePool: edition.prizePool || slide.prizePool || slide.peakPrizePool || "",
     // Keep edition poster on the window; do not fall back to the game vault banner here
     // (that overwrites official event art with generated / Unsplash game packs).

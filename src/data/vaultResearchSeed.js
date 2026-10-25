@@ -2568,19 +2568,19 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "GodLike Esports",
             "player": "",
-            "prize": ""
+            "prize": "₹80,00,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Orion Esports",
             "player": "",
-            "prize": ""
+            "prize": "₹40,00,000"
           },
           {
             "rank": "3rd Place",
             "team": "Entity Gaming",
             "player": "",
-            "prize": ""
+            "prize": "₹20,00,000"
           }
         ]
       },
@@ -2597,13 +2597,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "S8UL Esports",
             "player": "",
-            "prize": ""
+            "prize": "₹40,00,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team SouL",
             "player": "",
-            "prize": ""
+            "prize": "₹20,00,000"
           }
         ]
       },
@@ -2620,19 +2620,19 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Orion Esports",
             "player": "",
-            "prize": ""
+            "prize": "₹80,00,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "GodLike Esports",
             "player": "",
-            "prize": ""
+            "prize": "₹40,00,000"
           },
           {
             "rank": "3rd Place",
             "team": "Revenant Esports",
             "player": "",
-            "prize": ""
+            "prize": "₹20,00,000"
           }
         ]
       },
@@ -2649,13 +2649,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team SouL",
             "player": "",
-            "prize": ""
+            "prize": "₹30,00,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "GodLike Esports",
             "player": "",
-            "prize": ""
+            "prize": "₹15,00,000"
           }
         ]
       },
@@ -2672,19 +2672,19 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "GodLike Esports",
             "player": "",
-            "prize": ""
+            "prize": "₹60,00,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Orion Esports",
             "player": "",
-            "prize": ""
+            "prize": "₹30,00,000"
           },
           {
             "rank": "3rd Place",
             "team": "Entity Gaming",
             "player": "",
-            "prize": ""
+            "prize": "₹15,00,000"
           }
         ]
       },
@@ -2701,13 +2701,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Entity Gaming",
             "player": "",
-            "prize": ""
+            "prize": "₹20,00,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team SouL",
             "player": "",
-            "prize": ""
+            "prize": "₹10,00,000"
           }
         ]
       },
@@ -2724,13 +2724,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team SouL",
             "player": "",
-            "prize": ""
+            "prize": "₹40,00,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "GodLike Esports",
             "player": "",
-            "prize": ""
+            "prize": "₹20,00,000"
           }
         ]
       },
@@ -2747,13 +2747,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "GodLike Esports",
             "player": "",
-            "prize": ""
+            "prize": "₹20,00,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team SouL",
             "player": "",
-            "prize": ""
+            "prize": "₹10,00,000"
           }
         ]
       }

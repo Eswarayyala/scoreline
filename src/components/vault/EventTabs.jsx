@@ -638,17 +638,21 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
             : `#event-${encodeURIComponent(key)}`;
           const slide = {
             ...edition,
-            title: edition.game || game || "Event",
+            title: edition.event || edition.game || game || "Event",
             eventName: edition.event || "",
             game: edition.game || game,
             eventStatus: champion || (edition.payouts || []).length ? "completed" : "upcoming",
             season: edition.year || edition.season,
             kicker: [edition.year || edition.season, edition.eventScope].filter(Boolean).join(" · "),
+            winners: champion,
+            championPrize: edition.payouts?.[0]?.prize || "",
+            prizePool: edition.prizePool || "",
             teamCount: edition.totalTeams,
             poster: official || eventPoster(edition, fallbackPoster, game),
             posterSource: edition.posterSource || (official ? "event" : ""),
             eventPoster: official,
             editions: [edition],
+            spotlight: true,
             spotlightEdition: { ...edition, poster: official || edition.poster },
             href: eventHref,
           };
