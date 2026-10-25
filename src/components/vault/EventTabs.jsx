@@ -440,7 +440,8 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
     onSelectPoster(eventPoster(current, fallbackPoster, game));
   }, [current, fallbackPoster, game, onSelectPoster]);
 
-  const page = usePagedVisible(ordered.length, initialVisible, 8);
+  const pagePersistKey = `vault-events:${vaultSlug || game || "list"}:${ordered.length}`;
+  const page = usePagedVisible(ordered.length, initialVisible, 8, pagePersistKey);
   const visibleIndexes = useMemo(
     () => Array.from({ length: page.visible }, (_, index) => index),
     [page.visible],

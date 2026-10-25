@@ -47,7 +47,8 @@ export default function ChampionshipGameTabs({
   const [searchParams, setSearchParams] = useSearchParams();
   const [localIndex, setLocalIndex] = useState(0);
   const [localDetails, setLocalDetails] = useState(false);
-  const page = usePagedVisible(editions.length, initialVisible, 8);
+  const pagePersistKey = `ewc-titles:${editions[0]?.year || editions.length}:${editions.length}`;
+  const page = usePagedVisible(editions.length, initialVisible, 8, pagePersistKey);
 
   const gameFromUrl = String(searchParams.get("game") || "").toLowerCase();
   const detailsFromUrl = searchParams.get("details") === "1";

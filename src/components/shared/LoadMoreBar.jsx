@@ -1,5 +1,34 @@
 import { useEffect, useState } from "react";
 
+const STORAGE_PREFIX = "gi-page:";
+
+function readStoredVisible(persistKey) {
+  if (!persistKey || typeof sessionStorage === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(`${STORAGE_PREFIX}${persistKey}`);
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredVisible(persistKey, value) {
+  if (!persistKey || typeof sessionStorage === "undefined") return;
+  try {
+    sessionStorage.setItem(`${STORAGE_PREFIX}${persistKey}`, String(value));
+  } catch {
+    /* ignore quota */
+  }
+}
+
+function clampVisible(value, totalCount, initial) {
+  const total = Math.max(0, Number(totalCount) || 0);
+  const floor = Math.min(initial, total || initial);
+  if (total <= initial) return total;
+  return Math.min(Math.max(floor, value), total);
+}
+
 /** More loads the next page quietly (no +N / All). Less collapses to the default page. */
 export default function LoadMoreBar({
   total = 0,
@@ -39,17 +68,32 @@ export default function LoadMoreBar({
   );
 }
 
-export function usePagedVisible(totalCount, initial = 6, pageSize = 6) {
-  const [visible, setVisible] = useState(Math.min(initial, totalCount || initial));
+/**
+ * Paged list size. Pass persistKey so "More" survives opening a card and navigating back
+ * (sessionStorage — not reset to the default window count on remount).
+ */
+export function usePagedVisible(totalCount, initial = 6, pageSize = 6, persistKey = "") {
+  const [visible, setVisible] = useState(() => {
+    const stored = readStoredVisible(persistKey);
+    if (stored != null) return clampVisible(stored, totalCount, initial);
+    return Math.min(initial, totalCount || initial);
+  });
+
   useEffect(() => {
-    setVisible((current) => {
-      const floor = Math.min(initial, Math.max(totalCount, 0));
-      if (totalCount <= initial) return totalCount;
-      return Math.min(Math.max(floor, current), totalCount);
-    });
+    const stored = readStoredVisible(persistKey);
+    setVisible(clampVisible(stored != null ? stored : initial, totalCount, initial));
+  }, [persistKey]);
+
+  useEffect(() => {
+    setVisible((current) => clampVisible(current, totalCount, initial));
   }, [totalCount, initial]);
+
+  useEffect(() => {
+    writeStoredVisible(persistKey, visible);
+  }, [persistKey, visible]);
+
   return {
-    visible: Math.min(visible, totalCount),
+    visible: Math.min(visible, Math.max(totalCount, 0)),
     pageSize,
     more: () => setVisible((current) => Math.min(totalCount, current + pageSize)),
     all: () => setVisible(totalCount),

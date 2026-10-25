@@ -394,6 +394,7 @@ function FactLine({ fact, compact }) {
 function UpcomingBody({ model, compact }) {
   return (
     <>
+      <PlacePrizeLine model={model} compact={compact} />
       <FactLine fact={model.fact} compact={compact} />
       {!compact ? (
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
@@ -401,36 +402,13 @@ function UpcomingBody({ model, compact }) {
           <MetaChip icon={Gamepad2}>{model.game}</MetaChip>
           {model.teams ? <MetaChip icon={Users}>{`${model.teams} teams`}</MetaChip> : null}
           <MetaChip icon={Monitor}>{model.mode}</MetaChip>
-          {model.region ? <MetaChip icon={MapPin}>{model.region}</MetaChip> : null}
         </div>
       ) : null}
 
-      {model.prizePool ? (
-        <div
-          className={`mt-2 rounded-xl border px-3 text-center ${compact ? "py-2" : "mt-4 px-4 py-4"}`}
-          style={{
-            borderColor: "rgba(59, 130, 255, 0.55)",
-            background: "rgba(5, 10, 24, 0.78)",
-            boxShadow: "0 0 24px rgba(59, 130, 255, 0.2), inset 0 0 20px rgba(59, 130, 255, 0.08)",
-          }}
-        >
-          <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--accent-secondary)]">
-            Total prize pool
-          </div>
-          <div
-            className={`mt-0.5 font-['Bebas_Neue',sans-serif] tracking-wide text-white ${compact ? "text-2xl" : "text-5xl md:text-6xl"}`}
-            style={{ textShadow: "0 0 28px rgba(255,255,255,0.25)" }}
-          >
-            {model.prizePool}
-          </div>
-        </div>
-      ) : null}
-
-      {!compact && (model.teams || model.mode || model.region) ? (
+      {!compact && (model.teams || model.mode) ? (
         <div className="mt-4 flex items-start justify-between gap-2">
           {model.teams ? <FeatureOrb icon={Users} label={`${model.teams} elite teams`} /> : null}
           {model.mode ? <FeatureOrb icon={Monitor} label={`${model.mode} event`} /> : null}
-          {model.region ? <FeatureOrb icon={MapPin} label={model.region} /> : null}
         </div>
       ) : null}
     </>
@@ -441,18 +419,38 @@ function moneyKey(value = "") {
   return String(value || "").replace(/[\s,$]/g, "").toLowerCase();
 }
 
+function PlacePrizeLine({ model, compact }) {
+  const place = String(model.region || "").trim();
+  const pool = String(model.prizePool || "").trim();
+  if (!place && !pool) return null;
+  return (
+    <p
+      className={`mt-1 flex flex-wrap items-baseline gap-x-1.5 font-mono uppercase tracking-[0.08em] text-slate-200/90 ${
+        compact ? "text-[10px]" : "text-[11px]"
+      }`}
+    >
+      {place ? (
+        <span className="inline-flex items-center gap-1">
+          <MapPin size={compact ? 10 : 11} className="shrink-0 text-[var(--accent-secondary)]" aria-hidden />
+          {place}
+        </span>
+      ) : null}
+      {place && pool ? <span className="text-slate-500">·</span> : null}
+      {pool ? (
+        <span className="text-[var(--accent-secondary)]" style={{ textShadow: "0 0 12px rgba(59, 130, 255, 0.35)" }}>
+          {pool} prize pool
+        </span>
+      ) : null}
+    </p>
+  );
+}
+
 function ChampionSpotlight({ model, compact }) {
   const pool = String(model.prizePool || "").trim();
   const won = String(model.championPrize || "").trim();
-  const showPool = Boolean(pool);
-  // Avoid duplicating the same figure as both pool and winner take.
+  // Prefer winner take next to the team; skip if it duplicates the pool figure.
   const showWon = Boolean(won) && moneyKey(won) !== moneyKey(pool);
-  if (!model.champion && !showPool && !showWon) return null;
-
-  const moneyClass = `font-['Bebas_Neue',sans-serif] tracking-wide text-[var(--accent-secondary)] ${
-    compact ? "text-sm leading-tight" : "text-2xl"
-  }`;
-  const moneyShadow = { textShadow: "0 0 18px rgba(59, 130, 255, 0.45)" };
+  if (!model.champion && !showWon) return null;
 
   return (
     <div className={`mt-2 flex items-start gap-2 ${compact ? "gap-1.5" : "mt-3 gap-3"}`}>
@@ -469,17 +467,21 @@ function ChampionSpotlight({ model, compact }) {
         {model.champion ? (
           <div className={`font-['Bebas_Neue',sans-serif] uppercase tracking-wide text-white ${compact ? "text-[1.05rem] leading-tight" : "text-3xl"}`}>
             Champions: {model.champion}
+            {showWon ? (
+              <span
+                className={`ml-1.5 inline text-[var(--accent-secondary)] ${compact ? "text-[0.92rem]" : "text-2xl"}`}
+                style={{ textShadow: "0 0 18px rgba(59, 130, 255, 0.45)" }}
+              >
+                · Winners take {won}
+              </span>
+            ) : null}
           </div>
-        ) : null}
-        {/* Same labels on every card: prize pool, then winner take when it differs. */}
-        {showPool ? (
-          <div className={moneyClass} style={moneyShadow}>
-            {pool} prize pool
-          </div>
-        ) : null}
-        {showWon ? (
-          <div className={moneyClass} style={moneyShadow}>
-            {won} won
+        ) : showWon ? (
+          <div
+            className={`font-['Bebas_Neue',sans-serif] tracking-wide text-[var(--accent-secondary)] ${compact ? "text-sm leading-tight" : "text-2xl"}`}
+            style={{ textShadow: "0 0 18px rgba(59, 130, 255, 0.45)" }}
+          >
+            Winners take {won}
           </div>
         ) : null}
       </div>
@@ -560,9 +562,10 @@ function FinalistsTable({ rows, compact }) {
 function CompletedBody({ model, compact }) {
   return (
     <>
+      <PlacePrizeLine model={model} compact={compact} />
       <ChampionSpotlight model={model} compact={compact} />
       <FactLine fact={model.fact} compact={compact} />
-      {/* Dense compact windows: champion + fact only so 2 cards fit on screen */}
+      {/* Dense compact windows: place/pool + champion + fact only so 2 cards fit on screen */}
       {!compact ? (
         <>
           <PayoutStrip model={model} />
@@ -576,6 +579,7 @@ function CompletedBody({ model, compact }) {
 function LiveBody({ model, compact }) {
   return (
     <>
+      <PlacePrizeLine model={model} compact={compact} />
       <FactLine fact={model.fact} compact={compact} />
       {!compact ? (
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
@@ -584,27 +588,12 @@ function LiveBody({ model, compact }) {
           {model.teams ? <MetaChip icon={Users}>{`${model.teams} teams`}</MetaChip> : null}
         </div>
       ) : null}
-      {model.prizePool ? (
-        <div
-          className={`mt-2 rounded-xl border px-3 text-center ${compact ? "py-2" : "mt-4 px-4 py-3"}`}
-          style={{
-            borderColor: "rgba(255, 45, 149, 0.45)",
-            background: "rgba(5, 10, 24, 0.78)",
-            boxShadow: "0 0 24px rgba(255, 45, 149, 0.18)",
-          }}
-        >
-          <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--accent)]">On air · prize pool</div>
-          <div className={`mt-0.5 font-['Bebas_Neue',sans-serif] tracking-wide text-white ${compact ? "text-2xl" : "text-5xl"}`}>
-            {model.prizePool}
-          </div>
-        </div>
-      ) : null}
     </>
   );
 }
 
-/** Shared compact window height — 2-up grid with room for a 3–4 line fact. */
-export const WINDOW_CARD_HEIGHT = 340;
+/** Shared compact window height — tall enough for poster faces + place/champion lines. */
+export const WINDOW_CARD_HEIGHT = 380;
 
 /**
  * Neon tournament window — full-bleed game poster, upcoming / live / completed layouts.
@@ -637,22 +626,22 @@ export default function TournamentWindowCard({
 
   const shell = (
     <article
-      className={`group relative flex h-full max-h-full flex-col overflow-hidden rounded-2xl border transition ${className}`}
+      className={`group relative isolate z-0 flex h-full max-h-full flex-col overflow-hidden rounded-2xl border transition ${className}`}
       style={{
         borderColor: "rgba(59, 130, 255, 0.45)",
         boxShadow: "0 0 0 1px rgba(59, 130, 255, 0.12), 0 18px 40px rgba(0, 0, 0, 0.45), 0 0 32px rgba(59, 130, 255, 0.12)",
         height: "100%",
-        minHeight: compact ? 0 : 420,
+        minHeight: compact ? WINDOW_CARD_HEIGHT : 420,
         maxHeight: compact ? "100%" : undefined,
       }}
     >
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 overflow-hidden">
         {poster ? (
           <img
             src={poster}
             alt=""
             className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-            style={{ objectPosition: "70% center" }}
+            style={{ objectPosition: "50% 22%" }}
           />
         ) : (
           <div className="h-full w-full bg-[#050a18]" />
@@ -661,14 +650,14 @@ export default function TournamentWindowCard({
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(105deg, rgba(5,10,24,0.94) 0%, rgba(5,10,24,0.84) 40%, rgba(5,10,24,0.5) 68%, rgba(5,10,24,0.28) 100%)",
+              "linear-gradient(180deg, rgba(5,10,24,0.35) 0%, rgba(5,10,24,0.55) 42%, rgba(5,10,24,0.92) 100%), linear-gradient(105deg, rgba(5,10,24,0.88) 0%, rgba(5,10,24,0.45) 55%, rgba(5,10,24,0.2) 100%)",
           }}
         />
         <div
-          className="pointer-events-none absolute inset-0 opacity-40"
+          className="pointer-events-none absolute inset-0 opacity-30"
           style={{
             background:
-              "linear-gradient(135deg, transparent 40%, rgba(255,45,149,0.12) 70%, rgba(59,130,255,0.18) 100%)",
+              "linear-gradient(135deg, transparent 40%, rgba(255,45,149,0.1) 70%, rgba(59,130,255,0.14) 100%)",
           }}
         />
       </div>

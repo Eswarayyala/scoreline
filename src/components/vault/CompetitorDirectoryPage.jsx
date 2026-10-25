@@ -1,8 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Building2, UserRound } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { dossierPath, listFranchises, listPlayers } from "../../data/competitorIndex";
 import { canonicalFilterGame, gameMatchesFilter } from "../../data/gameCatalog";
+import PageEnter from "../motion/PageEnter";
+import { fadeUp, hoverLift, staggerDelay, tapPress } from "../../motion/presets";
 
 export default function CompetitorDirectoryPage({ slides = [], kind = "franchise" }) {
   const isFranchise = kind === "franchise";
@@ -29,9 +32,10 @@ export default function CompetitorDirectoryPage({ slides = [], kind = "franchise
     if (q && !row.name.toLowerCase().includes(q)) return false;
     return true;
   });
+  const reduce = useReducedMotion();
 
   return (
-    <div className="mx-auto max-w-5xl px-5 pb-20 pt-6">
+    <PageEnter className="mx-auto max-w-5xl px-5 pb-20 pt-6">
       <div className="relative mb-2 border-b border-white/10 py-2">
         <Link to="/vault" className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neon">
           <ArrowLeft size={14} /> The Vault
@@ -86,31 +90,37 @@ export default function CompetitorDirectoryPage({ slides = [], kind = "franchise
         {visible.length === 0 ? (
           <p className="text-sm text-slate-500">No matches in the current vault data.</p>
         ) : (
-          visible.map((row) => (
-            <Link
+          visible.map((row, index) => (
+            <motion.div
               key={row.key}
-              to={dossierPath(row.name)}
-              className="rounded-2xl border border-white/10 bg-slate-950/50 p-4 text-inherit no-underline hover:border-neon/40"
+              {...fadeUp(reduce, staggerDelay(index, 0.03, reduce))}
+              whileHover={hoverLift(reduce)}
+              whileTap={tapPress}
             >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="font-mono text-[10px] uppercase tracking-widest text-neon">
-                    {isFranchise ? "Franchise" : "Player"} · {row.gameCount} game{row.gameCount === 1 ? "" : "s"} ·{" "}
-                    {row.appearanceCount} appearance{row.appearanceCount === 1 ? "" : "s"}
-                    {row.titles ? ` · ${row.titles} title${row.titles === 1 ? "" : "s"}` : ""}
-                  </p>
-                  <h2 className="mt-1 font-display text-3xl text-white">{row.name}</h2>
-                  <p className="mt-1 text-sm text-slate-400">{row.games.join(" · ")}</p>
+              <Link
+                to={dossierPath(row.name)}
+                className="block rounded-2xl border border-white/10 bg-slate-950/50 p-4 text-inherit no-underline hover:border-neon/40"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-[10px] uppercase tracking-widest text-neon">
+                      {isFranchise ? "Franchise" : "Player"} · {row.gameCount} game{row.gameCount === 1 ? "" : "s"} ·{" "}
+                      {row.appearanceCount} appearance{row.appearanceCount === 1 ? "" : "s"}
+                      {row.titles ? ` · ${row.titles} title${row.titles === 1 ? "" : "s"}` : ""}
+                    </p>
+                    <h2 className="mt-1 font-display text-3xl text-white">{row.name}</h2>
+                    <p className="mt-1 text-sm text-slate-400">{row.games.join(" · ")}</p>
+                  </div>
+                  <div className="text-right text-xs text-slate-500">
+                    <div>Latest · {row.appearances[0]?.year || "—"}</div>
+                    <div className="mt-1 max-w-[220px] truncate">{row.appearances[0]?.event || ""}</div>
+                  </div>
                 </div>
-                <div className="text-right text-xs text-slate-500">
-                  <div>Latest · {row.appearances[0]?.year || "—"}</div>
-                  <div className="mt-1 max-w-[220px] truncate">{row.appearances[0]?.event || ""}</div>
-                </div>
-              </div>
-            </Link>
+              </Link>
+            </motion.div>
           ))
         )}
       </div>
-    </div>
+    </PageEnter>
   );
 }

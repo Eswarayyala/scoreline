@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, Bookmark, BookmarkCheck, ExternalLink, Trophy } from "lucide-react";
 import { bannerForGame, flyerForEvent, VAULT_SLIDES } from "../../data/platformShowcase";
 import { analysisTypeLabel } from "../../data/blogAnalysis";
@@ -12,6 +12,8 @@ import StreamEmbed from "../shared/StreamEmbed";
 import { useGameBanner } from "../../hooks/useMediaLibrary";
 import SectionBackHome from "../layout/SectionBackHome";
 import { windowFactBlurb } from "./TournamentWindowCard";
+import { fadeUp } from "../../motion/presets";
+import { gameDeskPath, themeForGame } from "../../data/gameThemes";
 
 export default function VaultDetailPage({
   liveEntries = [],
@@ -60,6 +62,9 @@ export default function VaultDetailPage({
     setActiveFlyer(defaultPoster);
   }, [defaultPoster]);
 
+  const reduce = useReducedMotion();
+  const gameTheme = themeForGame(slide?.game || "");
+
   if (!slide) {
     return (
       <div className="mx-auto max-w-3xl px-5 py-16 text-center">
@@ -74,12 +79,21 @@ export default function VaultDetailPage({
   }
 
   return (
-    <article className="mx-auto max-w-5xl px-5 pb-20 pt-6">
+    <article className="mx-auto max-w-5xl px-5 pb-20 pt-6" style={gameTheme.cssVars}>
       <div className="mb-5 space-y-2 border-b border-white/10 py-3">
         <div className="flex flex-wrap items-center gap-4">
           <Link to="/vault" className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neon">
             <ArrowLeft size={14} /> The Vault
           </Link>
+          {slide.game ? (
+            <Link
+              to={gameDeskPath(slide.game)}
+              className="font-mono text-xs uppercase tracking-widest no-underline"
+              style={{ color: gameTheme.accent }}
+            >
+              {slide.game} desk
+            </Link>
+          ) : null}
           {(slide.research || slide.surface === "research" || slide.surface === "ewc-window") && (
             <Link to="/vault/ewc" className="font-mono text-xs uppercase tracking-widest text-neon">
               EWC index
@@ -128,8 +142,7 @@ export default function VaultDetailPage({
         />
       ) : (
       <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
+        {...fadeUp(reduce, 0.04)}
         className="overflow-hidden rounded-3xl border bg-slate-950 shadow-[0_30px_80px_rgba(0,0,0,0.45)]"
         style={
           isChampionship

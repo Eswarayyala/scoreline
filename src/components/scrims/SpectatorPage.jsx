@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import SectionBackHome from "../layout/SectionBackHome";
+import PageEnter from "../motion/PageEnter";
 import DynamicPointsTable from "../shared/DynamicPointsTable";
 import { scrimAccessLabel, isPublicScrim } from "../../data/scrimAccess";
 
@@ -41,7 +42,7 @@ export default function SpectatorPage({
     : standings;
 
   return (
-    <div className="pb-16 pt-6">
+    <PageEnter className="pb-16 pt-6">
       <SectionBackHome />
       <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Spectator · read only</p>
       <div className="mt-2 grid gap-6 lg:grid-cols-[minmax(0,320px)_1fr]">
@@ -127,6 +128,6 @@ export default function SpectatorPage({
           ) : null}
         </div>
       </div>
-    </div>
+    </PageEnter>
   );
 }

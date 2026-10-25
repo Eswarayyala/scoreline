@@ -32,19 +32,43 @@
       </p>
     </noscript>
     <script>
-      // If the app module never mounts, show a recovery screen (empty #root in DevTools).
-      window.setTimeout(function () {
-        var root = document.getElementById("root");
-        if (!root || root.childElementCount > 0) return;
-        root.innerHTML =
-          '<div style="min-height:100vh;display:grid;place-items:center;padding:24px;text-align:center;font-family:Inter,system-ui,sans-serif;background:#17110f;color:#fff1e6">' +
-          '<div style="max-width:420px">' +
-          '<div style="font-family:Bebas Neue,sans-serif;font-size:42px;letter-spacing:0.04em">GrindInfo</div>' +
-          '<p style="color:#c3aa9a;line-height:1.5;margin:12px 0 20px">The app script did not start in this browser session. This is usually a stuck cache or a blocked module script.</p>' +
-          '<a href="/?recover=1" style="display:inline-block;padding:10px 16px;background:#ff8a24;color:#23120b;text-decoration:none;font-weight:700;border-radius:8px">Reload clean</a>' +
-          '<p style="margin-top:16px;font-size:12px;color:#967d70">Or open an Incognito/Private window → www.grindinfo.xyz</p>' +
-          "</div></div>";
-      }, 4000);
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        if (params.get("recover") === "1") {
+          var finish = function () {
+            params.delete("recover");
+            var next = window.location.pathname + (params.toString() ? "?" + params.toString() : "") + window.location.hash;
+            window.location.replace(next || "/");
+          };
+          var tasks = [];
+          if (window.caches && caches.keys) {
+            tasks.push(caches.keys().then(function (keys) {
+              return Promise.all(keys.map(function (key) { return caches.delete(key); }));
+            }).catch(function () {}));
+          }
+          if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+            tasks.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
+              return Promise.all(regs.map(function (reg) { return reg.unregister(); }));
+            }).catch(function () {}));
+          }
+          Promise.all(tasks).then(finish).catch(finish);
+          return;
+        }
+
+        // Slow networks often need >4s for the hashed app bundle. Wait longer before recovery UI.
+        window.setTimeout(function () {
+          var root = document.getElementById("root");
+          if (!root || root.childElementCount > 0) return;
+          root.innerHTML =
+            '<div style="min-height:100vh;display:grid;place-items:center;padding:24px;text-align:center;font-family:Inter,system-ui,sans-serif;background:#17110f;color:#fff1e6">' +
+            '<div style="max-width:420px">' +
+            '<div style="font-family:Bebas Neue,sans-serif;font-size:42px;letter-spacing:0.04em">GrindInfo</div>' +
+            '<p style="color:#c3aa9a;line-height:1.5;margin:12px 0 20px">Still loading the app. On a slow connection this can take a moment. Tap reload to clear a stuck browser cache.</p>' +
+            '<a href="/?recover=1" style="display:inline-block;padding:10px 16px;background:#ff8a24;color:#23120b;text-decoration:none;font-weight:700;border-radius:8px">Reload clean</a>' +
+            '<p style="margin-top:16px;font-size:12px;color:#967d70">Prefer Chrome or Edge · www.grindinfo.xyz</p>' +
+            "</div></div>";
+        }, 16000);
+      })();
     </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>

@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bookmark, BookmarkCheck } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { VAULT_SLIDES } from "../../data/platformShowcase";
 import { canonicalFilterGame, gameMatchesFilter } from "../../data/gameCatalog";
 import { sortVaultCatalog } from "../../data/floatingWindows";
@@ -8,6 +9,8 @@ import LoadMoreBar, { usePagedVisible } from "../shared/LoadMoreBar";
 import StickyFilterBar from "../shared/StickyFilterBar";
 import TournamentWindowCard, { WINDOW_CARD_HEIGHT } from "./TournamentWindowCard";
 import SectionBackHome from "../layout/SectionBackHome";
+import PageEnter from "../motion/PageEnter";
+import { fadeUp, hoverLift, staggerDelay, tapPress } from "../../motion/presets";
 /** Even page size so the 2-up window grid always fills complete rows. */
 const LIBRARY_PAGE = 8;
 
@@ -26,24 +29,28 @@ function asVaultCatalogCard(slide = {}) {
   };
 }
 
-function PagedSlideGrid({ items, bookmarkSet, onToggleBookmark }) {
-  const page = usePagedVisible(items.length, LIBRARY_PAGE, LIBRARY_PAGE);
+function PagedSlideGrid({ items, bookmarkSet, onToggleBookmark, persistKey = "vault-library" }) {
+  const page = usePagedVisible(items.length, LIBRARY_PAGE, LIBRARY_PAGE, persistKey);
   const shown = items.slice(0, page.visible);
+  const reduce = useReducedMotion();
   return (
     <>
       <div className="mb-3 grid auto-rows-fr grid-cols-2 gap-3">
-        {shown.map((slide) => (
-          <div
+        {shown.map((slide, index) => (
+          <motion.div
             key={slide.slug || slide.id}
             className="overflow-hidden"
             style={{ height: WINDOW_CARD_HEIGHT }}
+            {...fadeUp(reduce, staggerDelay(index, 0.04, reduce))}
+            whileHover={hoverLift(reduce)}
+            whileTap={tapPress}
           >
             <SlideCard
               slide={slide}
               bookmarked={bookmarkSet.has(slide.slug)}
               onToggleBookmark={onToggleBookmark}
             />
-          </div>
+          </motion.div>
         ))}
       </div>
       <LoadMoreBar
@@ -85,6 +92,21 @@ function SlideCard({ slide, bookmarked, onToggleBookmark }) {
   );
 }
 
+const VAULT_FILTER_KEY = "gi-vault-filters";
+
+function readVaultFilters() {
+  try {
+    const raw = JSON.parse(sessionStorage.getItem(VAULT_FILTER_KEY) || "{}");
+    return {
+      game: typeof raw.game === "string" ? raw.game : "all",
+      scope: typeof raw.scope === "string" ? raw.scope : "all",
+      onlyBookmarks: Boolean(raw.onlyBookmarks),
+    };
+  } catch {
+    return { game: "all", scope: "all", onlyBookmarks: false };
+  }
+}
+
 export default function VaultLibraryPage({
   slides = VAULT_SLIDES,
   children,
@@ -92,9 +114,10 @@ export default function VaultLibraryPage({
   onToggleBookmark,
 }) {
   const items = slides.length ? slides : VAULT_SLIDES;
-  const [game, setGame] = useState("all");
-  const [scope, setScope] = useState("all");
-  const [onlyBookmarks, setOnlyBookmarks] = useState(false);
+  const savedFilters = readVaultFilters();
+  const [game, setGame] = useState(savedFilters.game);
+  const [scope, setScope] = useState(savedFilters.scope);
+  const [onlyBookmarks, setOnlyBookmarks] = useState(savedFilters.onlyBookmarks);
   const bookmarkSet = useMemo(() => new Set(bookmarkSlugs), [bookmarkSlugs]);
   const catalogItems = useMemo(
     () => items.filter((slide) => {
@@ -135,8 +158,16 @@ export default function VaultLibraryPage({
     // Keep home featured order first, then the rest of the catalog by year (2026 → past).
     return [...featured, ...rest];
   }, [catalogItems, onlyBookmarks, bookmarkSet, game, scope]);
+  const pagePersistKey = `vault-library:${game}:${scope}:${onlyBookmarks ? "bm" : "all"}`;
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(VAULT_FILTER_KEY, JSON.stringify({ game, scope, onlyBookmarks }));
+    } catch {
+      /* ignore */
+    }
+  }, [game, scope, onlyBookmarks]);
   return (
-    <div className="pb-10 pt-6">
+    <PageEnter className="pb-28 pt-6">
       <SectionBackHome />
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -190,11 +221,16 @@ export default function VaultLibraryPage({
         </label>
       </StickyFilterBar>
       {visible.length > 0 ? (
-        <PagedSlideGrid items={visible} bookmarkSet={bookmarkSet} onToggleBookmark={onToggleBookmark} />
+        <PagedSlideGrid
+          items={visible}
+          bookmarkSet={bookmarkSet}
+          onToggleBookmark={onToggleBookmark}
+          persistKey={pagePersistKey}
+        />
       ) : (
         <p className="mb-10 text-sm text-slate-400">No vault windows match these filters.</p>
       )}
       {children ? <div className="mt-10 border-t border-white/10 pt-6">{children}</div> : null}
-    </div>
+    </PageEnter>
   );
 }

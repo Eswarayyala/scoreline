@@ -51,7 +51,7 @@ import { deskGateDocPath, hashDeskPassword, hashFieldForRole } from "./lib/deskG
 import { assembleFloatingSlides, buildFeaturedWindows, floatingPolicyFromRecords, mergeEwcWindows } from "./data/floatingWindows";
 import { useEsportsMedia } from "./hooks/useEsportsMedia";
 import { fetchGamePoster, mergeVaultMedia } from "./services/esportsMedia";
-import { FILTER_GAMES, PUBG_FAMILY_LABEL, canonicalFilterGame, filterGameAliases, isPubgFamily } from "./data/gameCatalog";
+import { FILTER_GAMES, PUBG_FAMILY_LABEL, canonicalFilterGame, filterGameAliases, gameMatchesFilter, isPubgFamily } from "./data/gameCatalog";
 import {
   canSeeScrimInList,
   canViewScrimRoom,
@@ -73,7 +73,11 @@ import HostOrgPanel from "./components/scrims/HostOrgPanel";
 import HostProfilePage from "./components/scrims/HostProfilePage";
 import PlayerScrimHistory from "./components/scrims/PlayerScrimHistory";
 import SpectatorPage from "./components/scrims/SpectatorPage";
+import ScrimWindowsGrid from "./components/scrims/ScrimWindowsGrid";
 import CommunityDesk from "./components/community/CommunityDesk";
+import PageEnter from "./components/motion/PageEnter";
+import GamesDirectoryPage from "./components/games/GamesDirectoryPage";
+import GameDeskPage from "./components/games/GameDeskPage";
 import { buildScrimHistoryEntry } from "./data/scrimHistory";
 import { useGameBanner, useMediaArt } from "./hooks/useMediaLibrary";
 import BlogGameCover from "./components/blog/BlogGameCover";
@@ -124,6 +128,39 @@ const FRIEND_REQUESTS_COLLECTION = collection(db, "friendRequests");
 const TOURNAMENT_INVITES_COLLECTION = collection(db, "tournamentInvites");
 const CHAT_CONVERSATIONS_COLLECTION = collection(db, "conversations");
 const CHAT_MESSAGES_COLLECTION = (conversationId) => collection(db, "conversations", conversationId, "messages");
+const CHAT_SEEN_KEY = "grindinfo-chat-seen";
+
+function chatConversationId(uidA, uidB) {
+  return [uidA, uidB].sort().join("_");
+}
+
+function readChatSeenMap() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CHAT_SEEN_KEY) || "{}");
+    return raw && typeof raw === "object" ? raw : {};
+  } catch {
+    return {};
+  }
+}
+
+function markChatConversationSeen(conversationId, at = Date.now()) {
+  if (!conversationId) return readChatSeenMap();
+  const prev = readChatSeenMap();
+  const next = { ...prev, [conversationId]: Math.max(Number(prev[conversationId]) || 0, Number(at) || Date.now()) };
+  try {
+    localStorage.setItem(CHAT_SEEN_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore quota */
+  }
+  return next;
+}
+
+/** Notification badges — blue fill, orange edge (not site pink). */
+const NOTICE_BADGE_STYLE = {
+  background: "var(--accent-secondary)",
+  color: "#ffffff",
+  boxShadow: "0 0 0 2px var(--rank-third)",
+};
 const ARCHIVE_COLLECTION = collection(db, "esportsArchive");
 const BLOG_POSTS_COLLECTION = collection(db, "blogPosts");
 const BLOG_PRIVATE_COLLECTION = collection(db, "blogPrivate");
@@ -825,7 +862,8 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowse
 
   return (
     <div role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !requireChoice) onClose(); }} style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", justifyContent: requireChoice ? "center" : "flex-end", alignItems: requireChoice ? "center" : "flex-start", padding: requireChoice ? 20 : "82px max(16px, calc((100vw - 980px) / 2)) 16px", background: requireChoice ? "var(--page-bg-solid)" : "transparent", pointerEvents: requireChoice ? "auto" : "none", fontFamily: "'Inter', sans-serif" }}>
-      <div role="dialog" aria-modal={requireChoice ? "true" : "false"} aria-label="Sign in to GrindInfo" onMouseDown={(event) => event.stopPropagation()} style={{ width: "min(380px, 100%)", maxHeight: "calc(100vh - 100px)", overflowY: "auto", padding: 20, color: "var(--page-text)", background: "var(--panel-bg)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)", pointerEvents: "auto" }}>
+      <style>{`@keyframes gi-auth-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.gi-auth-panel{animation:none!important}}`}</style>
+      <div role="dialog" aria-modal={requireChoice ? "true" : "false"} aria-label="Sign in to GrindInfo" onMouseDown={(event) => event.stopPropagation()} className="gi-auth-panel" style={{ width: "min(380px, 100%)", maxHeight: "calc(100vh - 100px)", overflowY: "auto", padding: 20, color: "var(--page-text)", background: "var(--panel-bg)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)", pointerEvents: "auto", animation: "gi-auth-in 320ms cubic-bezier(0.22,1,0.36,1) both" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
           <div>
             <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, color: "var(--page-text)", letterSpacing: "0.04em" }}>GRINDINFO</div>
@@ -1564,7 +1602,7 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
     .sort((a, b) => b.score - a.score || String(a.displayName || "").localeCompare(String(b.displayName || "")));
 
   return (
-    <div>
+    <PageEnter>
       <div
         style={{
           display: "flex",
@@ -1705,7 +1743,7 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
             })}
         </div>
       )}
-    </div>
+    </PageEnter>
   );
 }
 
@@ -1974,15 +2012,84 @@ function CoAdminPanel({ tournament, isOwner, onChange, onAddByPlayerId }) {
   );
 }
 
-function FriendRequestCenter({ requests, currentUserId, onDecision }) {
+function FriendRequestCenter({ requests, currentUserId, onDecision, compact = false }) {
   const incoming = requests.filter((request) => request.recipientId === currentUserId && request.status === "pending");
   const sent = requests.filter((request) => request.requesterId === currentUserId);
   return (
-    <div style={{ paddingTop: 34 }}>
+    <div style={{ paddingTop: compact ? 0 : 34 }}>
       <Eyebrow>Player connections</Eyebrow>
-      <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, margin: "4px 0 18px" }}>Friend requests</h1>
-      {incoming.length === 0 ? <div style={{ color: "var(--text-muted)", marginBottom: 18 }}>No pending requests to review.</div> : <div style={{ display: "grid", gap: 10, marginBottom: 20 }}>{incoming.map((request) => <div key={request.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}><span>{request.requesterName || "Player"} wants to connect</span><span style={{ display: "flex", gap: 6 }}><Button onClick={() => onDecision(request.id, "accepted")}>Accept</Button><Button variant="danger" onClick={() => onDecision(request.id, "declined")}>Decline</Button></span></div>)}</div>}
-      {sent.length > 0 && <div><Eyebrow>Requests you sent</Eyebrow><div style={{ display: "grid", gap: 8, marginTop: 10 }}>{sent.map((request) => <div key={request.id} style={{ padding: 12, background: "var(--panel-bg)", border: "1px solid var(--border)", fontSize: 13 }}>Host connection request · {request.status}</div>)}</div></div>}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "4px 0 18px" }}>
+        <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: compact ? 32 : 42, margin: 0 }}>Friend requests</h1>
+        {incoming.length > 0 ? (
+          <span
+            aria-label={`${incoming.length} pending`}
+            style={{
+              minWidth: 22,
+              height: 22,
+              padding: "0 7px",
+              borderRadius: 999,
+              display: "inline-grid",
+              placeItems: "center",
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 11,
+              fontWeight: 700,
+              ...NOTICE_BADGE_STYLE,
+            }}
+          >
+            {incoming.length > 9 ? "9+" : incoming.length}
+          </span>
+        ) : null}
+      </div>
+      {incoming.length === 0 ? (
+        <div style={{ color: "var(--text-muted)", marginBottom: 18 }}>No pending requests to review.</div>
+      ) : (
+        <div style={{ display: "grid", gap: 10, marginBottom: 20 }}>
+          {incoming.map((request) => (
+            <div
+              key={request.id}
+              style={{
+                padding: 14,
+                background: "var(--panel-bg)",
+                border: "1px solid var(--border)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+                flexWrap: "wrap",
+                boxShadow: "inset 3px 0 0 var(--accent-secondary)",
+              }}
+            >
+              <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                <img
+                  src={avatarForGamer({ displayName: request.requesterName, uid: request.requesterId })}
+                  alt=""
+                  className="aspect-square h-9 w-9 shrink-0 rounded-full object-cover"
+                />
+                <span>
+                  <strong style={{ display: "block" }}>{request.requesterName || "Player"}</strong>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>wants to connect</span>
+                </span>
+              </span>
+              <span style={{ display: "flex", gap: 6 }}>
+                <Button onClick={() => onDecision(request.id, "accepted")}>Accept</Button>
+                <Button variant="danger" onClick={() => onDecision(request.id, "declined")}>Decline</Button>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {sent.length > 0 && (
+        <div>
+          <Eyebrow>Requests you sent</Eyebrow>
+          <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+            {sent.map((request) => (
+              <div key={request.id} style={{ padding: 12, background: "var(--panel-bg)", border: "1px solid var(--border)", fontSize: 13 }}>
+                {request.recipientName || "Player"} · {request.status}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2090,7 +2197,7 @@ function FriendDock({ requests, currentUserId, onOpenChat, onOpenRequests, prese
   </aside>;
 }
 
-function FriendChat({ currentUser, friend, onClose, muted = false, onToggleMute, onBlock, embedded = false }) {
+function FriendChat({ currentUser, friend, onClose, muted = false, onToggleMute, onBlock, embedded = false, active = true, onSeen = null }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [error, setError] = useState("");
@@ -2101,7 +2208,7 @@ function FriendChat({ currentUser, friend, onClose, muted = false, onToggleMute,
   const participants = [currentUser.uid, friend.uid].sort();
   const conversationId = `${participants[0]}_${participants[1]}`;
   useEffect(() => {
-    let active = true;
+    let alive = true;
     let stopMessages = null;
     setReady(false);
     setMessages([]);
@@ -2118,15 +2225,15 @@ function FriendChat({ currentUser, friend, onClose, muted = false, onToggleMute,
           if (!racedSnapshot?.exists()) throw writeError;
         }
       }
-      if (!active) return;
+      if (!alive) return;
       stopMessages = onSnapshot(CHAT_MESSAGES_COLLECTION(conversationId), (messageSnapshot) => {
-        if (!active) return;
+        if (!alive) return;
         setMessages(messageSnapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0)).slice(-100));
         setReady(true);
-      }, () => { if (active) setError("Couldn't load messages. Reopen chat and try again."); });
+      }, () => { if (alive) setError("Couldn't load messages. Reopen chat and try again."); });
     };
-    openConversation().catch(() => { if (active) setError("Chat could not open. You both need to be accepted friends."); });
-    return () => { active = false; stopMessages?.(); };
+    openConversation().catch(() => { if (alive) setError("Chat could not open. You both need to be accepted friends."); });
+    return () => { alive = false; stopMessages?.(); };
   }, [conversationId, currentUser.uid, friend.uid]);
   useEffect(() => {
     const node = logRef.current;
@@ -2135,6 +2242,11 @@ function FriendChat({ currentUser, friend, onClose, muted = false, onToggleMute,
   useEffect(() => {
     if (ready) inputRef.current?.focus();
   }, [ready, conversationId]);
+  useEffect(() => {
+    if (!active || !ready || !onSeen) return;
+    const latest = messages.reduce((max, item) => Math.max(max, Number(item.createdAt) || 0), 0);
+    onSeen(friend.uid, conversationId, latest || Date.now());
+  }, [active, ready, messages, friend.uid, conversationId, onSeen]);
   const send = async (event) => {
     event.preventDefault();
     const clean = text.trim().slice(0, 1000);
@@ -2217,6 +2329,9 @@ function ChatPopup({
   mutedIds = new Set(),
   onToggleMute,
   onBlock,
+  unreadByUid = {},
+  onSeen = null,
+  unseenCount = 0,
 }) {
   if (!open) return null;
   const focused = chats.find((item) => item.uid === focusedUid) || chats[0] || null;
@@ -2255,24 +2370,25 @@ function ChatPopup({
         <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 14px", borderBottom: "1px solid var(--border)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <strong style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, letterSpacing: "0.04em" }}>Chats</strong>
-            <span
-              aria-label={`${chats.length} active chats`}
-              style={{
-                minWidth: 22,
-                height: 22,
-                padding: "0 7px",
-                borderRadius: 999,
-                display: "inline-grid",
-                placeItems: "center",
-                background: "var(--accent)",
-                color: "var(--accent-contrast)",
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 11,
-                fontWeight: 700,
-              }}
-            >
-              {chats.length}
-            </span>
+            {unseenCount > 0 ? (
+              <span
+                aria-label={`${unseenCount} unseen chats`}
+                style={{
+                  minWidth: 22,
+                  height: 22,
+                  padding: "0 7px",
+                  borderRadius: 999,
+                  display: "inline-grid",
+                  placeItems: "center",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  ...NOTICE_BADGE_STYLE,
+                }}
+              >
+                {unseenCount > 9 ? "9+" : unseenCount}
+              </span>
+            ) : null}
           </div>
           <button type="button" onClick={onClose} style={{ border: 0, background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 13 }}>
             Close
@@ -2287,6 +2403,7 @@ function ChatPopup({
             <aside style={{ borderRight: "1px solid var(--border)", overflowY: "auto" }}>
               {chats.map((friend) => {
                 const selected = focused?.uid === friend.uid;
+                const unseen = Number(unreadByUid[friend.uid]) || 0;
                 return (
                   <div
                     key={friend.uid}
@@ -2314,9 +2431,32 @@ function ChatPopup({
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
                       }}
                     >
-                      {friend.name}
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{friend.name}</span>
+                      {unseen > 0 ? (
+                        <span
+                          aria-label={`${unseen} unseen`}
+                          style={{
+                            marginLeft: "auto",
+                            flexShrink: 0,
+                            minWidth: 18,
+                            height: 18,
+                            padding: "0 5px",
+                            borderRadius: 999,
+                            display: "inline-grid",
+                            placeItems: "center",
+                            fontSize: 10,
+                            fontWeight: 700,
+                            ...NOTICE_BADGE_STYLE,
+                          }}
+                        >
+                          {unseen > 9 ? "9+" : unseen}
+                        </span>
+                      ) : null}
                     </button>
                     <button
                       type="button"
@@ -2335,12 +2475,14 @@ function ChatPopup({
                 <FriendChat
                   key={focused.uid}
                   embedded
+                  active={open}
                   currentUser={currentUser}
                   friend={focused}
                   muted={mutedIds.has(focused.uid)}
                   onToggleMute={onToggleMute}
                   onBlock={onBlock}
                   onClose={() => onRemove(focused.uid)}
+                  onSeen={onSeen}
                 />
               ) : null}
             </div>
@@ -2985,7 +3127,7 @@ function StaffVaultFill({ entries = [], onImport }) {
 
 function HistoricalArchive({ entries, user, submissions, onSubmitRequest, onSignIn, embedded = false }) {
   return (
-    <div className={embedded ? "pt-2" : "pt-6"}>
+    <PageEnter className={embedded ? "pt-2" : "pt-6"}>
       <div className="mb-3 flex items-end justify-between gap-3">
         <div>
           <Eyebrow>Past esports results</Eyebrow>
@@ -3008,7 +3150,7 @@ function HistoricalArchive({ entries, user, submissions, onSubmitRequest, onSign
           </article>
         ))}
       </div>
-    </div>
+    </PageEnter>
   );
 }
 
@@ -3108,7 +3250,7 @@ function BlogPage({ posts, user, isModerator, blogPrivateById = {}, onSubmit, on
     </section>
   );
   return (
-    <div style={{ paddingTop: overlay || embedded ? 0 : 32, paddingBottom: manageInDrawer ? 88 : 0 }}>
+    <PageEnter style={{ paddingTop: overlay || embedded ? 0 : 32, paddingBottom: manageInDrawer ? 88 : 0 }}>
       {!embedded && !overlay && (<><SectionBackHome /><Eyebrow>Community stories</Eyebrow><h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42 }}>Esports blog</h1><p style={{ color: "var(--text-muted)" }}>Read community stories, tournament recaps, and esports updates.</p></>)}
       {overlay && <p style={{ color: "var(--text-muted)", margin: "0 0 8px", fontSize: 14 }}>Read community stories, tournament recaps, and esports updates.</p>}
       {embedded && <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, margin: "0 0 12px" }}>Community blog</h2>}
@@ -3185,7 +3327,7 @@ function BlogPage({ posts, user, isModerator, blogPrivateById = {}, onSubmit, on
           {manageOpen && <div className="max-h-[48vh] overflow-y-auto border-t border-white/10 px-5 py-4">{compose}</div>}
         </div>
       )}
-    </div>
+    </PageEnter>
   );
 }
 
@@ -3244,6 +3386,7 @@ export default function App() {
   const [activeChats, setActiveChats] = useState([]);
   const [focusedChatUid, setFocusedChatUid] = useState(null);
   const [chatPopupOpen, setChatPopupOpen] = useState(false);
+  const [chatUnreadByUid, setChatUnreadByUid] = useState({});
   const [archiveEntries, setArchiveEntries] = useState([]);
   const [archiveSubmissions, setArchiveSubmissions] = useState([]);
   const [auditLog, setAuditLog] = useState([]);
@@ -3629,6 +3772,19 @@ export default function App() {
     return [uid, { uid, name: outgoing ? (item.recipientName || "Player") : (item.requesterName || "Player") }];
   }).filter(([uid]) => !blockedIds.has(uid))).values()];
   const acceptedFriendKey = acceptedFriendUids.slice().sort().join("|");
+  const unseenChatCount = useMemo(
+    () => Object.values(chatUnreadByUid).filter((count) => Number(count) > 0).length,
+    [chatUnreadByUid],
+  );
+  const markFriendChatSeen = useCallback((friendUid, conversationId, at = Date.now()) => {
+    markChatConversationSeen(conversationId || chatConversationId(user?.uid, friendUid), at);
+    setChatUnreadByUid((current) => {
+      if (!friendUid || !current[friendUid]) return current;
+      const next = { ...current };
+      delete next[friendUid];
+      return next;
+    });
+  }, [user?.uid]);
   useEffect(() => {
     if (!user || !realtimeDb || !acceptedFriendUids.length) return;
     httpsCallable(getFunctions(), "syncMyFriendPresenceLinks")({ friendUids: acceptedFriendUids }).catch(() => {});
@@ -3959,12 +4115,123 @@ export default function App() {
     showToast._t = window.setTimeout(() => setToast(""), 2200);
   }, []);
   const notifyFriendOnline = useCallback((name) => showToast(`${name} is online`), [showToast]);
+  const pendingFriendRequests = useMemo(
+    () => friendRequests.filter((request) => request.recipientId === user?.uid && request.status === "pending"),
+    [friendRequests, user?.uid],
+  );
+  const pendingFriendRequestCount = pendingFriendRequests.length;
+  const knownPendingFriendIds = useRef(null);
+  useEffect(() => {
+    if (!user) {
+      knownPendingFriendIds.current = null;
+      return;
+    }
+    const ids = pendingFriendRequests.map((request) => request.id);
+    if (knownPendingFriendIds.current === null) {
+      knownPendingFriendIds.current = new Set(ids);
+      return;
+    }
+    const fresh = pendingFriendRequests.filter((request) => !knownPendingFriendIds.current.has(request.id));
+    ids.forEach((id) => knownPendingFriendIds.current.add(id));
+    [...knownPendingFriendIds.current].forEach((id) => {
+      if (!ids.includes(id)) knownPendingFriendIds.current.delete(id);
+    });
+    if (!fresh.length) return;
+    const name = fresh[0].requesterName || "Someone";
+    showToast(fresh.length === 1 ? `${name} sent a friend request` : `${fresh.length} new friend requests`);
+    setShowFriendRequests(true);
+    document.querySelector("details[open]")?.removeAttribute("open");
+  }, [pendingFriendRequests, user, showToast]);
   useEffect(() => {
     if (!user) { setMutedFriendIds([]); return; }
     try { setMutedFriendIds(JSON.parse(localStorage.getItem(`grindinfo-muted-chats:${user.uid}`) || "[]")); }
     catch { setMutedFriendIds([]); }
   }, [user]);
   const mutedFriendSet = useMemo(() => new Set(mutedFriendIds), [mutedFriendIds]);
+  const chatFocusRef = useRef({ open: false, focusedUid: null });
+  chatFocusRef.current = { open: chatPopupOpen, focusedUid: focusedChatUid };
+  const acceptedFriendsByUid = useMemo(
+    () => Object.fromEntries(acceptedFriends.map((friend) => [friend.uid, friend])),
+    [acceptedFriendKey],
+  );
+  useEffect(() => {
+    if (!user?.uid) {
+      setChatUnreadByUid({});
+      return undefined;
+    }
+    const messageStops = new Map();
+    const stopAllMessages = () => {
+      messageStops.forEach((stop) => stop?.());
+      messageStops.clear();
+    };
+    const watchConversation = (conversationId, friendUid) => {
+      if (!friendUid || mutedFriendSet.has(friendUid) || messageStops.has(conversationId)) return;
+      const stop = onSnapshot(
+        query(CHAT_MESSAGES_COLLECTION(conversationId), orderBy("createdAt", "desc"), limit(40)),
+        (snapshot) => {
+          const focus = chatFocusRef.current;
+          const viewing = focus.open && focus.focusedUid === friendUid;
+          if (viewing) {
+            const latest = snapshot.docs[0]?.data()?.createdAt;
+            markFriendChatSeen(friendUid, conversationId, Number(latest) || Date.now());
+            return;
+          }
+          const seenAt = Number(readChatSeenMap()[conversationId]) || 0;
+          const unread = snapshot.docs.filter((item) => {
+            const data = item.data() || {};
+            if (data.senderId === user.uid) return false;
+            return Number(data.createdAt) > seenAt;
+          }).length;
+          setChatUnreadByUid((current) => {
+            const prev = Number(current[friendUid]) || 0;
+            if (unread === prev) return current;
+            if (unread <= 0) {
+              if (!prev) return current;
+              const next = { ...current };
+              delete next[friendUid];
+              return next;
+            }
+            return { ...current, [friendUid]: unread };
+          });
+          if (unread > 0) {
+            const friend = acceptedFriendsByUid[friendUid] || { uid: friendUid, name: "Friend" };
+            setActiveChats((current) => {
+              if (current.some((item) => item.uid === friendUid)) return current;
+              return [...current, friend].slice(-CHAT_POPUP_MAX);
+            });
+          }
+        },
+        () => {},
+      );
+      messageStops.set(conversationId, stop);
+    };
+    const stopConversations = onSnapshot(
+      query(CHAT_CONVERSATIONS_COLLECTION, where("participants", "array-contains", user.uid)),
+      (snapshot) => {
+        const liveIds = new Set();
+        snapshot.docs.forEach((item) => {
+          const participants = item.data()?.participants || [];
+          const friendUid = participants.find((uid) => uid !== user.uid);
+          if (!friendUid || mutedFriendSet.has(friendUid)) return;
+          liveIds.add(item.id);
+          watchConversation(item.id, friendUid);
+        });
+        [...messageStops.keys()].forEach((id) => {
+          if (liveIds.has(id)) return;
+          messageStops.get(id)?.();
+          messageStops.delete(id);
+        });
+      },
+      () => {
+        stopAllMessages();
+        setChatUnreadByUid({});
+      },
+    );
+    return () => {
+      stopConversations();
+      stopAllMessages();
+    };
+  }, [user?.uid, mutedFriendSet, markFriendChatSeen, acceptedFriendsByUid]);
   const toggleMuteFriend = useCallback((friendUid) => {
     if (!friendUid) return;
     setMutedFriendIds((current) => {
@@ -4660,14 +4927,6 @@ export default function App() {
     }
   };
 
-  // Keep participation history in sync when the open scrim updates your seat / results.
-  useEffect(() => {
-    if (!user?.uid || !selected?.id) return;
-    const mine = selectedRegistrations.find((row) => row.playerId === user.uid);
-    if (!mine) return;
-    upsertScrimHistory(selected, mine);
-  }, [user?.uid, selected?.id, selected?.results?.winner, selectedRegistrations]);
-
   const shareTournament = async (tournament, { watch = false } = {}) => {
     const path = watch ? `/tournaments/${tournament.id}/watch` : `/tournaments/${tournament.id}`;
     const url = `${window.location.origin}${path}`;
@@ -5026,6 +5285,14 @@ export default function App() {
   const isSiteStaff = siteRole === "owner" || siteRole === "support";
   const dashboardRole = isSiteStaff ? siteRole : null;
 
+  // Keep participation history in sync when the open scrim updates your seat / results.
+  useEffect(() => {
+    if (!user?.uid || !selected?.id) return;
+    const mine = selectedRegistrations.find((row) => row.playerId === user.uid);
+    if (!mine) return;
+    upsertScrimHistory(selected, mine);
+  }, [user?.uid, selected?.id, selected?.results?.winner, selectedRegistrations]);
+
   useEffect(() => {
     const legacyId = new URLSearchParams(windowLocation.search || location.search).get("tournament");
     if (legacyId && !routePath.startsWith("/tournaments/")) {
@@ -5212,17 +5479,33 @@ export default function App() {
                     onFriendRequest={(player) => requestFriend(player.uid, player.displayName)}
                   />
                 ) : null}
-                chatCount={activeChats.length}
+                chatCount={unseenChatCount}
                 onOpenChats={() => setChatPopupOpen(true)}
+                friendRequestCount={pendingFriendRequestCount}
+                onOpenFriendRequests={() => setShowFriendRequests(true)}
               />
               <PublicNav pathname={routePath} />
             </div>
-            <div className={`mx-auto px-5 pb-24 ${(routesLocation.pathname || "/") === "/" || String(routesLocation.pathname || "").startsWith("/vault") ? "max-w-6xl" : "max-w-5xl"}`}>
+            <div className={`mx-auto px-5 pb-24 ${(routesLocation.pathname || "/") === "/" || String(routesLocation.pathname || "").startsWith("/vault") || String(routesLocation.pathname || "").startsWith("/games") ? "max-w-6xl" : "max-w-5xl"}`}>
               <Routes location={routesLocation}>
                 <Route path="/" element={(
                   <PlatformHome slides={homeSlides}>
                     <HubSections />
                   </PlatformHome>
+                )} />
+                <Route path="/games" element={<GamesDirectoryPage />} />
+                <Route path="/games/:slug" element={(
+                  <GameDeskPage
+                    slug={routePath.replace(/^\/games\//, "").split("/")[0] || ""}
+                    vaultSlides={vaultSlides}
+                    tournaments={tournaments}
+                    blogPosts={blogPosts}
+                    onOpenScrim={(id) => {
+                      setSelectedId(id);
+                      setView("detail");
+                      navigate(`/tournaments/${id}`);
+                    }}
+                  />
                 )} />
                 <Route path="/vault" element={(
                   <VaultLibraryPage
@@ -5488,10 +5771,32 @@ export default function App() {
 
       {user && reportTarget && <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} onSubmit={submitReport} />}
       {user && showFriendRequests && (
-        <div className="fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4">
-          <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto border border-white/10 bg-[var(--page-bg-solid)] p-4">
-            <div className="mb-3 flex justify-end"><Button variant="ghost" onClick={() => setShowFriendRequests(false)}>Close</Button></div>
-            <FriendRequestCenter requests={friendRequests} currentUserId={user.uid} onDecision={decideFriendRequest} />
+        <div
+          role="presentation"
+          className="fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowFriendRequests(false);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Friend requests"
+            className="max-h-[80vh] w-full max-w-lg overflow-y-auto border border-white/10 bg-[var(--page-bg-solid)] p-4 shadow-[0_0_0_1px_var(--accent-secondary)]"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="m-0 font-mono text-[10px] uppercase tracking-widest text-[var(--accent-secondary)]">
+                {pendingFriendRequestCount ? "New connection" : "Connections"}
+              </p>
+              <Button variant="ghost" onClick={() => setShowFriendRequests(false)}>Close</Button>
+            </div>
+            <FriendRequestCenter
+              compact
+              requests={friendRequests}
+              currentUserId={user.uid}
+              onDecision={decideFriendRequest}
+            />
           </div>
         </div>
       )}
@@ -5516,6 +5821,9 @@ export default function App() {
           onBlock={(friend) => {
             blockFriend(friend);
           }}
+          unreadByUid={chatUnreadByUid}
+          unseenCount={unseenChatCount}
+          onSeen={markFriendChatSeen}
         />
       )}
       {!user && authDialogOpen && <AuthScreen onGoogleSignIn={handleGoogleSignIn} onEmailAuth={handleEmailAuth} authError={authError} authBusy={authBusy} onBrowseAsGuest={browseAsGuest} onClose={() => setAuthDialogOpen(false)} requireChoice={!guestMode} knownAccounts={knownAccounts} />}
@@ -5532,7 +5840,7 @@ const shellStyle = {
   fontFamily: "'Inter', sans-serif",
 };
 
-function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAccount, onEditProfile, onOpenAccountInfo, dashboardRole, friendsPanel = null, playerTag = "", profile = null, chatCount = 0, onOpenChats = null, scrimBell = null }) {
+function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAccount, onEditProfile, onOpenAccountInfo, dashboardRole, friendsPanel = null, playerTag = "", profile = null, chatCount = 0, onOpenChats = null, friendRequestCount = 0, onOpenFriendRequests = null, scrimBell = null }) {
   const location = useLocation();
   const friendsMenu = useRef(null);
   const accountMenu = useRef(null);
@@ -5549,10 +5857,25 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAcc
       if (node && node !== keep) node.removeAttribute("open");
     });
   };
-  useEffect(() => {
+  const closeMenus = () => {
     friendsMenu.current?.removeAttribute("open");
     accountMenu.current?.removeAttribute("open");
+  };
+  useEffect(() => {
+    closeMenus();
   }, [location.pathname]);
+  useEffect(() => {
+    const onPointerDown = (event) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      const menus = [friendsMenu.current, accountMenu.current].filter(Boolean);
+      if (!menus.some((node) => node.open)) return;
+      if (menus.some((node) => node.contains(target))) return;
+      closeMenus();
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, []);
 
   return (
     <div style={{ borderBottom: "1px solid var(--border)" }}>
@@ -5578,12 +5901,59 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAcc
               {friendsPanel ? (
                 <details ref={friendsMenu} style={{ position: "relative" }} onToggle={(event) => { if (event.currentTarget.open) closeOtherMenu(event.currentTarget); }}>
                   <summary
-                    aria-label="Friends"
-                    style={{ listStyle: "none", cursor: "pointer", color: "var(--page-text)", border: "1px solid var(--border)", background: "var(--panel-bg)", padding: "8px 12px", fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase" }}
+                    aria-label={friendRequestCount ? `Friends, ${friendRequestCount} friend requests` : "Friends"}
+                    style={{ position: "relative", listStyle: "none", cursor: "pointer", color: "var(--page-text)", border: "1px solid var(--border)", background: "var(--panel-bg)", padding: "8px 12px", fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase" }}
                   >
                     Friends
+                    {friendRequestCount > 0 ? (
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          position: "absolute",
+                          top: -7,
+                          right: -7,
+                          minWidth: 18,
+                          height: 18,
+                          padding: "0 5px",
+                          borderRadius: 999,
+                          display: "inline-grid",
+                          placeItems: "center",
+                          fontSize: 10,
+                          fontWeight: 700,
+                          letterSpacing: 0,
+                          ...NOTICE_BADGE_STYLE,
+                        }}
+                      >
+                        {friendRequestCount > 9 ? "9+" : friendRequestCount}
+                      </span>
+                    ) : null}
                   </summary>
                   <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 65, width: 300, maxHeight: "70vh", overflow: "auto", background: "var(--panel-bg)", border: "1px solid var(--border)", boxShadow: "var(--panel-shadow)", padding: 8 }}>
+                    {friendRequestCount > 0 && onOpenFriendRequests ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onOpenFriendRequests();
+                          friendsMenu.current?.removeAttribute("open");
+                        }}
+                        style={{
+                          width: "100%",
+                          marginBottom: 8,
+                          padding: "10px 11px",
+                          border: "1px solid var(--accent-secondary)",
+                          background: "rgba(59, 130, 255, 0.12)",
+                          color: "var(--page-text)",
+                          cursor: "pointer",
+                          textAlign: "left",
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: 11,
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {friendRequestCount} new friend request{friendRequestCount === 1 ? "" : "s"} — review
+                      </button>
+                    ) : null}
                     {friendsPanel}
                   </div>
                 </details>
@@ -5592,7 +5962,7 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAcc
                 <button
                   type="button"
                   onClick={onOpenChats}
-                  aria-label={chatCount ? `Open chats, ${chatCount} active` : "Open chats"}
+                  aria-label={chatCount ? `Open chats, ${chatCount} unseen` : "Open chats"}
                   style={{
                     position: "relative",
                     cursor: "pointer",
@@ -5620,11 +5990,10 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAcc
                         borderRadius: 999,
                         display: "inline-grid",
                         placeItems: "center",
-                        background: "var(--accent)",
-                        color: "var(--accent-contrast)",
                         fontSize: 10,
                         fontWeight: 700,
                         letterSpacing: 0,
+                        ...NOTICE_BADGE_STYLE,
                       }}
                     >
                       {chatCount > 9 ? "9+" : chatCount}
@@ -5688,8 +6057,14 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
   const setShowArchived = onArchivedView ?? setLocalArchived;
   const followSet = useMemo(() => new Set(followedHosts || []), [followedHosts]);
   const gameSet = useMemo(() => new Set((alertGames || []).map((game) => String(game).toLowerCase())), [alertGames]);
+  const listLocation = useLocation();
+  const queryGame = useMemo(
+    () => canonicalFilterGame(new URLSearchParams(listLocation.search).get("game") || ""),
+    [listLocation.search],
+  );
   const visibleTournaments = tournaments.filter((t) => {
     if (isTournamentArchived(t) !== showArchived) return false;
+    if (queryGame && !gameMatchesFilter(t.game, queryGame)) return false;
     if (deskFilter === "following" && !followSet.has(t.adminUserId)) return false;
     if (deskFilter === "foryou") {
       const gameOk = !gameSet.size || gameSet.has(String(t.game || "").toLowerCase());
@@ -5713,7 +6088,7 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
     return true;
   });
   return (
-    <div>
+    <PageEnter>
       <div
         style={{
           display: "flex",
@@ -5798,41 +6173,14 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
           onAction={!hideCreate ? onNew : undefined}
         />
       ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-            gap: 14,
-          }}
-        >
-          {visibleTournaments.map((t) => {
-            const slide = {
-              ...t,
-              surface: "scrim",
-              title: t.name,
-              eventStatus: t.status || "upcoming",
-              kicker: `Hosted by ${t.adminDisplayName || (t.adminUserId === currentUserId ? currentUserName : "Scrim host")}`,
-              region: [t.region, t.rankBand].filter(Boolean).join(" · ") || t.region,
-              mode: isPublicScrim(t) ? "Public" : "Private",
-              flyerBadges: scrimFlyerBadges(t),
-              teamCount: t.maxSlots || "",
-              startAt: t.startDate,
-              endAt: t.endDate,
-              prizePool: Number(t.prizeAmount) > 0 ? `₹${Number(t.prizeAmount).toLocaleString()}` : "",
-            };
-            return (
-              <TournamentWindowCard
-                key={t.id}
-                slide={slide}
-                compact
-                to={`/tournaments/${t.id}`}
-                onOpen={() => onOpen(t.id)}
-              />
-            );
-          })}
-        </div>
+        <ScrimWindowsGrid
+          tournaments={visibleTournaments}
+          currentUserId={currentUserId}
+          currentUserName={currentUserName}
+          onOpen={onOpen}
+        />
       )}
-    </div>
+    </PageEnter>
   );
 }
 
@@ -6457,7 +6805,7 @@ function TournamentDetail(props) {
   const checkInLocked = !isAdmin && approved && scrimRequiresCheckIn(tournament) && !showRoom;
 
   return (
-    <div style={{ paddingTop: 24 }}>
+    <PageEnter style={{ paddingTop: 24 }}>
       <SectionBackHome />
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
@@ -6652,7 +7000,7 @@ function TournamentDetail(props) {
           </>
         )
       )}
-    </div>
+    </PageEnter>
   );
 }
 

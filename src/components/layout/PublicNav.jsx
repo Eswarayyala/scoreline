@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 const PRIMARY = [
   { to: "/", label: "Home", end: true },
+  { to: "/games", label: "Games", end: false },
   { to: "/vault", label: "Vault", end: false },
   { to: "/blog", label: "Blog", overlay: true },
 ];
@@ -12,6 +13,7 @@ export default function PublicNav({
   const navigate = useNavigate();
   const location = useLocation();
   const onVault = pathname === "/vault" || pathname.startsWith("/vault/");
+  const onGames = pathname === "/games" || pathname.startsWith("/games/");
   const onBlog = pathname === "/blog";
 
   const open = (link) => {
@@ -27,13 +29,19 @@ export default function PublicNav({
     <nav className="relative z-20 mx-auto max-w-6xl px-5">
       <div className="-mx-1 flex flex-nowrap items-center gap-1 overflow-x-auto px-1 pb-0.5 border-b border-white/10 [scrollbar-width:thin]">
         {PRIMARY.map((link) => {
-          const on = link.overlay ? onBlog : link.end ? pathname === link.to : onVault;
+          const on = link.overlay
+            ? onBlog
+            : link.end
+              ? pathname === link.to
+              : link.to === "/games"
+                ? onGames
+                : onVault;
           return (
             <button
               key={link.to}
               type="button"
               onClick={() => open(link)}
-              className={`min-h-10 shrink-0 px-3 py-2.5 font-mono text-[11px] uppercase tracking-wider ${on ? "border-b-2 border-neon text-white" : "border-b-2 border-transparent text-slate-500 hover:text-slate-200"}`}
+              className={`min-h-10 shrink-0 px-3 py-2.5 font-mono text-[11px] uppercase tracking-wider transition-colors duration-200 ${on ? "border-b-2 border-neon text-white" : "border-b-2 border-transparent text-slate-500 hover:text-slate-200"}`}
             >
               {link.label}
             </button>

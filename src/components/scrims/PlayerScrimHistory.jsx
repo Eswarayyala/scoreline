@@ -1,7 +1,10 @@
 import { Link } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
 import SectionBackHome from "../layout/SectionBackHome";
+import PageEnter from "../motion/PageEnter";
 import { sortScrimHistory } from "../../data/scrimHistory";
 import { scrimAccessLabel } from "../../data/scrimAccess";
+import { fadeUp, hoverLift, staggerDelay, tapPress } from "../../motion/presets";
 
 export default function PlayerScrimHistory({
   rows = [],
@@ -12,11 +15,12 @@ export default function PlayerScrimHistory({
   onSignIn,
   currentUserId = null,
 }) {
+  const reduce = useReducedMotion();
   const list = sortScrimHistory(rows);
   const officialSet = new Set(officialHosts.map((host) => host.uid));
 
   return (
-    <div className="pb-16 pt-6">
+    <PageEnter className="pb-16 pt-6">
       <SectionBackHome />
       <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Your circuit</p>
       <h1 className="m-0 font-['Bebas_Neue',sans-serif] text-5xl text-white md:text-6xl">Scrim history</h1>
@@ -25,20 +29,28 @@ export default function PlayerScrimHistory({
       </p>
 
       {!currentUserId ? (
-        <button type="button" onClick={onSignIn} className="mt-6 rounded-md border border-white/20 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-slate-300">
+        <motion.button
+          type="button"
+          onClick={onSignIn}
+          className="mt-6 rounded-md border border-white/20 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-slate-300"
+          {...fadeUp(reduce, 0.08)}
+          whileTap={tapPress}
+        >
           Sign in to see history
-        </button>
+        </motion.button>
       ) : list.length === 0 ? (
         <p className="mt-6 text-sm text-slate-500">No joins yet. Enter a public scrim or accept an invite — it will show up here.</p>
       ) : (
         <div className="mt-6 grid gap-2">
-          {list.map((row) => {
+          {list.map((row, index) => {
             const official = officialSet.has(row.hostUid);
             const following = (followedHosts || []).includes(row.hostUid);
             return (
-              <div
+              <motion.div
                 key={row.tournamentId || row.id}
                 className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 px-3 py-3"
+                {...fadeUp(reduce, staggerDelay(index, 0.04, reduce))}
+                whileHover={hoverLift(reduce)}
               >
                 <button
                   type="button"
@@ -80,11 +92,11 @@ export default function PlayerScrimHistory({
                     Watch
                   </Link>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>
       )}
-    </div>
+    </PageEnter>
   );
 }

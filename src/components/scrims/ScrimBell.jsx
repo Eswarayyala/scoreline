@@ -10,6 +10,7 @@ export default function ScrimBell({
   onOpenPrefs,
 }) {
   const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
   const seenPushIds = useRef(new Set());
   const matching = useMemo(
     () =>
@@ -44,8 +45,20 @@ export default function ScrimBell({
     });
   }, [unread, alerts?.browserPushOptIn, alerts?.lastSeenAt, onOpenTournament]);
 
+  useEffect(() => {
+    if (!open) return undefined;
+    const onPointerDown = (event) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (rootRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, [open]);
+
   return (
-    <div className="relative">
+    <div className="relative" ref={rootRef}>
       <button
         type="button"
         aria-label={unread.length ? `${unread.length} scrim alerts` : "Scrim alerts"}
@@ -53,11 +66,14 @@ export default function ScrimBell({
           setOpen((value) => !value);
           if (!open && unread.length) onMarkSeen?.();
         }}
-        className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-slate-200 hover:border-neon/50 hover:text-neon"
+        className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-slate-200 hover:border-[var(--accent-secondary)]/60 hover:text-[var(--accent-secondary)]"
       >
         <Bell size={16} />
         {unread.length > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-neon px-1 font-mono text-[9px] text-black">
+          <span
+            className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full px-1 font-mono text-[9px] font-bold text-white"
+            style={{ background: "var(--accent-secondary)", boxShadow: "0 0 0 2px var(--rank-third)" }}
+          >
             {unread.length > 9 ? "9+" : unread.length}
           </span>
         ) : null}
@@ -66,7 +82,7 @@ export default function ScrimBell({
         <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-white/10 bg-slate-950 shadow-2xl">
           <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
             <span className="font-mono text-[10px] uppercase tracking-widest text-slate-400">Scrim flyers</span>
-            <button type="button" className="font-mono text-[10px] uppercase tracking-widest text-neon" onClick={() => { onOpenPrefs?.(); setOpen(false); }}>
+            <button type="button" className="font-mono text-[10px] uppercase tracking-widest text-[var(--accent-secondary)]" onClick={() => { onOpenPrefs?.(); setOpen(false); }}>
               Prefs
             </button>
           </div>

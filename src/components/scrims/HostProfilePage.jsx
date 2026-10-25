@@ -1,8 +1,11 @@
 import { Link } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
 import TournamentWindowCard from "../vault/TournamentWindowCard";
 import SectionBackHome from "../layout/SectionBackHome";
+import PageEnter from "../motion/PageEnter";
 import { isPublicScrim, scrimFlyerBadges, scrimAccessLabel } from "../../data/scrimAccess";
 import { rollupHostAnalytics, formatHostAnalyticsLine } from "../../data/hostAnalytics";
+import { fadeUp, hoverLift, staggerDelay, tapPress } from "../../motion/presets";
 
 function isPastScrim(item) {
   return item?.archived === true || item?.status === "completed" || item?.status === "closed";
@@ -19,6 +22,7 @@ export default function HostProfilePage({
   onOpenTournament,
   onSignIn,
 }) {
+  const reduce = useReducedMotion();
   const name = host?.orgName || host?.displayName || host?.adminDisplayName || "Host";
   const hosted = tournaments.filter((item) => item.adminUserId === hostUid);
   const live = hosted.filter((item) => !isPastScrim(item));
@@ -27,7 +31,7 @@ export default function HostProfilePage({
   const followerHint = official ? "Official host" : "Community host";
 
   return (
-    <div className="pb-16 pt-6">
+    <PageEnter className="pb-16 pt-6">
       <SectionBackHome />
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -39,15 +43,16 @@ export default function HostProfilePage({
         </div>
         <div className="flex flex-wrap gap-2">
           {currentUserId && currentUserId !== hostUid && official ? (
-            <button
+            <motion.button
               type="button"
               onClick={() => onToggleFollow?.(hostUid, !following)}
               className={`rounded-md border px-3 py-2 font-mono text-[10px] uppercase tracking-widest ${
                 following ? "border-neon/50 text-neon" : "border-white/20 text-slate-300"
               }`}
+              whileTap={tapPress}
             >
               {following ? "Following" : "Follow"}
-            </button>
+            </motion.button>
           ) : null}
           {!currentUserId && official ? (
             <button type="button" onClick={onSignIn} className="rounded-md border border-white/20 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-slate-300">
@@ -66,11 +71,15 @@ export default function HostProfilePage({
           ["Completed", analytics.completed],
           ["Published flyers", analytics.published],
           ["Results rate", `${analytics.resultsRate}%`],
-        ].map(([label, value]) => (
-          <div key={label} className="rounded-lg border border-white/10 px-3 py-3">
+        ].map(([label, value], index) => (
+          <motion.div
+            key={label}
+            className="rounded-lg border border-white/10 px-3 py-3"
+            {...fadeUp(reduce, staggerDelay(index, 0.05, reduce))}
+          >
             <p className="m-0 font-mono text-[10px] uppercase tracking-widest text-slate-500">{label}</p>
             <p className="m-0 mt-1 font-display text-3xl text-white">{value}</p>
-          </div>
+          </motion.div>
         ))}
       </section>
 
@@ -80,8 +89,14 @@ export default function HostProfilePage({
           <p className="mt-3 text-sm text-slate-500">No open scrims from this host right now.</p>
         ) : (
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {live.map((t) => (
-              <div key={t.id} className="h-[280px] overflow-hidden">
+            {live.map((t, index) => (
+              <motion.div
+                key={t.id}
+                className="h-[280px] overflow-hidden"
+                {...fadeUp(reduce, staggerDelay(index, 0.05, reduce))}
+                whileHover={hoverLift(reduce)}
+                whileTap={tapPress}
+              >
                 <TournamentWindowCard
                   compact
                   slide={{
@@ -100,7 +115,7 @@ export default function HostProfilePage({
                   to={`/tournaments/${t.id}`}
                   onOpen={() => onOpenTournament?.(t.id)}
                 />
-              </div>
+              </motion.div>
             ))}
           </div>
         )}
@@ -112,12 +127,15 @@ export default function HostProfilePage({
           <p className="mt-3 text-sm text-slate-500">No archived events yet.</p>
         ) : (
           <div className="mt-4 grid gap-2">
-            {past.map((t) => (
-              <button
+            {past.map((t, index) => (
+              <motion.button
                 key={t.id}
                 type="button"
                 onClick={() => onOpenTournament?.(t.id)}
                 className="flex w-full items-center justify-between gap-3 rounded-lg border border-white/10 px-3 py-2.5 text-left hover:border-neon/40"
+                {...fadeUp(reduce, staggerDelay(index, 0.03, reduce))}
+                whileHover={hoverLift(reduce)}
+                whileTap={tapPress}
               >
                 <span>
                   <span className="block font-display text-xl text-white">{t.name}</span>
@@ -128,11 +146,11 @@ export default function HostProfilePage({
                   </span>
                 </span>
                 <span className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Open</span>
-              </button>
+              </motion.button>
             ))}
           </div>
         )}
       </section>
-    </div>
+    </PageEnter>
   );
 }

@@ -23,7 +23,7 @@ export default function CompetitorDossierPage({ slides = [], name = "" }) {
   }, [dossier]);
 
   const [activeGame, setActiveGame] = useState("");
-  const page = usePagedVisible(gameTabs.length, TAB_PAGE, TAB_PAGE);
+  const page = usePagedVisible(gameTabs.length, TAB_PAGE, TAB_PAGE, `dossier-tabs:${decoded}`);
 
   useEffect(() => {
     setActiveGame(gameTabs[0]?.game || "");

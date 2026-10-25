@@ -1,10 +1,13 @@
 import { Link } from "react-router-dom";
 import { Crown } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { flattenEwcEditions, groupEwcChampionships } from "../../data/esportsResearch";
 import { gamesMatch, inferEventScope } from "../../data/eventScope";
 import { posterForEwcChampionship } from "../../data/ewcPoster";
 import ChampionshipGameTabs from "./ChampionshipGameTabs";
 import SectionBackHome from "../layout/SectionBackHome";
+import PageEnter from "../motion/PageEnter";
+import { fadeUp, staggerDelay } from "../../motion/presets";
 
 export default function EwcDirectoryPage({ slides = [], liveEntries = [] }) {
   const fromVault = flattenEwcEditions(slides);
@@ -32,9 +35,10 @@ export default function EwcDirectoryPage({ slides = [], liveEntries = [] }) {
     return true;
   });
   const championships = groupEwcChampionships(editions);
+  const reduce = useReducedMotion();
 
   return (
-    <div className="pb-16 pt-6">
+    <PageEnter className="pb-16 pt-6">
       <SectionBackHome />
       <div className="relative mb-2 border-b border-[#d4af37]/25 py-2">
         <Link to="/vault" className="font-mono text-xs uppercase tracking-widest text-[#d4af37]">
@@ -69,16 +73,17 @@ export default function EwcDirectoryPage({ slides = [], liveEntries = [] }) {
       </header>
 
       <div className="grid gap-10">
-        {championships.map((championship) => {
+        {championships.map((championship, index) => {
           const yearPoster = posterForEwcChampionship(championship);
           return (
-            <section
+            <motion.section
               key={championship.key}
               className="relative overflow-hidden rounded-3xl border p-5 md:p-6"
               style={{
                 borderColor: "rgba(212, 175, 55, 0.28)",
                 background: "rgba(8, 6, 2, 0.55)",
               }}
+              {...fadeUp(reduce, staggerDelay(index, 0.06, reduce))}
             >
               {yearPoster ? (
                 <div className="pointer-events-none absolute inset-0 opacity-25">
@@ -101,10 +106,10 @@ export default function EwcDirectoryPage({ slides = [], liveEntries = [] }) {
                 </h2>
                 <ChampionshipGameTabs games={championship.games} slides={slides} heading="" urlSync={false} />
               </div>
-            </section>
+            </motion.section>
           );
         })}
       </div>
-    </div>
+    </PageEnter>
   );
 }
