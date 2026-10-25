@@ -2,22 +2,33 @@ import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import SectionBackHome from "../layout/SectionBackHome";
 import PageEnter from "../motion/PageEnter";
+import GameCommunityStrip from "../games/GameCommunityStrip";
+import HostOrgPanel from "../scrims/HostOrgPanel";
 import { announcementMatchesViewer } from "../../data/scrimAlerts";
 import { fadeUp, hoverLift, staggerDelay, tapPress } from "../../motion/presets";
+import { DISCORD_SURFACE } from "../../data/discordCommunity";
 
 /**
- * In-app social hub (Discord-lite): friends, following flyers, history — no Discord API.
+ * In-app social hub: friends, following flyers, history, host badge requests.
+ * Optional Discord invite is soft-linked (no bot / FCM).
  */
 export default function CommunityDesk({
   user = null,
+  myProfile = null,
   announcements = [],
   alerts,
   friends = [],
   historyCount = 0,
   officialHosts = [],
+  hostRequests = [],
+  isStaff = false,
   onOpenTournament,
   onOpenChats,
   onSignIn,
+  onRequestOfficial,
+  onDecideRequest,
+  onToggleFollow,
+  onOpenHostScrims,
 }) {
   const reduce = useReducedMotion();
   const flyers = [...announcements]
@@ -38,7 +49,7 @@ export default function CommunityDesk({
       <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Community desk</p>
       <h1 className="m-0 font-['Bebas_Neue',sans-serif] text-5xl text-white md:text-6xl">Your grind circle</h1>
       <p className="mt-2 max-w-xl text-sm text-slate-400">
-        Friends, followed hosts, and flyers — stay on GrindInfo without leaving for Discord.
+        Friends, followed hosts, and flyers live here. Discord is optional for voice and LFG.
       </p>
 
       {!user ? (
@@ -157,8 +168,35 @@ export default function CommunityDesk({
               </div>
             )}
           </motion.section>
+
+          <div className="mt-12">
+            <HostOrgPanel
+              user={user}
+              myProfile={myProfile}
+              officialHosts={officialHosts}
+              hostRequests={hostRequests}
+              isStaff={isStaff}
+              followedHosts={alerts?.followedHosts || []}
+              onRequestOfficial={onRequestOfficial}
+              onDecideRequest={onDecideRequest}
+              onToggleFollow={onToggleFollow}
+              onOpenHostScrims={onOpenHostScrims}
+            />
+          </div>
+
+          {DISCORD_SURFACE ? (
+            <div className="mt-12">
+              <GameCommunityStrip />
+            </div>
+          ) : null}
         </>
       )}
+
+      {!user && DISCORD_SURFACE ? (
+        <div className="mt-10">
+          <GameCommunityStrip />
+        </div>
+      ) : null}
     </PageEnter>
   );
 }

@@ -2,8 +2,10 @@ import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import PageEnter from "../motion/PageEnter";
 import SectionBackHome from "../layout/SectionBackHome";
+import GameCommunityStrip from "./GameCommunityStrip";
 import { allGameThemes, gameDeskPath } from "../../data/gameThemes";
 import { fadeUp, hoverLift, staggerDelay, tapPress } from "../../motion/presets";
+import { DISCORD_SURFACE } from "../../data/discordCommunity";
 
 export default function GamesDirectoryPage() {
   const reduce = useReducedMotion();
@@ -64,6 +66,12 @@ export default function GamesDirectoryPage() {
           </motion.div>
         ))}
       </div>
+
+      {DISCORD_SURFACE ? (
+        <div className="mt-12">
+          <GameCommunityStrip />
+        </div>
+      ) : null}
     </PageEnter>
   );
 }

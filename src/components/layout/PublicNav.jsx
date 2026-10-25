@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 const PRIMARY = [
   { to: "/", label: "Home", end: true },
   { to: "/games", label: "Games", end: false },
+  { to: "/tournaments", label: "Scrims", end: false },
   { to: "/vault", label: "Vault", end: false },
   { to: "/blog", label: "Blog", overlay: true },
 ];
@@ -14,6 +15,7 @@ export default function PublicNav({
   const location = useLocation();
   const onVault = pathname === "/vault" || pathname.startsWith("/vault/");
   const onGames = pathname === "/games" || pathname.startsWith("/games/");
+  const onScrims = pathname === "/tournaments" || pathname.startsWith("/tournaments/");
   const onBlog = pathname === "/blog";
 
   const open = (link) => {
@@ -25,17 +27,20 @@ export default function PublicNav({
     navigate(link.to);
   };
 
+  const linkActive = (link) => {
+    if (link.overlay) return onBlog;
+    if (link.end) return pathname === link.to;
+    if (link.to === "/games") return onGames;
+    if (link.to === "/tournaments") return onScrims;
+    if (link.to === "/vault") return onVault;
+    return pathname === link.to || pathname.startsWith(`${link.to}/`);
+  };
+
   return (
     <nav className="relative z-20 mx-auto max-w-6xl px-5">
       <div className="-mx-1 flex flex-nowrap items-center gap-1 overflow-x-auto px-1 pb-0.5 border-b border-white/10 [scrollbar-width:thin]">
         {PRIMARY.map((link) => {
-          const on = link.overlay
-            ? onBlog
-            : link.end
-              ? pathname === link.to
-              : link.to === "/games"
-                ? onGames
-                : onVault;
+          const on = linkActive(link);
           return (
             <button
               key={link.to}

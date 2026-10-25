@@ -66,13 +66,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team Falcons",
             "player": "",
-            "prize": ""
+            "prize": "$500,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "FURIA",
             "player": "",
-            "prize": ""
+            "prize": "$250,000"
           }
         ]
       },
@@ -89,13 +89,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team Vitality",
             "player": "",
-            "prize": ""
+            "prize": "$500,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "The MongolZ",
             "player": "",
-            "prize": ""
+            "prize": "$250,000"
           }
         ]
       },
@@ -151,13 +151,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team Spirit",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Mouz",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -174,13 +174,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team Vitality",
             "player": "",
-            "prize": ""
+            "prize": "$500,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "FaZe Clan",
             "player": "",
-            "prize": ""
+            "prize": "$250,000"
           }
         ]
       },
@@ -236,13 +236,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Vitality",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Natus Vincere",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -259,13 +259,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Natus Vincere",
             "player": "",
-            "prize": ""
+            "prize": "$500,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "FaZe Clan",
             "player": "",
-            "prize": ""
+            "prize": "$250,000"
           }
         ]
       },
@@ -282,13 +282,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team Spirit",
             "player": "",
-            "prize": ""
+            "prize": "$500,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "FaZe Clan",
             "player": "",
-            "prize": ""
+            "prize": "$250,000"
           }
         ]
       },
@@ -305,13 +305,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team Vitality",
             "player": "",
-            "prize": ""
+            "prize": "$500,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "GamerLegion",
             "player": "",
-            "prize": ""
+            "prize": "$250,000"
           }
         ]
       },
@@ -367,13 +367,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "G2 Esports",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "ENCE",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -390,13 +390,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "FaZe Clan",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Natus Vincere",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -413,13 +413,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Outsiders (VP)",
             "player": "",
-            "prize": ""
+            "prize": "$500,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Heroic",
             "player": "",
-            "prize": ""
+            "prize": "$250,000"
           }
         ]
       },
@@ -436,13 +436,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "FaZe Clan",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Natus Vincere",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -459,13 +459,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Natus Vincere",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "G2 Esports",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -482,13 +482,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Natus Vincere",
             "player": "",
-            "prize": ""
+            "prize": "$800,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "G2 Esports",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           }
         ]
       },
@@ -505,13 +505,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team Liquid",
             "player": "",
-            "prize": ""
+            "prize": "$120,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Vitality",
             "player": "",
-            "prize": ""
+            "prize": "$60,000"
           }
         ]
       },
@@ -528,13 +528,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Astralis",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "ENCE",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -551,13 +551,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Astralis",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "AVANGAR",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -574,13 +574,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Cloud9",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "FaZe Clan",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -597,13 +597,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Natus Vincere",
             "player": "",
-            "prize": ""
+            "prize": "$120,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "BIG",
             "player": "",
-            "prize": ""
+            "prize": "$60,000"
           }
         ]
       },
@@ -620,13 +620,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Astralis",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Natus Vincere",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -643,13 +643,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Astralis",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Virtus.pro",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -666,13 +666,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "SK Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Cloud9",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       },
@@ -689,13 +689,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Gambit Esports",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Immortals",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -712,13 +712,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "SK Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team Liquid",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -735,13 +735,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Luminosity Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Natus Vincere",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -758,13 +758,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team EnVyUs",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Natus Vincere",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       },
@@ -781,13 +781,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Fnatic",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team EnVyUs",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       },
@@ -804,13 +804,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Fnatic",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Ninjas in Pyjamas",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       },
@@ -827,13 +827,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team LDLC.com",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Ninjas in Pyjamas",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       },
@@ -850,13 +850,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Virtus.pro",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Ninjas in Pyjamas",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       },
@@ -873,13 +873,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Ninjas in Pyjamas",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Fnatic",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       },
@@ -896,13 +896,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Fnatic",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Ninjas in Pyjamas",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       }
@@ -1008,13 +1008,19 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team Heretics",
             "player": "",
-            "prize": ""
+            "prize": "$1,000,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Fnatic",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
+          },
+          {
+            "rank": "3rd Place",
+            "team": "Paper Rex",
+            "player": "",
+            "prize": "$250,000"
           }
         ]
       },
@@ -1031,13 +1037,19 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "EDward Gaming (EDG)",
             "player": "",
-            "prize": ""
+            "prize": "$1,000,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team Heretics",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
+          },
+          {
+            "rank": "3rd Place",
+            "team": "Leviatán",
+            "player": "",
+            "prize": "$250,000"
           }
         ]
       },
@@ -1054,13 +1066,19 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Evil Geniuses (EG)",
             "player": "",
-            "prize": ""
+            "prize": "$1,000,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Paper Rex",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
+          },
+          {
+            "rank": "3rd Place",
+            "team": "LOUD",
+            "player": "",
+            "prize": "$250,000"
           }
         ]
       },
@@ -1077,13 +1095,19 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "LOUD",
             "player": "",
-            "prize": ""
+            "prize": "$300,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "OpTic Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$150,000"
+          },
+          {
+            "rank": "3rd Place",
+            "team": "DRX",
+            "player": "",
+            "prize": "$125,000"
           }
         ]
       },
@@ -1100,13 +1124,19 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Acend",
             "player": "",
-            "prize": ""
+            "prize": "$350,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Gambit Esports",
             "player": "",
-            "prize": ""
+            "prize": "$150,000"
+          },
+          {
+            "rank": "3rd Place",
+            "team": "Team Liquid",
+            "player": "",
+            "prize": "$100,000"
           }
         ]
       }
@@ -1340,13 +1370,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team BDS",
             "player": "",
-            "prize": ""
+            "prize": "$1,200,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Virtus.pro",
             "player": "",
-            "prize": ""
+            "prize": "$600,000"
           }
         ]
       },
@@ -1397,13 +1427,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "W7m Esports",
             "player": "",
-            "prize": ""
+            "prize": "$1,200,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "FaZe Clan",
             "player": "",
-            "prize": ""
+            "prize": "$600,000"
           }
         ]
       },
@@ -1459,13 +1489,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "G2 Esports",
             "player": "",
-            "prize": ""
+            "prize": "$1,200,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "W7m Esports",
             "player": "",
-            "prize": ""
+            "prize": "$600,000"
           }
         ]
       },
@@ -1482,13 +1512,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "TSM",
             "player": "",
-            "prize": ""
+            "prize": "$1,200,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team Liquid",
             "player": "",
-            "prize": ""
+            "prize": "$600,000"
           }
         ]
       },
@@ -1505,13 +1535,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Ninjas in Pyjamas",
             "player": "",
-            "prize": ""
+            "prize": "$1,200,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team Liquid",
             "player": "",
-            "prize": ""
+            "prize": "$600,000"
           }
         ]
       },
@@ -1528,13 +1558,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "SpaceStation Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$1,200,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Spacestation",
             "player": "",
-            "prize": ""
+            "prize": "$600,000"
           }
         ]
       },
@@ -1551,13 +1581,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "G2 Esports",
             "player": "",
-            "prize": ""
+            "prize": "$800,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team Empire",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           }
         ]
       },
@@ -1574,13 +1604,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "PENTA Sports",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Evil Geniuses",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           }
         ]
       },
@@ -1597,13 +1627,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Continuum",
             "player": "",
-            "prize": ""
+            "prize": "$40,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Era eSports",
             "player": "",
-            "prize": ""
+            "prize": "$20,000"
           }
         ]
       }
@@ -1631,13 +1661,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Oblivion",
             "player": "",
-            "prize": ""
+            "prize": "$800,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "UNLIMIT",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           }
         ]
       },
@@ -1688,13 +1718,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team Falcons",
             "player": "",
-            "prize": ""
+            "prize": "$800,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "ImperialHal, Zer0, Genburten",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           }
         ]
       },
@@ -1745,13 +1775,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team Falcons",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Fnatic",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -1768,13 +1798,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "GoNext Esports",
             "player": "",
-            "prize": ""
+            "prize": "$800,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           }
         ]
       },
@@ -1825,13 +1855,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Reject Winnity",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Fnatic",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -1848,13 +1878,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Spacestation Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Alliance",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -1871,13 +1901,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "TSM",
             "player": "",
-            "prize": ""
+            "prize": "$800,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "ImperialHal, Reps, Verhulst",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           }
         ]
       },
@@ -1894,13 +1924,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "TSM",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "NRG",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -1917,13 +1947,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "DarkZero Esports",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "TSM",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -1940,13 +1970,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "DarkZero Esports",
             "player": "",
-            "prize": ""
+            "prize": "$800,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Genburten, Zer0, Sharky",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           }
         ]
       },
@@ -1963,13 +1993,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Reignite",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team Liquid",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -1986,13 +2016,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Kungarna (SCARZ in EU)",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Vein, Onmuu, Scuwry",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       }
@@ -2020,13 +2050,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Twisted Minds",
             "player": "",
-            "prize": ""
+            "prize": "$800,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Virtus.pro",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           }
         ]
       },
@@ -2077,13 +2107,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Soniqs",
             "player": "",
-            "prize": ""
+            "prize": "$800,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Twisted Minds",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           }
         ]
       },
@@ -2134,13 +2164,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Danawa eSports",
             "player": "",
-            "prize": ""
+            "prize": "$800,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           }
         ]
       },
@@ -2157,13 +2187,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Natus Vincere (NaVi)",
             "player": "",
-            "prize": ""
+            "prize": "$1,320,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$660,000"
           }
         ]
       },
@@ -2180,13 +2210,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "NewHappy",
             "player": "",
-            "prize": ""
+            "prize": "$1,720,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Heroic",
             "player": "",
-            "prize": ""
+            "prize": "$860,000"
           }
         ]
       },
@@ -2203,13 +2233,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Susquehanna Soniqs",
             "player": "",
-            "prize": ""
+            "prize": "$2,800,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Zenith Esports",
             "player": "",
-            "prize": ""
+            "prize": "$1,400,000"
           }
         ]
       },
@@ -2226,13 +2256,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Gen.G Esports",
             "player": "",
-            "prize": ""
+            "prize": "$2,400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "FaZe Clan",
             "player": "",
-            "prize": ""
+            "prize": "$1,200,000"
           }
         ]
       },
@@ -2249,13 +2279,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "OMG (FPP) / Gen.G (TPP)",
             "player": "",
-            "prize": ""
+            "prize": "$800,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team Liquid",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           }
         ]
       }
@@ -2351,13 +2381,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Alpha7 Esports",
             "player": "",
-            "prize": ""
+            "prize": "$1,200,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "ULF Esports",
             "player": "",
-            "prize": ""
+            "prize": "$600,000"
           }
         ]
       },
@@ -2408,13 +2438,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Dplus KIA",
             "player": "",
-            "prize": ""
+            "prize": "$1,200,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Regnum Carya Bra",
             "player": "",
-            "prize": ""
+            "prize": "$600,000"
           }
         ]
       },
@@ -2465,13 +2495,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "IHC Esports",
             "player": "",
-            "prize": ""
+            "prize": "$1,200,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Stalwart Esports",
             "player": "",
-            "prize": ""
+            "prize": "$600,000"
           }
         ]
       },
@@ -2488,13 +2518,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "S2G Esports",
             "player": "",
-            "prize": ""
+            "prize": "$1,600,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "DRS Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$800,000"
           }
         ]
       },
@@ -2511,13 +2541,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Nova Esports",
             "player": "",
-            "prize": ""
+            "prize": "$2,400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Kaos Next Ruya",
             "player": "",
-            "prize": ""
+            "prize": "$1,200,000"
           }
         ]
       },
@@ -2534,13 +2564,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Nova Esports",
             "player": "",
-            "prize": ""
+            "prize": "$800,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Klas Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           }
         ]
       }
@@ -2815,13 +2845,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "T1",
             "player": "",
-            "prize": ""
+            "prize": "$2,000,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "KT Rolster",
             "player": "",
-            "prize": ""
+            "prize": "$1,000,000"
           }
         ]
       },
@@ -2872,13 +2902,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Gen.G Esports",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "T1",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           }
         ]
       },
@@ -2895,13 +2925,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "T1",
             "player": "",
-            "prize": ""
+            "prize": "$890,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Bilibili Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$445,000"
           }
         ]
       },
@@ -2952,13 +2982,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Gen.G Esports",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Bilibili Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       },
@@ -2975,13 +3005,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "T1",
             "player": "",
-            "prize": ""
+            "prize": "$890,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Weibo Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$445,000"
           }
         ]
       },
@@ -2998,13 +3028,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "JD Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Bilibili Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       },
@@ -3021,13 +3051,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "DRX",
             "player": "",
-            "prize": ""
+            "prize": "$890,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "T1",
             "player": "",
-            "prize": ""
+            "prize": "$445,000"
           }
         ]
       },
@@ -3044,13 +3074,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Royal Never Give Up",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "T1",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       },
@@ -3067,13 +3097,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "EDward Gaming (EDG)",
             "player": "",
-            "prize": ""
+            "prize": "$890,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "DWG KIA",
             "player": "",
-            "prize": ""
+            "prize": "$445,000"
           }
         ]
       },
@@ -3090,13 +3120,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Royal Never Give Up",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "DAMWON Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       },
@@ -3113,13 +3143,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "DAMWON Gaming (DK)",
             "player": "",
-            "prize": ""
+            "prize": "$890,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Suning",
             "player": "",
-            "prize": ""
+            "prize": "$445,000"
           }
         ]
       },
@@ -3136,13 +3166,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "FunPlus Phoenix (FPX)",
             "player": "",
-            "prize": ""
+            "prize": "$890,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "G2 Esports",
             "player": "",
-            "prize": ""
+            "prize": "$445,000"
           }
         ]
       },
@@ -3159,13 +3189,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "G2 Esports",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team Liquid",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -3182,13 +3212,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Invictus Gaming (iG)",
             "player": "",
-            "prize": ""
+            "prize": "$2,580,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Fnatic",
             "player": "",
-            "prize": ""
+            "prize": "$1,290,000"
           }
         ]
       },
@@ -3205,13 +3235,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Royal Never Give Up",
             "player": "",
-            "prize": ""
+            "prize": "$548,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Kingzone DragonX",
             "player": "",
-            "prize": ""
+            "prize": "$274,000"
           }
         ]
       },
@@ -3228,13 +3258,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Samsung Galaxy",
             "player": "",
-            "prize": ""
+            "prize": "$1,978,788"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "SK Telecom T1",
             "player": "",
-            "prize": ""
+            "prize": "$989,394"
           }
         ]
       },
@@ -3251,13 +3281,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "SK Telecom T1",
             "player": "",
-            "prize": ""
+            "prize": "$676,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "G2 Esports",
             "player": "",
-            "prize": ""
+            "prize": "$338,000"
           }
         ]
       },
@@ -3274,13 +3304,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "SK Telecom T1 (T1)",
             "player": "",
-            "prize": ""
+            "prize": "$2,028,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Samsung Galaxy",
             "player": "",
-            "prize": ""
+            "prize": "$1,014,000"
           }
         ]
       },
@@ -3297,13 +3327,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "SK Telecom T1",
             "player": "",
-            "prize": ""
+            "prize": "$180,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Counter Logic Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$90,000"
           }
         ]
       },
@@ -3320,13 +3350,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "SK Telecom T1 (T1)",
             "player": "",
-            "prize": ""
+            "prize": "$852,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "KOO Tigers",
             "player": "",
-            "prize": ""
+            "prize": "$426,000"
           }
         ]
       },
@@ -3343,13 +3373,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "EDward Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$80,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "SK Telecom T1",
             "player": "",
-            "prize": ""
+            "prize": "$40,000"
           }
         ]
       },
@@ -3366,13 +3396,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Samsung White",
             "player": "",
-            "prize": ""
+            "prize": "$852,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Star Horn Royal",
             "player": "",
-            "prize": ""
+            "prize": "$426,000"
           }
         ]
       },
@@ -3389,13 +3419,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "SK Telecom T1 (T1)",
             "player": "",
-            "prize": ""
+            "prize": "$820,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Royal Club",
             "player": "",
-            "prize": ""
+            "prize": "$410,000"
           }
         ]
       },
@@ -3412,13 +3442,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Taipei Assassins",
             "player": "",
-            "prize": ""
+            "prize": "$800,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Azubu Frost",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           }
         ]
       },
@@ -3435,13 +3465,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Fnatic",
             "player": "",
-            "prize": ""
+            "prize": "$40,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$20,000"
           }
         ]
       }
@@ -3503,13 +3533,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "PARIVISION",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team Spirit",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -3560,13 +3590,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "PARIVISION",
             "player": "",
-            "prize": ""
+            "prize": "$1,120,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team Spirit",
             "player": "",
-            "prize": ""
+            "prize": "$560,000"
           }
         ]
       },
@@ -3583,13 +3613,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team Falcons",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "BetBoom Team",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -3640,13 +3670,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team Liquid",
             "player": "",
-            "prize": ""
+            "prize": "$1,040,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Gaimin Gladiators",
             "player": "",
-            "prize": ""
+            "prize": "$520,000"
           }
         ]
       },
@@ -3663,13 +3693,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Azure Ray",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Gaimin Gladiators",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -3725,13 +3755,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team Spirit",
             "player": "",
-            "prize": ""
+            "prize": "$1,352,182"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Gaimin Gladiators",
             "player": "",
-            "prize": ""
+            "prize": "$676,091"
           }
         ]
       },
@@ -3748,13 +3778,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "OG",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "TS M",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           }
         ]
       },
@@ -3771,13 +3801,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Tundra Esports",
             "player": "",
-            "prize": ""
+            "prize": "$7,572,310"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Secret",
             "player": "",
-            "prize": ""
+            "prize": "$3,786,155"
           }
         ]
       },
@@ -3794,13 +3824,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team Spirit",
             "player": "",
-            "prize": ""
+            "prize": "$16,007,278"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "PSG.LGD",
             "player": "",
-            "prize": ""
+            "prize": "$8,003,639"
           }
         ]
       },
@@ -3817,13 +3847,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Secret",
             "player": "",
-            "prize": ""
+            "prize": "$160,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Liquid",
             "player": "",
-            "prize": ""
+            "prize": "$80,000"
           }
         ]
       },
@@ -3840,13 +3870,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Keen Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$120,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Mineski",
             "player": "",
-            "prize": ""
+            "prize": "$60,000"
           }
         ]
       },
@@ -3863,13 +3893,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "OG",
             "player": "",
-            "prize": ""
+            "prize": "$13,732,027"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team Liquid",
             "player": "",
-            "prize": ""
+            "prize": "$6,866,014"
           }
         ]
       },
@@ -3886,13 +3916,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Virtus.pro",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Vici Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -3909,13 +3939,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "OG",
             "player": "",
-            "prize": ""
+            "prize": "$10,212,871"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "PSG.LGD",
             "player": "",
-            "prize": ""
+            "prize": "$5,106,435"
           }
         ]
       },
@@ -3932,13 +3962,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team Liquid",
             "player": "",
-            "prize": ""
+            "prize": "$9,915,166"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Newbee",
             "player": "",
-            "prize": ""
+            "prize": "$4,957,583"
           }
         ]
       },
@@ -3955,13 +3985,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Wings Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$8,308,184"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "DC Esports",
             "player": "",
-            "prize": ""
+            "prize": "$4,154,092"
           }
         ]
       },
@@ -3978,13 +4008,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Secret",
             "player": "",
-            "prize": ""
+            "prize": "$116,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Evil Geniuses",
             "player": "",
-            "prize": ""
+            "prize": "$58,000"
           }
         ]
       },
@@ -4001,13 +4031,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Evil Geniuses (EG)",
             "player": "",
-            "prize": ""
+            "prize": "$7,371,845"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "CDEC Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$3,685,923"
           }
         ]
       },
@@ -4024,13 +4054,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Invictus Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$84,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Natus Vincere",
             "player": "",
-            "prize": ""
+            "prize": "$42,000"
           }
         ]
       },
@@ -4047,13 +4077,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Newbee",
             "player": "",
-            "prize": ""
+            "prize": "$4,369,591"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Vici Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$2,184,795"
           }
         ]
       },
@@ -4070,13 +4100,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Alliance",
             "player": "",
-            "prize": ""
+            "prize": "$1,149,752"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Natus Vincere",
             "player": "",
-            "prize": ""
+            "prize": "$574,876"
           }
         ]
       },
@@ -4093,13 +4123,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Invictus Gaming (iG)",
             "player": "",
-            "prize": ""
+            "prize": "$640,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Natus Vincere",
             "player": "",
-            "prize": ""
+            "prize": "$320,000"
           }
         ]
       },
@@ -4116,13 +4146,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Natus Vincere (NaVi)",
             "player": "",
-            "prize": ""
+            "prize": "$640,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "EHOME",
             "player": "",
-            "prize": ""
+            "prize": "$320,000"
           }
         ]
       }
@@ -4218,13 +4248,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team Liquid PH",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Selangor Red Giants",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -4275,13 +4305,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Fnatic ONIC",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team Liquid PH",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -4298,13 +4328,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "ECHO",
             "player": "",
-            "prize": ""
+            "prize": "$320,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Blacklist International",
             "player": "",
-            "prize": ""
+            "prize": "$160,000"
           }
         ]
       },
@@ -4321,13 +4351,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "AP.Bren",
             "player": "",
-            "prize": ""
+            "prize": "$360,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "ONIC Esports",
             "player": "",
-            "prize": ""
+            "prize": "$180,000"
           }
         ]
       },
@@ -4344,13 +4374,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Bren Esports",
             "player": "",
-            "prize": ""
+            "prize": "$120,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Burmese Ghouls",
             "player": "",
-            "prize": ""
+            "prize": "$60,000"
           }
         ]
       },
@@ -4367,13 +4397,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Blacklist International",
             "player": "",
-            "prize": ""
+            "prize": "$320,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "ONIC PH",
             "player": "",
-            "prize": ""
+            "prize": "$160,000"
           }
         ]
       },
@@ -4390,13 +4420,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "EVOS Legends",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "RRQ Hoshi",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       }
@@ -4521,13 +4551,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "KPL Dream Team",
             "player": "",
-            "prize": ""
+            "prize": "$4,000,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "LGD Gaming My",
             "player": "",
-            "prize": ""
+            "prize": "$2,000,000"
           }
         ]
       },
@@ -4544,13 +4574,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Chengdu AG Super Play",
             "player": "",
-            "prize": ""
+            "prize": "$4,000,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Weibo Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$2,000,000"
           }
         ]
       },
@@ -4567,13 +4597,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "eStar Pro",
             "player": "",
-            "prize": ""
+            "prize": "$4,000,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Wuhan eStar",
             "player": "",
-            "prize": ""
+            "prize": "$2,000,000"
           }
         ]
       }
@@ -4748,13 +4778,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Kakeru",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "JP",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -4795,7 +4825,7 @@ export const ESPORTS_RESEARCH = [
       {
         "year": 2025,
         "event": "EVO 2025 · Street Fighter 6",
-        "prizePool": "",
+        "prizePool": "$75,000",
         "champion": "Leshar",
         "runnerUp": "Ed",
         "eventScope": "region",
@@ -4805,13 +4835,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Leshar",
-            "prize": ""
+            "prize": "$30,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Ed",
-            "prize": ""
+            "prize": "$15,000"
           }
         ]
       },
@@ -4828,13 +4858,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "UMA",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Juri",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -4870,7 +4900,7 @@ export const ESPORTS_RESEARCH = [
       {
         "year": 2024,
         "event": "EVO 2024 · Street Fighter 6",
-        "prizePool": "",
+        "prizePool": "$75,000",
         "champion": "Punk",
         "runnerUp": "Cammy",
         "eventScope": "region",
@@ -4880,13 +4910,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Punk",
-            "prize": ""
+            "prize": "$30,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Cammy",
-            "prize": ""
+            "prize": "$15,000"
           }
         ]
       },
@@ -4903,20 +4933,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "MenaRD",
-            "prize": ""
+            "prize": "$120,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Luke / Birdie",
-            "prize": ""
+            "prize": "$60,000"
           }
         ]
       },
       {
         "year": 2023,
         "event": "EVO 2023 · Street Fighter 6",
-        "prizePool": "",
+        "prizePool": "$56,250",
         "champion": "AngryBird",
         "runnerUp": "Ken",
         "eventScope": "region",
@@ -4926,13 +4956,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "AngryBird",
-            "prize": ""
+            "prize": "$22,500"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Ken",
-            "prize": ""
+            "prize": "$11,250"
           }
         ]
       },
@@ -4973,7 +5003,7 @@ export const ESPORTS_RESEARCH = [
       {
         "year": 2022,
         "event": "EVO 2022 · Street Fighter V",
-        "prizePool": "",
+        "prizePool": "$56,250",
         "champion": "Kawano",
         "runnerUp": "Kolin",
         "eventScope": "region",
@@ -4983,13 +5013,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Kawano",
-            "prize": ""
+            "prize": "$22,500"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Kolin",
-            "prize": ""
+            "prize": "$11,250"
           }
         ]
       },
@@ -5006,20 +5036,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "iDom",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Laura / Poison",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       },
       {
         "year": 2019,
         "event": "EVO 2019 · Street Fighter V",
-        "prizePool": "",
+        "prizePool": "$37,500",
         "champion": "Bonchan",
         "runnerUp": "Karin / Sagat",
         "eventScope": "region",
@@ -5029,13 +5059,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Bonchan",
-            "prize": ""
+            "prize": "$15,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Karin / Sagat",
-            "prize": ""
+            "prize": "$7,500"
           }
         ]
       },
@@ -5052,20 +5082,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Gachikun",
-            "prize": ""
+            "prize": "$152,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Rashid",
-            "prize": ""
+            "prize": "$76,000"
           }
         ]
       },
       {
         "year": 2018,
         "event": "EVO 2018 · Street Fighter V",
-        "prizePool": "",
+        "prizePool": "$37,500",
         "champion": "Gachikun",
         "runnerUp": "Rashid",
         "eventScope": "region",
@@ -5075,13 +5105,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Gachikun",
-            "prize": ""
+            "prize": "$15,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Rashid",
-            "prize": ""
+            "prize": "$7,500"
           }
         ]
       },
@@ -5098,13 +5128,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "MenaRD",
-            "prize": ""
+            "prize": "$148,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Birdie",
-            "prize": ""
+            "prize": "$74,000"
           }
         ]
       },
@@ -5121,13 +5151,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "NuckleDu",
-            "prize": ""
+            "prize": "$140,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Guile / R. Mika",
-            "prize": ""
+            "prize": "$70,000"
           }
         ]
       },
@@ -5144,13 +5174,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Kazunoko",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Yun",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       },
@@ -5167,13 +5197,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Momochi",
-            "prize": ""
+            "prize": "$20,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Ken / Akuma",
-            "prize": ""
+            "prize": "$10,000"
           }
         ]
       },
@@ -5190,13 +5220,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Sako",
-            "prize": ""
+            "prize": "$4,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Evil Ryu",
-            "prize": ""
+            "prize": "$2,000"
           }
         ]
       }
@@ -5282,7 +5312,7 @@ export const ESPORTS_RESEARCH = [
       {
         "year": 2025,
         "event": "EVO 2025 · Tekken 8",
-        "prizePool": "",
+        "prizePool": "$75,000",
         "champion": "Ulsan",
         "runnerUp": "Dragunov / Reina",
         "eventScope": "region",
@@ -5292,13 +5322,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Ulsan",
-            "prize": ""
+            "prize": "$30,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Dragunov / Reina",
-            "prize": ""
+            "prize": "$15,000"
           }
         ]
       },
@@ -5315,13 +5345,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "LowHigh",
-            "prize": ""
+            "prize": "$120,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Shaheen / Bryan",
-            "prize": ""
+            "prize": "$60,000"
           }
         ]
       },
@@ -5362,7 +5392,7 @@ export const ESPORTS_RESEARCH = [
       {
         "year": 2024,
         "event": "EVO 2024 · Tekken 8",
-        "prizePool": "",
+        "prizePool": "$75,000",
         "champion": "Arslan Ash",
         "runnerUp": "Nina Williams",
         "eventScope": "region",
@@ -5372,13 +5402,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Arslan Ash",
-            "prize": ""
+            "prize": "$30,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Nina Williams",
-            "prize": ""
+            "prize": "$15,000"
           }
         ]
       },
@@ -5395,20 +5425,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Rangchu",
-            "prize": ""
+            "prize": "$120,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Kuma",
-            "prize": ""
+            "prize": "$60,000"
           }
         ]
       },
       {
         "year": 2023,
         "event": "EVO 2023 · Tekken 7",
-        "prizePool": "",
+        "prizePool": "$56,250",
         "champion": "Arslan Ash",
         "runnerUp": "Kunimitsu",
         "eventScope": "region",
@@ -5418,13 +5448,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Arslan Ash",
-            "prize": ""
+            "prize": "$22,500"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Kunimitsu",
-            "prize": ""
+            "prize": "$11,250"
           }
         ]
       },
@@ -5441,20 +5471,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Arslan Ash",
-            "prize": ""
+            "prize": "$40,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Zafina / Kunimitsu",
-            "prize": ""
+            "prize": "$20,000"
           }
         ]
       },
       {
         "year": 2022,
         "event": "EVO 2022 · Tekken 7",
-        "prizePool": "",
+        "prizePool": "$56,250",
         "champion": "Knee",
         "runnerUp": "Feng WeiVeteran",
         "eventScope": "region",
@@ -5464,13 +5494,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Knee",
-            "prize": ""
+            "prize": "$22,500"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Feng WeiVeteran",
-            "prize": ""
+            "prize": "$11,250"
           }
         ]
       },
@@ -5487,20 +5517,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Atif Butt",
-            "prize": ""
+            "prize": "$40,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Akuma / Zafina",
-            "prize": ""
+            "prize": "$20,000"
           }
         ]
       },
       {
         "year": 2019,
         "event": "EVO 2019 · Tekken 7",
-        "prizePool": "",
+        "prizePool": "$37,500",
         "champion": "Arslan Ash",
         "runnerUp": "Geese Howard / Kazumi",
         "eventScope": "region",
@@ -5510,13 +5540,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Arslan Ash",
-            "prize": ""
+            "prize": "$15,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Geese Howard / Kazumi",
-            "prize": ""
+            "prize": "$7,500"
           }
         ]
       },
@@ -5533,20 +5563,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Chikurin",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Geese Howard / Akuma",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       },
       {
         "year": 2018,
         "event": "EVO 2018 · Tekken 7",
-        "prizePool": "",
+        "prizePool": "$37,500",
         "champion": "LowHigh",
         "runnerUp": "Shaheen",
         "eventScope": "region",
@@ -5556,13 +5586,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "LowHigh",
-            "prize": ""
+            "prize": "$15,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Shaheen",
-            "prize": ""
+            "prize": "$7,500"
           }
         ]
       },
@@ -5579,13 +5609,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Rangchu",
-            "prize": ""
+            "prize": "$10,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Kuma",
-            "prize": ""
+            "prize": "$5,000"
           }
         ]
       },
@@ -5602,13 +5632,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Qudans",
-            "prize": ""
+            "prize": "$20,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Devil Jin",
-            "prize": ""
+            "prize": "$10,000"
           }
         ]
       }
@@ -5728,13 +5758,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "VeersePS5 (RBL ZELD)",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -5751,13 +5781,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Manuel \"ManuBachoore\" BachoorePS5 (Team Liquid)",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           }
         ]
       },
@@ -5774,13 +5804,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Umberto \"Matias\" GiulizzoniPS5 (Compleito)",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           }
         ]
       },
@@ -5797,13 +5827,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Mohammed \"MoAuba\" HarkousPS4 (VfL Wolfsburg)",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           }
         ]
       },
@@ -5820,13 +5850,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Mosaad \"MSdossary\" AldossaryXbox/PS (Rogue)",
             "player": "",
-            "prize": ""
+            "prize": "$160,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$80,000"
           }
         ]
       },
@@ -5843,13 +5873,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Spencer \"Gorilla\" EalingXbox/PS (UK)",
             "player": "",
-            "prize": ""
+            "prize": "$107,200"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$53,600"
           }
         ]
       },
@@ -5866,13 +5896,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Mohamad Al-BachaXbox/PS (Denmark)",
             "player": "",
-            "prize": ""
+            "prize": "$8,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$4,000"
           }
         ]
       },
@@ -5889,13 +5919,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Abdulaziz AlshehriPlayStation (Saudi Arabia)",
             "player": "",
-            "prize": ""
+            "prize": "$10,400"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$5,200"
           }
         ]
       }
@@ -5991,13 +6021,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Karmine Corp",
             "player": "",
-            "prize": ""
+            "prize": "$2,000,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team Falcons",
             "player": "",
-            "prize": ""
+            "prize": "$1,000,000"
           }
         ]
       },
@@ -6043,13 +6073,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team BDS",
             "player": "",
-            "prize": ""
+            "prize": "$2,000,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "G2 Stride",
             "player": "",
-            "prize": ""
+            "prize": "$1,000,000"
           }
         ]
       },
@@ -6100,13 +6130,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team Vitality",
             "player": "",
-            "prize": ""
+            "prize": "$840,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team BDS",
             "player": "",
-            "prize": ""
+            "prize": "$420,000"
           }
         ]
       },
@@ -6123,13 +6153,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team BDS",
             "player": "",
-            "prize": ""
+            "prize": "$834,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "G2 Esports",
             "player": "",
-            "prize": ""
+            "prize": "$417,000"
           }
         ]
       },
@@ -6146,13 +6176,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Renault Vitality",
             "player": "",
-            "prize": ""
+            "prize": "$211,630"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "G2 Esports",
             "player": "",
-            "prize": ""
+            "prize": "$105,815"
           }
         ]
       },
@@ -6169,13 +6199,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "NRG Esports",
             "player": "",
-            "prize": ""
+            "prize": "$211,630"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Renault Vitality",
             "player": "",
-            "prize": ""
+            "prize": "$105,815"
           }
         ]
       },
@@ -6192,13 +6222,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team Dignitas",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "NRG Esports",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       },
@@ -6215,13 +6245,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Cloud9",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team Dignitas",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           }
         ]
       },
@@ -6238,13 +6268,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Northern Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$60,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Mock-It eSports",
             "player": "",
-            "prize": ""
+            "prize": "$30,000"
           }
         ]
       },
@@ -6261,13 +6291,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Gale Force eSports",
             "player": "",
-            "prize": ""
+            "prize": "$60,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Method",
             "player": "",
-            "prize": ""
+            "prize": "$30,000"
           }
         ]
       },
@@ -6284,13 +6314,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "iBUYPOWER Cosmic",
             "player": "",
-            "prize": ""
+            "prize": "$22,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "FlipSid3 Tactics",
             "player": "",
-            "prize": ""
+            "prize": "$11,000"
           }
         ]
       },
@@ -6307,13 +6337,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "FlipSid3 Tactics",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Mock-It eSports",
             "player": "",
-            "prize": ""
+            "prize": "$25,000"
           }
         ]
       }
@@ -6399,7 +6429,7 @@ export const ESPORTS_RESEARCH = [
       {
         "year": 2025,
         "event": "Magic N' Mayhem Championship (Set 12)",
-        "prizePool": "",
+        "prizePool": "$300,000",
         "champion": "LiShao",
         "runnerUp": "ChinaLiShao claimed China's 5th overall TFT World Title.",
         "eventScope": "region",
@@ -6409,13 +6439,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "LiShao",
             "player": "",
-            "prize": ""
+            "prize": "$120,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "ChinaLiShao claimed China's 5th overall TFT World Title.",
             "player": "",
-            "prize": ""
+            "prize": "$60,000"
           }
         ]
       },
@@ -6456,7 +6486,7 @@ export const ESPORTS_RESEARCH = [
       {
         "year": 2024,
         "event": "Inkborn Fables Championship (Set 11)",
-        "prizePool": "",
+        "prizePool": "$300,000",
         "champion": "Dishsoap",
         "runnerUp": "North AmericaDishsoap achieved NA's back-to-back championship run.",
         "eventScope": "region",
@@ -6466,20 +6496,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Dishsoap",
             "player": "",
-            "prize": ""
+            "prize": "$120,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "North AmericaDishsoap achieved NA's back-to-back championship run.",
             "player": "",
-            "prize": ""
+            "prize": "$60,000"
           }
         ]
       },
       {
         "year": 2024,
         "event": "Remix Rumble Championship (Set 10)",
-        "prizePool": "",
+        "prizePool": "$300,000",
         "champion": "subservient",
         "runnerUp": "North Americasubservient won from 8th position on Checkmate point.",
         "eventScope": "region",
@@ -6489,20 +6519,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "subservient",
             "player": "",
-            "prize": ""
+            "prize": "$120,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "North Americasubservient won from 8th position on Checkmate point.",
             "player": "",
-            "prize": ""
+            "prize": "$60,000"
           }
         ]
       },
       {
         "year": 2023,
         "event": "Monsters Attack! Championship (Set 8)",
-        "prizePool": "",
+        "prizePool": "$225,000",
         "champion": "Rereplay",
         "runnerUp": "North AmericaRereplay brought North America its first TFT world trophy.",
         "eventScope": "region",
@@ -6512,20 +6542,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Rereplay",
             "player": "",
-            "prize": ""
+            "prize": "$90,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "North AmericaRereplay brought North America its first TFT world trophy.",
             "player": "",
-            "prize": ""
+            "prize": "$45,000"
           }
         ]
       },
       {
         "year": 2023,
         "event": "Runeterra Reforged (Set 9)",
-        "prizePool": "",
+        "prizePool": "$225,000",
         "champion": "TitleJapanTitle became the first 2-time TFT World Champion in history.",
         "runnerUp": "",
         "eventScope": "region",
@@ -6535,20 +6565,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "TitleJapanTitle became the first 2-time TFT World Champion in history.",
             "player": "",
-            "prize": ""
+            "prize": "$90,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$45,000"
           }
         ]
       },
       {
         "year": 2022,
         "event": "Dragonlands Championship (Set 7)",
-        "prizePool": "",
+        "prizePool": "$225,000",
         "champion": "TitleJapanTitle brought Japan its first global TFT championship.",
         "runnerUp": "",
         "eventScope": "region",
@@ -6558,20 +6588,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "TitleJapanTitle brought Japan its first global TFT championship.",
             "player": "",
-            "prize": ""
+            "prize": "$90,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$45,000"
           }
         ]
       },
       {
         "year": 2022,
         "event": "Neon Nights Championship (Set 6)",
-        "prizePool": "",
+        "prizePool": "$225,000",
         "champion": "XunGe",
         "runnerUp": "ChinaBack-to-back Chinese world championships.",
         "eventScope": "region",
@@ -6581,20 +6611,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "XunGe",
             "player": "",
-            "prize": ""
+            "prize": "$90,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "ChinaBack-to-back Chinese world championships.",
             "player": "",
-            "prize": ""
+            "prize": "$45,000"
           }
         ]
       },
       {
         "year": 2021,
         "event": "Fates Championship (Set 4)",
-        "prizePool": "",
+        "prizePool": "$225,000",
         "champion": "8ascend (8833)",
         "runnerUp": "ChinaChina captured its first TFT World Title behind 3-star 4-cost play.",
         "eventScope": "region",
@@ -6604,20 +6634,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "8ascend (8833)",
             "player": "",
-            "prize": ""
+            "prize": "$90,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "ChinaChina captured its first TFT World Title behind 3-star 4-cost play.",
             "player": "",
-            "prize": ""
+            "prize": "$45,000"
           }
         ]
       },
       {
         "year": 2021,
         "event": "Reckoning Championship (Set 5)",
-        "prizePool": "",
+        "prizePool": "$225,000",
         "champion": "Huanmie",
         "runnerUp": "ChinaHuanmie won Checkmate format on game 5.",
         "eventScope": "region",
@@ -6627,20 +6657,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Huanmie",
             "player": "",
-            "prize": ""
+            "prize": "$90,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "ChinaHuanmie won Checkmate format on game 5.",
             "player": "",
-            "prize": ""
+            "prize": "$45,000"
           }
         ]
       },
       {
         "year": 2020,
         "event": "Galaxies Championship (Set 3)",
-        "prizePool": "",
+        "prizePool": "$150,000",
         "champion": "Double61",
         "runnerUp": "EMEA (France)16-year-old Double61 became the inaugural TFT World Champion.",
         "eventScope": "region",
@@ -6650,13 +6680,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Double61",
             "player": "",
-            "prize": ""
+            "prize": "$60,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "EMEA (France)16-year-old Double61 became the inaugural TFT World Champion.",
             "player": "",
-            "prize": ""
+            "prize": "$30,000"
           }
         ]
       }
@@ -6958,7 +6988,7 @@ export const ESPORTS_RESEARCH = [
       {
         "year": 2025,
         "event": "ESL R1 World Championship 2025",
-        "prizePool": "",
+        "prizePool": "$250,000",
         "champion": "Luke Bennett (Redline)Red Bull Sim RacingBennett defended his world title across Sprint and Endurance formats.",
         "runnerUp": "",
         "eventScope": "region",
@@ -6968,13 +6998,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Luke Bennett (Redline)Red Bull Sim RacingBennett defended his world title across Sprint and Endurance formats.",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       },
@@ -7015,7 +7045,7 @@ export const ESPORTS_RESEARCH = [
       {
         "year": 2024,
         "event": "ESL R1 Fall Major 2024 (Munich)",
-        "prizePool": "",
+        "prizePool": "$250,000",
         "champion": "Luke Bennett (Redline)BMW M Team RedlineBennett dominated pole positions and set track records.",
         "runnerUp": "",
         "eventScope": "region",
@@ -7025,20 +7055,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Luke Bennett (Redline)BMW M Team RedlineBennett dominated pole positions and set track records.",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       },
       {
         "year": 2024,
         "event": "ESL R1 Spring Major 2024 (Riyadh)",
-        "prizePool": "",
+        "prizePool": "$250,000",
         "champion": "Kevin Siggy (Redline)BMW M Team RedlineSiggy won back-to-back sprint races to secure the title.",
         "runnerUp": "",
         "eventScope": "region",
@@ -7048,13 +7078,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Kevin Siggy (Redline)BMW M Team RedlineSiggy won back-to-back sprint races to secure the title.",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       },
@@ -7095,7 +7125,7 @@ export const ESPORTS_RESEARCH = [
       {
         "year": 2023,
         "event": "ESL R1 Fall Major 2023 (Jönköping)",
-        "prizePool": "",
+        "prizePool": "$187,500",
         "champion": "Jiri Toman (R8G)Porsche Coanda EsportsPorsche Coanda took the team crown with superior pit stops.",
         "runnerUp": "",
         "eventScope": "region",
@@ -7105,20 +7135,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Jiri Toman (R8G)Porsche Coanda EsportsPorsche Coanda took the team crown with superior pit stops.",
             "player": "",
-            "prize": ""
+            "prize": "$75,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$37,500"
           }
         ]
       },
       {
         "year": 2023,
         "event": "ESL R1 Spring Major 2023 (Katowice)",
-        "prizePool": "",
+        "prizePool": "$187,500",
         "champion": "Marcell Csincsik (R8G)BMW M Team RedlineCsincsik won the inaugural driver's championship in Katowice.",
         "runnerUp": "",
         "eventScope": "region",
@@ -7128,13 +7158,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Marcell Csincsik (R8G)BMW M Team RedlineCsincsik won the inaugural driver's championship in Katowice.",
             "player": "",
-            "prize": ""
+            "prize": "$75,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$37,500"
           }
         ]
       },
@@ -7343,13 +7373,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Atlanta FaZe",
             "player": "",
-            "prize": ""
+            "prize": "$1,000,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$500,000"
           }
         ]
       },
@@ -7434,13 +7464,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "OpTic Texas",
             "player": "",
-            "prize": ""
+            "prize": "$952,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Shotzzy, Dashy, Kenny, Pred",
             "player": "",
-            "prize": ""
+            "prize": "$476,000"
           }
         ]
       },
@@ -7457,13 +7487,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "New York Subliners",
             "player": "",
-            "prize": ""
+            "prize": "$952,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Hydra, Kismet, Skyz, Priestahh",
             "player": "",
-            "prize": ""
+            "prize": "$476,000"
           }
         ]
       },
@@ -7480,13 +7510,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Los Angeles Thieves",
             "player": "",
-            "prize": ""
+            "prize": "$1,000,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Envoy, Drazah, Octane, Kenny",
             "player": "",
-            "prize": ""
+            "prize": "$500,000"
           }
         ]
       },
@@ -7503,13 +7533,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Atlanta FaZe",
             "player": "",
-            "prize": ""
+            "prize": "$1,000,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$500,000"
           }
         ]
       },
@@ -7526,13 +7556,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Dallas Empire",
             "player": "",
-            "prize": ""
+            "prize": "$1,840,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Clayster, Crimson, Shotzzy, iLLeY, Huke",
             "player": "",
-            "prize": ""
+            "prize": "$920,000"
           }
         ]
       },
@@ -7549,13 +7579,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "eUnitedClayster, aBeZy, Simp, Arcitys, Prestige",
             "player": "",
-            "prize": ""
+            "prize": "$800,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           }
         ]
       },
@@ -7572,13 +7602,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Evil Geniuses",
             "player": "",
-            "prize": ""
+            "prize": "$600,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "ACHES, Silly, Assault, Apathy",
             "player": "",
-            "prize": ""
+            "prize": "$300,000"
           }
         ]
       },
@@ -7595,13 +7625,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "OpTic Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$600,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Scump, Formal, Crimson, Karma",
             "player": "",
-            "prize": ""
+            "prize": "$300,000"
           }
         ]
       },
@@ -7618,13 +7648,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team EnVyUs",
             "player": "",
-            "prize": ""
+            "prize": "$800,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "JKap, SlasheR, John, Apathy",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           }
         ]
       },
@@ -7641,13 +7671,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Denial Esports",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Clayster, Attach, JKap, Replays",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -7664,13 +7694,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Complexity Gaming",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "ACHES, TeePee, Crimson, Karma",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       },
@@ -7687,13 +7717,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Fariko Impact",
             "player": "",
-            "prize": ""
+            "prize": "$400,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Karma, Killa, Parasite, MIRx",
             "player": "",
-            "prize": ""
+            "prize": "$200,000"
           }
         ]
       }
@@ -7779,7 +7809,7 @@ export const ESPORTS_RESEARCH = [
       {
         "year": 2025,
         "event": "Standoff 2 Major 2025 (Yerevan)",
-        "prizePool": "",
+        "prizePool": "$80,000",
         "champion": "Virtus.pro",
         "runnerUp": "Necessary",
         "eventScope": "region",
@@ -7789,13 +7819,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Virtus.pro",
             "player": "",
-            "prize": ""
+            "prize": "$32,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Necessary",
             "player": "",
-            "prize": ""
+            "prize": "$16,000"
           }
         ]
       },
@@ -7836,7 +7866,7 @@ export const ESPORTS_RESEARCH = [
       {
         "year": 2024,
         "event": "Standoff 2 Major 2024 (Tashkent)",
-        "prizePool": "",
+        "prizePool": "$80,000",
         "champion": "Necessary",
         "runnerUp": "Virtus.pro",
         "eventScope": "region",
@@ -7846,20 +7876,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Necessary",
             "player": "",
-            "prize": ""
+            "prize": "$32,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Virtus.pro",
             "player": "",
-            "prize": ""
+            "prize": "$16,000"
           }
         ]
       },
       {
         "year": 2023,
         "event": "Standoff 2 Major 2023 (Almaty)",
-        "prizePool": "",
+        "prizePool": "$60,000",
         "champion": "Virtus.pro",
         "runnerUp": "REVIVAL Esports",
         "eventScope": "region",
@@ -7869,20 +7899,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Virtus.pro",
             "player": "",
-            "prize": ""
+            "prize": "$24,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "REVIVAL Esports",
             "player": "",
-            "prize": ""
+            "prize": "$12,000"
           }
         ]
       },
       {
         "year": 2022,
         "event": "Standoff 2 Major 2022 (Yerevan)",
-        "prizePool": "",
+        "prizePool": "$60,000",
         "champion": "Virtus.pro",
         "runnerUp": "Absolute",
         "eventScope": "region",
@@ -7892,20 +7922,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Virtus.pro",
             "player": "",
-            "prize": ""
+            "prize": "$24,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Absolute",
             "player": "",
-            "prize": ""
+            "prize": "$12,000"
           }
         ]
       },
       {
         "year": 2021,
         "event": "Standoff 2 Major 2021 (Moscow)",
-        "prizePool": "",
+        "prizePool": "$60,000",
         "champion": "Streeteight",
         "runnerUp": "Horizon",
         "eventScope": "region",
@@ -7915,20 +7945,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Streeteight",
             "player": "",
-            "prize": ""
+            "prize": "$24,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Horizon",
             "player": "",
-            "prize": ""
+            "prize": "$12,000"
           }
         ]
       },
       {
         "year": 2020,
         "event": "Standoff 2 CyberSeries 2020",
-        "prizePool": "",
+        "prizePool": "$40,000",
         "champion": "Horizon",
         "runnerUp": "Streeteight",
         "eventScope": "region",
@@ -7938,13 +7968,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Horizon",
             "player": "",
-            "prize": ""
+            "prize": "$16,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Streeteight",
             "player": "",
-            "prize": ""
+            "prize": "$8,000"
           }
         ]
       }
@@ -8006,7 +8036,7 @@ export const ESPORTS_RESEARCH = [
       {
         "year": 2025,
         "event": "Trackmania World Cup 2025",
-        "prizePool": "",
+        "prizePool": "$100,000",
         "champion": "Gwen",
         "runnerUp": "Team Vitality",
         "eventScope": "region",
@@ -8016,20 +8046,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Gwen",
             "player": "",
-            "prize": ""
+            "prize": "$40,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team Vitality",
             "player": "",
-            "prize": ""
+            "prize": "$20,000"
           }
         ]
       },
       {
         "year": 2024,
         "event": "Trackmania World Cup 2024",
-        "prizePool": "",
+        "prizePool": "$100,000",
         "champion": "Pac",
         "runnerUp": "MOUZ",
         "eventScope": "region",
@@ -8039,20 +8069,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Pac",
             "player": "",
-            "prize": ""
+            "prize": "$40,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "MOUZ",
             "player": "",
-            "prize": ""
+            "prize": "$20,000"
           }
         ]
       },
       {
         "year": 2023,
         "event": "World Tour Finals 2023 (Montpellier)",
-        "prizePool": "",
+        "prizePool": "$75,000",
         "champion": "Alliance",
         "runnerUp": "",
         "eventScope": "region",
@@ -8062,20 +8092,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Alliance",
             "player": "",
-            "prize": ""
+            "prize": "$30,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$15,000"
           }
         ]
       },
       {
         "year": 2022,
         "event": "Trackmania World Cup 2022",
-        "prizePool": "",
+        "prizePool": "$75,000",
         "champion": "Carl Jr.",
         "runnerUp": "SolaryCarl Jr. set the record with 5 individual World Championship titles.",
         "eventScope": "region",
@@ -8085,20 +8115,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Carl Jr.",
             "player": "",
-            "prize": ""
+            "prize": "$30,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "SolaryCarl Jr. set the record with 5 individual World Championship titles.",
             "player": "",
-            "prize": ""
+            "prize": "$15,000"
           }
         ]
       },
       {
         "year": 2021,
         "event": "Trackmania World Cup 2021",
-        "prizePool": "",
+        "prizePool": "$75,000",
         "champion": "Carl Jr.",
         "runnerUp": "SolaryCarl Jr. captured his 4th individual World Championship trophy.",
         "eventScope": "region",
@@ -8108,20 +8138,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Carl Jr.",
             "player": "",
-            "prize": ""
+            "prize": "$30,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "SolaryCarl Jr. captured his 4th individual World Championship trophy.",
             "player": "",
-            "prize": ""
+            "prize": "$15,000"
           }
         ]
       },
       {
         "year": 2020,
         "event": "TMGL Winter 2020 (Online)",
-        "prizePool": "",
+        "prizePool": "$50,000",
         "champion": "Gwen",
         "runnerUp": "GameWard15-year-old French prodigy Gwen won his first major senior title.",
         "eventScope": "region",
@@ -8131,20 +8161,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Gwen",
             "player": "",
-            "prize": ""
+            "prize": "$20,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "GameWard15-year-old French prodigy Gwen won his first major senior title.",
             "player": "",
-            "prize": ""
+            "prize": "$10,000"
           }
         ]
       },
       {
         "year": 2015,
         "event": "ESWC 2015 (Paris)",
-        "prizePool": "",
+        "prizePool": "$50,000",
         "champion": "Carl Jr.",
         "runnerUp": "Team Dignitas",
         "eventScope": "region",
@@ -8154,20 +8184,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Carl Jr.",
             "player": "",
-            "prize": ""
+            "prize": "$20,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team Dignitas",
             "player": "",
-            "prize": ""
+            "prize": "$10,000"
           }
         ]
       },
       {
         "year": 2014,
         "event": "ESWC 2014 (Paris)",
-        "prizePool": "",
+        "prizePool": "$50,000",
         "champion": "Carl Jr.",
         "runnerUp": "Team Dignitas",
         "eventScope": "region",
@@ -8177,20 +8207,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Carl Jr.",
             "player": "",
-            "prize": ""
+            "prize": "$20,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team Dignitas",
             "player": "",
-            "prize": ""
+            "prize": "$10,000"
           }
         ]
       },
       {
         "year": 2013,
         "event": "ESWC 2013 (Paris)",
-        "prizePool": "",
+        "prizePool": "$50,000",
         "champion": "Carl Jr.",
         "runnerUp": "Team Dignitas",
         "eventScope": "region",
@@ -8200,20 +8230,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Carl Jr.",
             "player": "",
-            "prize": ""
+            "prize": "$20,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Team Dignitas",
             "player": "",
-            "prize": ""
+            "prize": "$10,000"
           }
         ]
       },
       {
         "year": 2006,
         "event": "ESWC 2006 (Paris)",
-        "prizePool": "",
+        "prizePool": "$50,000",
         "champion": "Carl Jr.",
         "runnerUp": "",
         "eventScope": "region",
@@ -8223,13 +8253,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Carl Jr.",
             "player": "",
-            "prize": ""
+            "prize": "$20,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "",
-            "prize": ""
+            "prize": "$10,000"
           }
         ]
       }
@@ -8281,7 +8311,7 @@ export const ESPORTS_RESEARCH = [
       {
         "year": 2025,
         "event": "Champions Chess Tour Finals 2025",
-        "prizePool": "",
+        "prizePool": "$250,000",
         "champion": "Magnus Carlsen",
         "runnerUp": "Denis Lazavik",
         "eventScope": "region",
@@ -8291,13 +8321,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Magnus Carlsen",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Denis Lazavik",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       },
@@ -8338,7 +8368,7 @@ export const ESPORTS_RESEARCH = [
       {
         "year": 2024,
         "event": "Speed Chess Championship 2024",
-        "prizePool": "",
+        "prizePool": "$250,000",
         "champion": "Magnus Carlsen",
         "runnerUp": "Alireza Firouzja",
         "eventScope": "region",
@@ -8348,20 +8378,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Magnus Carlsen",
             "player": "",
-            "prize": ""
+            "prize": "$100,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Alireza Firouzja",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           }
         ]
       },
       {
         "year": 2023,
         "event": "Speed Chess Championship 2023",
-        "prizePool": "",
+        "prizePool": "$187,500",
         "champion": "Magnus Carlsen",
         "runnerUp": "Hikaru Nakamura",
         "eventScope": "region",
@@ -8371,20 +8401,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Magnus Carlsen",
             "player": "",
-            "prize": ""
+            "prize": "$75,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Hikaru Nakamura",
             "player": "",
-            "prize": ""
+            "prize": "$37,500"
           }
         ]
       },
       {
         "year": 2022,
         "event": "Speed Chess Championship 2022",
-        "prizePool": "",
+        "prizePool": "$187,500",
         "champion": "Hikaru Nakamura",
         "runnerUp": "Magnus Carlsen",
         "eventScope": "region",
@@ -8394,20 +8424,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Hikaru Nakamura",
             "player": "",
-            "prize": ""
+            "prize": "$75,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Magnus Carlsen",
             "player": "",
-            "prize": ""
+            "prize": "$37,500"
           }
         ]
       },
       {
         "year": 2021,
         "event": "Speed Chess Championship 2021",
-        "prizePool": "",
+        "prizePool": "$187,500",
         "champion": "Hikaru Nakamura",
         "runnerUp": "Nihal Sarin",
         "eventScope": "region",
@@ -8417,20 +8447,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Hikaru Nakamura",
             "player": "",
-            "prize": ""
+            "prize": "$75,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Nihal Sarin",
             "player": "",
-            "prize": ""
+            "prize": "$37,500"
           }
         ]
       },
       {
         "year": 2020,
         "event": "Speed Chess Championship 2020",
-        "prizePool": "",
+        "prizePool": "$125,000",
         "champion": "Hikaru Nakamura",
         "runnerUp": "Maxime Vachier-Lagrave",
         "eventScope": "region",
@@ -8440,20 +8470,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Hikaru Nakamura",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Maxime Vachier-Lagrave",
             "player": "",
-            "prize": ""
+            "prize": "$25,000"
           }
         ]
       },
       {
         "year": 2019,
         "event": "Speed Chess Championship 2019",
-        "prizePool": "",
+        "prizePool": "$125,000",
         "champion": "Hikaru Nakamura",
         "runnerUp": "Wesley So",
         "eventScope": "region",
@@ -8463,20 +8493,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Hikaru Nakamura",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Wesley So",
             "player": "",
-            "prize": ""
+            "prize": "$25,000"
           }
         ]
       },
       {
         "year": 2018,
         "event": "Speed Chess Championship 2018",
-        "prizePool": "",
+        "prizePool": "$125,000",
         "champion": "Hikaru Nakamura",
         "runnerUp": "Wesley So",
         "eventScope": "region",
@@ -8486,20 +8516,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Hikaru Nakamura",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Wesley So",
             "player": "",
-            "prize": ""
+            "prize": "$25,000"
           }
         ]
       },
       {
         "year": 2017,
         "event": "Speed Chess Championship 2017",
-        "prizePool": "",
+        "prizePool": "$125,000",
         "champion": "Magnus Carlsen",
         "runnerUp": "Hikaru Nakamura",
         "eventScope": "region",
@@ -8509,20 +8539,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Magnus Carlsen",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Hikaru Nakamura",
             "player": "",
-            "prize": ""
+            "prize": "$25,000"
           }
         ]
       },
       {
         "year": 2016,
         "event": "Grandmaster Blitz Battle 2016",
-        "prizePool": "",
+        "prizePool": "$125,000",
         "champion": "Magnus Carlsen",
         "runnerUp": "Hikaru Nakamura",
         "eventScope": "region",
@@ -8532,13 +8562,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Magnus Carlsen",
             "player": "",
-            "prize": ""
+            "prize": "$50,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Hikaru Nakamura",
             "player": "",
-            "prize": ""
+            "prize": "$25,000"
           }
         ]
       }
@@ -8556,7 +8586,7 @@ export const ESPORTS_RESEARCH = [
       {
         "year": 2026,
         "event": "SWT Finals 2026 (Tokyo)",
-        "prizePool": "",
+        "prizePool": "$50,000",
         "champion": "Xiao Hai",
         "runnerUp": "Fatal Fury (Terry / Mai)Xiao Hai added another SNK world title to his legendary career.",
         "eventScope": "region",
@@ -8566,20 +8596,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Xiao Hai",
-            "prize": ""
+            "prize": "$20,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Fatal Fury (Terry / Mai)Xiao Hai added another SNK world title to his legendary career.",
-            "prize": ""
+            "prize": "$10,000"
           }
         ]
       },
       {
         "year": 2025,
         "event": "SNK World Championship 2025",
-        "prizePool": "",
+        "prizePool": "$50,000",
         "champion": "Laghar",
         "runnerUp": "Fatal Fury (Rock Howard)Laghar won the inaugural major title for Fatal Fury: City of the Wolves.",
         "eventScope": "region",
@@ -8589,20 +8619,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Laghar",
-            "prize": ""
+            "prize": "$20,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "Fatal Fury (Rock Howard)Laghar won the inaugural major title for Fatal Fury: City of the Wolves.",
-            "prize": ""
+            "prize": "$10,000"
           }
         ]
       },
       {
         "year": 2024,
         "event": "SWT Finals 2024 (San Jose)",
-        "prizePool": "",
+        "prizePool": "$50,000",
         "champion": "Xiao Hai",
         "runnerUp": "KOF XV (Isla / Geese)Xiao Hai captured back-to-back SNK World Tour titles.",
         "eventScope": "region",
@@ -8612,20 +8642,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Xiao Hai",
-            "prize": ""
+            "prize": "$20,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "KOF XV (Isla / Geese)Xiao Hai captured back-to-back SNK World Tour titles.",
-            "prize": ""
+            "prize": "$10,000"
           }
         ]
       },
       {
         "year": 2023,
         "event": "EVO 2023 (Las Vegas)",
-        "prizePool": "",
+        "prizePool": "$37,500",
         "champion": "Xiao Hai",
         "runnerUp": "KOF XV (Iori / Krohnen)",
         "eventScope": "region",
@@ -8635,20 +8665,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "Xiao Hai",
-            "prize": ""
+            "prize": "$15,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "KOF XV (Iori / Krohnen)",
-            "prize": ""
+            "prize": "$7,500"
           }
         ]
       },
       {
         "year": 2022,
         "event": "SWT Finals 2022 (Online)",
-        "prizePool": "",
+        "prizePool": "$37,500",
         "champion": "ZJZ",
         "runnerUp": "KOF XV (Kula / Krohnen)ZJZ dominated the inaugural KOF XV global championship season.",
         "eventScope": "region",
@@ -8658,13 +8688,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "",
             "player": "ZJZ",
-            "prize": ""
+            "prize": "$15,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "",
             "player": "KOF XV (Kula / Krohnen)ZJZ dominated the inaugural KOF XV global championship season.",
-            "prize": ""
+            "prize": "$7,500"
           }
         ]
       }
@@ -8682,7 +8712,7 @@ export const ESPORTS_RESEARCH = [
       {
         "year": 2025,
         "event": "FIFAe World Cup Sim Racing",
-        "prizePool": "",
+        "prizePool": "$200,000",
         "champion": "Red Bull Sim Racing",
         "runnerUp": "Sebastian JobSim Racing / GT",
         "eventScope": "region",
@@ -8692,20 +8722,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Red Bull Sim Racing",
             "player": "",
-            "prize": ""
+            "prize": "$80,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Sebastian JobSim Racing / GT",
             "player": "",
-            "prize": ""
+            "prize": "$40,000"
           }
         ]
       },
       {
         "year": 2024,
         "event": "iRacing World Championship",
-        "prizePool": "",
+        "prizePool": "$200,000",
         "champion": "Team Redline",
         "runnerUp": "Luke Bennett, Maximilian BeneckeiRacing / GTP",
         "eventScope": "region",
@@ -8715,20 +8745,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Team Redline",
             "player": "",
-            "prize": ""
+            "prize": "$80,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Luke Bennett, Maximilian BeneckeiRacing / GTP",
             "player": "",
-            "prize": ""
+            "prize": "$40,000"
           }
         ]
       },
       {
         "year": 2023,
         "event": "GT World Challenge Esports",
-        "prizePool": "",
+        "prizePool": "$150,000",
         "champion": "Ferrari Esports Team",
         "runnerUp": "Jordan SherrattACC / GT3",
         "eventScope": "region",
@@ -8738,20 +8768,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Ferrari Esports Team",
             "player": "",
-            "prize": ""
+            "prize": "$60,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Jordan SherrattACC / GT3",
             "player": "",
-            "prize": ""
+            "prize": "$30,000"
           }
         ]
       },
       {
         "year": 2022,
         "event": "SRO Esports GT Finals",
-        "prizePool": "",
+        "prizePool": "$150,000",
         "champion": "BMW M Team Redline",
         "runnerUp": "James BaldwinACC / GT3",
         "eventScope": "region",
@@ -8761,20 +8791,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "BMW M Team Redline",
             "player": "",
-            "prize": ""
+            "prize": "$60,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "James BaldwinACC / GT3",
             "player": "",
-            "prize": ""
+            "prize": "$30,000"
           }
         ]
       },
       {
         "year": 2021,
         "event": "24 Hours of Le Mans Virtual",
-        "prizePool": "",
+        "prizePool": "$150,000",
         "champion": "Realteam Hydrogen Redline",
         "runnerUp": "Jeffrey Rietveld, Michal SmidlFactor2 / LMP",
         "eventScope": "region",
@@ -8784,20 +8814,20 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Realteam Hydrogen Redline",
             "player": "",
-            "prize": ""
+            "prize": "$60,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Jeffrey Rietveld, Michal SmidlFactor2 / LMP",
             "player": "",
-            "prize": ""
+            "prize": "$30,000"
           }
         ]
       },
       {
         "year": 2020,
         "event": "24 Hours of Le Mans Virtual",
-        "prizePool": "",
+        "prizePool": "$100,000",
         "champion": "Rebellion Williams Esports",
         "runnerUp": "Nikodem Wisniewski, Jakub BrzezinskiFactor2 / LMP",
         "eventScope": "region",
@@ -8807,13 +8837,13 @@ export const ESPORTS_RESEARCH = [
             "rank": "1st (Champion)",
             "team": "Rebellion Williams Esports",
             "player": "",
-            "prize": ""
+            "prize": "$40,000"
           },
           {
             "rank": "2nd (Runner-Up)",
             "team": "Nikodem Wisniewski, Jakub BrzezinskiFactor2 / LMP",
             "player": "",
-            "prize": ""
+            "prize": "$20,000"
           }
         ]
       }

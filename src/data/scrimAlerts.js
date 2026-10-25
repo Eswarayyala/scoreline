@@ -17,14 +17,17 @@ export const DEFAULT_SCRIM_ALERTS = {
 };
 
 export function normalizeScrimAlerts(prefs = {}, profileGames = []) {
+  const chosen = prefs.notifyChannelsChosen === true;
   const games = Array.isArray(prefs.scrimAlertGames) && prefs.scrimAlertGames.length
     ? prefs.scrimAlertGames.map(String).filter(Boolean).slice(0, 20)
-    : (profileGames || []).map(String).filter(Boolean).slice(0, 20);
+    : (chosen ? (profileGames || []).map(String).filter(Boolean).slice(0, 20) : []);
   const modes = ["public", "paid", "both"].includes(prefs.scrimAlertModes)
     ? prefs.scrimAlertModes
     : DEFAULT_SCRIM_ALERTS.modes;
   return {
-    enabled: prefs.scrimAlertsEnabled !== false,
+    // Quiet until the player explicitly chooses (profile checkbox or Scrims banner).
+    enabled: chosen ? prefs.scrimAlertsEnabled !== false : false,
+    notifyChannelsChosen: chosen,
     modes,
     games,
     followedHosts: Array.isArray(prefs.followedHosts)

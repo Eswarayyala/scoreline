@@ -17,12 +17,26 @@ const STATUS_STYLES = {
     border: "rgba(255, 45, 149, 0.55)",
     color: "#ff9fd0",
   },
+  checkin: {
+    label: "Check-in",
+    bg: "rgba(251, 191, 36, 0.2)",
+    border: "rgba(251, 191, 36, 0.55)",
+    color: "#fcd34d",
+  },
   completed: {
     label: "Completed",
     bg: "rgba(148, 163, 184, 0.18)",
     border: "rgba(148, 163, 184, 0.4)",
     color: "#cbd5e1",
   },
+};
+
+const PHASE_BORDER = {
+  pink: { border: "rgba(255, 45, 149, 0.55)", glow: "rgba(255, 45, 149, 0.22)" },
+  amber: { border: "rgba(251, 191, 36, 0.5)", glow: "rgba(251, 191, 36, 0.18)" },
+  neon: { border: "rgba(57, 255, 20, 0.45)", glow: "rgba(57, 255, 20, 0.14)" },
+  blue: { border: "rgba(59, 130, 255, 0.45)", glow: "rgba(59, 130, 255, 0.12)" },
+  slate: { border: "rgba(148, 163, 184, 0.4)", glow: "rgba(148, 163, 184, 0.1)" },
 };
 
 function formatDateRange(startAt, endAt) {
@@ -131,7 +145,7 @@ function payoutRows(slide, edition, championshipGames = []) {
 
 function resolveStatus(slide, edition, payouts) {
   const raw = String(slide.eventStatus || slide.status || "").toLowerCase();
-  if (raw === "live" || raw === "upcoming" || raw === "completed") return raw;
+  if (raw === "live" || raw === "upcoming" || raw === "completed" || raw === "checkin") return raw;
   if (slide.winners || edition?.champion || payouts.length) return "completed";
   if (slide.registrationUrl || slide.startAt || slide.startDate) return "upcoming";
   if (slide.surface === "ewc-window") {
@@ -249,19 +263,21 @@ export function windowCardModel(slide = {}) {
   const region = slide.region || slide.location || edition?.region || "";
   const mode = slide.mode || slide.format || (slide.online === false ? "LAN" : "");
 
-  const fact = isGameVault
-    ? windowFactBlurb(slide.overview || slide.summary || "", { maxChars: 320, maxSentences: 3 })
-    : buildFact(slide, edition, {
-      champion,
-      championPrize,
-      prizePool,
-      runnerUp,
-      mvp,
-      gameCount: championshipGames.length,
-    });
-
   const game = slide.game || slide.name || "";
   const isScrim = slide.surface === "scrim" || Boolean(slide.joinMode);
+
+  const fact = isScrim && slide.fact
+    ? windowFactBlurb(slide.fact, { maxChars: 220, maxSentences: 2 })
+    : isGameVault
+      ? windowFactBlurb(slide.overview || slide.summary || "", { maxChars: 320, maxSentences: 3 })
+      : buildFact(slide, edition, {
+        champion,
+        championPrize,
+        prizePool,
+        runnerUp,
+        mvp,
+        gameCount: championshipGames.length,
+      });
   const scrimTitle = slide.title || slide.name || "";
   // Per-edition windows (spotlights, EventTabs, championship titles) — not bare game-catalog cards.
   const eventFocused = Boolean(
@@ -311,19 +327,22 @@ export function windowCardModel(slide = {}) {
     mvpPrize,
     registrationUrl: slide.registrationUrl || "",
     href: slide.href || (slide.slug ? `/vault/${slide.slug}` : slide.id ? `/tournaments/${slide.id}` : "/vault"),
-    ctaLabel: status === "completed" ? "Open event" : "View tournament",
+    ctaLabel: slide.ctaLabel
+      || (status === "completed" ? "Open event" : status === "checkin" ? "Check in" : status === "live" ? "Enter lobby" : "View tournament"),
+    statusLabel: String(slide.statusLabel || "").trim(),
+    phaseAccent: slide.phaseAccent || "",
     vaultHref: slide.slug ? `/vault/${slide.slug}` : "",
   };
 }
 
-function StatusPill({ status }) {
+function StatusPill({ status, label = "" }) {
   const style = STATUS_STYLES[status] || STATUS_STYLES.upcoming;
   return (
     <span
       className="inline-flex items-center rounded-md px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.14em]"
       style={{ background: style.bg, border: `1px solid ${style.border}`, color: style.color }}
     >
-      {style.label}
+      {label || style.label}
     </span>
   );
 }
@@ -633,12 +652,13 @@ export default function TournamentWindowCard({
     onOpen(event);
   };
 
+  const phaseChrome = PHASE_BORDER[model.phaseAccent] || PHASE_BORDER.blue;
   const shell = (
     <article
       className={`group relative isolate z-0 flex h-full max-h-full flex-col overflow-hidden rounded-2xl border transition ${className}`}
       style={{
-        borderColor: "rgba(59, 130, 255, 0.45)",
-        boxShadow: "0 0 0 1px rgba(59, 130, 255, 0.12), 0 18px 40px rgba(0, 0, 0, 0.45), 0 0 32px rgba(59, 130, 255, 0.12)",
+        borderColor: phaseChrome.border,
+        boxShadow: `0 0 0 1px ${phaseChrome.glow}, 0 18px 40px rgba(0, 0, 0, 0.45), 0 0 32px ${phaseChrome.glow}`,
         height: "100%",
         minHeight: compact ? WINDOW_CARD_HEIGHT : 420,
         maxHeight: compact ? "100%" : undefined,
@@ -681,7 +701,7 @@ export default function TournamentWindowCard({
       <div className={`relative z-[2] flex min-h-0 flex-1 flex-col pointer-events-none ${compact ? "p-3" : "p-5 md:p-6"}`}>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <StatusPill status={model.status} />
+            <StatusPill status={model.status} label={model.statusLabel} />
             <FlyerBadges badges={model.flyerBadges} compact={compact} />
           </div>
           {bookmark ? <div className="pointer-events-auto">{bookmark}</div> : null}
@@ -706,7 +726,7 @@ export default function TournamentWindowCard({
         <div className="mt-1 min-h-0 flex-1 overflow-hidden">
           {model.status === "completed" ? (
             <CompletedBody model={model} compact={compact} />
-          ) : model.status === "live" ? (
+          ) : model.status === "live" || model.status === "checkin" ? (
             <LiveBody model={model} compact={compact} />
           ) : (
             <UpcomingBody model={model} compact={compact} />

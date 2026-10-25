@@ -3,7 +3,8 @@ import { motion, useReducedMotion } from "framer-motion";
 import TournamentWindowCard from "../vault/TournamentWindowCard";
 import SectionBackHome from "../layout/SectionBackHome";
 import PageEnter from "../motion/PageEnter";
-import { isPublicScrim, scrimFlyerBadges, scrimAccessLabel } from "../../data/scrimAccess";
+import { scrimAccessLabel } from "../../data/scrimAccess";
+import { scrimWindowSlide } from "../../data/scrimPhase";
 import { rollupHostAnalytics, formatHostAnalyticsLine } from "../../data/hostAnalytics";
 import { fadeUp, hoverLift, staggerDelay, tapPress } from "../../motion/presets";
 
@@ -100,17 +101,8 @@ export default function HostProfilePage({
                 <TournamentWindowCard
                   compact
                   slide={{
-                    ...t,
-                    surface: "scrim",
-                    title: t.name,
-                    eventStatus: t.status || "upcoming",
+                    ...scrimWindowSlide(t),
                     kicker: scrimAccessLabel(t),
-                    mode: isPublicScrim(t) ? "Public" : "Private",
-                    flyerBadges: scrimFlyerBadges(t),
-                    teamCount: t.maxSlots || "",
-                    startAt: t.startDate,
-                    endAt: t.endDate,
-                    prizePool: Number(t.prizeAmount) > 0 ? `₹${Number(t.prizeAmount).toLocaleString()}` : "",
                   }}
                   to={`/tournaments/${t.id}`}
                   onOpen={() => onOpenTournament?.(t.id)}

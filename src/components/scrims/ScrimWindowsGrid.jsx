@@ -1,9 +1,9 @@
 import { motion, useReducedMotion } from "framer-motion";
 import TournamentWindowCard, { WINDOW_CARD_HEIGHT } from "../vault/TournamentWindowCard";
 import { fadeUp, hoverLift, staggerDelay, tapPress } from "../../motion/presets";
-import { isPublicScrim, scrimFlyerBadges } from "../../data/scrimAccess";
+import { scrimWindowSlide } from "../../data/scrimPhase";
 
-/** Scrims desk cards with the same stagger / lift as vault home windows. */
+/** Scrims desk cards with phase-aware live / check-in / open / results chrome. */
 export default function ScrimWindowsGrid({
   tournaments = [],
   currentUserId = null,
@@ -21,20 +21,7 @@ export default function ScrimWindowsGrid({
       }}
     >
       {tournaments.map((t, index) => {
-        const slide = {
-          ...t,
-          surface: "scrim",
-          title: t.name,
-          eventStatus: t.status || "upcoming",
-          kicker: `Hosted by ${t.adminDisplayName || (t.adminUserId === currentUserId ? currentUserName : "Scrim host")}`,
-          region: [t.region, t.rankBand].filter(Boolean).join(" · ") || t.region,
-          mode: isPublicScrim(t) ? "Public" : "Private",
-          flyerBadges: scrimFlyerBadges(t),
-          teamCount: t.maxSlots || "",
-          startAt: t.startDate,
-          endAt: t.endDate,
-          prizePool: Number(t.prizeAmount) > 0 ? `₹${Number(t.prizeAmount).toLocaleString()}` : "",
-        };
+        const slide = scrimWindowSlide(t, { currentUserId, currentUserName });
         return (
           <motion.div
             key={t.id}

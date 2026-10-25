@@ -65,8 +65,10 @@ import {
 import { buildScrimAnnouncement, DEFAULT_SCRIM_ALERTS, normalizeScrimAlerts } from "./data/scrimAlerts";
 import { attendanceCounts, registrationAttendance, scrimRequiresCheckIn } from "./data/scrimAttendance";
 import { normalizeSavedSquad, savedSquadReady } from "./data/savedSquad";
+import { normalizeNotifyPrefs } from "./data/notifyPrefs";
 import ScrimBell from "./components/scrims/ScrimBell";
 import ScrimAlertPrefs from "./components/scrims/ScrimAlertPrefs";
+import PageNotifyToggle from "./components/prefs/PageNotifyToggle";
 import RoomStagesPanel from "./components/scrims/RoomStagesPanel";
 import InvitePlayersPanel from "./components/scrims/InvitePlayersPanel";
 import HostOrgPanel from "./components/scrims/HostOrgPanel";
@@ -1088,6 +1090,7 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
   const [discordHandle, setDiscordHandle] = useState(initialProfile?.discordHandle || "");
   const [avatar, setAvatar] = useState(initialProfile?.avatar || "🎮");
   const [discoverable, setDiscoverable] = useState(initialProfile?.discoverable === true);
+  const [notifyScrims, setNotifyScrims] = useState(true);
   const [playerTag, setPlayerTag] = useState(() => initialProfile?.playerTag || randomPlayerTag());
   const [error, setError] = useState("");
   const usernameChanges = Number(initialProfile?.usernameChanges || 0);
@@ -1138,6 +1141,7 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
       discordHandle: String(discordHandle || "").trim().slice(0, 40),
       avatar,
       discoverable,
+      notifyScrims: notifyScrims === true,
     });
   };
 
@@ -1306,6 +1310,20 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
           <Field label="Games you play">
             <MultiToggle options={gamesList} selected={games} onToggle={toggleGame} initialVisible={8} pageSize={8} />
           </Field>
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 10, color: "var(--page-text)", fontSize: 13 }}>
+            <input
+              type="checkbox"
+              checked={notifyScrims}
+              onChange={(e) => setNotifyScrims(e.target.checked)}
+              style={{ marginTop: 2, accentColor: "var(--accent-secondary)" }}
+            />
+            <span>
+              <strong>Notify me when new scrims publish for my games</strong>
+              <span style={{ display: "block", color: "var(--text-muted)", marginTop: 3 }}>
+                In-app flyer alerts for the titles you picked above. You can change this anytime on Scrims.
+              </span>
+            </span>
+          </label>
           <Field label="Country">
             <Select value={region} onChange={(e) => setRegion(e.target.value)}>
               <option value="">Select…</option>
@@ -1402,7 +1420,7 @@ function ProfileModal({ initialProfile, defaultDisplayName, onSave, onSkip, onCl
             <div style={{ padding: 14, background: "var(--panel-raised)", border: "1px solid var(--border)" }}>
               <Eyebrow>Community desk</Eyebrow>
               <p style={{ margin: "8px 0 12px", fontSize: 13, color: "var(--text-muted)" }}>
-                Friends, followed hosts, and flyer feed — stay on GrindInfo without Discord.
+                Friends, followed hosts, flyer feed, and host badge requests live here — not on the Scrims grid.
               </p>
               <Link to="/desk" onClick={onClose} style={{ textDecoration: "none" }}>
                 <Button variant="ghost">Open community desk</Button>
@@ -1523,7 +1541,7 @@ function playerSearchActive(search) {
   );
 }
 
-function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendRequest, onFriendDecision, onReport, onEditProfile, embedded = false, gamesList = FILTER_GAMES }) {
+function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendRequest, onFriendDecision, onReport, onEditProfile, embedded = false, gamesList = FILTER_GAMES, notifyEnabled = true, onNotifyChange = null }) {
   const [draft, setDraft] = useState(emptyPlayerSearch);
   const [applied, setApplied] = useState(null);
   const [players, setPlayers] = useState([]);
@@ -1618,7 +1636,10 @@ function FindPlayersPage({ currentUid, myProfile, friendRequests = [], onFriendR
           {!embedded && <Eyebrow>Squad up</Eyebrow>}
           <h1 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: embedded ? 28 : 44, margin: "4px 0 0" }}>{embedded ? "Find players" : "Find similar players"}</h1>
         </div>
-        {onEditProfile && <Button variant="ghost" onClick={onEditProfile}>{myProfile ? "Edit my profile" : "Set up my profile"}</Button>}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          {currentUid && onNotifyChange ? <PageNotifyToggle enabled={notifyEnabled} onChange={onNotifyChange} label="Friends" /> : null}
+          {onEditProfile && <Button variant="ghost" onClick={onEditProfile}>{myProfile ? "Edit my profile" : "Set up my profile"}</Button>}
+        </div>
       </div>
 
       <LfgNoticeBoard profile={myProfile} gamesList={gamesList} />
@@ -2332,9 +2353,12 @@ function ChatPopup({
   unreadByUid = {},
   onSeen = null,
   unseenCount = 0,
+  notifyEnabled = true,
+  onNotifyChange = null,
 }) {
   if (!open) return null;
   const focused = chats.find((item) => item.uid === focusedUid) || chats[0] || null;
+  const badgeCount = notifyEnabled ? unseenCount : 0;
   return (
     <div
       role="presentation"
@@ -2370,9 +2394,9 @@ function ChatPopup({
         <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 14px", borderBottom: "1px solid var(--border)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <strong style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, letterSpacing: "0.04em" }}>Chats</strong>
-            {unseenCount > 0 ? (
+            {badgeCount > 0 ? (
               <span
-                aria-label={`${unseenCount} unseen chats`}
+                aria-label={`${badgeCount} unseen chats`}
                 style={{
                   minWidth: 22,
                   height: 22,
@@ -2386,13 +2410,18 @@ function ChatPopup({
                   ...NOTICE_BADGE_STYLE,
                 }}
               >
-                {unseenCount > 9 ? "9+" : unseenCount}
+                {badgeCount > 9 ? "9+" : badgeCount}
               </span>
             ) : null}
           </div>
-          <button type="button" onClick={onClose} style={{ border: 0, background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 13 }}>
-            Close
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {onNotifyChange ? (
+              <PageNotifyToggle enabled={notifyEnabled} onChange={onNotifyChange} />
+            ) : null}
+            <button type="button" onClick={onClose} style={{ border: 0, background: "transparent", color: "var(--text-muted)", cursor: "pointer", fontSize: 13 }}>
+              Close
+            </button>
+          </div>
         </header>
         {chats.length === 0 ? (
           <div style={{ flex: 1, display: "grid", placeItems: "center", color: "var(--text-muted)", fontSize: 14, padding: 24, textAlign: "center" }}>
@@ -3165,7 +3194,7 @@ function blogLinkError(source, youtubeUrl, docsUrl) {
   return "";
 }
 
-function BlogPage({ posts, user, isModerator, blogPrivateById = {}, onSubmit, onReview, onEdit, onDelete, onSignIn, embedded = false, manageInDrawer = false, overlay = false }) {
+function BlogPage({ posts, user, isModerator, blogPrivateById = {}, onSubmit, onReview, onEdit, onDelete, onSignIn, embedded = false, manageInDrawer = false, overlay = false, notifyEnabled = true, onNotifyChange = null }) {
   const [title, setTitle] = useState("");
   const [game, setGame] = useState("");
   const [eventScope, setEventScope] = useState("random");
@@ -3251,9 +3280,29 @@ function BlogPage({ posts, user, isModerator, blogPrivateById = {}, onSubmit, on
   );
   return (
     <PageEnter style={{ paddingTop: overlay || embedded ? 0 : 32, paddingBottom: manageInDrawer ? 88 : 0 }}>
-      {!embedded && !overlay && (<><SectionBackHome /><Eyebrow>Community stories</Eyebrow><h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42 }}>Esports blog</h1><p style={{ color: "var(--text-muted)" }}>Read community stories, tournament recaps, and esports updates.</p></>)}
-      {overlay && <p style={{ color: "var(--text-muted)", margin: "0 0 8px", fontSize: 14 }}>Read community stories, tournament recaps, and esports updates.</p>}
-      {embedded && <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, margin: "0 0 12px" }}>Community blog</h2>}
+      {!embedded && !overlay && (
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div>
+            <SectionBackHome />
+            <Eyebrow>Community stories</Eyebrow>
+            <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 42, margin: "4px 0 0" }}>Esports blog</h1>
+            <p style={{ color: "var(--text-muted)" }}>Read community stories, tournament recaps, and esports updates.</p>
+          </div>
+          {user && onNotifyChange ? <PageNotifyToggle enabled={notifyEnabled} onChange={onNotifyChange} /> : null}
+        </div>
+      )}
+      {overlay && (
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
+          <p style={{ color: "var(--text-muted)", margin: 0, fontSize: 14 }}>Read community stories, tournament recaps, and esports updates.</p>
+          {user && onNotifyChange ? <PageNotifyToggle enabled={notifyEnabled} onChange={onNotifyChange} /> : null}
+        </div>
+      )}
+      {embedded && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+          <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, margin: 0 }}>Community blog</h2>
+          {user && onNotifyChange ? <PageNotifyToggle enabled={notifyEnabled} onChange={onNotifyChange} /> : null}
+        </div>
+      )}
       {!manageInDrawer && compose}
       <div style={{ display: "grid", gap: 12, marginTop: 20 }}>
         {visible.map((post) => (
@@ -4137,11 +4186,12 @@ export default function App() {
       if (!ids.includes(id)) knownPendingFriendIds.current.delete(id);
     });
     if (!fresh.length) return;
+    if (normalizeNotifyPrefs(userPrefs || {}).friends === false) return;
     const name = fresh[0].requesterName || "Someone";
     showToast(fresh.length === 1 ? `${name} sent a friend request` : `${fresh.length} new friend requests`);
     setShowFriendRequests(true);
     document.querySelector("details[open]")?.removeAttribute("open");
-  }, [pendingFriendRequests, user, showToast]);
+  }, [pendingFriendRequests, user, userPrefs, showToast]);
   useEffect(() => {
     if (!user) { setMutedFriendIds([]); return; }
     try { setMutedFriendIds(JSON.parse(localStorage.getItem(`grindinfo-muted-chats:${user.uid}`) || "[]")); }
@@ -4288,6 +4338,18 @@ export default function App() {
           try { await deleteDoc(handleDocRef(myProfile.handle)); } catch { /* previous ID mapping can stay until overwritten */ }
         }
         try { await updateProfile(user, { displayName: grindHandle(displayName, claimed.tag) }); } catch { /* Auth display name stays as the player name if this fails */ }
+        const wantScrims = fields.notifyScrims !== false;
+        try {
+          await setDoc(userPrefsDocRef(user.uid), {
+            notifyChannelsChosen: true,
+            scrimAlertsEnabled: wantScrims,
+            scrimAlertGames: wantScrims ? (fields.games || []).map(String).filter(Boolean).slice(0, 20) : [],
+            notifyFriends: userPrefs?.notifyFriends !== false,
+            notifyChats: userPrefs?.notifyChats !== false,
+            notifyBlogs: userPrefs?.notifyBlogs !== false,
+            updatedAt: Date.now(),
+          }, { merge: true });
+        } catch { /* prefs are best-effort; profile already saved */ }
         showToast(`Profile saved · ${grindHandle(displayName, claimed.tag)}`);
       } catch (e) {
         showToast(e?.message || "Couldn't save profile — try again");
@@ -4295,7 +4357,7 @@ export default function App() {
       }
       setShowProfileModal(false);
     },
-    [user, myProfile, showToast]
+    [user, myProfile, userPrefs, showToast]
   );
 
   // ---- mutations (now writing to the tournaments collection + sub-collections) ----
@@ -4769,6 +4831,8 @@ export default function App() {
     [userPrefs, myProfile?.games],
   );
 
+  const notifyPrefs = useMemo(() => normalizeNotifyPrefs(userPrefs || {}), [userPrefs]);
+
   const savedSquad = useMemo(() => normalizeSavedSquad(userPrefs || {}), [userPrefs]);
 
   const saveScrimAlerts = async (next) => {
@@ -4782,6 +4846,10 @@ export default function App() {
       scrimAlertGames: (next.games || []).slice(0, 20),
       followedHosts: (next.followedHosts || []).slice(0, 80),
       scrimAlertsLastSeenAt: Number(next.lastSeenAt) || Number(userPrefs?.scrimAlertsLastSeenAt) || 0,
+      notifyChannelsChosen: next.notifyChannelsChosen === true || userPrefs?.notifyChannelsChosen === true,
+      notifyFriends: next.notifyFriends != null ? next.notifyFriends !== false : userPrefs?.notifyFriends !== false,
+      notifyChats: next.notifyChats != null ? next.notifyChats !== false : userPrefs?.notifyChats !== false,
+      notifyBlogs: next.notifyBlogs != null ? next.notifyBlogs !== false : userPrefs?.notifyBlogs !== false,
       savedSquadName: next.savedSquadName != null ? String(next.savedSquadName).slice(0, 40) : (userPrefs?.savedSquadName || "My squad"),
       savedSquadMemberIds: Array.isArray(next.savedSquadMemberIds)
         ? next.savedSquadMemberIds.map(String).filter(Boolean).slice(0, 7)
@@ -4793,6 +4861,39 @@ export default function App() {
     } catch {
       showToast("Couldn't save scrim alert prefs");
     }
+  };
+
+  const setNotifyChannel = async (channel, enabled) => {
+    if (!user) return;
+    const next = {
+      ...scrimAlerts,
+      notifyChannelsChosen: true,
+      notifyFriends: notifyPrefs.friends,
+      notifyChats: notifyPrefs.chats,
+      notifyBlogs: notifyPrefs.blogs,
+    };
+    if (channel === "scrims") next.enabled = enabled;
+    if (channel === "friends") next.notifyFriends = enabled;
+    if (channel === "chats") next.notifyChats = enabled;
+    if (channel === "blogs") next.notifyBlogs = enabled;
+    if (channel === "scrims" && enabled && !(next.games || []).length) {
+      next.games = (myProfile?.games || []).map(String).filter(Boolean).slice(0, 20);
+    }
+    await saveScrimAlerts(next);
+  };
+
+  const chooseScrimNotifyPrompt = async (want) => {
+    if (!user) return;
+    await saveScrimAlerts({
+      ...scrimAlerts,
+      enabled: want === true,
+      games: want ? (myProfile?.games || []).map(String).filter(Boolean).slice(0, 20) : (scrimAlerts.games || []),
+      notifyChannelsChosen: true,
+      notifyFriends: notifyPrefs.friends,
+      notifyChats: notifyPrefs.chats,
+      notifyBlogs: notifyPrefs.blogs,
+    });
+    showToast(want ? "Scrim alerts on for your games" : "Scrim alerts off — turn on anytime");
   };
 
   const saveSavedRoster = async ({ name, memberIds }) => {
@@ -5479,9 +5580,9 @@ export default function App() {
                     onFriendRequest={(player) => requestFriend(player.uid, player.displayName)}
                   />
                 ) : null}
-                chatCount={unseenChatCount}
+                chatCount={notifyPrefs.chats ? unseenChatCount : 0}
                 onOpenChats={() => setChatPopupOpen(true)}
-                friendRequestCount={pendingFriendRequestCount}
+                friendRequestCount={notifyPrefs.friends ? pendingFriendRequestCount : 0}
                 onOpenFriendRequests={() => setShowFriendRequests(true)}
               />
               <PublicNav pathname={routePath} />
@@ -5554,6 +5655,11 @@ export default function App() {
                       onDeskFilter={setScrimDeskFilter}
                       followedHosts={scrimAlerts.followedHosts}
                       alertGames={scrimAlerts.games}
+                      notifyEnabled={notifyPrefs.scrims}
+                      onNotifyChange={user ? (on) => setNotifyChannel("scrims", on) : null}
+                      showNotifyPrompt={Boolean(user && !notifyPrefs.chosen)}
+                      onNotifyPromptYes={() => chooseScrimNotifyPrompt(true)}
+                      onNotifyPromptNo={() => chooseScrimNotifyPrompt(false)}
                       tournaments={tournaments.filter((item) => canSeeScrimInList(item, {
                         uid: user?.uid,
                         invites: tournamentInvites,
@@ -5569,20 +5675,6 @@ export default function App() {
                         setShowNewTournament(true);
                       }}
                       onSignIn={() => setAuthDialogOpen(true)}
-                      hostPanel={(
-                        <HostOrgPanel
-                          user={user}
-                          myProfile={myProfile}
-                          officialHosts={officialHosts}
-                          hostRequests={hostRequests}
-                          isStaff={siteRole === "owner" || siteRole === "support"}
-                          followedHosts={scrimAlerts.followedHosts}
-                          onRequestOfficial={requestOfficialHost}
-                          onDecideRequest={decideHostRequest}
-                          onToggleFollow={toggleFollowHost}
-                          onOpenHostScrims={(hostUid) => navigate(`/hosts/${hostUid}`)}
-                        />
-                      )}
                     />
                   </>
                 )} />
@@ -5636,14 +5728,21 @@ export default function App() {
                 <Route path="/desk" element={(
                   <CommunityDesk
                     user={user}
+                    myProfile={myProfile}
                     announcements={scrimAnnouncements}
                     alerts={scrimAlerts}
                     friends={acceptedFriends}
                     historyCount={myScrimHistory.length}
                     officialHosts={officialHosts}
+                    hostRequests={hostRequests}
+                    isStaff={siteRole === "owner" || siteRole === "support"}
                     onOpenTournament={(id) => navigate(`/tournaments/${id}`)}
                     onOpenChats={() => setChatPopupOpen(true)}
                     onSignIn={() => setAuthDialogOpen(true)}
+                    onRequestOfficial={requestOfficialHost}
+                    onDecideRequest={decideHostRequest}
+                    onToggleFollow={toggleFollowHost}
+                    onOpenHostScrims={(hostUid) => navigate(`/hosts/${hostUid}`)}
                   />
                 )} />
                 <Route path="/tournaments/:id" element={selected ? (
@@ -5697,7 +5796,18 @@ export default function App() {
                   />
                 ) : <EmptyState title="Scrim not found" body="This event is missing or was removed." actionLabel="Back to scrims" onAction={() => navigate("/tournaments")} />} />
                 <Route path="/find-players" element={user ? (
-                  <FindPlayersPage gamesList={circuitCms.filterGames} currentUid={user.uid} myProfile={myProfile} friendRequests={friendRequests} onFriendRequest={(player) => requestFriend(player.uid, player.displayName)} onFriendDecision={decideFriendRequest} onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })} onEditProfile={() => setShowProfileModal(true)} />
+                  <FindPlayersPage
+                    gamesList={circuitCms.filterGames}
+                    currentUid={user.uid}
+                    myProfile={myProfile}
+                    friendRequests={friendRequests}
+                    onFriendRequest={(player) => requestFriend(player.uid, player.displayName)}
+                    onFriendDecision={decideFriendRequest}
+                    onReport={(player) => setReportTarget({ type: "player", id: player.uid, name: player.displayName })}
+                    onEditProfile={() => setShowProfileModal(true)}
+                    notifyEnabled={notifyPrefs.friends}
+                    onNotifyChange={(on) => setNotifyChannel("friends", on)}
+                  />
                 ) : (
                   <div className="pt-8">
                     <SectionBackHome />
@@ -5735,6 +5845,8 @@ export default function App() {
                   onEdit={editBlogPost}
                   onDelete={deleteBlogPost}
                   onSignIn={() => setAuthDialogOpen(true)}
+                  notifyEnabled={notifyPrefs.blogs}
+                  onNotifyChange={user ? (on) => setNotifyChannel("blogs", on) : null}
                 />
               </BlogOverlay>
             )}
@@ -5789,7 +5901,14 @@ export default function App() {
               <p className="m-0 font-mono text-[10px] uppercase tracking-widest text-[var(--accent-secondary)]">
                 {pendingFriendRequestCount ? "New connection" : "Connections"}
               </p>
-              <Button variant="ghost" onClick={() => setShowFriendRequests(false)}>Close</Button>
+              <div className="flex items-center gap-2">
+                <PageNotifyToggle
+                  enabled={notifyPrefs.friends}
+                  onChange={(on) => setNotifyChannel("friends", on)}
+                  label="Friends"
+                />
+                <Button variant="ghost" onClick={() => setShowFriendRequests(false)}>Close</Button>
+              </div>
             </div>
             <FriendRequestCenter
               compact
@@ -5821,9 +5940,11 @@ export default function App() {
           onBlock={(friend) => {
             blockFriend(friend);
           }}
-          unreadByUid={chatUnreadByUid}
-          unseenCount={unseenChatCount}
+          unreadByUid={notifyPrefs.chats ? chatUnreadByUid : {}}
+          unseenCount={notifyPrefs.chats ? unseenChatCount : 0}
           onSeen={markFriendChatSeen}
+          notifyEnabled={notifyPrefs.chats}
+          onNotifyChange={(on) => setNotifyChannel("chats", on)}
         />
       )}
       {!user && authDialogOpen && <AuthScreen onGoogleSignIn={handleGoogleSignIn} onEmailAuth={handleEmailAuth} authError={authError} authBusy={authBusy} onBrowseAsGuest={browseAsGuest} onClose={() => setAuthDialogOpen(false)} requireChoice={!guestMode} knownAccounts={knownAccounts} />}
@@ -6046,7 +6167,30 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAcc
     </div>
   );
 }
-function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, onNew, onSignIn, pendingInvites = [], onInviteDecision, embedded = false, hideCreate = false, archivedView, onArchivedView, deskFilter = "all", onDeskFilter, followedHosts = [], alertGames = [], hostPanel = null }) {
+function TournamentList({
+  tournaments,
+  currentUserId,
+  currentUserName,
+  onOpen,
+  onNew,
+  onSignIn,
+  pendingInvites = [],
+  onInviteDecision,
+  embedded = false,
+  hideCreate = false,
+  archivedView,
+  onArchivedView,
+  deskFilter = "all",
+  onDeskFilter,
+  followedHosts = [],
+  alertGames = [],
+  hostPanel = null,
+  notifyEnabled = true,
+  onNotifyChange = null,
+  showNotifyPrompt = false,
+  onNotifyPromptYes = null,
+  onNotifyPromptNo = null,
+}) {
   const [localArchived, setLocalArchived] = useState(false);
   const [accessFilter, setAccessFilter] = useState("all");
   const [regionFilter, setRegionFilter] = useState("all");
@@ -6100,19 +6244,28 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
         }}
       >
         <div>
-          {!embedded && <Eyebrow>Live standings desk</Eyebrow>}
+          {!embedded && <Eyebrow>GrindInfo</Eyebrow>}
           <h1
             style={{
               fontFamily: "'Bebas Neue', sans-serif",
-              fontSize: embedded ? 28 : 44,
+              fontSize: embedded ? 28 : "clamp(2.75rem, 8vw, 4.5rem)",
               margin: "4px 0 0",
-              letterSpacing: "0.01em",
+              letterSpacing: "0.02em",
+              lineHeight: 0.92,
             }}
           >
             Scrims
           </h1>
+          {!embedded ? (
+            <p style={{ margin: "8px 0 0", fontSize: 14, color: "var(--text-muted)", maxWidth: 360 }}>
+              Find a lobby. Check in. Play.
+            </p>
+          ) : null}
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          {currentUserId && onNotifyChange ? (
+            <PageNotifyToggle enabled={notifyEnabled} onChange={onNotifyChange} />
+          ) : null}
           {currentUserId ? (
             !hideCreate && <Button onClick={onNew}>Host scrim</Button>
           ) : (
@@ -6121,55 +6274,73 @@ function TournamentList({ tournaments, currentUserId, currentUserName, onOpen, o
         </div>
       </div>
 
-      {!hideCreate && <div style={{ display: "flex", gap: 8, marginBottom: 14 }}><Button variant={showArchived ? "ghost" : "primary"} onClick={() => setShowArchived(false)}>Active</Button><Button variant={showArchived ? "primary" : "ghost"} onClick={() => setShowArchived(true)}>Archive</Button></div>}
-      {!showArchived && onDeskFilter && (
-        <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
-          <Button variant={deskFilter === "all" ? "primary" : "ghost"} onClick={() => onDeskFilter("all")}>All desk</Button>
-          <Button variant={deskFilter === "following" ? "primary" : "ghost"} onClick={() => onDeskFilter("following")}>Following</Button>
-          <Button variant={deskFilter === "foryou" ? "primary" : "ghost"} onClick={() => onDeskFilter("foryou")}>For your games</Button>
+      {showNotifyPrompt && currentUserId ? (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: "12px 14px",
+            borderBottom: "1px solid var(--border)",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 12,
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <p style={{ margin: 0, fontSize: 14, color: "var(--page-text)" }}>
+            Notify when new scrims drop for your games?
+          </p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Button onClick={onNotifyPromptYes}>Yes · my games</Button>
+            <Button variant="ghost" onClick={onNotifyPromptNo}>Not now</Button>
+          </div>
         </div>
-      )}
-      {!showArchived && (
-        <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
-          <Button variant={accessFilter === "all" ? "primary" : "ghost"} onClick={() => setAccessFilter("all")}>All</Button>
-          <Button variant={accessFilter === "public" ? "primary" : "ghost"} onClick={() => setAccessFilter("public")}>Public</Button>
-          <Button variant={accessFilter === "private" ? "primary" : "ghost"} onClick={() => setAccessFilter("private")}>Private / invite</Button>
-        </div>
-      )}
-      {hostPanel}
-      {!showArchived && (
-        <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
-          <label style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)" }}>
-            Region
-            <Select value={regionFilter} onChange={(e) => setRegionFilter(e.target.value)} style={{ marginLeft: 8, minWidth: 140 }}>
-              <option value="all">Any</option>
+      ) : null}
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap", alignItems: "center" }}>
+        {!hideCreate ? (
+          <>
+            <Button variant={showArchived ? "ghost" : "primary"} onClick={() => setShowArchived(false)}>Live</Button>
+            <Button variant={showArchived ? "primary" : "ghost"} onClick={() => setShowArchived(true)}>Results</Button>
+            <span style={{ width: 1, height: 18, background: "var(--border)", margin: "0 2px" }} aria-hidden />
+          </>
+        ) : null}
+        {!showArchived && onDeskFilter ? (
+          <>
+            <Button variant={deskFilter === "all" ? "primary" : "ghost"} onClick={() => onDeskFilter("all")}>All</Button>
+            <Button variant={deskFilter === "foryou" ? "primary" : "ghost"} onClick={() => onDeskFilter("foryou")}>Your games</Button>
+            <Button variant={deskFilter === "following" ? "primary" : "ghost"} onClick={() => onDeskFilter("following")}>Following</Button>
+            <span style={{ width: 1, height: 18, background: "var(--border)", margin: "0 2px" }} aria-hidden />
+          </>
+        ) : null}
+        {!showArchived ? (
+          <>
+            <Button variant={accessFilter === "all" ? "primary" : "ghost"} onClick={() => setAccessFilter("all")}>Any access</Button>
+            <Button variant={accessFilter === "public" ? "primary" : "ghost"} onClick={() => setAccessFilter("public")}>Public</Button>
+            <Button variant={accessFilter === "private" ? "primary" : "ghost"} onClick={() => setAccessFilter("private")}>Private</Button>
+            <Button variant={openSlotsOnly ? "primary" : "ghost"} onClick={() => setOpenSlotsOnly((value) => !value)}>Open seats</Button>
+            <Select value={regionFilter} onChange={(e) => setRegionFilter(e.target.value)} style={{ minWidth: 110 }} aria-label="Region">
+              <option value="all">Any region</option>
               {REGIONS.map((region) => <option key={region} value={region}>{region}</option>)}
             </Select>
-          </label>
-          <label style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)" }}>
-            Rank
-            <Select value={rankFilter} onChange={(e) => setRankFilter(e.target.value)} style={{ marginLeft: 8, minWidth: 140 }}>
-              <option value="all">Any</option>
+            <Select value={rankFilter} onChange={(e) => setRankFilter(e.target.value)} style={{ minWidth: 110 }} aria-label="Rank">
+              <option value="all">Any rank</option>
               {RANK_BANDS.map((band) => <option key={band} value={band}>{band}</option>)}
             </Select>
-          </label>
-          <label style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)" }}>
-            When
-            <Select value={timeFilter} onChange={(e) => setTimeFilter(e.target.value)} style={{ marginLeft: 8, minWidth: 140 }}>
+            <Select value={timeFilter} onChange={(e) => setTimeFilter(e.target.value)} style={{ minWidth: 110 }} aria-label="When">
               <option value="all">Any time</option>
               <option value="soon">Next 7 days</option>
               <option value="later">Later</option>
             </Select>
-          </label>
-          <Button variant={openSlotsOnly ? "primary" : "ghost"} onClick={() => setOpenSlotsOnly((value) => !value)}>Open registration</Button>
-        </div>
-      )}
+          </>
+        ) : null}
+      </div>
       {!showArchived && pendingInvites.length > 0 && <section style={{ display: "grid", gap: 8, marginBottom: 18 }}><Eyebrow>Scrim invites</Eyebrow>{pendingInvites.map((invite) => <article key={invite.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, padding: 12, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><span>{invite.inviterName || "A friend"} invited you to <strong>{invite.tournamentName}</strong> · {invite.game}</span><span style={{ display: "flex", gap: 6 }}><Button onClick={() => onOpen(invite.tournamentId)}>View scrim</Button><Button variant="ghost" onClick={() => onInviteDecision(invite.id, "accepted")}>Accept</Button><Button variant="danger" onClick={() => onInviteDecision(invite.id, "declined")}>Decline</Button></span></article>)}</section>}
       {visibleTournaments.length === 0 ? (
         <EmptyState
-          title={showArchived ? "No archived scrims" : accessFilter === "public" ? "No public scrims" : accessFilter === "private" ? "No private scrims" : "No active scrims"}
-          body={showArchived ? "Completed or older scrims will appear here with their results." : currentUserId ? "Create your first scrim to start tracking teams, matches, and player stats." : "Public and private scrims will appear here."}
-          actionLabel={!hideCreate && currentUserId ? "+ New scrim" : undefined}
+          title={showArchived ? "No results yet" : accessFilter === "public" ? "No public scrims" : accessFilter === "private" ? "No private scrims" : deskFilter === "following" ? "No followed hosts live" : deskFilter === "foryou" ? "No scrims for your games" : "No active scrims"}
+          body={showArchived ? "Closed and completed scrims land here with standings when hosts post results." : currentUserId ? "Host a scrim to open registration, run check-in, and post results on this desk." : "Public and private scrims will appear here when hosts go live."}
+          actionLabel={!hideCreate && currentUserId ? "+ Host scrim" : undefined}
           onAction={!hideCreate ? onNew : undefined}
         />
       ) : (

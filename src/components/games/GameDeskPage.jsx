@@ -3,10 +3,12 @@ import { motion, useReducedMotion } from "framer-motion";
 import PageEnter from "../motion/PageEnter";
 import SectionBackHome from "../layout/SectionBackHome";
 import TournamentWindowCard, { WINDOW_CARD_HEIGHT } from "../vault/TournamentWindowCard";
+import GameCommunityStrip from "./GameCommunityStrip";
 import { fadeUp, hoverLift, staggerDelay, tapPress } from "../../motion/presets";
 import { themeForGame, gameFromDeskSlug, gameDeskPath } from "../../data/gameThemes";
 import { gameMatchesFilter } from "../../data/gameCatalog";
-import { isPublicScrim, scrimFlyerBadges } from "../../data/scrimAccess";
+import { DISCORD_SURFACE } from "../../data/discordCommunity";
+import { scrimWindowSlide } from "../../data/scrimPhase";
 
 export default function GameDeskPage({
   slug = "",
@@ -155,20 +157,7 @@ export default function GameDeskPage({
           ) : (
             <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {scrimHits.map((t, index) => {
-                const slide = {
-                  ...t,
-                  surface: "scrim",
-                  title: t.name,
-                  eventStatus: t.status || "upcoming",
-                  kicker: `Hosted by ${t.adminDisplayName || "Scrim host"}`,
-                  region: [t.region, t.rankBand].filter(Boolean).join(" · ") || t.region,
-                  mode: isPublicScrim(t) ? "Public" : "Private",
-                  flyerBadges: scrimFlyerBadges(t),
-                  teamCount: t.maxSlots || "",
-                  startAt: t.startDate,
-                  endAt: t.endDate,
-                  prizePool: Number(t.prizeAmount) > 0 ? `₹${Number(t.prizeAmount).toLocaleString()}` : "",
-                };
+                const slide = scrimWindowSlide(t);
                 return (
                   <motion.div
                     key={t.id}
@@ -191,13 +180,24 @@ export default function GameDeskPage({
           )}
         </motion.section>
 
+        {DISCORD_SURFACE ? (
+          <div className="mb-12">
+            <GameCommunityStrip
+              game={theme.game}
+              accent={theme.accent}
+              accentSecondary={theme.accentSecondary}
+              ink={theme.ink}
+            />
+          </div>
+        ) : null}
+
         {blogHits.length > 0 && (
           <motion.section {...fadeUp(reduce, 0.18)}>
             <p className="m-0 font-mono text-[10px] uppercase tracking-widest" style={{ color: theme.accent }}>
-              Community
+              Stories
             </p>
             <h2 className="mt-1 font-['Bebas_Neue',sans-serif] text-3xl tracking-wide text-white">
-              Stories
+              From the blog
             </h2>
             <div className="mt-5 grid gap-3">
               {blogHits.map((post, index) => (
