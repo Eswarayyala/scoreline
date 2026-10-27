@@ -137,6 +137,7 @@ export const signInWithHandle = onCall({ enforceAppCheck: true, maxInstances: 5 
     throw new HttpsError("invalid-argument", "Enter a valid GrindInfo ID and password.");
   }
   const handleId = handleDocId(parsed.name, parsed.tag);
+  const expectedHandle = parsed.name + "#" + parsed.tag;
   const lookupRef = db.doc("handleSignInLookup/" + handleId);
   let lookupSnap = await lookupRef.get();
   let lookup = lookupSnap.data();
@@ -144,7 +145,6 @@ export const signInWithHandle = onCall({ enforceAppCheck: true, maxInstances: 5 
     const publicRef = db.doc("handles/" + handleId);
     const publicSnap = await publicRef.get();
     const legacy = publicSnap.data();
-    const expectedHandle = parsed.name + "#" + parsed.tag;
     if (publicSnap.exists && legacy?.uid && legacy?.email && String(legacy.handle || "").toLowerCase() === expectedHandle) {
       const updatedAt = Date.now();
       const batch = db.batch();
@@ -157,6 +157,19 @@ export const signInWithHandle = onCall({ enforceAppCheck: true, maxInstances: 5 
   }
   if (!lookupSnap.exists || !lookup?.email || !lookup?.uid) {
     throw new HttpsError("failed-precondition", "Sign in with your account email once to link this GrindInfo ID.");
+  }
+  const publicRef = db.doc("handles/" + handleId);
+  const publicSnap = await publicRef.get();
+  const publicData = publicSnap.data();
+  if (!publicSnap.exists || publicData?.uid !== lookup.uid || String(publicData?.handle || "").toLowerCase() !== expectedHandle) {
+    throw new HttpsError("unauthenticated", "The GrindInfo ID or password did not match.");
+  }
+  if (Object.prototype.hasOwnProperty.call(publicData || {}, "email")) {
+    const updatedAt = Date.now();
+    const batch = db.batch();
+    batch.set(lookupRef, { ...lookup, handle: expectedHandle, updatedAt });
+    batch.set(publicRef, { uid: lookup.uid, handle: expectedHandle, createdAt: Number(publicData.createdAt) || updatedAt });
+    await batch.commit();
   }
   const response = await fetch(
     "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + encodeURIComponent(WEB_API_KEY.value()),
