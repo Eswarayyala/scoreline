@@ -25,7 +25,8 @@ while (true) {
     const match = /^([a-z0-9_]{3,16})::(\d{4}|\d{8})$/i.exec(snapshot.id);
     const uid = typeof data.uid === "string" ? data.uid : "";
     const handle = typeof data.handle === "string" ? data.handle : "";
-    if (!match || !uid || !handle) {
+    const expectedHandle = match ? match[1].toLowerCase() + "#" + match[2] : "";
+    if (!match || !uid || handle.toLowerCase() !== expectedHandle) {
       skipped += 1;
       continue;
     }
