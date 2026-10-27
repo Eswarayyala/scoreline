@@ -29,13 +29,13 @@ import HubSections from "./components/layout/HubSections";
 import PublicNav from "./components/layout/PublicNav";
 import SectionBackHome from "./components/layout/SectionBackHome";
 import TournamentOpsRail from "./components/layout/TournamentOpsRail";
-import VaultDetailPage from "./components/vault/VaultDetailPage";
-import VaultLibraryPage from "./components/vault/VaultLibraryPage";
+const VaultDetailPage = React.lazy(() => import("./components/vault/VaultDetailPage"));
+const VaultLibraryPage = React.lazy(() => import("./components/vault/VaultLibraryPage"));
 import TournamentWindowCard from "./components/vault/TournamentWindowCard";
-import CompetitorDossierPage from "./components/vault/CompetitorDossierPage";
-import CompetitorDirectoryPage from "./components/vault/CompetitorDirectoryPage";
-import EwcDirectoryPage from "./components/vault/EwcDirectoryPage";
-import PreEwcHistoryPage from "./components/vault/PreEwcHistoryPage";
+const CompetitorDossierPage = React.lazy(() => import("./components/vault/CompetitorDossierPage"));
+const CompetitorDirectoryPage = React.lazy(() => import("./components/vault/CompetitorDirectoryPage"));
+const EwcDirectoryPage = React.lazy(() => import("./components/vault/EwcDirectoryPage"));
+const PreEwcHistoryPage = React.lazy(() => import("./components/vault/PreEwcHistoryPage"));
 import { useVaultBookmarks } from "./hooks/useVaultBookmarks";
 import VaultResearchDesk from "./components/cms/VaultResearchDesk";
 import { avatarForGamer, bannerForGame, flyerForEvent, flyersForGame, isStockBannerUrl } from "./data/platformShowcase";
@@ -72,9 +72,9 @@ import PageNotifyToggle from "./components/prefs/PageNotifyToggle";
 import RoomStagesPanel from "./components/scrims/RoomStagesPanel";
 import InvitePlayersPanel from "./components/scrims/InvitePlayersPanel";
 import HostOrgPanel from "./components/scrims/HostOrgPanel";
-import HostProfilePage from "./components/scrims/HostProfilePage";
-import PlayerScrimHistory from "./components/scrims/PlayerScrimHistory";
-import SpectatorPage from "./components/scrims/SpectatorPage";
+const HostProfilePage = React.lazy(() => import("./components/scrims/HostProfilePage"));
+const PlayerScrimHistory = React.lazy(() => import("./components/scrims/PlayerScrimHistory"));
+const SpectatorPage = React.lazy(() => import("./components/scrims/SpectatorPage"));
 import ScrimWindowsGrid from "./components/scrims/ScrimWindowsGrid";
 import ScrimTodayStrip from "./components/scrims/ScrimTodayStrip";
 import HostVerifyPrompt from "./components/scrims/HostVerifyPrompt";
@@ -84,10 +84,10 @@ import {
   hostVerificationRequestMeta,
   hostVerifyGamesNeedingNotify,
 } from "./data/hostVerification";
-import CommunityDesk from "./components/community/CommunityDesk";
+const CommunityDesk = React.lazy(() => import("./components/community/CommunityDesk"));
 import PageEnter from "./components/motion/PageEnter";
-import GamesDirectoryPage from "./components/games/GamesDirectoryPage";
-import GameDeskPage from "./components/games/GameDeskPage";
+const GamesDirectoryPage = React.lazy(() => import("./components/games/GamesDirectoryPage"));
+const GameDeskPage = React.lazy(() => import("./components/games/GameDeskPage"));
 import { buildScrimHistoryEntry } from "./data/scrimHistory";
 import { useGameBanner, useMediaArt } from "./hooks/useMediaLibrary";
 import BlogGameCover from "./components/blog/BlogGameCover";
@@ -5806,6 +5806,7 @@ export default function App() {
               <PublicNav pathname={routePath} />
             </div>
             <div className={`mx-auto px-5 pb-24 ${(routesLocation.pathname || "/") === "/" || String(routesLocation.pathname || "").startsWith("/vault") || String(routesLocation.pathname || "").startsWith("/games") ? "max-w-6xl" : "max-w-5xl"}`}>
+              <React.Suspense fallback={<div role="status" className="p-8 text-center text-sm text-stone-300">Loading page…</div>}>
               <Routes location={routesLocation}>
                 <Route path="/" element={(
                   <PlatformHome slides={homeSlides}>
@@ -6059,6 +6060,7 @@ export default function App() {
                   </div>
                 } />
               </Routes>
+              </React.Suspense>
             </div>
             {blogOpen && (
               <BlogOverlay onClose={closeBlogOverlay}>
