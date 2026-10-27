@@ -115,6 +115,7 @@ import {
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { onValue, ref as databaseRef, onDisconnect, serverTimestamp, set as setDatabaseValue } from "firebase/database";
 
+const ID_SIGN_IN_ENABLED = Boolean(import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY);
 const PLAYERS_COLLECTION = collection(db, "players");
 const playerDocRef = (uid) => doc(db, "players", uid);
 const scrimHistoryDocRef = (uid, tournamentId) => doc(db, "players", uid, "scrimHistory", tournamentId);
@@ -955,10 +956,10 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowse
             </Field>
           ) : (
             <>
-            <Field label="GrindInfo ID or account email">
-              <TextInput value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="name#1234 or you@email.com" autoComplete="username" required />
+            <Field label={ID_SIGN_IN_ENABLED ? "GrindInfo ID or account email" : "Account email"}>
+              <TextInput value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder={ID_SIGN_IN_ENABLED ? "name#1234 or you@email.com" : "you@email.com"} autoComplete="username" required />
             </Field>
-            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -6 }}>Email/password accounts can use their GrindInfo ID. Sign in with email once to link an existing ID. Main Google accounts should Continue with Google.</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -6 }}>{ID_SIGN_IN_ENABLED ? "Email/password accounts can use their GrindInfo ID. Sign in with email once to link an existing ID. Main Google accounts should Continue with Google." : "GrindInfo ID sign-in will appear after App Check and the matching Cloud Functions are configured. Main Google accounts should Continue with Google."}</div>
             </>
           )}
           <Field label="Password">
@@ -3618,6 +3619,10 @@ export default function App() {
           await signInWithEmailAndPassword(auth, identifier, password);
           try { await syncPrivateHandleLookup(); } catch { /* Login still succeeds if ID linking needs setup. */ }
         } else {
+          if (!ID_SIGN_IN_ENABLED) {
+            setAuthError("GrindInfo ID sign-in is not configured yet. Use your account email for now.");
+            return;
+          }
           await signInWithGrindInfoId(identifier, password);
         }
       }
