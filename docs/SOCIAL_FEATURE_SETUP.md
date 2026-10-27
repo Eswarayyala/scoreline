@@ -16,6 +16,20 @@ This update keeps friend chat and account-ban records protected by Firestore rul
 - Reports can be marked reviewing or considered. The owner can ban or unban a reported player; support can review reports but cannot change account access. Bans go through a callable Cloud Function that checks the owner's `siteRoles` record, disables or enables the Firebase Authentication account, updates Firestore's `siteBans` record, and logs the action.
 - A banned account is denied by Firestore rules and signed out by the app when its ban record arrives.
 
+## GrindInfo ID sign-in with private email mappings
+
+Email/password players can sign in with their GrindInfo ID after the account is linked. Public `handles` documents must contain only the public handle, owner UID, and creation time. The email lookup lives in `handleSignInLookup`, which clients cannot read or write; trusted Cloud Functions perform lookup and authentication.
+
+Before enabling this flow:
+
+1. Register a reCAPTCHA v3 site key in Firebase App Check for the website domains. Set `VITE_FIREBASE_APPCHECK_SITE_KEY` for Vercel Preview and Production.
+2. Set the `GRINDINFO_WEB_API_KEY` Functions parameter to the Firebase Web API key for project `scoreliner`. The web API key is public Firebase configuration, not an Admin credential.
+3. Deploy the matching Firestore rules and Functions. `signInWithHandle` and `syncHandleSignInLookup` enforce App Check. The project must support Cloud Functions deployment.
+4. Existing email/password users should sign in with their email once so the trusted function can create a private mapping. New player-ID assignments create the private mapping server-side. Google-only accounts continue to use Google sign-in.
+5. Run `functions/scripts/migrate-public-handle-emails.js` in dry-run mode with trusted Firebase Admin credentials. Review the counts, then pass `--apply` to move eligible email mappings into the private collection and remove the email field from public handle records. The script does not print email addresses.
+
+Do not enable the ID sign-in UI until App Check, Functions, Firestore rules, and the migration are ready. The code change alone does not enable the flow in production.
+
 ## Turn on live online status
 
 1. In Firebase Console for `scoreliner`, open **Build → Realtime Database** and create a database. Choose a region close to the existing Firestore database; the current Firestore location is `nam5` (North America multi-region). Firebase may show billing or plan requirements before creation.
