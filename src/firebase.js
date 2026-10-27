@@ -7,9 +7,12 @@ import {
   signInWithPopup,
   setPersistence,
   browserLocalPersistence,
+  signInWithCustomToken,
 } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 import { getStorage } from "firebase/storage";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
 // Firebase web config is public by design (protected by Auth + security rules, not by hiding the key).
 const firebaseConfig = {
@@ -32,6 +35,26 @@ export const realtimeDb = import.meta.env.VITE_FIREBASE_DATABASE_URL
   : null;
 export const auth = getAuth(app);
 setPersistence(auth, browserLocalPersistence).catch(() => {});
+
+const appCheckSiteKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY;
+if (appCheckSiteKey) {
+  initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider(appCheckSiteKey),
+    isTokenAutoRefreshEnabled: true,
+  });
+}
+const functions = getFunctions(app, "us-central1");
+const signInWithHandleCall = httpsCallable(functions, "signInWithHandle");
+const syncHandleSignInLookupCall = httpsCallable(functions, "syncHandleSignInLookup");
+
+export async function signInWithGrindInfoId(handle, password) {
+  const result = await signInWithHandleCall({ handle, password });
+  return signInWithCustomToken(auth, result.data.customToken);
+}
+
+export async function syncPrivateHandleLookup() {
+  return syncHandleSignInLookupCall({});
+}
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
