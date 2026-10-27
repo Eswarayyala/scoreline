@@ -1,4 +1,5 @@
 import { initializeApp } from "firebase-admin/app";
+import { createHash } from "node:crypto";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { getDatabase } from "firebase-admin/database";
@@ -10,6 +11,7 @@ import { onValueWritten } from "firebase-functions/v2/database";
 initializeApp();
 const db = getFirestore();
 const RTDB_URL = defineString("GRINDINFO_RTDB_URL");
+const WEB_API_KEY = defineString("GRINDINFO_WEB_API_KEY");
 const rtdb = () => getDatabase(undefined, RTDB_URL.value());
 
 export const trackActivePresence = onValueWritten("status/{uid}", async (event) => {
@@ -53,7 +55,9 @@ export const getOrCreatePlayerTag = onCall({ maxInstances: 5 }, async (request) 
   if (!request.auth) throw new HttpsError("unauthenticated", "Sign in to get your GrindInfo ID.");
   const uid = request.auth.uid;
   const playerRef = db.doc(`players/${uid}`);
-  const email = request.auth.token?.email || "";
+  const email = request.auth.token?.firebase?.sign_in_provider === "password"
+    ? (request.auth.token?.email || "")
+    : "";
   return db.runTransaction(async (transaction) => {
     const player = await transaction.get(playerRef);
     if (!player.exists) throw new HttpsError("failed-precondition", "Save your player profile before creating a GrindInfo ID.");
@@ -65,7 +69,12 @@ export const getOrCreatePlayerTag = onCall({ maxInstances: 5 }, async (request) 
       const handleRef = db.doc(`handles/${handleDocId(name, tag)}`);
       const taken = await transaction.get(handleRef);
       if (taken.exists && taken.data()?.uid !== uid) return null;
-      transaction.set(handleRef, { uid, email, handle, createdAt: Date.now() });
+      transaction.set(handleRef, { uid, handle, createdAt: Date.now() });
+      if (email) {
+        transaction.set(db.doc("handleSignInLookup/" + handleDocId(name, tag)), {
+          uid, email, handle, updatedAt: Date.now(),
+        });
+      }
       transaction.update(playerRef, { playerTag: tag, handle });
       return { playerTag: tag, handle };
     };
@@ -80,6 +89,67 @@ export const getOrCreatePlayerTag = onCall({ maxInstances: 5 }, async (request) 
     }
     throw new HttpsError("already-exists", "That username plus code is taken. Choose another name.");
   });
+});
+
+
+function parseGrindInfoHandle(value) {
+  const match = /^([a-z0-9_]{3,16})#(\d{4}|\d{8})$/i.exec(String(value || "").trim());
+  return match ? { name: match[1].toLowerCase(), tag: match[2] } : null;
+}
+
+export const syncHandleSignInLookup = onCall({ enforceAppCheck: true, maxInstances: 5 }, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Sign in first.");
+  const uid = request.auth.uid;
+  const [playerSnap, userRecord] = await Promise.all([
+    db.doc("players/" + uid).get(),
+    getAuth().getUser(uid),
+  ]);
+  const player = playerSnap.data();
+  const handle = parseGrindInfoHandle(player?.handle);
+  const name = normalizePlayerName(player?.displayName);
+  const email = userRecord.email || "";
+  const hasPasswordProvider = userRecord.providerData.some((provider) => provider.providerId === "password");
+  if (!playerSnap.exists || !handle || !name || !email || !hasPasswordProvider
+      || handle.name !== name || handle.tag !== String(player?.playerTag || "")) {
+    return { linked: false };
+  }
+  const handleRef = db.doc("handles/" + handleDocId(handle.name, handle.tag));
+  const publicHandle = await handleRef.get();
+  if (!publicHandle.exists || publicHandle.data()?.uid !== uid) {
+    throw new HttpsError("failed-precondition", "The GrindInfo ID could not be verified.");
+  }
+  await db.doc("handleSignInLookup/" + handleDocId(handle.name, handle.tag)).set({
+    uid, email, handle: player.handle, updatedAt: Date.now(),
+  });
+  return { linked: true };
+});
+
+export const signInWithHandle = onCall({ enforceAppCheck: true, maxInstances: 5 }, async (request) => {
+  const parsed = parseGrindInfoHandle(request.data?.handle);
+  const password = request.data?.password;
+  if (!parsed || typeof password !== "string" || password.length < 6 || password.length > 128) {
+    throw new HttpsError("invalid-argument", "Enter a valid GrindInfo ID and password.");
+  }
+  const handleId = handleDocId(parsed.name, parsed.tag);
+  const lookupSnap = await db.doc("handleSignInLookup/" + handleId).get();
+  const lookup = lookupSnap.data();
+  if (!lookupSnap.exists || !lookup?.email || !lookup?.uid) {
+    throw new HttpsError("failed-precondition", "Sign in with your account email once to link this GrindInfo ID.");
+  }
+  const response = await fetch(
+    "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + encodeURIComponent(WEB_API_KEY.value()),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: lookup.email, password, returnSecureToken: false }),
+      signal: AbortSignal.timeout(10000),
+    },
+  );
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.localId !== lookup.uid) {
+    throw new HttpsError("unauthenticated", "The GrindInfo ID or password did not match.");
+  }
+  return { customToken: await getAuth().createCustomToken(lookup.uid) };
 });
 
 async function setFriendPresenceLink(firstUid, secondUid, connected) {
