@@ -3,7 +3,7 @@
 @theme {
   --font-display: "Bebas Neue", sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
   /* Lead neon pink · secondary electric blue · tertiary orange flare */
   --color-neon: #ff2d95;
   --color-volt: #3b82ff;
@@ -23,7 +23,7 @@
   --panel-raised: #121826;
   --input-bg: #0a0e16;
   --text-muted: #9aa8c2;
-  --text-dim: #6b7a96;
+  --text-dim: #9aa8c2;
   --border: #1e2a3d;
   --border-strong: #2a3b55;
   --accent: #ff2d95;
