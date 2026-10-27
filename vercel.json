@@ -5,7 +5,7 @@
       "destination": "https://scoreliner.firebaseapp.com/__/auth/:path*"
     },
     {
-      "source": "/((?!__/auth|media/|assets/).*)",
+      "source": "/((?!__/auth|media/|assets/|robots\\.txt$|llms\\.txt$|ai-catalog\\.json$|\\.well-known/).*)",
       "destination": "/index.html"
     }
   ],
