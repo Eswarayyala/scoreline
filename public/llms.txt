@@ -1,0 +1,13 @@
+# GrindInfo
+
+> GrindInfo is an esports community platform for discovering scrims, connecting with players, and following tournament and community activity.
+
+## Public pages
+
+- [Home](https://www.grindinfo.xyz/): Explore the GrindInfo community platform.
+- [Scrims](https://www.grindinfo.xyz/tournaments): Browse and host community scrims.
+- [Games](https://www.grindinfo.xyz/games): Browse supported games and their community pages.
+- [Find players](https://www.grindinfo.xyz/find-players): Find players after signing in.
+- [Community blog](https://www.grindinfo.xyz/blog): Read community posts.
+
+GrindInfo is an independent community platform and is not an official representative of game publishers or tournament organizers.
