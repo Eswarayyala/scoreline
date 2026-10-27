@@ -1,5 +1,4 @@
 import { initializeApp } from "firebase-admin/app";
-import { createHash } from "node:crypto";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { getDatabase } from "firebase-admin/database";
