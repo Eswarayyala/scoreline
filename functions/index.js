@@ -117,9 +117,16 @@ export const syncHandleSignInLookup = onCall({ enforceAppCheck: true, maxInstanc
   if (!publicHandle.exists || publicHandle.data()?.uid !== uid) {
     throw new HttpsError("failed-precondition", "The GrindInfo ID could not be verified.");
   }
-  await db.doc("handleSignInLookup/" + handleDocId(handle.name, handle.tag)).set({
-    uid, email, handle: player.handle, updatedAt: Date.now(),
+  const updatedAt = Date.now();
+  const batch = db.batch();
+  batch.set(db.doc("handleSignInLookup/" + handleDocId(handle.name, handle.tag)), {
+    uid, email, handle: player.handle, updatedAt,
   });
+  // Replace the public record to remove any legacy email field written by older code.
+  batch.set(handleRef, {
+    uid, handle: player.handle, createdAt: Number(publicHandle.data()?.createdAt) || updatedAt,
+  });
+  await batch.commit();
   return { linked: true };
 });
 
@@ -130,8 +137,24 @@ export const signInWithHandle = onCall({ enforceAppCheck: true, maxInstances: 5 
     throw new HttpsError("invalid-argument", "Enter a valid GrindInfo ID and password.");
   }
   const handleId = handleDocId(parsed.name, parsed.tag);
-  const lookupSnap = await db.doc("handleSignInLookup/" + handleId).get();
-  const lookup = lookupSnap.data();
+  const lookupRef = db.doc("handleSignInLookup/" + handleId);
+  let lookupSnap = await lookupRef.get();
+  let lookup = lookupSnap.data();
+  if (!lookupSnap.exists) {
+    const publicRef = db.doc("handles/" + handleId);
+    const publicSnap = await publicRef.get();
+    const legacy = publicSnap.data();
+    const expectedHandle = parsed.name + "#" + parsed.tag;
+    if (publicSnap.exists && legacy?.uid && legacy?.email && String(legacy.handle || "").toLowerCase() === expectedHandle) {
+      const updatedAt = Date.now();
+      const batch = db.batch();
+      batch.set(lookupRef, { uid: legacy.uid, email: legacy.email, handle: expectedHandle, updatedAt });
+      batch.set(publicRef, { uid: legacy.uid, handle: expectedHandle, createdAt: Number(legacy.createdAt) || updatedAt });
+      await batch.commit();
+      lookupSnap = await lookupRef.get();
+      lookup = lookupSnap.data();
+    }
+  }
   if (!lookupSnap.exists || !lookup?.email || !lookup?.uid) {
     throw new HttpsError("failed-precondition", "Sign in with your account email once to link this GrindInfo ID.");
   }
@@ -140,7 +163,7 @@ export const signInWithHandle = onCall({ enforceAppCheck: true, maxInstances: 5 
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: lookup.email, password, returnSecureToken: false }),
+      body: JSON.stringify({ email: lookup.email, password, returnSecureToken: true }),
       signal: AbortSignal.timeout(10000),
     },
   );
