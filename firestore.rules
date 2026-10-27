@@ -1009,6 +1009,11 @@ service cloud.firestore {
       allow update, delete: if isModerator();
     }
 
+    match /handleSignInLookup/{handleId} {
+      // Email mappings are accessed only by trusted Cloud Functions.
+      allow read, write: if false;
+    }
+
     match /handles/{handleId} {
       // Public get is for ID uniqueness only — never store emails on new handle docs.
       allow get: if canBrowsePublicData();
