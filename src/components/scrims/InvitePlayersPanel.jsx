@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { collection, getDocs, limit, query, where } from "firebase/firestore";
 import { db } from "../../firebase";
+import ShareFlyerBar from "./ShareFlyerBar";
 
 function Button({ children, variant = "primary", disabled, ...props }) {
   const base = "inline-flex items-center justify-center rounded-md px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest disabled:opacity-40";
@@ -88,6 +89,7 @@ export default function InvitePlayersPanel({
       <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">Invite players</p>
       <h3 className="m-0 font-display text-2xl text-white">Friends &amp; Find players</h3>
       <p className="mt-1 text-xs text-slate-500">Invite GrindInfo players. On invite-only scrims they can see the event and join after accepting.</p>
+      <ShareFlyerBar tournament={tournament} compact />
 
       <div className="mt-3 flex gap-2">
         <Button variant={tab === "friends" ? "primary" : "ghost"} onClick={() => setTab("friends")}>Friends</Button>

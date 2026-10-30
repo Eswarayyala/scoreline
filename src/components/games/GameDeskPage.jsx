@@ -9,6 +9,7 @@ import { themeForGame, gameFromDeskSlug, gameDeskPath } from "../../data/gameThe
 import { gameMatchesFilter } from "../../data/gameCatalog";
 import { DISCORD_SURFACE } from "../../data/discordCommunity";
 import { scrimWindowSlide } from "../../data/scrimPhase";
+import { pickScrimTodayWindows } from "../../data/scrimToday";
 
 export default function GameDeskPage({
   slug = "",
@@ -37,9 +38,11 @@ export default function GameDeskPage({
   const vaultHits = vaultSlides
     .filter((slide) => gameMatchesFilter(slide.game, game) && !slide.blog)
     .slice(0, 6);
-  const scrimHits = tournaments
-    .filter((item) => gameMatchesFilter(item.game, game) && !item.archived)
-    .slice(0, 6);
+  const tonightRows = pickScrimTodayWindows(
+    tournaments.filter((item) => gameMatchesFilter(item.game, game) && !item.archived),
+    { game, limit: 6 },
+  );
+  const tonightPath = `/tournaments?game=${encodeURIComponent(theme.game)}`;
   const blogHits = blogPosts
     .filter((post) => post.status === "published" && gameMatchesFilter(post.game, game))
     .slice(0, 4);
@@ -99,11 +102,11 @@ export default function GameDeskPage({
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link
-                to={`/tournaments?game=${encodeURIComponent(theme.game)}`}
+                to={tonightPath}
                 className="inline-flex min-h-11 items-center px-5 font-mono text-[11px] uppercase tracking-widest no-underline"
                 style={{ background: theme.accent, color: theme.ink }}
               >
-                Open scrims
+                Tonight&apos;s windows
               </Link>
               <Link
                 to="/vault"
@@ -119,6 +122,63 @@ export default function GameDeskPage({
 
       <div className="relative z-0 pb-8">
         <motion.section {...fadeUp(reduce, 0.1)} className="mb-12">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="m-0 font-mono text-[10px] uppercase tracking-widest" style={{ color: theme.accent }}>
+                Tonight
+              </p>
+              <h2 className="mt-1 font-['Bebas_Neue',sans-serif] text-3xl tracking-wide text-white">
+                Open / check-in / live
+              </h2>
+            </div>
+            <Link
+              to={tonightPath}
+              className="font-mono text-[10px] uppercase tracking-widest no-underline"
+              style={{ color: theme.accent }}
+            >
+              All {theme.game} scrims →
+            </Link>
+          </div>
+          {tonightRows.length === 0 ? (
+            <p className="mt-4 text-sm text-slate-400">
+              No open, check-in, or live {theme.game} windows right now.{" "}
+              <Link to={tonightPath} className="text-slate-300 underline" style={{ color: theme.accentSecondary }}>
+                Open the Scrims desk
+              </Link>
+            </p>
+          ) : (
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {tonightRows.map(({ scrim, statusLabel }, index) => {
+                const slide = scrimWindowSlide(scrim);
+                return (
+                  <motion.div
+                    key={scrim.id}
+                    className="relative isolate overflow-hidden"
+                    style={{ height: WINDOW_CARD_HEIGHT }}
+                    {...fadeUp(reduce, staggerDelay(index, 0.04, reduce))}
+                    whileHover={hoverLift(reduce)}
+                    whileTap={tapPress}
+                  >
+                    <span
+                      className="pointer-events-none absolute left-2 top-2 z-10 rounded border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest text-white"
+                      style={{ borderColor: `${theme.accent}66`, background: `${theme.ink}aa` }}
+                    >
+                      {statusLabel}
+                    </span>
+                    <TournamentWindowCard
+                      slide={slide}
+                      compact
+                      to={`/tournaments/${scrim.id}`}
+                      onOpen={() => onOpenScrim?.(scrim.id)}
+                    />
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </motion.section>
+
+        <motion.section {...fadeUp(reduce, 0.14)} className="mb-12">
           <p className="m-0 font-mono text-[10px] uppercase tracking-widest" style={{ color: theme.accent }}>
             Live windows
           </p>
@@ -141,41 +201,6 @@ export default function GameDeskPage({
                   <TournamentWindowCard slide={slide} compact />
                 </motion.div>
               ))}
-            </div>
-          )}
-        </motion.section>
-
-        <motion.section {...fadeUp(reduce, 0.14)} className="mb-12">
-          <p className="m-0 font-mono text-[10px] uppercase tracking-widest" style={{ color: theme.accent }}>
-            Scrim desk
-          </p>
-          <h2 className="mt-1 font-['Bebas_Neue',sans-serif] text-3xl tracking-wide text-white">
-            Open lookouts
-          </h2>
-          {scrimHits.length === 0 ? (
-            <p className="mt-4 text-sm text-slate-400">No active scrims for this title right now.</p>
-          ) : (
-            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {scrimHits.map((t, index) => {
-                const slide = scrimWindowSlide(t);
-                return (
-                  <motion.div
-                    key={t.id}
-                    className="isolate overflow-hidden"
-                    style={{ height: WINDOW_CARD_HEIGHT }}
-                    {...fadeUp(reduce, staggerDelay(index, 0.04, reduce))}
-                    whileHover={hoverLift(reduce)}
-                    whileTap={tapPress}
-                  >
-                    <TournamentWindowCard
-                      slide={slide}
-                      compact
-                      to={`/tournaments/${t.id}`}
-                      onOpen={() => onOpenScrim?.(t.id)}
-                    />
-                  </motion.div>
-                );
-              })}
             </div>
           )}
         </motion.section>

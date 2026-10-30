@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import SectionBackHome from "../layout/SectionBackHome";
 import PageEnter from "../motion/PageEnter";
 import DynamicPointsTable from "../shared/DynamicPointsTable";
+import ShareFlyerBar from "./ShareFlyerBar";
 import { scrimAccessLabel, isPublicScrim } from "../../data/scrimAccess";
 
 function fmtDate(value) {
@@ -58,6 +59,7 @@ export default function SpectatorPage({
               Open desk
             </Link>
           </div>
+          <ShareFlyerBar tournament={tournament} compact />
         </div>
         <div>
           <h1 className="m-0 font-['Bebas_Neue',sans-serif] text-5xl tracking-wide text-white md:text-6xl">{tournament.name}</h1>

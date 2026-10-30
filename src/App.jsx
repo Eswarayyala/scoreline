@@ -14,6 +14,7 @@ import {
   where,
   orderBy,
   limit,
+  increment,
 } from "firebase/firestore";
 import {
   onAuthStateChanged,
@@ -63,7 +64,13 @@ import {
   scrimFlyerBadges,
 } from "./data/scrimAccess";
 import { buildScrimAnnouncement, DEFAULT_SCRIM_ALERTS, normalizeScrimAlerts } from "./data/scrimAlerts";
-import { attendanceCounts, registrationAttendance, scrimRequiresCheckIn } from "./data/scrimAttendance";
+import {
+  attendanceCounts,
+  buildAttendanceSummary,
+  formatCheckInRosterLine,
+  registrationAttendance,
+  scrimRequiresCheckIn,
+} from "./data/scrimAttendance";
 import { normalizeSavedSquad, savedSquadReady } from "./data/savedSquad";
 import { normalizeNotifyPrefs } from "./data/notifyPrefs";
 import ScrimBell from "./components/scrims/ScrimBell";
@@ -78,6 +85,9 @@ import SpectatorPage from "./components/scrims/SpectatorPage";
 import ScrimWindowsGrid from "./components/scrims/ScrimWindowsGrid";
 import ScrimTodayStrip from "./components/scrims/ScrimTodayStrip";
 import HostVerifyPrompt from "./components/scrims/HostVerifyPrompt";
+import PlayerCheckInBar from "./components/scrims/PlayerCheckInBar";
+import ShareFlyerBar from "./components/scrims/ShareFlyerBar";
+import { scrimInviteCopy, scrimDeskUrl } from "./data/scrimShare";
 import {
   buildInternationalTrack,
   evaluateHostVerification,
@@ -1866,7 +1876,12 @@ function RegistrationPanel({
       {!currentUserId && joiningOpen && <Button onClick={onSignIn}>Sign in to join</Button>}
       {currentUserId && !isAdmin && mine?.status === "approved" && needCheckIn && mineAttendance === "pending" && (
         <div style={{ marginBottom: 12 }}>
-          <Button onClick={() => onCheckIn?.(tournament.id)}>I'm here — check in</Button>
+          <Button onClick={() => onCheckIn?.(tournament.id)}>I&apos;m in</Button>
+          {formatCheckInRosterLine(tournament, requests) ? (
+            <div style={{ marginTop: 8, fontSize: 12, color: "var(--text-muted)" }}>
+              {formatCheckInRosterLine(tournament, requests)}
+            </div>
+          ) : null}
         </div>
       )}
       {currentUserId && !isAdmin && !mine && joiningOpen && (
@@ -4592,6 +4607,17 @@ export default function App() {
     }
   };
 
+  const syncAttendanceSummary = async (tournamentId, registrations) => {
+    try {
+      await updateDoc(tournamentDocRef(tournamentId), {
+        attendanceSummary: buildAttendanceSummary(registrations),
+        updatedAt: Date.now(),
+      });
+    } catch {
+      /* roster snapshot is best-effort for desk cards */
+    }
+  };
+
   const requestRegistration = async (tournamentId, player) => {
     if (!user) return;
     const event = tournaments.find((item) => item.id === tournamentId);
@@ -4623,6 +4649,14 @@ export default function App() {
       };
       await setDoc(doc(registrationsCollectionRef(tournamentId), user.uid), registrationBody);
       await upsertScrimHistory(event, registrationBody);
+      if (openJoin) {
+        await updateDoc(tournamentDocRef(tournamentId), {
+          "attendanceSummary.approved": increment(1),
+          "attendanceSummary.pending": increment(1),
+          "attendanceSummary.updatedAt": Date.now(),
+          updatedAt: Date.now(),
+        }).catch(() => null);
+      }
       showToast(openJoin
         ? (scrimRequiresCheckIn(event) ? "You're in. Check in to unlock room codes." : "You're in. Room details appear if the host posted them.")
         : "Join request sent to the tournament host");
@@ -4641,6 +4675,13 @@ export default function App() {
     }
     try {
       await updateDoc(doc(registrationsCollectionRef(tournamentId), requestId), { status, reviewedAt: Date.now(), reviewedBy: user.uid });
+      const nextRegs = selectedRegistrations.map((row) => (
+        row.id === requestId || row.playerId === requestId ? { ...row, status } : row
+      ));
+      if (!nextRegs.some((row) => row.id === requestId || row.playerId === requestId)) {
+        nextRegs.push({ id: requestId, playerId: requestId, status, attendance: "pending" });
+      }
+      await syncAttendanceSummary(tournamentId, nextRegs);
       showToast(status === "approved" ? "Player approved" : "Request declined");
     } catch (e) {
       showToast(e?.code === "permission-denied"
@@ -4656,10 +4697,16 @@ export default function App() {
         attendance: "checked_in",
         checkedInAt: Date.now(),
       });
+      await updateDoc(tournamentDocRef(tournamentId), {
+        "attendanceSummary.checkedIn": increment(1),
+        "attendanceSummary.pending": increment(-1),
+        "attendanceSummary.updatedAt": Date.now(),
+        updatedAt: Date.now(),
+      }).catch(() => null);
       const event = tournaments.find((item) => item.id === tournamentId);
       const mine = selectedRegistrations.find((row) => row.playerId === user.uid);
       if (event) await upsertScrimHistory(event, { ...mine, status: "approved", attendance: "checked_in" });
-      showToast("Checked in — room codes unlock when the host posts them");
+      showToast("You're in — room codes unlock when the host posts them");
     } catch (e) {
       showToast(e?.code === "permission-denied"
         ? "Check-in blocked. You need an approved seat first."
@@ -4672,6 +4719,10 @@ export default function App() {
       const patch = { attendance };
       if (attendance === "checked_in") patch.checkedInAt = Date.now();
       await updateDoc(doc(registrationsCollectionRef(tournamentId), requestId), patch);
+      const nextRegs = selectedRegistrations.map((row) => (
+        row.id === requestId || row.playerId === requestId ? { ...row, ...patch } : row
+      ));
+      await syncAttendanceSummary(tournamentId, nextRegs);
       showToast(attendance === "no_show" ? "Marked no-show" : "Marked checked in");
     } catch {
       showToast("Couldn't update attendance");
@@ -5247,10 +5298,15 @@ export default function App() {
   };
 
   const shareTournament = async (tournament, { watch = false } = {}) => {
-    const path = watch ? `/tournaments/${tournament.id}/watch` : `/tournaments/${tournament.id}`;
-    const url = `${window.location.origin}${path}`;
-    try { await navigator.clipboard.writeText(url); showToast(watch ? "Watch link copied" : "Tournament link copied"); }
-    catch (e) { window.prompt("Copy this tournament link", url); }
+    const text = watch
+      ? scrimDeskUrl(tournament, { watch: true })
+      : scrimInviteCopy(tournament);
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast(watch ? "Watch link copied" : "Invite copied");
+    } catch {
+      window.prompt(watch ? "Copy this watch link" : "Copy this invite", text);
+    }
   };
 
   const requestFriend = async (recipientId, recipientName = "Player") => {
@@ -7240,6 +7296,17 @@ function TournamentDetail(props) {
     <PageEnter style={{ paddingTop: 24 }}>
       <SectionBackHome />
 
+      <PlayerCheckInBar
+        tournament={tournament}
+        registrations={registrations || []}
+        currentUserId={currentUserId}
+        isAdmin={isAdmin}
+        onCheckIn={onCheckIn}
+        onSignIn={onSignIn}
+      />
+
+      <ShareFlyerBar tournament={tournament} />
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
         <div>
           <Eyebrow color="var(--text-dim)">
@@ -7297,7 +7364,7 @@ function TournamentDetail(props) {
               {following ? "Following host" : "Follow host"}
             </Button>
           ) : null}
-          {currentUserId && <Button variant="ghost" onClick={onShare}>Share scrim</Button>}
+          {currentUserId ? <Button variant="ghost" onClick={onShare}>Copy watch link</Button> : null}
           {currentUserId ? <Button variant="danger" onClick={onReport}>Report scrim</Button> : <Button variant="ghost" onClick={onSignIn}>Sign in to report</Button>}
           {currentUserId && !isOwner && <Button variant="ghost" onClick={onRequestFriend}>Request host as friend</Button>}
         {isOwner && (

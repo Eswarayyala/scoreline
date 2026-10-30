@@ -1,5 +1,5 @@
 import { isPublicScrim, scrimFlyerBadges, scrimIsPaid } from "./scrimAccess";
-import { scrimRequiresCheckIn } from "./scrimAttendance";
+import { formatCheckInRosterLine, scrimRequiresCheckIn } from "./scrimAttendance";
 
 function hasPostedResults(scrim = {}) {
   const results = scrim?.results;
@@ -46,15 +46,18 @@ export function resolveScrimDeskPhase(scrim = {}) {
     };
   }
 
+  const rosterLine = formatCheckInRosterLine(scrim);
+
   if (statusRaw === "live") {
     if (needsCheckIn) {
       return {
         status: "checkin",
         phase: "checkin",
         statusLabel: "Check-in",
-        ctaLabel: "Check in",
+        ctaLabel: "I'm in",
         fact: [
           "Check-in open",
+          rosterLine,
           access,
           slots ? `${slots} slots` : "",
           "Room codes unlock after you’re here",
@@ -67,7 +70,7 @@ export function resolveScrimDeskPhase(scrim = {}) {
       phase: "live",
       statusLabel: "Live",
       ctaLabel: "Enter lobby",
-      fact: ["Lobby live", access, slots ? `${slots} slots` : "", prize].filter(Boolean).join(" · "),
+      fact: ["Lobby live", rosterLine, access, slots ? `${slots} slots` : "", prize].filter(Boolean).join(" · "),
       accent: "pink",
     };
   }
@@ -80,6 +83,7 @@ export function resolveScrimDeskPhase(scrim = {}) {
       ctaLabel: "Join scrim",
       fact: [
         "Registration open",
+        rosterLine,
         access,
         slots ? `${slots} slots` : "",
         prize,
@@ -107,7 +111,12 @@ export function scrimDeskBadges(scrim = {}) {
     badges.push({ id: "live-flyer", label: "Flyer", tone: "blue" });
   }
   if (phase.phase === "checkin") {
-    badges.push({ id: "checkin", label: "Codes after check-in", tone: "amber" });
+    const roster = formatCheckInRosterLine(scrim);
+    badges.push({
+      id: "checkin",
+      label: roster || "Codes after check-in",
+      tone: "amber",
+    });
   }
   return badges;
 }
