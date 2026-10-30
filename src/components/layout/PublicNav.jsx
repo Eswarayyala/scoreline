@@ -38,7 +38,20 @@ export default function PublicNav({
 
   return (
     <nav className="relative z-20 mx-auto max-w-6xl px-5">
-      <div className="-mx-1 flex flex-nowrap items-center gap-1 overflow-x-auto px-1 pb-0.5 border-b border-white/10 [scrollbar-width:thin]">
+      <div className="flex items-center gap-3 border-b border-white/10 py-1">
+        <button
+          type="button"
+          onClick={() => navigate("/")}
+          aria-label="GrindInfo home"
+          className="flex min-h-10 shrink-0 items-center gap-2 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon"
+        >
+          <img src="/favicon.svg" alt="" aria-hidden="true" className="h-8 w-8 shrink-0" />
+          <span className="whitespace-nowrap font-display text-[21px] leading-none tracking-[0.06em] text-white">
+            GRIND<span className="text-neon">INFO</span>
+          </span>
+        </button>
+        <div className="min-w-0 flex-1">
+          <div className="-mx-1 flex flex-nowrap items-center gap-1 overflow-x-auto px-1 pb-0.5 [scrollbar-width:thin]">
         {PRIMARY.map((link) => {
           const on = linkActive(link);
           return (
@@ -74,6 +87,8 @@ export default function PublicNav({
             })}
           </>
         )}
+          </div>
+        </div>
       </div>
     </nav>
   );
