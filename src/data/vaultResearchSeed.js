@@ -2582,9 +2582,962 @@ export const ESPORTS_RESEARCH = [
     "fullName": "Battlegrounds Mobile India",
     "genre": "Battle Royale",
     "type": "Mobile",
-    "peakPrizePool": "$1,000,000+",
+    "peakPrizePool": "₹3,60,50,000+",
     "overview": "India's flagship mobile battle royale circuit — Battlegrounds India Series (BGIS), BMPS leagues, and national LAN finals that crown the country's top squads.",
     "editions": [
+      {
+        "year": 2026,
+        "event": "BGIS 2026 Grand Finals",
+        "prizePool": "₹3,51,50,000",
+        "champion": "Team Soul",
+        "runnerUp": "Genesis Esports",
+        "third": "Orangutan",
+        "mvp": "HunterZ · Genesis Esports",
+        "bestIgl": "Nakul · Team Soul",
+        "fanFavourite": "Team Soul",
+        "eventScope": "region",
+        "structureId": "battleRoyale",
+        "totalTeams": "16",
+        "clutchesAndRivalries": "Team Soul closed BGIS 2026 on 173 GF points ahead of Genesis Esports.",
+        "formatNotes": "Awards: Grand Finals MVP — LEGIT · Team Soul — ₹1,50,000; Emerging Star — Detrox — ₹1,00,000; Best Clutch — Termi — ₹1,00,000.",
+        "stages": [
+          {
+            "name": "Lobby / groups",
+            "teams": "",
+            "kickedOff": "",
+            "entries": []
+          },
+          {
+            "name": "Survival",
+            "teams": "",
+            "kickedOff": "",
+            "entries": []
+          },
+          {
+            "name": "Playoffs",
+            "teams": "",
+            "kickedOff": "",
+            "entries": []
+          },
+          {
+            "name": "Grand finals",
+            "teams": "",
+            "kickedOff": "",
+            "entries": []
+          }
+        ],
+        "finalsTable": [
+          {
+            "place": "1",
+            "team": "Team Soul",
+            "points": "173",
+            "kills": ""
+          },
+          {
+            "place": "2",
+            "team": "Genesis Esports",
+            "points": "169",
+            "kills": ""
+          },
+          {
+            "place": "3",
+            "team": "Orangutan",
+            "points": "132",
+            "kills": ""
+          },
+          {
+            "place": "4",
+            "team": "Victores Sumus",
+            "points": "128",
+            "kills": ""
+          },
+          {
+            "place": "5",
+            "team": "GodLike Esports",
+            "points": "118",
+            "kills": ""
+          },
+          {
+            "place": "6",
+            "team": "K9 Esports",
+            "points": "117",
+            "kills": ""
+          },
+          {
+            "place": "7",
+            "team": "Revenant XSpark",
+            "points": "114",
+            "kills": ""
+          },
+          {
+            "place": "8",
+            "team": "Wyld Fangs",
+            "points": "112",
+            "kills": ""
+          },
+          {
+            "place": "9",
+            "team": "Vasista Esports",
+            "points": "103",
+            "kills": ""
+          },
+          {
+            "place": "10",
+            "team": "Nebula Esports",
+            "points": "100",
+            "kills": ""
+          },
+          {
+            "place": "11",
+            "team": "Learn From Past",
+            "points": "97",
+            "kills": ""
+          },
+          {
+            "place": "12",
+            "team": "Meta Ninza",
+            "points": "95",
+            "kills": ""
+          },
+          {
+            "place": "13",
+            "team": "MYTH Official",
+            "points": "90",
+            "kills": ""
+          },
+          {
+            "place": "14",
+            "team": "Reckoning Esports",
+            "points": "89",
+            "kills": ""
+          },
+          {
+            "place": "15",
+            "team": "Team Tamilas",
+            "points": "81",
+            "kills": ""
+          },
+          {
+            "place": "16",
+            "team": "Welt Esports",
+            "points": "62",
+            "kills": ""
+          }
+        ],
+        "payouts": [
+          {
+            "rank": "1st (Champion)",
+            "team": "Team Soul",
+            "player": "",
+            "prize": "₹1,00,00,000"
+          },
+          {
+            "rank": "2nd (Runner-Up)",
+            "team": "Genesis Esports",
+            "player": "",
+            "prize": "₹50,00,000"
+          },
+          {
+            "rank": "3rd Place",
+            "team": "Orangutan",
+            "player": "",
+            "prize": "₹35,00,000"
+          },
+          {
+            "rank": "4th Place",
+            "team": "Victores Sumus",
+            "player": "",
+            "prize": "₹25,00,000"
+          },
+          {
+            "rank": "5th Place",
+            "team": "GodLike Esports",
+            "player": "",
+            "prize": "₹20,50,000"
+          },
+          {
+            "rank": "6th Place",
+            "team": "K9 Esports",
+            "player": "",
+            "prize": "₹16,00,000"
+          },
+          {
+            "rank": "7th Place",
+            "team": "Revenant XSpark",
+            "player": "",
+            "prize": "₹14,00,000"
+          },
+          {
+            "rank": "8th Place",
+            "team": "Wyld Fangs",
+            "player": "",
+            "prize": "₹14,00,000"
+          },
+          {
+            "rank": "9th Place",
+            "team": "Vasista Esports",
+            "player": "",
+            "prize": "₹11,50,000"
+          },
+          {
+            "rank": "10th Place",
+            "team": "Nebula Esports",
+            "player": "",
+            "prize": "₹11,50,000"
+          },
+          {
+            "rank": "11th Place",
+            "team": "Learn From Past",
+            "player": "",
+            "prize": "₹10,00,000"
+          },
+          {
+            "rank": "12th Place",
+            "team": "Meta Ninza",
+            "player": "",
+            "prize": "₹10,00,000"
+          },
+          {
+            "rank": "13th Place",
+            "team": "MYTH Official",
+            "player": "",
+            "prize": "₹9,00,000"
+          },
+          {
+            "rank": "14th Place",
+            "team": "Reckoning Esports",
+            "player": "",
+            "prize": "₹9,00,000"
+          },
+          {
+            "rank": "15th Place",
+            "team": "Team Tamilas",
+            "player": "",
+            "prize": "₹8,00,000"
+          },
+          {
+            "rank": "16th Place",
+            "team": "Welt Esports",
+            "player": "",
+            "prize": "₹8,00,000"
+          }
+        ]
+      },
+      {
+        "year": 2026,
+        "event": "BMPS 2026 Grand Finals",
+        "prizePool": "₹3,60,50,000",
+        "champion": "GodLike Esports",
+        "runnerUp": "Divine Gaming",
+        "third": "Victores Sumus",
+        "mvp": "Scary Jod · Victores Sumus",
+        "bestIgl": "Aadi · Nebula Esports",
+        "fanFavourite": "",
+        "eventScope": "region",
+        "structureId": "battleRoyale",
+        "totalTeams": "16",
+        "clutchesAndRivalries": "GodLike Esports closed BMPS 2026 on 162 GF points ahead of Divine Gaming.",
+        "formatNotes": "Awards: Grand Finals MVP — Slug · Divine Gaming — ₹2,00,000; Best Clutch — Scary Jod · Victores Sumus — ₹1,00,000; Eliminator — Jonathan Gaming · Team Apex Gaming.",
+        "stages": [
+          {
+            "name": "Lobby / groups",
+            "teams": "",
+            "kickedOff": "",
+            "entries": []
+          },
+          {
+            "name": "Survival",
+            "teams": "",
+            "kickedOff": "",
+            "entries": []
+          },
+          {
+            "name": "Playoffs",
+            "teams": "",
+            "kickedOff": "",
+            "entries": []
+          },
+          {
+            "name": "Grand finals",
+            "teams": "",
+            "kickedOff": "",
+            "entries": []
+          }
+        ],
+        "finalsTable": [
+          {
+            "place": "1",
+            "team": "GodLike Esports",
+            "points": "162",
+            "kills": ""
+          },
+          {
+            "place": "2",
+            "team": "Divine Gaming",
+            "points": "152",
+            "kills": ""
+          },
+          {
+            "place": "3",
+            "team": "Victores Sumus",
+            "points": "133",
+            "kills": ""
+          },
+          {
+            "place": "4",
+            "team": "Gods Reign",
+            "points": "128",
+            "kills": ""
+          },
+          {
+            "place": "5",
+            "team": "Apex Gaming",
+            "points": "123",
+            "kills": ""
+          },
+          {
+            "place": "6",
+            "team": "Orangutan",
+            "points": "119",
+            "kills": ""
+          },
+          {
+            "place": "7",
+            "team": "Team Tamilas",
+            "points": "116",
+            "kills": ""
+          },
+          {
+            "place": "8",
+            "team": "Vasista Esports",
+            "points": "113",
+            "kills": ""
+          },
+          {
+            "place": "9",
+            "team": "Reckoning Esports",
+            "points": "111",
+            "kills": ""
+          },
+          {
+            "place": "10",
+            "team": "Nebula Esports",
+            "points": "107",
+            "kills": ""
+          },
+          {
+            "place": "11",
+            "team": "Team 8Bit",
+            "points": "103",
+            "kills": ""
+          },
+          {
+            "place": "12",
+            "team": "Genesis Esports",
+            "points": "99",
+            "kills": ""
+          },
+          {
+            "place": "13",
+            "team": "Team Soul",
+            "points": "96",
+            "kills": ""
+          },
+          {
+            "place": "14",
+            "team": "7Gods Esports",
+            "points": "95",
+            "kills": ""
+          },
+          {
+            "place": "15",
+            "team": "Revenant XSpark",
+            "points": "86",
+            "kills": ""
+          },
+          {
+            "place": "16",
+            "team": "Myth Official",
+            "points": "63",
+            "kills": ""
+          }
+        ],
+        "payouts": [
+          {
+            "rank": "1st (Champion)",
+            "team": "GodLike Esports",
+            "player": "",
+            "prize": "₹1,00,00,000"
+          },
+          {
+            "rank": "2nd (Runner-Up)",
+            "team": "Divine Gaming",
+            "player": "",
+            "prize": "₹60,00,000"
+          },
+          {
+            "rank": "3rd Place",
+            "team": "Victores Sumus",
+            "player": "",
+            "prize": "₹40,00,000"
+          },
+          {
+            "rank": "4th Place",
+            "team": "Gods Reign",
+            "player": "",
+            "prize": "₹30,00,000"
+          },
+          {
+            "rank": "5th Place",
+            "team": "Apex Gaming",
+            "player": "",
+            "prize": "₹25,00,000"
+          },
+          {
+            "rank": "6th Place",
+            "team": "Orangutan",
+            "player": "",
+            "prize": "₹18,00,000"
+          },
+          {
+            "rank": "7th Place",
+            "team": "Team Tamilas",
+            "player": "",
+            "prize": "₹15,00,000"
+          },
+          {
+            "rank": "8th Place",
+            "team": "Vasista Esports",
+            "player": "",
+            "prize": "₹14,50,000"
+          },
+          {
+            "rank": "9th Place",
+            "team": "Reckoning Esports",
+            "player": "",
+            "prize": "₹10,00,000"
+          },
+          {
+            "rank": "10th Place",
+            "team": "Nebula Esports",
+            "player": "",
+            "prize": "₹10,00,000"
+          },
+          {
+            "rank": "11th Place",
+            "team": "Team 8Bit",
+            "player": "",
+            "prize": "₹8,00,000"
+          },
+          {
+            "rank": "12th Place",
+            "team": "Genesis Esports",
+            "player": "",
+            "prize": "₹8,00,000"
+          },
+          {
+            "rank": "13th Place",
+            "team": "Team Soul",
+            "player": "",
+            "prize": "₹6,00,000"
+          },
+          {
+            "rank": "14th Place",
+            "team": "7Gods Esports",
+            "player": "",
+            "prize": "₹6,00,000"
+          },
+          {
+            "rank": "15th Place",
+            "team": "Revenant XSpark",
+            "player": "",
+            "prize": "₹5,00,000"
+          },
+          {
+            "rank": "16th Place",
+            "team": "Myth Official",
+            "player": "",
+            "prize": "₹5,00,000"
+          }
+        ]
+      },
+      {
+        "year": 2026,
+        "event": "BGMS 2026 Grand Finals",
+        "prizePool": "₹88,20,000",
+        "champion": "Nebula Esports",
+        "runnerUp": "Gladiators Esports",
+        "third": "Orangutan",
+        "mvp": "Knowme · Nebula Esports",
+        "bestIgl": "",
+        "fanFavourite": "",
+        "eventScope": "region",
+        "structureId": "battleRoyale",
+        "totalTeams": "16",
+        "clutchesAndRivalries": "Nebula Esports closed BGMS 2026 on 210 GF points ahead of Gladiators Esports.",
+        "formatNotes": "Awards: Most Wicked Player — HunterZ · Genesis Esports — TVS Raider bike.",
+        "stages": [
+          {
+            "name": "Lobby / groups",
+            "teams": "",
+            "kickedOff": "",
+            "entries": []
+          },
+          {
+            "name": "Survival",
+            "teams": "",
+            "kickedOff": "",
+            "entries": []
+          },
+          {
+            "name": "Playoffs",
+            "teams": "",
+            "kickedOff": "",
+            "entries": []
+          },
+          {
+            "name": "Grand finals",
+            "teams": "",
+            "kickedOff": "",
+            "entries": []
+          }
+        ],
+        "finalsTable": [
+          {
+            "place": "1",
+            "team": "Nebula Esports",
+            "points": "210",
+            "kills": ""
+          },
+          {
+            "place": "2",
+            "team": "Gladiators Esports",
+            "points": "189",
+            "kills": ""
+          },
+          {
+            "place": "3",
+            "team": "Orangutan",
+            "points": "187",
+            "kills": ""
+          },
+          {
+            "place": "4",
+            "team": "Rapid Chaos Esports",
+            "points": "170",
+            "kills": ""
+          },
+          {
+            "place": "5",
+            "team": "Team Apex Gaming",
+            "points": "163",
+            "kills": ""
+          },
+          {
+            "place": "6",
+            "team": "Reckoning Esports",
+            "points": "153",
+            "kills": ""
+          },
+          {
+            "place": "7",
+            "team": "Team Tamilas",
+            "points": "136",
+            "kills": ""
+          },
+          {
+            "place": "8",
+            "team": "Team Soul",
+            "points": "136",
+            "kills": ""
+          },
+          {
+            "place": "9",
+            "team": "Genesis Esports",
+            "points": "135",
+            "kills": ""
+          },
+          {
+            "place": "10",
+            "team": "Revenant XSpark",
+            "points": "131",
+            "kills": ""
+          },
+          {
+            "place": "11",
+            "team": "Team 8Bit",
+            "points": "126",
+            "kills": ""
+          },
+          {
+            "place": "12",
+            "team": "Elite Nova Esports",
+            "points": "120",
+            "kills": ""
+          },
+          {
+            "place": "13",
+            "team": "7Gods Esports",
+            "points": "116",
+            "kills": ""
+          },
+          {
+            "place": "14",
+            "team": "Team Outrage",
+            "points": "102",
+            "kills": ""
+          },
+          {
+            "place": "15",
+            "team": "Wyld Fangs",
+            "points": "93",
+            "kills": ""
+          },
+          {
+            "place": "16",
+            "team": "MYTH Official",
+            "points": "84",
+            "kills": ""
+          }
+        ],
+        "payouts": [
+          {
+            "rank": "1st (Champion)",
+            "team": "Nebula Esports",
+            "player": "",
+            "prize": "₹40,00,000"
+          },
+          {
+            "rank": "2nd (Runner-Up)",
+            "team": "Gladiators Esports",
+            "player": "",
+            "prize": "₹15,00,000"
+          },
+          {
+            "rank": "3rd Place",
+            "team": "Orangutan",
+            "player": "",
+            "prize": "₹6,00,000"
+          },
+          {
+            "rank": "4th Place",
+            "team": "Rapid Chaos Esports",
+            "player": "",
+            "prize": "₹4,50,000"
+          },
+          {
+            "rank": "5th Place",
+            "team": "Team Apex Gaming",
+            "player": "",
+            "prize": "₹3,50,000"
+          },
+          {
+            "rank": "6th Place",
+            "team": "Reckoning Esports",
+            "player": "",
+            "prize": "₹3,00,000"
+          },
+          {
+            "rank": "7th Place",
+            "team": "Team Tamilas",
+            "player": "",
+            "prize": "₹2,50,000"
+          },
+          {
+            "rank": "8th Place",
+            "team": "Team Soul",
+            "player": "",
+            "prize": "₹2,30,000"
+          },
+          {
+            "rank": "9th Place",
+            "team": "Genesis Esports",
+            "player": "",
+            "prize": "₹2,00,000"
+          },
+          {
+            "rank": "10th Place",
+            "team": "Revenant XSpark",
+            "player": "",
+            "prize": "₹1,80,000"
+          },
+          {
+            "rank": "11th Place",
+            "team": "Team 8Bit",
+            "player": "",
+            "prize": "₹1,60,000"
+          },
+          {
+            "rank": "12th Place",
+            "team": "Elite Nova Esports",
+            "player": "",
+            "prize": "₹1,40,000"
+          },
+          {
+            "rank": "13th Place",
+            "team": "7Gods Esports",
+            "player": "",
+            "prize": "₹1,30,000"
+          },
+          {
+            "rank": "14th Place",
+            "team": "Team Outrage",
+            "player": "",
+            "prize": "₹1,20,000"
+          },
+          {
+            "rank": "15th Place",
+            "team": "Wyld Fangs",
+            "player": "",
+            "prize": "₹1,10,000"
+          },
+          {
+            "rank": "16th Place",
+            "team": "MYTH Official",
+            "player": "",
+            "prize": "₹1,00,000"
+          }
+        ]
+      },
+      {
+        "year": 2026,
+        "event": "BMSD 2026 Grand Finals",
+        "prizePool": "₹95,25,000",
+        "champion": "Team Soul",
+        "runnerUp": "Gladiators Esports",
+        "third": "Team 8Bit",
+        "mvp": "Subh · Team 8Bit",
+        "bestIgl": "Areeb · Blitz Epigrotive Gaming",
+        "fanFavourite": "",
+        "eventScope": "region",
+        "structureId": "battleRoyale",
+        "totalTeams": "16",
+        "clutchesAndRivalries": "Team Soul closed BMSD 2026 on 155 GF points ahead of Gladiators Esports.",
+        "formatNotes": "Awards: Finals MVP — Legit · Team Soul — ₹1,00,000; Best Clutch — Harsh · Team Apex Gaming — ₹50,000; Grenadier — Legit · Team Soul — ₹50,000; Eliminator — Taurus · K9 Esports.",
+        "stages": [
+          {
+            "name": "Lobby / groups",
+            "teams": "",
+            "kickedOff": "",
+            "entries": []
+          },
+          {
+            "name": "Survival",
+            "teams": "",
+            "kickedOff": "",
+            "entries": []
+          },
+          {
+            "name": "Playoffs",
+            "teams": "",
+            "kickedOff": "",
+            "entries": []
+          },
+          {
+            "name": "Grand finals",
+            "teams": "",
+            "kickedOff": "",
+            "entries": []
+          }
+        ],
+        "finalsTable": [
+          {
+            "place": "1",
+            "team": "Team Soul",
+            "points": "155",
+            "kills": ""
+          },
+          {
+            "place": "2",
+            "team": "Gladiators Esports",
+            "points": "141",
+            "kills": ""
+          },
+          {
+            "place": "3",
+            "team": "Team 8Bit",
+            "points": "140",
+            "kills": ""
+          },
+          {
+            "place": "4",
+            "team": "K9 Esports",
+            "points": "135",
+            "kills": ""
+          },
+          {
+            "place": "5",
+            "team": "Blitz Epigrotive Gaming",
+            "points": "133",
+            "kills": ""
+          },
+          {
+            "place": "6",
+            "team": "Team Outrage",
+            "points": "123",
+            "kills": ""
+          },
+          {
+            "place": "7",
+            "team": "Version1 x Blue Army",
+            "points": "122",
+            "kills": ""
+          },
+          {
+            "place": "8",
+            "team": "Welt Esports",
+            "points": "120",
+            "kills": ""
+          },
+          {
+            "place": "9",
+            "team": "Meta Ninza",
+            "points": "113",
+            "kills": ""
+          },
+          {
+            "place": "10",
+            "team": "Team Apex Gaming",
+            "points": "98",
+            "kills": ""
+          },
+          {
+            "place": "11",
+            "team": "Revenant XSpark",
+            "points": "89",
+            "kills": ""
+          },
+          {
+            "place": "12",
+            "team": "MYTH Official",
+            "points": "88",
+            "kills": ""
+          },
+          {
+            "place": "13",
+            "team": "Wyld Fangs",
+            "points": "85",
+            "kills": ""
+          },
+          {
+            "place": "14",
+            "team": "Nebula Esports",
+            "points": "83",
+            "kills": ""
+          },
+          {
+            "place": "15",
+            "team": "GodLike Esports",
+            "points": "68",
+            "kills": ""
+          },
+          {
+            "place": "16",
+            "team": "Genesis Esports",
+            "points": "67",
+            "kills": ""
+          }
+        ],
+        "payouts": [
+          {
+            "rank": "1st (Champion)",
+            "team": "Team Soul",
+            "player": "",
+            "prize": "₹30,00,000"
+          },
+          {
+            "rank": "2nd (Runner-Up)",
+            "team": "Gladiators Esports",
+            "player": "",
+            "prize": "₹15,00,000"
+          },
+          {
+            "rank": "3rd Place",
+            "team": "Team 8Bit",
+            "player": "",
+            "prize": "₹10,00,000"
+          },
+          {
+            "rank": "4th Place",
+            "team": "K9 Esports",
+            "player": "",
+            "prize": "₹7,50,000"
+          },
+          {
+            "rank": "5th Place",
+            "team": "Blitz Epigrotive Gaming",
+            "player": "",
+            "prize": "₹6,25,000"
+          },
+          {
+            "rank": "6th Place",
+            "team": "Team Outrage",
+            "player": "",
+            "prize": "₹4,50,000"
+          },
+          {
+            "rank": "7th Place",
+            "team": "Version1 x Blue Army",
+            "player": "",
+            "prize": "₹3,75,000"
+          },
+          {
+            "rank": "8th Place",
+            "team": "Welt Esports",
+            "player": "",
+            "prize": "₹3,75,000"
+          },
+          {
+            "rank": "9th Place",
+            "team": "Meta Ninza",
+            "player": "",
+            "prize": "₹2,50,000"
+          },
+          {
+            "rank": "10th Place",
+            "team": "Team Apex Gaming",
+            "player": "",
+            "prize": "₹2,50,000"
+          },
+          {
+            "rank": "11th Place",
+            "team": "Revenant XSpark",
+            "player": "",
+            "prize": "₹2,00,000"
+          },
+          {
+            "rank": "12th Place",
+            "team": "MYTH Official",
+            "player": "",
+            "prize": "₹2,00,000"
+          },
+          {
+            "rank": "13th Place",
+            "team": "Wyld Fangs",
+            "player": "",
+            "prize": "₹1,50,000"
+          },
+          {
+            "rank": "14th Place",
+            "team": "Nebula Esports",
+            "player": "",
+            "prize": "₹1,50,000"
+          },
+          {
+            "rank": "15th Place",
+            "team": "GodLike Esports",
+            "player": "",
+            "prize": "₹1,25,000"
+          },
+          {
+            "rank": "16th Place",
+            "team": "Genesis Esports",
+            "player": "",
+            "prize": "₹1,25,000"
+          }
+        ]
+      },
+
       {
         "year": 2025,
         "event": "BGIS 2025 Grand Finals",

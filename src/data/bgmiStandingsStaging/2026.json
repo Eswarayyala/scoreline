@@ -1,0 +1,655 @@
+{
+  "year": 2026,
+  "game": "BGMI",
+  "sourceNote": "Merged into vaultResearchSeed BGMI editions (2026 BGIS/BMPS/BGMS/BMSD). Kept as raw source.",
+  "standings": [
+    {
+      "event": "BGIS 2026",
+      "stage": "Grand Finals",
+      "rank": 1,
+      "team": "Team Soul",
+      "points": 173,
+      "team_prize_inr": 10000000
+    },
+    {
+      "event": "BGIS 2026",
+      "stage": "Grand Finals",
+      "rank": 2,
+      "team": "Genesis Esports",
+      "points": 169,
+      "team_prize_inr": 5000000
+    },
+    {
+      "event": "BGIS 2026",
+      "stage": "Grand Finals",
+      "rank": 3,
+      "team": "Orangutan",
+      "points": 132,
+      "team_prize_inr": 3500000
+    },
+    {
+      "event": "BGIS 2026",
+      "stage": "Grand Finals",
+      "rank": 4,
+      "team": "Victores Sumus",
+      "points": 128,
+      "team_prize_inr": 2500000
+    },
+    {
+      "event": "BGIS 2026",
+      "stage": "Grand Finals",
+      "rank": 5,
+      "team": "GodLike Esports",
+      "points": 118,
+      "team_prize_inr": 2050000
+    },
+    {
+      "event": "BGIS 2026",
+      "stage": "Grand Finals",
+      "rank": 6,
+      "team": "K9 Esports",
+      "points": 117,
+      "team_prize_inr": 1600000
+    },
+    {
+      "event": "BGIS 2026",
+      "stage": "Grand Finals",
+      "rank": 7,
+      "team": "Revenant XSpark",
+      "points": 114,
+      "team_prize_inr": 1400000
+    },
+    {
+      "event": "BGIS 2026",
+      "stage": "Grand Finals",
+      "rank": 8,
+      "team": "Wyld Fangs",
+      "points": 112,
+      "team_prize_inr": 1400000
+    },
+    {
+      "event": "BGIS 2026",
+      "stage": "Grand Finals",
+      "rank": 9,
+      "team": "Vasista Esports",
+      "points": 103,
+      "team_prize_inr": 1150000
+    },
+    {
+      "event": "BGIS 2026",
+      "stage": "Grand Finals",
+      "rank": 10,
+      "team": "Nebula Esports",
+      "points": 100,
+      "team_prize_inr": 1150000
+    },
+    {
+      "event": "BGIS 2026",
+      "stage": "Grand Finals",
+      "rank": 11,
+      "team": "Learn From Past",
+      "points": 97,
+      "team_prize_inr": 1000000
+    },
+    {
+      "event": "BGIS 2026",
+      "stage": "Grand Finals",
+      "rank": 12,
+      "team": "Meta Ninza",
+      "points": 95,
+      "team_prize_inr": 1000000
+    },
+    {
+      "event": "BGIS 2026",
+      "stage": "Grand Finals",
+      "rank": 13,
+      "team": "MYTH Official",
+      "points": 90,
+      "team_prize_inr": 900000
+    },
+    {
+      "event": "BGIS 2026",
+      "stage": "Grand Finals",
+      "rank": 14,
+      "team": "Reckoning Esports",
+      "points": 89,
+      "team_prize_inr": 900000
+    },
+    {
+      "event": "BGIS 2026",
+      "stage": "Grand Finals",
+      "rank": 15,
+      "team": "Team Tamilas",
+      "points": 81,
+      "team_prize_inr": 800000
+    },
+    {
+      "event": "BGIS 2026",
+      "stage": "Grand Finals",
+      "rank": 16,
+      "team": "Welt Esports",
+      "points": 62,
+      "team_prize_inr": 800000
+    },
+    {
+      "event": "BMPS 2026",
+      "stage": "Grand Finals",
+      "rank": 1,
+      "team": "GodLike Esports",
+      "points": 162,
+      "team_prize_inr": 10000000
+    },
+    {
+      "event": "BMPS 2026",
+      "stage": "Grand Finals",
+      "rank": 2,
+      "team": "Divine Gaming",
+      "points": 152,
+      "team_prize_inr": 6000000
+    },
+    {
+      "event": "BMPS 2026",
+      "stage": "Grand Finals",
+      "rank": 3,
+      "team": "Victores Sumus",
+      "points": 133,
+      "team_prize_inr": 4000000
+    },
+    {
+      "event": "BMPS 2026",
+      "stage": "Grand Finals",
+      "rank": 4,
+      "team": "Gods Reign",
+      "points": 128,
+      "team_prize_inr": 3000000
+    },
+    {
+      "event": "BMPS 2026",
+      "stage": "Grand Finals",
+      "rank": 5,
+      "team": "Apex Gaming",
+      "points": 123,
+      "team_prize_inr": 2500000
+    },
+    {
+      "event": "BMPS 2026",
+      "stage": "Grand Finals",
+      "rank": 6,
+      "team": "Orangutan",
+      "points": 119,
+      "team_prize_inr": 1800000
+    },
+    {
+      "event": "BMPS 2026",
+      "stage": "Grand Finals",
+      "rank": 7,
+      "team": "Team Tamilas",
+      "points": 116,
+      "team_prize_inr": 1500000
+    },
+    {
+      "event": "BMPS 2026",
+      "stage": "Grand Finals",
+      "rank": 8,
+      "team": "Vasista Esports",
+      "points": 113,
+      "team_prize_inr": 1450000
+    },
+    {
+      "event": "BMPS 2026",
+      "stage": "Grand Finals",
+      "rank": 9,
+      "team": "Reckoning Esports",
+      "points": 111,
+      "team_prize_inr": 1000000
+    },
+    {
+      "event": "BMPS 2026",
+      "stage": "Grand Finals",
+      "rank": 10,
+      "team": "Nebula Esports",
+      "points": 107,
+      "team_prize_inr": 1000000
+    },
+    {
+      "event": "BMPS 2026",
+      "stage": "Grand Finals",
+      "rank": 11,
+      "team": "Team 8Bit",
+      "points": 103,
+      "team_prize_inr": 800000
+    },
+    {
+      "event": "BMPS 2026",
+      "stage": "Grand Finals",
+      "rank": 12,
+      "team": "Genesis Esports",
+      "points": 99,
+      "team_prize_inr": 800000
+    },
+    {
+      "event": "BMPS 2026",
+      "stage": "Grand Finals",
+      "rank": 13,
+      "team": "Team Soul",
+      "points": 96,
+      "team_prize_inr": 600000
+    },
+    {
+      "event": "BMPS 2026",
+      "stage": "Grand Finals",
+      "rank": 14,
+      "team": "7Gods Esports",
+      "points": 95,
+      "team_prize_inr": 600000
+    },
+    {
+      "event": "BMPS 2026",
+      "stage": "Grand Finals",
+      "rank": 15,
+      "team": "Revenant XSpark",
+      "points": 86,
+      "team_prize_inr": 500000
+    },
+    {
+      "event": "BMPS 2026",
+      "stage": "Grand Finals",
+      "rank": 16,
+      "team": "Myth Official",
+      "points": 63,
+      "team_prize_inr": 500000
+    },
+    {
+      "event": "BGMS 2026",
+      "stage": "Grand Finals",
+      "rank": 1,
+      "team": "Nebula Esports",
+      "points": 210,
+      "team_prize_inr": 4000000
+    },
+    {
+      "event": "BGMS 2026",
+      "stage": "Grand Finals",
+      "rank": 2,
+      "team": "Gladiators Esports",
+      "points": 189,
+      "team_prize_inr": 1500000
+    },
+    {
+      "event": "BGMS 2026",
+      "stage": "Grand Finals",
+      "rank": 3,
+      "team": "Orangutan",
+      "points": 187,
+      "team_prize_inr": 600000
+    },
+    {
+      "event": "BGMS 2026",
+      "stage": "Grand Finals",
+      "rank": 4,
+      "team": "Rapid Chaos Esports",
+      "points": 170,
+      "team_prize_inr": 450000
+    },
+    {
+      "event": "BGMS 2026",
+      "stage": "Grand Finals",
+      "rank": 5,
+      "team": "Team Apex Gaming",
+      "points": 163,
+      "team_prize_inr": 350000
+    },
+    {
+      "event": "BGMS 2026",
+      "stage": "Grand Finals",
+      "rank": 6,
+      "team": "Reckoning Esports",
+      "points": 153,
+      "team_prize_inr": 300000
+    },
+    {
+      "event": "BGMS 2026",
+      "stage": "Grand Finals",
+      "rank": 7,
+      "team": "Team Tamilas",
+      "points": 136,
+      "team_prize_inr": 250000
+    },
+    {
+      "event": "BGMS 2026",
+      "stage": "Grand Finals",
+      "rank": 8,
+      "team": "Team Soul",
+      "points": 136,
+      "team_prize_inr": 230000
+    },
+    {
+      "event": "BGMS 2026",
+      "stage": "Grand Finals",
+      "rank": 9,
+      "team": "Genesis Esports",
+      "points": 135,
+      "team_prize_inr": 200000
+    },
+    {
+      "event": "BGMS 2026",
+      "stage": "Grand Finals",
+      "rank": 10,
+      "team": "Revenant XSpark",
+      "points": 131,
+      "team_prize_inr": 180000
+    },
+    {
+      "event": "BGMS 2026",
+      "stage": "Grand Finals",
+      "rank": 11,
+      "team": "Team 8Bit",
+      "points": 126,
+      "team_prize_inr": 160000
+    },
+    {
+      "event": "BGMS 2026",
+      "stage": "Grand Finals",
+      "rank": 12,
+      "team": "Elite Nova Esports",
+      "points": 120,
+      "team_prize_inr": 140000
+    },
+    {
+      "event": "BGMS 2026",
+      "stage": "Grand Finals",
+      "rank": 13,
+      "team": "7Gods Esports",
+      "points": 116,
+      "team_prize_inr": 130000
+    },
+    {
+      "event": "BGMS 2026",
+      "stage": "Grand Finals",
+      "rank": 14,
+      "team": "Team Outrage",
+      "points": 102,
+      "team_prize_inr": 120000
+    },
+    {
+      "event": "BGMS 2026",
+      "stage": "Grand Finals",
+      "rank": 15,
+      "team": "Wyld Fangs",
+      "points": 93,
+      "team_prize_inr": 110000
+    },
+    {
+      "event": "BGMS 2026",
+      "stage": "Grand Finals",
+      "rank": 16,
+      "team": "MYTH Official",
+      "points": 84,
+      "team_prize_inr": 100000
+    },
+    {
+      "event": "BMSD 2026",
+      "stage": "Grand Finals",
+      "rank": 1,
+      "team": "Team Soul",
+      "points": 155,
+      "team_prize_inr": 3000000
+    },
+    {
+      "event": "BMSD 2026",
+      "stage": "Grand Finals",
+      "rank": 2,
+      "team": "Gladiators Esports",
+      "points": 141,
+      "team_prize_inr": 1500000
+    },
+    {
+      "event": "BMSD 2026",
+      "stage": "Grand Finals",
+      "rank": 3,
+      "team": "Team 8Bit",
+      "points": 140,
+      "team_prize_inr": 1000000
+    },
+    {
+      "event": "BMSD 2026",
+      "stage": "Grand Finals",
+      "rank": 4,
+      "team": "K9 Esports",
+      "points": 135,
+      "team_prize_inr": 750000
+    },
+    {
+      "event": "BMSD 2026",
+      "stage": "Grand Finals",
+      "rank": 5,
+      "team": "Blitz Epigrotive Gaming",
+      "points": 133,
+      "team_prize_inr": 625000
+    },
+    {
+      "event": "BMSD 2026",
+      "stage": "Grand Finals",
+      "rank": 6,
+      "team": "Team Outrage",
+      "points": 123,
+      "team_prize_inr": 450000
+    },
+    {
+      "event": "BMSD 2026",
+      "stage": "Grand Finals",
+      "rank": 7,
+      "team": "Version1 x Blue Army",
+      "points": 122,
+      "team_prize_inr": 375000
+    },
+    {
+      "event": "BMSD 2026",
+      "stage": "Grand Finals",
+      "rank": 8,
+      "team": "Welt Esports",
+      "points": 120,
+      "team_prize_inr": 375000
+    },
+    {
+      "event": "BMSD 2026",
+      "stage": "Grand Finals",
+      "rank": 9,
+      "team": "Meta Ninza",
+      "points": 113,
+      "team_prize_inr": 250000
+    },
+    {
+      "event": "BMSD 2026",
+      "stage": "Grand Finals",
+      "rank": 10,
+      "team": "Team Apex Gaming",
+      "points": 98,
+      "team_prize_inr": 250000
+    },
+    {
+      "event": "BMSD 2026",
+      "stage": "Grand Finals",
+      "rank": 11,
+      "team": "Revenant XSpark",
+      "points": 89,
+      "team_prize_inr": 200000
+    },
+    {
+      "event": "BMSD 2026",
+      "stage": "Grand Finals",
+      "rank": 12,
+      "team": "MYTH Official",
+      "points": 88,
+      "team_prize_inr": 200000
+    },
+    {
+      "event": "BMSD 2026",
+      "stage": "Grand Finals",
+      "rank": 13,
+      "team": "Wyld Fangs",
+      "points": 85,
+      "team_prize_inr": 150000
+    },
+    {
+      "event": "BMSD 2026",
+      "stage": "Grand Finals",
+      "rank": 14,
+      "team": "Nebula Esports",
+      "points": 83,
+      "team_prize_inr": 150000
+    },
+    {
+      "event": "BMSD 2026",
+      "stage": "Grand Finals",
+      "rank": 15,
+      "team": "GodLike Esports",
+      "points": 68,
+      "team_prize_inr": 125000
+    },
+    {
+      "event": "BMSD 2026",
+      "stage": "Grand Finals",
+      "rank": 16,
+      "team": "Genesis Esports",
+      "points": 67,
+      "team_prize_inr": 125000
+    }
+  ],
+  "awards": [
+    {
+      "event": "BGIS 2026",
+      "award": "Tournament MVP",
+      "recipient": "HunterZ",
+      "team": "Genesis Esports",
+      "award_prize_or_reward": "300000"
+    },
+    {
+      "event": "BGIS 2026",
+      "award": "Grand Finals MVP",
+      "recipient": "LEGIT",
+      "team": "Team Soul",
+      "award_prize_or_reward": "150000"
+    },
+    {
+      "event": "BGIS 2026",
+      "award": "Best IGL",
+      "recipient": "Nakul",
+      "team": "Team Soul",
+      "award_prize_or_reward": "200000"
+    },
+    {
+      "event": "BGIS 2026",
+      "award": "Emerging Star",
+      "recipient": "Detrox",
+      "team": "",
+      "award_prize_or_reward": "100000"
+    },
+    {
+      "event": "BGIS 2026",
+      "award": "Best Clutch",
+      "recipient": "Termi",
+      "team": "",
+      "award_prize_or_reward": "100000"
+    },
+    {
+      "event": "BGIS 2026",
+      "award": "Fan Favourite Team",
+      "recipient": "Team Soul",
+      "team": "",
+      "award_prize_or_reward": "100000"
+    },
+    {
+      "event": "BMPS 2026",
+      "award": "Tournament MVP",
+      "recipient": "Scary Jod",
+      "team": "Victores Sumus",
+      "award_prize_or_reward": "400000"
+    },
+    {
+      "event": "BMPS 2026",
+      "award": "Grand Finals MVP",
+      "recipient": "Slug",
+      "team": "Divine Gaming",
+      "award_prize_or_reward": "200000"
+    },
+    {
+      "event": "BMPS 2026",
+      "award": "Best IGL",
+      "recipient": "Aadi",
+      "team": "Nebula Esports",
+      "award_prize_or_reward": "250000"
+    },
+    {
+      "event": "BMPS 2026",
+      "award": "Best Clutch",
+      "recipient": "Scary Jod",
+      "team": "Victores Sumus",
+      "award_prize_or_reward": "100000"
+    },
+    {
+      "event": "BMPS 2026",
+      "award": "Eliminator",
+      "recipient": "Jonathan Gaming",
+      "team": "Team Apex Gaming",
+      "award_prize_or_reward": ""
+    },
+    {
+      "event": "BGMS 2026",
+      "award": "Finals MVP",
+      "recipient": "Knowme",
+      "team": "Nebula Esports",
+      "award_prize_or_reward": "TVS Raider bike"
+    },
+    {
+      "event": "BGMS 2026",
+      "award": "Most Wicked Player",
+      "recipient": "HunterZ",
+      "team": "Genesis Esports",
+      "award_prize_or_reward": "TVS Raider bike"
+    },
+    {
+      "event": "BMSD 2026",
+      "award": "Google Play MVP",
+      "recipient": "Subh",
+      "team": "Team 8Bit",
+      "award_prize_or_reward": "200000"
+    },
+    {
+      "event": "BMSD 2026",
+      "award": "Finals MVP",
+      "recipient": "Legit",
+      "team": "Team Soul",
+      "award_prize_or_reward": "100000"
+    },
+    {
+      "event": "BMSD 2026",
+      "award": "Best IGL",
+      "recipient": "Areeb",
+      "team": "Blitz Epigrotive Gaming",
+      "award_prize_or_reward": "75000"
+    },
+    {
+      "event": "BMSD 2026",
+      "award": "Best Clutch",
+      "recipient": "Harsh",
+      "team": "Team Apex Gaming",
+      "award_prize_or_reward": "50000"
+    },
+    {
+      "event": "BMSD 2026",
+      "award": "Grenadier",
+      "recipient": "Legit",
+      "team": "Team Soul",
+      "award_prize_or_reward": "50000"
+    },
+    {
+      "event": "BMSD 2026",
+      "award": "Eliminator",
+      "recipient": "Taurus",
+      "team": "K9 Esports",
+      "award_prize_or_reward": ""
+    }
+  ],
+  "mergedAt": "2026-10-31"
+}
