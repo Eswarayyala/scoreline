@@ -75,6 +75,28 @@ const REPORT_REASONS = ["Abuse or harassment", "Scam or fraud", "Inappropriate c
 
 const FONT_LINK_ID = "scoreline-fonts";
 
+function GrindInfoLogo({ fontSize = 28 }) {
+  return (
+    <span
+      aria-label="GrindInfo"
+      style={{ display: "inline-flex", alignItems: "center", gap: 9, whiteSpace: "nowrap" }}
+    >
+      <img
+        src="/grindinfo-logo.svg"
+        alt=""
+        aria-hidden="true"
+        width="38"
+        height="28"
+        style={{ display: "block", flex: "none" }}
+      />
+      <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize, letterSpacing: "0.04em", lineHeight: 1 }}>
+        <span style={{ color: "var(--page-text)" }}>GRIND</span>
+        <span style={{ color: "#ff5a1f" }}>INFO</span>
+      </span>
+    </span>
+  );
+}
+
 function useWindowLocation() {
   const [loc, setLoc] = useState(() => ({
     pathname: window.location.pathname,
@@ -634,7 +656,7 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowse
       <div role="dialog" aria-modal={requireChoice ? "true" : "false"} aria-label="Sign in to GrindInfo" onMouseDown={(event) => event.stopPropagation()} style={{ width: "min(380px, 100%)", maxHeight: "calc(100vh - 100px)", overflowY: "auto", padding: 20, color: "var(--page-text)", background: "var(--panel-bg)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)", pointerEvents: "auto" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
           <div>
-            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, color: "var(--page-text)", letterSpacing: "0.04em" }}>GRINDINFO</div>
+            <GrindInfoLogo fontSize={28} />
             <Eyebrow color="var(--accent-secondary)">Sign in for player features</Eyebrow>
           </div>
           {!requireChoice && <button type="button" aria-label="Close sign in" onClick={onClose} style={{ background: "none", border: 0, color: "var(--text-muted)", fontSize: 22, cursor: "pointer" }}>×</button>}
@@ -3738,9 +3760,7 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAcc
     <div style={{ borderBottom: "1px solid var(--border)" }}>
       <div style={{ maxWidth: 1152, margin: "0 auto", padding: "20px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
         <Link to="/" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", textDecoration: "none", color: "inherit" }}>
-          <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, letterSpacing: "0.04em", color: "var(--page-text)" }}>
-            GRINDINFO
-          </span>
+          <GrindInfoLogo />
           <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--accent-secondary)", letterSpacing: "0.1em" }}>
             TOURNAMENT OPS
           </span>
