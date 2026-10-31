@@ -1,4 +1,5 @@
 import { initializeApp } from "firebase/app";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import { getFirestore } from "firebase/firestore";
 import {
   getAuth,
@@ -11,7 +12,7 @@ import {
 import { getDatabase } from "firebase/database";
 import { getStorage } from "firebase/storage";
 
-// Firebase web config is public by design (protected by Auth + security rules, not by hiding the key).
+// Firebase web config is public by design (protected by Auth + security rules + App Check, not by hiding the key).
 const firebaseConfig = {
   apiKey: "AIzaSyBlQWnHSz_ennegidtyrwiap6Oe_YtNtqI",
   authDomain: "scoreliner.firebaseapp.com",
@@ -25,6 +26,20 @@ const GOOGLE_CLIENT_ID = "884777080649-frh0aih3g40ce6k9uoj9ak9s7mkiieps.apps.goo
 const GOOGLE_NONCE_KEY = "grindinfo-google-nonce";
 
 const app = initializeApp(firebaseConfig);
+
+/** App Check — tokens attach once VITE_RECAPTCHA_SITE_KEY is set. Do not enforce in Firebase until metrics look clean. */
+const recaptchaSiteKey = String(import.meta.env.VITE_RECAPTCHA_SITE_KEY || "").trim();
+const appCheckDebugToken = String(import.meta.env.VITE_APPCHECK_DEBUG_TOKEN || "").trim();
+if (import.meta.env.DEV && appCheckDebugToken) {
+  globalThis.FIREBASE_APPCHECK_DEBUG_TOKEN = appCheckDebugToken === "true" ? true : appCheckDebugToken;
+}
+export const appCheck = recaptchaSiteKey
+  ? initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(recaptchaSiteKey),
+      isTokenAutoRefreshEnabled: true,
+    })
+  : null;
+
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const realtimeDb = import.meta.env.VITE_FIREBASE_DATABASE_URL
