@@ -67,6 +67,7 @@ import { useCircuitCms } from "./hooks/useCircuitCms";
 import { useStaffChangeRequests } from "./hooks/useStaffChangeRequests";
 import { deskGateDocPath, hashDeskPassword, hashFieldForRole } from "./lib/deskGate";
 import { assembleFloatingSlides, buildFeaturedWindows, floatingPolicyFromRecords, mergeEwcWindows } from "./data/floatingWindows";
+import { vaultEventHref } from "./data/eventSpotlight";
 import { useEsportsMedia } from "./hooks/useEsportsMedia";
 import { fetchGamePoster, mergeVaultMedia } from "./services/esportsMedia";
 import { FILTER_GAMES, PUBG_FAMILY_LABEL, canonicalFilterGame, filterGameAliases, gameMatchesFilter, isPubgFamily } from "./data/gameCatalog";
@@ -104,7 +105,7 @@ import ScrimTodayStrip from "./components/scrims/ScrimTodayStrip";
 import HostVerifyPrompt from "./components/scrims/HostVerifyPrompt";
 import PlayerCheckInBar from "./components/scrims/PlayerCheckInBar";
 import ShareFlyerBar from "./components/scrims/ShareFlyerBar";
-import { scrimInviteCopy, scrimDeskUrl } from "./data/scrimShare";
+import { scrimInviteCopy, scrimDeskUrl, scrimShareWhen } from "./data/scrimShare";
 import {
   buildInternationalTrack,
   evaluateHostVerification,
@@ -2458,9 +2459,16 @@ function FriendChat({ currentUser, friend, onClose, muted = false, onToggleMute,
   );
 }
 
-const CHAT_POPUP_MAX = 6;
 /** Temporary kill-switch: motivation / disclaimer / fact flyers stay off until re-enabled. */
 const SITE_FLYER_POPUPS_ENABLED = false;
+
+function sortChatsByLatest(chats, activityByUid) {
+  return chats.slice().sort((a, b) => {
+    const byTime = (Number(activityByUid[b.uid]) || 0) - (Number(activityByUid[a.uid]) || 0);
+    if (byTime) return byTime;
+    return String(a.name || "").localeCompare(String(b.name || ""));
+  });
+}
 
 function ChatPopup({
   open,
@@ -2548,7 +2556,7 @@ function ChatPopup({
         </header>
         {chats.length === 0 ? (
           <div style={{ flex: 1, display: "grid", placeItems: "center", color: "var(--text-muted)", fontSize: 14, padding: 24, textAlign: "center" }}>
-            No active chats. Open Friends and tap Chat on someone to start one here.
+            No chats yet. Open Friends and tap Chat on someone to start one.
           </div>
         ) : (
           <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "minmax(140px, 200px) 1fr" }}>
@@ -3564,6 +3572,8 @@ export default function App() {
   const [blockedUsers, setBlockedUsers] = useState([]);
   const [tournamentInvites, setTournamentInvites] = useState([]);
   const [activeChats, setActiveChats] = useState([]);
+  const [chatActivityByUid, setChatActivityByUid] = useState({});
+  const [dismissedChatUids, setDismissedChatUids] = useState(() => new Set());
   const [focusedChatUid, setFocusedChatUid] = useState(null);
   const [chatPopupOpen, setChatPopupOpen] = useState(false);
   const [chatUnreadByUid, setChatUnreadByUid] = useState({});
@@ -3784,7 +3794,11 @@ export default function App() {
     setGuestMode(true);
     setAuthDialogOpen(false);
     setAuthError("");
-    navigate("/tournaments", { replace: true });
+    // Keep shared flyer / deep links; only land on the scrims desk from a bare entry.
+    const path = String(window.location.pathname || "");
+    if (!/^\/tournaments\/[^/]+/.test(path) && !/^\/vault\//.test(path) && !/^\/games\//.test(path) && !/^\/hosts\//.test(path)) {
+      navigate("/tournaments", { replace: true });
+    }
   }, [navigate]);
 
   // ---- player profiles ----
@@ -3851,20 +3865,26 @@ export default function App() {
         if (slide.spotlight === true && slide.surface !== "ewc-window") return false;
         seen.add(key);
         return true;
-      }).map((slide) => ({
-        ...slide,
-        floating: floatKeys.has(slide.slug || slide.id) || slide.eventStatus === "live",
-        featured: false,
-        ...(slide.surface === "ewc-window" || slide.eventStatus === "live"
-          ? {}
-          : {
-              spotlight: false,
-              spotlightEdition: undefined,
-              spotlightEventKey: undefined,
-              eventName: "",
-              title: slide.game || slide.title,
-            }),
-      })),
+      }).map((slide) => {
+        const stripped =
+          slide.surface === "ewc-window" || slide.eventStatus === "live"
+            ? slide
+            : {
+                ...slide,
+                spotlight: false,
+                spotlightEdition: undefined,
+                spotlightEventKey: undefined,
+                eventName: "",
+                title: slide.game || slide.title,
+              };
+        return {
+          ...stripped,
+          floating: floatKeys.has(slide.slug || slide.id) || slide.eventStatus === "live",
+          featured: false,
+          // Catalog chrome stays game-level; open still lands on the latest event tab.
+          href: vaultEventHref({ ...stripped, editions: slide.editions }),
+        };
+      }),
       blogPosts,
     );
   }, [floatingSlides, ewcWindows, researchSlidesWithBlogCopy, blogSlides, blogPosts, liveEsportsBanners, liveVaultEvents]);
@@ -3986,6 +4006,33 @@ export default function App() {
     () => Object.values(chatUnreadByUid).filter((count) => Number(count) > 0).length,
     [chatUnreadByUid],
   );
+  const chatsForPopup = useMemo(
+    () => sortChatsByLatest(
+      activeChats.filter((item) => !dismissedChatUids.has(item.uid)),
+      chatActivityByUid,
+    ),
+    [activeChats, dismissedChatUids, chatActivityByUid],
+  );
+  const upsertActiveChat = useCallback((friend, activityAt = Date.now()) => {
+    if (!friend?.uid) return;
+    const at = Number(activityAt) || Date.now();
+    setDismissedChatUids((current) => {
+      if (!current.has(friend.uid)) return current;
+      const next = new Set(current);
+      next.delete(friend.uid);
+      return next;
+    });
+    setChatActivityByUid((current) => {
+      const prev = Number(current[friend.uid]) || 0;
+      if (prev >= at && current[friend.uid] != null) return current;
+      return { ...current, [friend.uid]: Math.max(prev, at) };
+    });
+    setActiveChats((current) => {
+      const rest = current.filter((item) => item.uid !== friend.uid);
+      const prev = current.find((item) => item.uid === friend.uid);
+      return [{ uid: friend.uid, name: friend.name || prev?.name || "Friend" }, ...rest];
+    });
+  }, []);
   const markFriendChatSeen = useCallback((friendUid, conversationId, at = Date.now()) => {
     markChatConversationSeen(conversationId || chatConversationId(user?.uid, friendUid), at);
     setChatUnreadByUid((current) => {
@@ -4377,6 +4424,11 @@ export default function App() {
   useEffect(() => {
     if (!user?.uid) {
       setChatUnreadByUid({});
+      setActiveChats([]);
+      setChatActivityByUid({});
+      setDismissedChatUids(new Set());
+      setFocusedChatUid(null);
+      setChatPopupOpen(false);
       chatPrimeRef.current = new Map();
       return undefined;
     }
@@ -4392,6 +4444,13 @@ export default function App() {
         (snapshot) => {
           const focus = chatFocusRef.current;
           const viewing = focus.open && focus.focusedUid === friendUid;
+          const latestAny = Number(snapshot.docs[0]?.data()?.createdAt) || 0;
+          if (latestAny) {
+            setChatActivityByUid((current) => {
+              if ((Number(current[friendUid]) || 0) >= latestAny) return current;
+              return { ...current, [friendUid]: latestAny };
+            });
+          }
           const incomingTimes = snapshot.docs
             .map((item) => item.data() || {})
             .filter((data) => data.senderId && data.senderId !== user.uid)
@@ -4402,8 +4461,7 @@ export default function App() {
           if (isPrime) chatPrimeRef.current.set(conversationId, latestIncoming);
 
           if (viewing) {
-            const latest = snapshot.docs[0]?.data()?.createdAt;
-            markFriendChatSeen(friendUid, conversationId, Number(latest) || Date.now());
+            markFriendChatSeen(friendUid, conversationId, latestAny || Date.now());
             if (!isPrime && latestIncoming > primedAt) chatPrimeRef.current.set(conversationId, latestIncoming);
             return;
           }
@@ -4428,10 +4486,7 @@ export default function App() {
           if (freshText) chatPrimeRef.current.set(conversationId, latestIncoming);
           if (unread > 0 && freshText) {
             const friend = acceptedFriendsByUid[friendUid] || { uid: friendUid, name: "Friend" };
-            setActiveChats((current) => {
-              if (current.some((item) => item.uid === friendUid)) return current;
-              return [...current, friend].slice(-CHAT_POPUP_MAX);
-            });
+            upsertActiveChat(friend, latestIncoming || latestAny || Date.now());
             if (normalizeNotifyPrefs(userPrefsRef.current || {}).chats !== false) {
               setFocusedChatUid(friendUid);
               setChatPopupOpen(true);
@@ -4446,13 +4501,39 @@ export default function App() {
       query(CHAT_CONVERSATIONS_COLLECTION, where("participants", "array-contains", user.uid)),
       (snapshot) => {
         const liveIds = new Set();
+        const hydratedFriends = [];
+        const activityPatch = {};
         snapshot.docs.forEach((item) => {
-          const participants = item.data()?.participants || [];
+          const data = item.data() || {};
+          const participants = data.participants || [];
           const friendUid = participants.find((uid) => uid !== user.uid);
           if (!friendUid || mutedFriendSet.has(friendUid)) return;
           liveIds.add(item.id);
           watchConversation(item.id, friendUid);
+          hydratedFriends.push(acceptedFriendsByUid[friendUid] || { uid: friendUid, name: "Friend" });
+          activityPatch[friendUid] = Number(data.createdAt) || 0;
         });
+        if (hydratedFriends.length) {
+          setActiveChats((current) => {
+            const byUid = new Map(current.map((item) => [item.uid, item]));
+            hydratedFriends.forEach((friend) => {
+              const prev = byUid.get(friend.uid);
+              byUid.set(friend.uid, { uid: friend.uid, name: friend.name || prev?.name || "Friend" });
+            });
+            return Array.from(byUid.values());
+          });
+          setChatActivityByUid((current) => {
+            let changed = false;
+            const next = { ...current };
+            Object.entries(activityPatch).forEach(([uid, at]) => {
+              if (next[uid] == null || (Number(next[uid]) || 0) < at) {
+                next[uid] = Math.max(Number(next[uid]) || 0, at);
+                changed = true;
+              }
+            });
+            return changed ? next : current;
+          });
+        }
         [...messageStops.keys()].forEach((id) => {
           if (liveIds.has(id)) return;
           messageStops.get(id)?.();
@@ -4469,7 +4550,7 @@ export default function App() {
       stopConversations();
       stopAllMessages();
     };
-  }, [user?.uid, mutedFriendSet, markFriendChatSeen, acceptedFriendsByUid]);
+  }, [user?.uid, mutedFriendSet, markFriendChatSeen, acceptedFriendsByUid, upsertActiveChat]);
   const toggleMuteFriend = useCallback((friendUid) => {
     if (!friendUid) return;
     setMutedFriendIds((current) => {
@@ -5568,6 +5649,18 @@ export default function App() {
         if (!next.length) setChatPopupOpen(false);
         return next;
       });
+      setChatActivityByUid((current) => {
+        if (!current[friend.uid]) return current;
+        const next = { ...current };
+        delete next[friend.uid];
+        return next;
+      });
+      setDismissedChatUids((current) => {
+        if (!current.has(friend.uid)) return current;
+        const next = new Set(current);
+        next.delete(friend.uid);
+        return next;
+      });
       showToast(`${friend.name} blocked`);
     }
     catch { showToast("Couldn't block this player. Check that the latest Firestore rules are published."); }
@@ -6046,10 +6139,7 @@ export default function App() {
                     requests={friendRequests}
                     currentUserId={user.uid}
                     onOpenChat={(friend) => {
-                      setActiveChats((current) => {
-                        if (current.some((item) => item.uid === friend.uid)) return current;
-                        return [...current, friend].slice(-CHAT_POPUP_MAX);
-                      });
+                      upsertActiveChat(friend, Date.now());
                       setFocusedChatUid(friend.uid);
                       setChatPopupOpen(true);
                       document.querySelector("details[open]")?.removeAttribute("open");
@@ -6067,7 +6157,10 @@ export default function App() {
                   />
                 ) : null}
                 chatCount={notifyPrefs.chats ? unseenChatCount : 0}
-                onOpenChats={() => setChatPopupOpen(true)}
+                onOpenChats={() => {
+                  setDismissedChatUids(new Set());
+                  setChatPopupOpen(true);
+                }}
                 friendRequestCount={notifyPrefs.friends ? pendingFriendRequestCount : 0}
                 onOpenFriendRequests={() => setShowFriendRequests(true)}
               />
@@ -6236,7 +6329,10 @@ export default function App() {
                     onDismissVerifyPrompt={dismissHostVerifyPrompt}
                     isStaff={siteRole === "owner" || siteRole === "support"}
                     onOpenTournament={(id) => navigate(`/tournaments/${id}`)}
-                    onOpenChats={() => setChatPopupOpen(true)}
+                    onOpenChats={() => {
+                      setDismissedChatUids(new Set());
+                      setChatPopupOpen(true);
+                    }}
                     onSignIn={() => setAuthDialogOpen(true)}
                     onRequestOfficial={requestOfficialHost}
                     onDecideRequest={decideHostRequest}
@@ -6424,15 +6520,20 @@ export default function App() {
           open={chatPopupOpen}
           onClose={() => setChatPopupOpen(false)}
           currentUser={user}
-          chats={activeChats}
+          chats={chatsForPopup}
           focusedUid={focusedChatUid}
           onFocus={setFocusedChatUid}
           onRemove={(uid) => {
-            setActiveChats((current) => {
-              const next = current.filter((item) => item.uid !== uid);
-              setFocusedChatUid((focused) => (focused === uid ? (next[0]?.uid || null) : focused));
-              if (!next.length) setChatPopupOpen(false);
-              return next;
+            setDismissedChatUids((current) => {
+              const nextDismissed = new Set(current);
+              nextDismissed.add(uid);
+              const remaining = sortChatsByLatest(
+                activeChats.filter((item) => !nextDismissed.has(item.uid)),
+                chatActivityByUid,
+              );
+              setFocusedChatUid((focused) => (focused === uid ? (remaining[0]?.uid || null) : focused));
+              if (!remaining.length) setChatPopupOpen(false);
+              return nextDismissed;
             });
           }}
           mutedIds={mutedFriendSet}
@@ -7562,7 +7663,7 @@ function TournamentDetail(props) {
             {tournament.name}
           </h1>
           <div style={{ fontSize: 13, color: "var(--text-dim)" }}>
-            {fmtDate(tournament.startDate)} {tournament.endDate ? `– ${fmtDate(tournament.endDate)}` : ""}
+            {scrimShareWhen(tournament) || "TBD"}
           </div>
           <div style={{ fontSize: 13, color: "var(--accent-secondary)", marginTop: 7 }}>
             {Number(tournament.prizeAmount) > 0 ? `Prize information: ${tournament.prizeCurrency || "INR"} ${Number(tournament.prizeAmount).toLocaleString()}` : "Free scrim"}

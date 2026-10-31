@@ -20,6 +20,7 @@ export default function InvitePlayersPanel({
 }) {
   const [tab, setTab] = useState("friends");
   const [friendUid, setFriendUid] = useState("");
+  const [friendMenuOpen, setFriendMenuOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [found, setFound] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -92,22 +93,89 @@ export default function InvitePlayersPanel({
       <ShareFlyerBar tournament={tournament} compact />
 
       <div className="mt-3 flex gap-2">
-        <Button variant={tab === "friends" ? "primary" : "ghost"} onClick={() => setTab("friends")}>Friends</Button>
-        <Button variant={tab === "find" ? "primary" : "ghost"} onClick={() => setTab("find")}>Find players</Button>
+        <Button
+          variant={tab === "friends" ? "primary" : "ghost"}
+          onClick={() => {
+            setTab("friends");
+          }}
+        >
+          Friends
+        </Button>
+        <Button
+          variant={tab === "find" ? "primary" : "ghost"}
+          onClick={() => {
+            setTab("find");
+            setFriendMenuOpen(false);
+          }}
+        >
+          Find players
+        </Button>
       </div>
 
       {tab === "friends" ? (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 grid gap-2">
           {friends.length === 0 ? (
             <p className="text-sm text-slate-500">Add friends first, or search Find players.</p>
           ) : (
             <>
-              <select className="min-w-[12rem] rounded border border-white/15 bg-transparent px-2 py-1.5 text-sm text-white" value={friendUid} onChange={(e) => setFriendUid(e.target.value)}>
-                <option value="">Choose a friend</option>
-                {friends.map((friend) => (
-                  <option key={friend.uid} value={friend.uid}>{friend.name}{friend.playerTag ? ` · #${friend.playerTag}` : ""}</option>
-                ))}
-              </select>
+              <p className="m-0 font-mono text-[10px] uppercase tracking-widest text-slate-500">
+                Choose a friend · {friends.length}
+              </p>
+              <div className="relative">
+                <button
+                  type="button"
+                  aria-haspopup="listbox"
+                  aria-expanded={friendMenuOpen}
+                  onClick={() => setFriendMenuOpen((open) => !open)}
+                  className="flex w-full items-center justify-between gap-3 rounded-lg border border-white/15 bg-slate-950 px-3.5 py-2.5 text-left text-sm text-white"
+                >
+                  <span className="min-w-0 truncate">
+                    {selectedFriend
+                      ? `${selectedFriend.name || "Player"}${selectedFriend.playerTag ? ` · #${selectedFriend.playerTag}` : ""}`
+                      : "Choose a friend"}
+                  </span>
+                  <span className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-slate-500">
+                    {friendMenuOpen ? "Close" : "Open"}
+                  </span>
+                </button>
+                {friendMenuOpen ? (
+                  <div
+                    role="listbox"
+                    aria-label="Choose a friend"
+                    className="absolute left-0 right-0 z-20 mt-1 max-h-48 overflow-y-auto rounded-lg border border-white/15 bg-slate-950 shadow-[0_12px_40px_rgba(0,0,0,0.55)]"
+                  >
+                    {friends.map((friend) => {
+                      const selected = friend.uid === friendUid;
+                      const status = existingFor(friend.uid)?.status;
+                      return (
+                        <button
+                          key={friend.uid}
+                          type="button"
+                          role="option"
+                          aria-selected={selected}
+                          onClick={() => {
+                            setFriendUid(friend.uid);
+                            setFriendMenuOpen(false);
+                          }}
+                          className={`flex w-full items-center justify-between gap-3 border-b border-white/10 px-3.5 py-2.5 text-left text-sm last:border-b-0 ${
+                            selected ? "bg-neon/15 text-white" : "bg-slate-950 text-slate-200 hover:bg-white/5"
+                          }`}
+                        >
+                          <span className="min-w-0 truncate pl-0.5">
+                            {friend.name || "Player"}
+                            {friend.playerTag ? ` · #${friend.playerTag}` : ""}
+                          </span>
+                          {status ? (
+                            <span className="shrink-0 font-mono text-[9px] uppercase tracking-widest text-slate-500">
+                              {status}
+                            </span>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
               <Button
                 disabled={!selectedFriend || ["pending", "accepted"].includes(existingFor(friendUid)?.status)}
                 onClick={() => send(selectedFriend)}
