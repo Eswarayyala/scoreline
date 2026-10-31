@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Calendar, Gamepad2, MapPin, Monitor, Trophy, Users } from "lucide-react";
 import { flyerForEvent } from "../../data/platformShowcase";
 import { publicScopeKicker } from "../../data/eventScope";
+import { vaultEventHref } from "../../data/eventSpotlight";
 import { useEventWindowPoster } from "../../hooks/useMediaLibrary";
 import CompetitorNameLink from "./CompetitorNameLink";
 
@@ -328,7 +329,8 @@ export function windowCardModel(slide = {}) {
     mvp,
     mvpPrize,
     registrationUrl: slide.registrationUrl || "",
-    href: slide.href || (slide.slug ? `/vault/${slide.slug}` : slide.id ? `/tournaments/${slide.id}` : "/vault"),
+    href: slide.href
+      || (slide.slug ? vaultEventHref(slide) : slide.id ? `/tournaments/${slide.id}` : "/vault"),
     ctaLabel: slide.ctaLabel
       || (status === "completed" ? "Open event" : status === "checkin" ? "Check in" : status === "live" ? "Enter lobby" : "View tournament"),
     statusLabel: String(slide.statusLabel || "").trim(),
@@ -739,10 +741,10 @@ export default function TournamentWindowCard({
         >
           {model.header}
         </h3>
-        {model.eventName ? (
+        {model.eventName || model.dateLabel ? (
           <p className={`mt-1 line-clamp-2 font-mono uppercase tracking-[0.08em] text-slate-200/90 ${compact ? "text-[10px]" : "mt-1.5 text-[11px]"}`}>
-            {model.eventName}
-            {model.dateLabel ? ` · ${model.dateLabel}` : ""}
+            {/* eventName already embeds dateLabel when focused — do not append again */}
+            {model.eventName || model.dateLabel}
           </p>
         ) : null}
 

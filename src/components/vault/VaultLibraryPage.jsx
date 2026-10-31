@@ -4,6 +4,7 @@ import { Bookmark, BookmarkCheck } from "lucide-react";
 import { VAULT_SLIDES } from "../../data/platformShowcase";
 import { canonicalFilterGame, gameMatchesFilter } from "../../data/gameCatalog";
 import { sortVaultCatalog } from "../../data/floatingWindows";
+import { vaultEventHref } from "../../data/eventSpotlight";
 import StickyFilterBar from "../shared/StickyFilterBar";
 import TournamentWindowCard, { WINDOW_CARD_HEIGHT } from "./TournamentWindowCard";
 import SectionBackHome from "../layout/SectionBackHome";
@@ -21,18 +22,22 @@ function asVaultCatalogCard(slide = {}) {
       spotlightEventKey: undefined,
       eventName: slide.title || slide.eventName || "",
       title: slide.title || slide.game || "",
-      href: slide.slug ? `/vault/${slide.slug}` : slide.href || "/vault",
+      href: vaultEventHref(slide),
     };
   }
   const game = slide.game || slide.title || "";
-  return {
+  const catalog = {
     ...slide,
     spotlight: false,
     spotlightEdition: undefined,
     spotlightEventKey: undefined,
     eventName: "",
     title: game || slide.title,
-    href: slide.slug ? `/vault/${slide.slug}` : slide.href || "/vault",
+  };
+  return {
+    ...catalog,
+    // Still deep-link into the latest non-EWC edition so open lands on EventBody, not the grid.
+    href: vaultEventHref({ ...catalog, editions: slide.editions, spotlightEventKey: undefined }),
   };
 }
 

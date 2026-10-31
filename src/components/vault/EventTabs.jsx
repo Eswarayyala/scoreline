@@ -17,7 +17,7 @@ import ShareEventCard from "./ShareEventCard";
 import EwcTitleCard from "./EwcTitleCard";
 import TournamentWindowCard, { WINDOW_CARD_HEIGHT, windowFactBlurb } from "./TournamentWindowCard";
 import CompetitorNameLink from "./CompetitorNameLink";
-import { editionEventKey } from "../../data/eventSpotlight";
+import { editionEventKey, pickSpotlightEdition } from "../../data/eventSpotlight";
 
 function editionHighlightMap(edition = {}) {
   const nested = edition.highlights || {};
@@ -396,7 +396,10 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
       const base = `${edition.year}-${edition.event}-${edition.eventScope || ""}`;
       return eventParam === base || eventParam.startsWith(`${base}-`);
     });
-    return loose >= 0 ? loose : -1;
+    if (loose >= 0) return loose;
+    // Stale / remapped deep link — still open an event tab, never dump the grid.
+    const pick = pickSpotlightEdition(ordered);
+    return pick?.index ?? 0;
   }, [eventParam, ordered]);
 
   const compareKeys = useMemo(
@@ -676,14 +679,12 @@ export default function EventTabs({ editions = [], game, heading = "", fallbackP
               style={{ height: WINDOW_CARD_HEIGHT }}
             >
               {ewc ? (
-                <>
-                  <EwcTitleCard
-                    edition={{ ...edition, game: edition.game || game }}
-                    to={eventHref}
-                    onOpen={() => openEvent(index)}
-                  />
-                  <div className="absolute right-2 top-2 z-[3]">{compareBookmark}</div>
-                </>
+                <EwcTitleCard
+                  edition={{ ...edition, game: edition.game || game }}
+                  to={eventHref}
+                  onOpen={() => openEvent(index)}
+                  bookmark={compareBookmark}
+                />
               ) : (
                 <TournamentWindowCard
                   slide={slide}

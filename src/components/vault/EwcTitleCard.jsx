@@ -10,20 +10,24 @@ import {
 import { windowFactBlurb } from "./TournamentWindowCard";
 
 /**
- * EWC-only title card — gold championship chrome with the winning
- * player / team / moment driving that game's poster.
+ * EWC title card — gold championship chrome.
+ * Header stack matches TournamentWindowCard (status → title → subline → body)
+ * so EventTabs / championship grids stay visually aligned.
  */
 export default function EwcTitleCard({
   edition = {},
   to = "#",
   onOpen,
   className = "",
+  bookmark = null,
 }) {
   const winner = ewcWinnerOf(edition);
   const mvp = ewcMvpOf(edition);
   const moment = windowFactBlurb(ewcMomentOf(edition), { maxChars: 160, maxSentences: 2 });
   const poster = posterForEwcEdition(edition);
   const game = edition.game || "Title";
+  const year = edition.year || edition.season || "";
+  const eventLabel = String(edition.event || "").trim();
   const playerWin = ewcWinnerLooksLikePlayer(winner) || ewcWinnerLooksLikePlayer(mvp);
   const subject = winner || mvp || game;
   const subjectKind = winner
@@ -32,6 +36,17 @@ export default function EwcTitleCard({
       ? "MVP"
       : "Title";
   const showMvpChip = mvp && winner && mvp !== winner;
+  // Hero stays the champion/MVP (distinct across EWC title grids); slot matches
+  // TournamentWindowCard — top title, then mono subline, then body copy.
+  const header = subject;
+  const subline = [
+    subjectKind,
+    game && game !== header ? game : "",
+    year,
+    eventLabel && eventLabel !== header ? eventLabel : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   const open = (event) => {
     if (!onOpen) return;
@@ -41,7 +56,7 @@ export default function EwcTitleCard({
 
   return (
     <article
-      className={`group relative flex h-full flex-col overflow-hidden rounded-2xl border ${className}`}
+      className={`group relative isolate z-0 flex h-full max-h-full flex-col overflow-hidden rounded-2xl border ${className}`}
       style={{
         borderColor: "rgba(212, 175, 55, 0.45)",
         boxShadow:
@@ -49,13 +64,13 @@ export default function EwcTitleCard({
         height: "100%",
       }}
     >
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 overflow-hidden">
         {poster ? (
           <img
             src={poster}
             alt=""
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
-            style={{ objectPosition: playerWin ? "center top" : "60% center" }}
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+            style={{ objectPosition: playerWin ? "center top" : "50% 22%" }}
           />
         ) : (
           <div
@@ -67,7 +82,7 @@ export default function EwcTitleCard({
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(180deg, rgba(8,6,2,0.25) 0%, rgba(8,6,2,0.55) 38%, rgba(8,6,2,0.92) 78%, #080602 100%)",
+              "linear-gradient(180deg, rgba(8,6,2,0.35) 0%, rgba(8,6,2,0.55) 42%, rgba(8,6,2,0.92) 100%), linear-gradient(105deg, rgba(8,6,2,0.88) 0%, rgba(8,6,2,0.45) 55%, rgba(8,6,2,0.2) 100%)",
           }}
         />
         <div
@@ -86,32 +101,48 @@ export default function EwcTitleCard({
         onClick={onOpen ? open : undefined}
       />
 
-      <div className="relative z-[2] flex min-h-0 flex-1 flex-col p-3 pointer-events-none">
-        {showMvpChip ? (
-          <div className="flex justify-end">
-            <span className="inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest text-[#f0d78c]/90">
-              <Sparkles size={10} />
-              MVP {mvp}
+      <div className="relative z-[2] flex min-h-0 flex-1 flex-col pointer-events-none p-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <span
+              className="inline-flex items-center rounded-md px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.14em]"
+              style={{
+                background: "rgba(212, 175, 55, 0.18)",
+                border: "1px solid rgba(212, 175, 55, 0.45)",
+                color: "#f0d78c",
+              }}
+            >
+              EWC
             </span>
           </div>
+          {bookmark ? <div className="pointer-events-auto">{bookmark}</div> : null}
+        </div>
+
+        <h3
+          className="mt-2 line-clamp-2 max-w-[94%] font-['Bebas_Neue',sans-serif] text-[1.45rem] uppercase leading-none tracking-wide text-white"
+          style={{ textShadow: "0 2px 18px rgba(0,0,0,0.65)" }}
+        >
+          {header}
+        </h3>
+        {subline ? (
+          <p className="mt-1 line-clamp-2 font-mono text-[10px] uppercase tracking-[0.08em] text-stone-200/90">
+            {subline}
+          </p>
         ) : null}
 
-        <p className={`font-mono text-[10px] uppercase tracking-[0.14em] text-[#f0d78c]/80 ${showMvpChip ? "mt-2" : ""}`}>
-          {game}
-        </p>
+        <div className="mt-1 min-h-0 flex-1 overflow-hidden">
+          {showMvpChip ? (
+            <p className="mt-2 inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest text-[#f0d78c]/90">
+              <Sparkles size={10} />
+              MVP {mvp}
+            </p>
+          ) : null}
 
-        <div className="mt-auto pt-3">
-          <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#c4a35a]">
-            {subjectKind}
-          </p>
-          <h3
-            className="mt-0.5 font-['Bebas_Neue',sans-serif] text-[1.65rem] uppercase leading-[0.95] tracking-wide text-white"
-            style={{ textShadow: "0 2px 18px rgba(0,0,0,0.7)" }}
-          >
-            {subject}
-          </h3>
           {moment ? (
-            <p className="mt-2 text-[12px] leading-[1.4] text-stone-200/95" style={{ textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}>
+            <p
+              className="mt-1.5 text-[12px] leading-[1.4] text-stone-100/95"
+              style={{ textShadow: "0 1px 10px rgba(0,0,0,0.55)" }}
+            >
               {moment}
             </p>
           ) : null}

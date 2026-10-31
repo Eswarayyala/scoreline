@@ -20,6 +20,21 @@ export function pickSpotlightEdition(editions = []) {
 }
 
 /**
+ * Deep-link into a focused EventTabs edition when the slide has seasons.
+ * Live desks, EWC year windows, and blogs stay on the bare vault slug.
+ */
+export function vaultEventHref(slide = {}) {
+  const slug = slide.slug;
+  if (!slug) return "/vault";
+  if (slide.eventStatus === "live" || slide.surface === "ewc-window" || slide.blog || slide.surface === "blog") {
+    return `/vault/${slug}`;
+  }
+  const key = slide.spotlightEventKey || pickSpotlightEdition(slide.editions)?.key || "";
+  if (key) return `/vault/${slug}?event=${encodeURIComponent(key)}`;
+  return `/vault/${slug}`;
+}
+
+/**
  * One home/catalog window per game: spotlight a recent non-EWC event.
  * Opens `/vault/{slug}?event=…` so the vault lands on that edition.
  */
@@ -47,7 +62,7 @@ export function asEventSpotlight(slide = {}) {
     || (Array.isArray(edition.images) ? edition.images[0] : "")
     || "";
 
-  return {
+  const next = {
     ...slide,
     spotlight: true,
     spotlightEdition: edition,
@@ -69,6 +84,9 @@ export function asEventSpotlight(slide = {}) {
     posterSource: edition.posterSource || (eventPoster ? "event" : slide.posterSource || ""),
     images: Array.isArray(edition.images) ? edition.images : slide.images,
     eventPoster,
-    href: slide.slug ? `/vault/${slide.slug}?event=${encodeURIComponent(key)}` : "/vault",
+  };
+  return {
+    ...next,
+    href: vaultEventHref(next),
   };
 }

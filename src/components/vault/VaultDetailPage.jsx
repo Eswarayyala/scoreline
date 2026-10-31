@@ -155,7 +155,12 @@ export default function VaultDetailPage({
         }
       >
         <div className={`relative ${slide.editions?.length && !slide.blog ? "aspect-[21/9] max-h-[260px]" : "aspect-video max-h-[420px]"}`}>
-          <img src={activeFlyer || slide.poster} alt="" className="h-full w-full object-cover" />
+          <img
+            src={activeFlyer || slide.poster}
+            alt=""
+            className="h-full w-full object-cover"
+            style={{ objectPosition: "50% 22%" }}
+          />
           <div
             className="absolute inset-0"
             style={{
