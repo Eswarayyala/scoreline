@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { ImagePlus, Layers3, Newspaper, Trophy, Users, X } from "lucide-react";
 
 const OPTIONS = [

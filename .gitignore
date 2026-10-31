@@ -29,3 +29,6 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# GitNexus local knowledge-graph index
+.gitnexus/

@@ -4,43 +4,74 @@
   --font-display: "Bebas Neue", sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
-  /* Lead neon pink · secondary electric blue · orange reserved for rare flare */
-  --color-neon: #ff2d95;
-  --color-volt: #3b82ff;
-  --color-flare: #ff6b1a;
-  --color-slate-ink: #05070c;
+  /* Accent tracks active theme via --accent (neon orange in dark; ink-orange in light) */
+  --color-neon: var(--accent);
+  --color-volt: var(--accent-secondary);
+  --color-flare: #ff8a24;
+  --color-slate-ink: var(--page-bg-solid);
 }
 
-:root {
+/* Shared semantic tokens — dark match-desk default (before FOUC script / data-theme) */
+:root,
+html[data-theme="dark"] {
   color-scheme: dark;
-  --page-bg:
-    radial-gradient(circle at 12% 0%, rgba(59, 130, 255, 0.16), transparent 34%),
-    radial-gradient(circle at 92% 8%, rgba(255, 45, 149, 0.14), transparent 32%),
-    linear-gradient(160deg, #05070c 0%, #070b12 52%, #0a1020 100%);
-  --page-bg-solid: #05070c;
-  --page-text: #f4f7ff;
-  --panel-bg: rgba(12, 16, 24, 0.96);
-  --panel-raised: #121826;
-  --input-bg: #0a0e16;
-  --text-muted: #9aa8c2;
-  --text-dim: #6b7a96;
-  --border: #1e2a3d;
-  --border-strong: #2a3b55;
-  --accent: #ff2d95;
-  --accent-secondary: #3b82ff;
-  --accent-contrast: #05070c;
+  --page-bg: #12141a;
+  --page-bg-solid: #12141a;
+  --page-text: #eef0f4;
+  --panel-bg: #181b22;
+  --panel-raised: #1e222b;
+  --input-bg: #0e1015;
+  --text-muted: #9aa3b5;
+  --text-dim: #6d7689;
+  --border: #2a303c;
+  --border-strong: #3a4252;
+  --accent: #ff6b1a;
+  --accent-secondary: #5b8def;
+  --accent-contrast: #12141a;
   --danger: #ff5c6c;
   --danger-border: #5c2430;
-  --rank-second: #9aa8c2;
+  --rank-second: #9aa3b5;
   --rank-third: #ff8a24;
   --success: #3ddea8;
   --google-bg: #f4f7ff;
-  --google-text: #05070c;
-  --panel-shadow: 0 10px 28px rgba(5, 7, 12, 0.55);
+  --google-text: #12141a;
+  --panel-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+  --focus-ring: #ff6b1a;
+  --nav-inactive: #8b93a7;
+  --nav-hover: #d5dae6;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Light editorial — warm paper / ink */
+html[data-theme="light"] {
+  color-scheme: light;
+  --page-bg: #f6f4ef;
+  --page-bg-solid: #f6f4ef;
+  --page-text: #1a1714;
+  --panel-bg: #fffcf7;
+  --panel-raised: #f0ebe3;
+  --input-bg: #ffffff;
+  --text-muted: #5c564e;
+  --text-dim: #8a8278;
+  --border: #ddd5c8;
+  --border-strong: #c4b9a8;
+  --accent: #c45c12;
+  --accent-secondary: #2f5f9e;
+  --accent-contrast: #fffaf3;
+  --danger: #b42318;
+  --danger-border: #f3c4c0;
+  --rank-second: #5c564e;
+  --rank-third: #c45c12;
+  --success: #0f7a4e;
+  --google-bg: #1a1714;
+  --google-text: #fffcf7;
+  --panel-shadow: 0 1px 0 rgba(26, 23, 20, 0.06);
+  --focus-ring: #c45c12;
+  --nav-inactive: #8a8278;
+  --nav-hover: #1a1714;
 }
 
 html,
@@ -64,4 +95,52 @@ h2 {
 
 p {
   margin: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/*
+ * Bridge common Tailwind dark-chrome utilities so light theme stays readable
+ * without duplicating every page component.
+ */
+html[data-theme="light"] .text-white {
+  color: var(--page-text);
+}
+html[data-theme="light"] .text-slate-500,
+html[data-theme="light"] .text-slate-600 {
+  color: var(--text-dim);
+}
+html[data-theme="light"] .text-slate-400,
+html[data-theme="light"] .text-slate-300 {
+  color: var(--text-muted);
+}
+html[data-theme="light"] .text-slate-200 {
+  color: var(--page-text);
+}
+html[data-theme="light"] .border-white\/10,
+html[data-theme="light"] .border-white\/15,
+html[data-theme="light"] .border-white\/20 {
+  border-color: var(--border);
+}
+html[data-theme="light"] .bg-black\/20,
+html[data-theme="light"] .bg-black\/40,
+html[data-theme="light"] .bg-black\/70 {
+  background-color: var(--panel-bg);
+}
+html[data-theme="light"] .bg-white\/5,
+html[data-theme="light"] .bg-white\/8 {
+  background-color: var(--panel-raised);
 }

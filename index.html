@@ -10,8 +10,27 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
     <title>GrindInfo</title>
+    <script>
+      (function () {
+        try {
+          var key = "grindinfo-theme";
+          var stored = localStorage.getItem(key);
+          var theme = (stored === "light" || stored === "dark")
+            ? stored
+            : (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+          document.documentElement.setAttribute("data-theme", theme);
+          document.documentElement.style.colorScheme = theme;
+          var bg = theme === "light" ? "#f6f4ef" : "#12141a";
+          var fg = theme === "light" ? "#1a1714" : "#eef0f4";
+          document.documentElement.style.background = bg;
+          document.documentElement.style.color = fg;
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      })();
+    </script>
     <style>
-      html, body { margin: 0; min-height: 100%; background: #17110f; color: #fff1e6; }
+      html, body { margin: 0; min-height: 100%; background: var(--page-bg-solid, #12141a); color: var(--page-text, #eef0f4); }
       #root:empty {
         min-height: 100vh;
         display: grid;

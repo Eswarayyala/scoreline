@@ -34,8 +34,10 @@ import SectionBackHome from "./components/layout/SectionBackHome";
 import TournamentOpsRail from "./components/layout/TournamentOpsRail";
 import SiteUiLayoutDesk from "./components/cms/SiteUiLayoutDesk";
 import EsportsFactFlyer from "./components/popups/EsportsFactFlyer";
+import ThemeSwitcher from "./components/layout/ThemeSwitcher";
 import { ESPORTS_FACTS } from "./data/esportsFacts";
 import { withDemoScrims } from "./data/scrimDemoSeed";
+import { applyTheme, resolvePreferredTheme } from "./data/siteTheme";
 import {
   UI_LAYOUT_DOC,
   canAccessSurface,
@@ -4112,7 +4114,7 @@ export default function App() {
 
   useEffect(() => {
     ensureFonts();
-    localStorage.removeItem("grindinfo-theme");
+    applyTheme(resolvePreferredTheme());
   }, []);
 
   useEffect(() => {
@@ -6334,6 +6336,7 @@ export default function App() {
       <EsportsFactFlyer
         popups={activePopups}
         enabled
+        userId={user?.uid || null}
         paused={Boolean(
           currentPopup
           || showProfileModal
@@ -6407,7 +6410,8 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAcc
         >
           <GrindInfoLogo size="md" />
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <ThemeSwitcher />
           {!user ? <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {guestMode && <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--text-muted)" }}>GUEST</span>}
             <Button variant="ghost" onClick={onSignInClick}>Sign in / join</Button>

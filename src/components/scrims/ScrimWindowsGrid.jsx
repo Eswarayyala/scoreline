@@ -1,4 +1,4 @@
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
 import TournamentWindowCard, { WINDOW_CARD_HEIGHT } from "../vault/TournamentWindowCard";
 import { fadeUp, hoverLift, staggerDelay, tapPress } from "../../motion/presets";
 import { scrimWindowSlide } from "../../data/scrimPhase";

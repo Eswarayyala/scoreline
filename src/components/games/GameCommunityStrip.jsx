@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ExternalLink, MessagesSquare } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
 import { discordForGame } from "../../data/discordCommunity";
 import { fadeUp, tapPress } from "../../motion/presets";
 

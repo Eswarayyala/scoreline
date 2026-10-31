@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Building2, UserRound } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
 import { dossierPath, listFranchises, listPlayers } from "../../data/competitorIndex";
 import { canonicalFilterGame, gameMatchesFilter } from "../../data/gameCatalog";
 import PageEnter from "../motion/PageEnter";

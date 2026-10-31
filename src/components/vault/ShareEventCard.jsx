@@ -60,7 +60,7 @@ export async function buildEventShareCanvas({ edition, game, fallbackPoster }) {
   drawRoundedRect(ctx, 64, 180, width - 128, height - 360, 36);
   ctx.fill();
 
-  ctx.fillStyle = "#ff2d95";
+  ctx.fillStyle = "#ff6b1a";
   ctx.font = "600 28px JetBrains Mono, monospace";
   ctx.fillText(String(edition.year || edition.season || game || "VAULT").toUpperCase(), 100, 260);
 

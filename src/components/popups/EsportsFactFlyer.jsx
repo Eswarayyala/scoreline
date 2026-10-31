@@ -1,37 +1,38 @@
 import { useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { mergeFactCatalog } from "../../data/esportsFacts";
+import { readFactsMuted, writeFactsMuted } from "../../data/siteTheme";
 
 const SHOW_MS = 14_000;
-const FIRST_DELAY_MS = 18_000;
-const GAP_MIN_MS = 55_000;
-const GAP_MAX_MS = 110_000;
+const FIRST_DELAY_MS = 12_000;
+const GAP_MIN_MS = 70_000;
+const GAP_MAX_MS = 120_000;
 
-const CORNERS = [
-  { key: "br", initial: { x: 80, y: 60, opacity: 0 }, style: { right: 16, bottom: 20 } },
-  { key: "bl", initial: { x: -80, y: 60, opacity: 0 }, style: { left: 16, bottom: 20 } },
-  { key: "tr", initial: { x: 80, y: -60, opacity: 0 }, style: { right: 16, top: 88 } },
-  { key: "tl", initial: { x: -80, y: -60, opacity: 0 }, style: { left: 16, top: 88 } },
-];
+const SPRING = { type: "spring", stiffness: 420, damping: 28, mass: 0.85 };
 
 /**
- * Random esports fact flyers — built-in catalog + owner “fact” popups.
- * Works for guests and signed-in users; does not block the page.
+ * Esports fact flyer — fixed bottom-left.
+ * Signed-in users can mute once (persisted per uid in localStorage).
  */
 export default function EsportsFactFlyer({
   popups = [],
   enabled = true,
   paused = false,
+  userId = null,
 }) {
   const reduce = useReducedMotion();
   const catalog = useMemo(() => mergeFactCatalog(popups), [popups]);
   const [fact, setFact] = useState(null);
-  const [corner, setCorner] = useState(CORNERS[0]);
   const [endsAt, setEndsAt] = useState(0);
   const [now, setNow] = useState(Date.now());
+  const [muted, setMuted] = useState(() => readFactsMuted(userId));
 
   useEffect(() => {
-    if (!enabled || catalog.length === 0) return undefined;
+    setMuted(readFactsMuted(userId));
+  }, [userId]);
+
+  useEffect(() => {
+    if (!enabled || muted || catalog.length === 0) return undefined;
     let cancelled = false;
     let showTimer;
     let hideTimer;
@@ -56,7 +57,6 @@ export default function EsportsFactFlyer({
         return;
       }
       lastId = pick.id;
-      setCorner(CORNERS[Math.floor(Math.random() * CORNERS.length)]);
       setFact(pick);
       setEndsAt(Date.now() + SHOW_MS);
       hideTimer = window.setTimeout(() => {
@@ -73,7 +73,7 @@ export default function EsportsFactFlyer({
       window.clearTimeout(hideTimer);
       window.clearTimeout(loopTimer);
     };
-  }, [enabled, catalog, paused]);
+  }, [enabled, catalog, paused, muted]);
 
   useEffect(() => {
     if (!fact) return undefined;
@@ -81,31 +81,40 @@ export default function EsportsFactFlyer({
     return () => window.clearInterval(tick);
   }, [fact]);
 
+  const muteFacts = () => {
+    if (!userId) return;
+    writeFactsMuted(userId, true);
+    setMuted(true);
+    setFact(null);
+  };
+
   const remaining = Math.max(0, endsAt - now);
+  const progress = remaining / SHOW_MS;
+
+  if (muted) return null;
 
   return (
-    <AnimatePresence>
+    <AnimatePresence initial={false}>
       {fact ? (
         <motion.aside
-          key={`${fact.id}-${corner.key}`}
+          key={fact.id}
           role="status"
           aria-live="polite"
-          initial={reduce ? false : corner.initial}
-          animate={{ x: 0, y: 0, opacity: 1 }}
-          exit={reduce ? undefined : { ...corner.initial, opacity: 0 }}
-          transition={{ type: "spring", stiffness: 280, damping: 24 }}
+          initial={reduce ? false : { x: -48, y: 24, opacity: 0, scale: 0.96 }}
+          animate={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+          exit={reduce ? { opacity: 0 } : { x: -36, y: 16, opacity: 0, scale: 0.97 }}
+          transition={reduce ? { duration: 0.15 } : SPRING}
           style={{
             position: "fixed",
+            left: 16,
+            bottom: 20,
             zIndex: 85,
             width: "min(100% - 32px, 340px)",
             padding: 14,
-            background: "color-mix(in srgb, var(--panel-bg) 94%, transparent)",
-            border: "1px solid color-mix(in srgb, var(--accent) 40%, var(--border))",
-            boxShadow:
-              "0 16px 40px rgba(0,0,0,0.5), 0 0 24px color-mix(in srgb, var(--accent) 16%, transparent)",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
-            ...corner.style,
+            background: "var(--panel-bg)",
+            border: "1px solid var(--border-strong)",
+            boxShadow: "var(--panel-shadow)",
+            willChange: "transform",
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
@@ -115,21 +124,42 @@ export default function EsportsFactFlyer({
             >
               Esports fact · {Math.ceil(remaining / 1000)}s
             </p>
-            <button
-              type="button"
-              aria-label="Dismiss fact"
-              onClick={() => setFact(null)}
-              style={{
-                border: 0,
-                background: "transparent",
-                color: "var(--text-muted)",
-                cursor: "pointer",
-                fontSize: 16,
-                lineHeight: 1,
-              }}
-            >
-              ×
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {userId ? (
+                <button
+                  type="button"
+                  onClick={muteFacts}
+                  style={{
+                    border: 0,
+                    background: "transparent",
+                    color: "var(--text-dim)",
+                    cursor: "pointer",
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 10,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Mute
+                </button>
+              ) : null}
+              <motion.button
+                type="button"
+                aria-label="Dismiss fact"
+                onClick={() => setFact(null)}
+                whileTap={reduce ? undefined : { scale: 0.88 }}
+                style={{
+                  border: 0,
+                  background: "transparent",
+                  color: "var(--text-muted)",
+                  cursor: "pointer",
+                  fontSize: 16,
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </motion.button>
+            </div>
           </div>
           <h3
             style={{
@@ -150,17 +180,21 @@ export default function EsportsFactFlyer({
             style={{
               height: 3,
               marginTop: 12,
-              background: "rgba(255,255,255,0.08)",
+              background: "color-mix(in srgb, var(--border) 80%, transparent)",
               overflow: "hidden",
             }}
           >
-            <div
+            <motion.div
               style={{
                 height: "100%",
-                width: `${(remaining / SHOW_MS) * 100}%`,
+                width: "100%",
+                originX: 0,
                 background: "var(--accent)",
-                transition: "width 0.25s linear",
+                willChange: "transform",
               }}
+              initial={false}
+              animate={{ scaleX: progress }}
+              transition={{ duration: 0.25, ease: "linear" }}
             />
           </div>
         </motion.aside>

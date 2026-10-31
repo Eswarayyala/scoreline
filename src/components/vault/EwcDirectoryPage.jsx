@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Crown } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
 import { flattenEwcEditions, groupEwcChampionships } from "../../data/esportsResearch";
 import { gamesMatch, inferEventScope } from "../../data/eventScope";
 import { posterForEwcChampionship } from "../../data/ewcPoster";

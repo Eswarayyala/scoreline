@@ -1,4 +1,4 @@
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
 import VaultCarousel from "../vault/VaultCarousel";
 import GameThemeRail from "../games/GameThemeRail";
 import { fadeUp } from "../../motion/presets";

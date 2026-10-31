@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
 import { fadeUp, hoverLift, staggerDelay, tapPress } from "../../motion/presets";
 import { defaultUiLayout, homeHubSectionsFor } from "../../data/siteUiLayout";
 

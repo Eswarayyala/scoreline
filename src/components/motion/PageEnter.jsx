@@ -1,4 +1,4 @@
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
 import { pageEnter } from "../../motion/presets";
 
 /** Soft route enter — same feel as vault window reveals. */

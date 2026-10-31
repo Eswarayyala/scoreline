@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
 import { defaultUiLayout, navLinksFor } from "../../data/siteUiLayout";
 
 function HomeGlyph({ active }) {
@@ -10,7 +10,7 @@ function HomeGlyph({ active }) {
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden="true"
-      className={active ? "text-white" : "text-slate-500"}
+      style={{ color: active ? "var(--page-text)" : "var(--nav-inactive)" }}
     >
       <path
         d="M4.5 10.8 12 4.5l7.5 6.3V19a1.5 1.5 0 0 1-1.5 1.5h-3.75v-5.25h-4.5V20.5H6A1.5 1.5 0 0 1 4.5 19v-8.2Z"
@@ -57,8 +57,11 @@ export default function PublicNav({
   };
 
   return (
-    <nav className="relative z-20 mx-auto max-w-6xl px-5">
-      <div className="-mx-1 flex flex-nowrap items-center gap-1 overflow-x-auto border-b border-white/10 px-1 pb-0.5 [scrollbar-width:thin]">
+    <nav className="relative z-20 mx-auto max-w-6xl px-5" aria-label="Primary">
+      <div
+        className="-mx-1 flex flex-nowrap items-center gap-1 overflow-x-auto px-1 pb-0.5 [scrollbar-width:thin]"
+        style={{ borderBottom: "1px solid var(--border)" }}
+      >
         {links.map((link) => {
           const on = linkActive(link);
           return (
@@ -68,15 +71,26 @@ export default function PublicNav({
               onClick={() => open(link)}
               aria-label={link.icon === "home" ? "Home" : link.label}
               aria-current={on ? "page" : undefined}
-              className={`relative flex min-h-10 shrink-0 items-center justify-center px-3 py-2.5 font-mono text-[11px] uppercase tracking-wider transition-colors duration-200 ${
-                on ? "text-white" : "text-slate-500 hover:text-slate-200"
-              }`}
+              className="relative flex min-h-10 shrink-0 items-center justify-center px-3 py-2.5 font-mono text-[11px] uppercase tracking-wider transition-colors duration-200"
+              style={{
+                color: on ? "var(--page-text)" : "var(--nav-inactive)",
+                background: "transparent",
+                border: 0,
+                cursor: "pointer",
+              }}
+              onMouseEnter={(e) => {
+                if (!on) e.currentTarget.style.color = "var(--nav-hover)";
+              }}
+              onMouseLeave={(e) => {
+                if (!on) e.currentTarget.style.color = "var(--nav-inactive)";
+              }}
             >
               {link.icon === "home" ? <HomeGlyph active={on} /> : link.label}
               {on ? (
                 <motion.span
                   layoutId={reduce ? undefined : "public-nav-underline"}
-                  className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-neon"
+                  className="absolute inset-x-2 bottom-0 h-0.5"
+                  style={{ background: "var(--accent)" }}
                   transition={{ type: "spring", stiffness: 380, damping: 32 }}
                 />
               ) : null}
@@ -85,7 +99,7 @@ export default function PublicNav({
         })}
         {showVaultSubs && (
           <>
-            <span className="mx-0.5 shrink-0 text-slate-600" aria-hidden="true">/</span>
+            <span className="mx-0.5 shrink-0" style={{ color: "var(--text-dim)" }} aria-hidden="true">/</span>
             {[
               { to: "/vault/franchises", label: "Franchises" },
               { to: "/vault/players", label: "Players" },
@@ -97,9 +111,13 @@ export default function PublicNav({
                   key={link.to}
                   type="button"
                   onClick={() => navigate(link.to)}
-                  className={`min-h-10 shrink-0 px-2.5 py-2.5 font-mono text-[10px] uppercase tracking-wider transition-colors duration-200 ${
-                    on ? "text-neon" : "text-slate-500 hover:text-slate-300"
-                  }`}
+                  className="min-h-10 shrink-0 px-2.5 py-2.5 font-mono text-[10px] uppercase tracking-wider transition-colors duration-200"
+                  style={{
+                    color: on ? "var(--accent)" : "var(--nav-inactive)",
+                    background: "transparent",
+                    border: 0,
+                    cursor: "pointer",
+                  }}
                 >
                   {link.label}
                 </button>
