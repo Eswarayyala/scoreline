@@ -96,9 +96,9 @@ service cloud.firestore {
         && data.keys().hasAll(['title', 'message', 'type', 'enabled', 'frequency', 'startsAt', 'endsAt', 'createdAt', 'updatedAt'])
         && data.title is string && data.title.size() > 0 && data.title.size() <= 100
         && data.message is string && data.message.size() > 0 && data.message.size() <= 1000
-        && data.type in ['disclaimer', 'motivation']
+        && data.type in ['disclaimer', 'motivation', 'fact']
         && data.enabled is bool
-        && data.frequency in ['registration', 'session', 'random', 'hourly', 'busy']
+        && data.frequency in ['registration', 'session', 'random', 'hourly', 'busy', 'fly']
         && (!data.keys().hasAny(['minimumOnline']) || (data.minimumOnline is int && data.minimumOnline >= 0 && data.minimumOnline <= 1000000))
         && data.startsAt is int && data.startsAt >= 0
         && data.endsAt is int && data.endsAt >= 0

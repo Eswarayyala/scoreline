@@ -33,7 +33,9 @@ import BrandSlowMo from "./components/brand/BrandSlowMo";
 import SectionBackHome from "./components/layout/SectionBackHome";
 import TournamentOpsRail from "./components/layout/TournamentOpsRail";
 import SiteUiLayoutDesk from "./components/cms/SiteUiLayoutDesk";
-import ScrimMotivatePop from "./components/scrims/ScrimMotivatePop";
+import EsportsFactFlyer from "./components/popups/EsportsFactFlyer";
+import { ESPORTS_FACTS } from "./data/esportsFacts";
+import { withDemoScrims } from "./data/scrimDemoSeed";
 import {
   UI_LAYOUT_DOC,
   canAccessSurface,
@@ -188,7 +190,7 @@ function markChatConversationSeen(conversationId, at = Date.now()) {
   return next;
 }
 
-/** Notification badges — blue fill, orange edge (not site pink). */
+/** Notification badges — blue fill (distinct from site neon pink). */
 const NOTICE_BADGE_STYLE = {
   background: "var(--accent-secondary)",
   color: "#ffffff",
@@ -2909,12 +2911,13 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
     const message = String(editing?.message || "").trim();
     if (!title || !message) { setPopupError("Add both a title and message."); return; }
     if (editing.startsAt && editing.endsAt && new Date(editing.endsAt).getTime() <= new Date(editing.startsAt).getTime()) { setPopupError("The end time must be later than the start time."); return; }
+    const type = editing.type === "disclaimer" ? "disclaimer" : editing.type === "fact" ? "fact" : "motivation";
     const payload = {
       title: title.slice(0, 100), message: message.slice(0, 1000),
-      type: editing.type === "disclaimer" ? "disclaimer" : "motivation",
+      type,
       enabled: editing.enabled === true,
-      frequency: editing.type === "disclaimer" ? "registration" : (editing.frequency || "random"),
-      minimumOnline: editing.frequency === "busy" ? Math.max(2, Math.min(1000000, Number(editing.minimumOnline) || 10)) : 0,
+      frequency: type === "disclaimer" ? "registration" : type === "fact" ? "fly" : (editing.frequency || "random"),
+      minimumOnline: editing.frequency === "busy" && type === "motivation" ? Math.max(2, Math.min(1000000, Number(editing.minimumOnline) || 10)) : 0,
       startsAt: editing.startsAt ? new Date(editing.startsAt).getTime() : 0,
       endsAt: editing.endsAt ? new Date(editing.endsAt).getTime() : 0,
       updatedAt: Date.now(),
@@ -2993,13 +2996,15 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
         <SiteUiLayoutDesk layout={uiLayout} onSave={onSaveUiLayout} />
       )}
       {tab === "popups" && isOwner && <section>
-        <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Create plain-text safety reminders or general popups. General popups appear at random intervals of 15 to 30 minutes while someone is actively browsing.</p>
+        <p style={{ color: "var(--text-muted)", fontSize: 13 }}>
+          Create safety reminders, general popups, or esports facts. {ESPORTS_FACTS.length} built-in esports facts already fly in from random corners for every visitor; custom facts you add join that same rotation.
+        </p>
         <Button onClick={() => openEditor()}>Add popup</Button>
         {editing && <div style={{ display: "grid", gap: 10, maxWidth: 620, padding: 16, marginTop: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
           <Field label="Title"><TextInput value={editing.title} maxLength={100} onChange={(e) => setEditing({ ...editing, title: e.target.value })} /></Field>
           <Field label="Message"><textarea value={editing.message} maxLength={1000} rows={4} onChange={(e) => setEditing({ ...editing, message: e.target.value })} style={{ ...inputStyle, resize: "vertical" }} /></Field>
-          <Field label="Type"><Select value={editing.type} onChange={(e) => { const type = e.target.value; setEditing({ ...editing, type, frequency: type === "disclaimer" ? "registration" : (editing.frequency === "registration" ? "random" : editing.frequency) }); }}><option value="motivation">Popup</option><option value="disclaimer">Safety disclaimer</option></Select></Field>
-          {editing.type === "disclaimer" ? <Field label="Show frequency"><div style={{ padding: 10, border: "1px solid var(--border)", color: "var(--text-muted)", fontSize: 13 }}>Shown automatically before a player sends a tournament registration request.</div></Field> : <>
+          <Field label="Type"><Select value={editing.type} onChange={(e) => { const type = e.target.value; setEditing({ ...editing, type, frequency: type === "disclaimer" ? "registration" : type === "fact" ? "fly" : (editing.frequency === "registration" || editing.frequency === "fly" ? "random" : editing.frequency) }); }}><option value="motivation">Popup</option><option value="disclaimer">Safety disclaimer</option><option value="fact">Esports fact</option></Select></Field>
+          {editing.type === "disclaimer" ? <Field label="Show frequency"><div style={{ padding: 10, border: "1px solid var(--border)", color: "var(--text-muted)", fontSize: 13 }}>Shown automatically before a player sends a tournament registration request.</div></Field> : editing.type === "fact" ? <Field label="Show frequency"><div style={{ padding: 10, border: "1px solid var(--border)", color: "var(--text-muted)", fontSize: 13 }}>Flies in from a random corner with the built-in esports fact catalog (about every 1–2 minutes after the first appear).</div></Field> : <>
             <Field label="Show frequency"><Select value={editing.frequency || "random"} onChange={(e) => setEditing({ ...editing, frequency: e.target.value })}><option value="random">Casual — randomly every 15–30 minutes</option><option value="hourly">Every hour</option><option value="session">Once per visit</option><option value="busy">Only during high traffic</option></Select></Field>
             {editing.frequency === "busy" && <><Field label="High traffic means at least this many players online"><TextInput type="number" min="2" max="1000000" value={editing.minimumOnline || 10} onChange={(e) => setEditing({ ...editing, minimumOnline: e.target.value })} /></Field><div style={{ color: "var(--text-dim)", fontSize: 11 }}>High-traffic timing needs Realtime Database and the matching Firebase Functions deployed.</div></>}
           </>}
@@ -3009,7 +3014,7 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
           {popupError && <div role="alert" style={{ color: "var(--danger)" }}>{popupError}</div>}
           <div style={{ display: "flex", gap: 8 }}><Button onClick={savePopup}>Save popup</Button><Button variant="ghost" onClick={() => setEditing(null)}>Cancel</Button></div>
         </div>}
-        <div style={{ display: "grid", gap: 10, marginTop: 14 }}>{popups.map((popup) => <article key={popup.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{popup.enabled ? "Enabled" : "Disabled"} · {popup.type === "motivation" ? "Popup" : "Safety disclaimer"} · {popup.type === "disclaimer" ? "Before registration" : popup.frequency === "hourly" ? "Every hour" : popup.frequency === "session" ? "Once per visit" : popup.frequency === "busy" ? `${popup.minimumOnline || 10}+ online` : "Every 15–30 minutes"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "5px 0" }}>{popup.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{popup.message}</p><div style={{ display: "flex", gap: 8 }}><Button variant="ghost" onClick={() => openEditor(popup)}>Edit</Button><Button variant="danger" onClick={() => onDeletePopup(popup.id)}>Delete</Button></div></article>)}</div>
+        <div style={{ display: "grid", gap: 10, marginTop: 14 }}>{popups.map((popup) => <article key={popup.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{popup.enabled ? "Enabled" : "Disabled"} · {popup.type === "motivation" ? "Popup" : popup.type === "fact" ? "Esports fact" : "Safety disclaimer"} · {popup.type === "disclaimer" ? "Before registration" : popup.type === "fact" ? "Random fly-in" : popup.frequency === "hourly" ? "Every hour" : popup.frequency === "session" ? "Once per visit" : popup.frequency === "busy" ? `${popup.minimumOnline || 10}+ online` : "Every 15–30 minutes"}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "5px 0" }}>{popup.title}</h2><p style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)" }}>{popup.message}</p><div style={{ display: "flex", gap: 8 }}><Button variant="ghost" onClick={() => openEditor(popup)}>Edit</Button><Button variant="danger" onClick={() => onDeletePopup(popup.id)}>Delete</Button></div></article>)}</div>
       </section>}
       {tab === "support access" && isOwner && (
         <div style={{ display: "grid", gap: 28 }}>
@@ -4114,10 +4119,13 @@ export default function App() {
     const unsubscribe = onSnapshot(
       TOURNAMENTS_COLLECTION,
       (snap) => {
-        setTournaments(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setTournaments(withDemoScrims(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
         setLoading(false);
       },
-      () => setLoading(false)
+      () => {
+        setTournaments(withDemoScrims([]));
+        setLoading(false);
+      }
     );
     return () => unsubscribe();
   }, []);
@@ -4422,6 +4430,14 @@ export default function App() {
     [user, myProfile, userPrefs, showToast]
   );
 
+  const isDemoScrimId = (id) => String(id || "").startsWith("demo-scrim-")
+    || tournaments.some((item) => item.id === id && item.isDemo === true);
+  const blockDemoScrimWrite = (id) => {
+    if (!isDemoScrimId(id)) return false;
+    showToast("Demo scrims are preview-only — create a real scrim to host.");
+    return true;
+  };
+
   // ---- mutations (now writing to the tournaments collection + sub-collections) ----
   const addTournament = async (t) => {
     if (!user) return;
@@ -4515,6 +4531,7 @@ export default function App() {
   };
 
   const saveTournamentResults = async (id, results) => {
+    if (blockDemoScrimWrite(id)) return;
     setSaving(true);
     try {
       const now = Date.now();
@@ -4565,6 +4582,7 @@ export default function App() {
   };
 
   const deleteTournament = async (id) => {
+    if (blockDemoScrimWrite(id)) return;
     setSaving(true);
     try {
       await Promise.all([
@@ -4659,6 +4677,7 @@ export default function App() {
 
   const requestRegistration = async (tournamentId, player) => {
     if (!user) return;
+    if (blockDemoScrimWrite(tournamentId)) return;
     const event = tournaments.find((item) => item.id === tournamentId);
     if (isTournamentFull(event, selectedRegistrations)) {
       showToast("This tournament is full.");
@@ -4796,6 +4815,7 @@ export default function App() {
   };
 
   const updateTournamentSettings = async (tournamentId, patch) => {
+    if (blockDemoScrimWrite(tournamentId)) return;
     try {
       const next = { ...patch, updatedAt: Date.now() };
       if (next.maxSlots != null) next.maxSlots = Math.max(0, Math.min(256, Math.trunc(Number(next.maxSlots) || 0)));
@@ -6034,24 +6054,6 @@ export default function App() {
                       }}
                       onSignIn={() => setAuthDialogOpen(true)}
                     />
-                    {!showArchivedTournaments ? (
-                      <ScrimMotivatePop
-                        enabled
-                        tournaments={tournaments.filter((item) => canSeeScrimInList(item, {
-                          uid: user?.uid,
-                          invites: tournamentInvites,
-                        }))}
-                        avoidGames={[
-                          ...(myProfile?.games || []),
-                          ...(scrimAlerts.games || []),
-                        ]}
-                        onOpen={(id) => {
-                          setSelectedId(id);
-                          setView("detail");
-                          navigate(`/tournaments/${id}`);
-                        }}
-                      />
-                    ) : null}
                   </>
                 )} />
                 <Route path="/hosts/:uid" element={(() => {
@@ -6329,6 +6331,18 @@ export default function App() {
       )}
       {!user && authDialogOpen && <AuthScreen onGoogleSignIn={handleGoogleSignIn} onEmailAuth={handleEmailAuth} authError={authError} authBusy={authBusy} onBrowseAsGuest={browseAsGuest} onClose={() => setAuthDialogOpen(false)} requireChoice={!guestMode} knownAccounts={knownAccounts} />}
       <SitePopup popup={currentPopup} onDismiss={dismissSitePopup} />
+      <EsportsFactFlyer
+        popups={activePopups}
+        enabled
+        paused={Boolean(
+          currentPopup
+          || showProfileModal
+          || showNewTournament
+          || reportTarget
+          || joinDisclaimerOpen
+          || authDialogOpen
+        )}
+      />
       <Toast message={toast} />
     </div>
   );

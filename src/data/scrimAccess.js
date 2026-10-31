@@ -74,6 +74,7 @@ export function scrimIsPaid(scrim) {
 /** Compact flyer chips for Scrims cards: Public | Invite | Private + Prize. */
 export function scrimFlyerBadges(scrim = {}) {
   const badges = [];
+  if (scrim?.isDemo === true) badges.push({ id: "demo", label: "Demo", tone: "amber" });
   if (isPublicScrim(scrim)) badges.push({ id: "public", label: "Public", tone: "neon" });
   else if (isInviteOnlyScrim(scrim)) badges.push({ id: "invite", label: "Invite", tone: "amber" });
   else badges.push({ id: "private", label: "Private", tone: "slate" });

@@ -67,7 +67,7 @@ export default function BrandSlowMo() {
                 onClick={() => apply(opt.id)}
                 className={`rounded-xl border p-3 text-left transition ${
                   on
-                    ? "border-[var(--accent,#ff6b1a)] bg-white/8 ring-1 ring-[var(--accent,#ff6b1a)]/40"
+                    ? "border-[var(--accent,#ff2d95)] bg-white/8 ring-1 ring-[var(--accent,#ff2d95)]/40"
                     : "border-white/10 bg-[#0b0f14] hover:border-white/25"
                 }`}
               >
@@ -149,7 +149,7 @@ export default function BrandSlowMo() {
                   {on ? (
                     <motion.span
                       layoutId={reduce ? undefined : "slowmo-nav-underline"}
-                      className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-[var(--accent,#ff6b1a)]"
+                      className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-[var(--accent,#ff2d95)]"
                       transition={{
                         type: "spring",
                         stiffness: reduce ? 380 : 70,

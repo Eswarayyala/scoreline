@@ -4,10 +4,10 @@
   --font-display: "Bebas Neue", sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
-  /* Lead neon orange · secondary electric blue · pink reserved for rare flare */
-  --color-neon: #ff6b1a;
+  /* Lead neon pink · secondary electric blue · orange reserved for rare flare */
+  --color-neon: #ff2d95;
   --color-volt: #3b82ff;
-  --color-flare: #ff2d95;
+  --color-flare: #ff6b1a;
   --color-slate-ink: #05070c;
 }
 
@@ -15,7 +15,7 @@
   color-scheme: dark;
   --page-bg:
     radial-gradient(circle at 12% 0%, rgba(59, 130, 255, 0.16), transparent 34%),
-    radial-gradient(circle at 92% 8%, rgba(255, 107, 26, 0.14), transparent 32%),
+    radial-gradient(circle at 92% 8%, rgba(255, 45, 149, 0.14), transparent 32%),
     linear-gradient(160deg, #05070c 0%, #070b12 52%, #0a1020 100%);
   --page-bg-solid: #05070c;
   --page-text: #f4f7ff;
@@ -26,7 +26,7 @@
   --text-dim: #6b7a96;
   --border: #1e2a3d;
   --border-strong: #2a3b55;
-  --accent: #ff6b1a;
+  --accent: #ff2d95;
   --accent-secondary: #3b82ff;
   --accent-contrast: #05070c;
   --danger: #ff5c6c;
