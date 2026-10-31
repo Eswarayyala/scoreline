@@ -3732,12 +3732,23 @@ export default function App() {
     }),
     [circuitCms.records, ewcWindows, blogSlides],
   );
+  const liveVaultEvents = useMemo(
+    () =>
+      circuitCms.records.filter(
+        (item) =>
+          item.eventStatus === "live"
+          && item.enabled !== false
+          && (item.surface === "vault" || item.surface === "tournament"),
+      ),
+    [circuitCms.records],
+  );
   const homeSlides = useMemo(
     () => buildFeaturedWindows({
       floating: floatingSlides,
       research: researchSlidesWithBlogCopy,
+      live: liveVaultEvents,
     }),
-    [floatingSlides, researchSlidesWithBlogCopy],
+    [floatingSlides, researchSlidesWithBlogCopy, liveVaultEvents],
   );
   const vaultSlides = useMemo(() => {
     const seen = new Set();
@@ -3750,7 +3761,7 @@ export default function App() {
     );
     return applyBlogExcerptsToSlides(
       mergeVaultMedia(
-        [...liveEwcWindows, ...researchSlidesWithBlogCopy, ...customVaultWindows, ...blogSlides],
+        [...liveVaultEvents, ...liveEwcWindows, ...researchSlidesWithBlogCopy, ...customVaultWindows, ...blogSlides],
         liveEsportsBanners,
       ).filter((slide) => {
         const key = slide.slug || slide.id;
@@ -3761,9 +3772,9 @@ export default function App() {
         return true;
       }).map((slide) => ({
         ...slide,
-        floating: floatKeys.has(slide.slug || slide.id),
+        floating: floatKeys.has(slide.slug || slide.id) || slide.eventStatus === "live",
         featured: false,
-        ...(slide.surface === "ewc-window"
+        ...(slide.surface === "ewc-window" || slide.eventStatus === "live"
           ? {}
           : {
               spotlight: false,
@@ -3775,7 +3786,7 @@ export default function App() {
       })),
       blogPosts,
     );
-  }, [floatingSlides, ewcWindows, researchSlidesWithBlogCopy, blogSlides, blogPosts, liveEsportsBanners]);
+  }, [floatingSlides, ewcWindows, researchSlidesWithBlogCopy, blogSlides, blogPosts, liveEsportsBanners, liveVaultEvents]);
   const [myProfile, setMyProfile] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
 

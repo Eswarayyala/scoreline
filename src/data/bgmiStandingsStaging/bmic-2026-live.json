@@ -1,0 +1,25 @@
+{
+  "event": "BMIC 2026",
+  "game": "BGMI",
+  "snapshot": "After Match 7",
+  "status": "live",
+  "sourceNote": "Live GF lobby snapshot — present BGIS/BMIC desk.",
+  "standings": [
+    { "rank": 1, "team": "Nongshim RedForce", "wwcd": 1, "finish_points": 44, "placement_points": 30, "total_points": 74 },
+    { "rank": 2, "team": "Dplus KIA", "wwcd": 2, "finish_points": 43, "placement_points": 30, "total_points": 73 },
+    { "rank": 3, "team": "KRX", "wwcd": 1, "finish_points": 47, "placement_points": 19, "total_points": 66 },
+    { "rank": 4, "team": "DGP", "wwcd": 0, "finish_points": 46, "placement_points": 14, "total_points": 60 },
+    { "rank": 5, "team": "Outrage", "wwcd": 1, "finish_points": 37, "placement_points": 18, "total_points": 55 },
+    { "rank": 6, "team": "K9", "wwcd": 2, "finish_points": 31, "placement_points": 20, "total_points": 51 },
+    { "rank": 7, "team": "KN", "wwcd": 0, "finish_points": 27, "placement_points": 22, "total_points": 49 },
+    { "rank": 8, "team": "8Bit", "wwcd": 0, "finish_points": 24, "placement_points": 18, "total_points": 42 },
+    { "rank": 9, "team": "RIC", "wwcd": 0, "finish_points": 25, "placement_points": 14, "total_points": 39 },
+    { "rank": 10, "team": "BLEC", "wwcd": 0, "finish_points": 25, "placement_points": 14, "total_points": 39 },
+    { "rank": 11, "team": "FS", "wwcd": 0, "finish_points": 28, "placement_points": 6, "total_points": 34 },
+    { "rank": 12, "team": "Soul", "wwcd": 0, "finish_points": 29, "placement_points": 3, "total_points": 32 },
+    { "rank": 13, "team": "GDR", "wwcd": 0, "finish_points": 24, "placement_points": 4, "total_points": 28 },
+    { "rank": 14, "team": "MTR", "wwcd": 0, "finish_points": 25, "placement_points": 3, "total_points": 28 },
+    { "rank": 15, "team": "VAL", "wwcd": 0, "finish_points": 13, "placement_points": 4, "total_points": 17 },
+    { "rank": 16, "team": "VS", "wwcd": 0, "finish_points": 3, "placement_points": 5, "total_points": 8 }
+  ]
+}

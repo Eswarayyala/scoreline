@@ -73,17 +73,43 @@ export function sortVaultCatalog(slides = []) {
   });
 }
 
+function asLiveWindow(slide = {}) {
+  if (!slide || slide.eventStatus !== "live" || slide.enabled === false) return null;
+  const slug = slide.slug || slide.id;
+  if (!slug) return null;
+  return {
+    ...slide,
+    floating: true,
+    eventName: slide.title || slide.eventName || "",
+    season: slide.season || slide.liveSnapshot || "",
+    href: `/vault/${slug}`,
+    fact: slide.summary || "",
+    teams: Array.isArray(slide.pointsTable) ? String(slide.pointsTable.length) : slide.teams || "",
+  };
+}
+
 /**
- * Home rail: one recent non-EWC event per game (opens that event in the vault).
+ * Home rail: live desks first, then one recent non-EWC event per game.
  * Skips EWC year windows — those stay on the EWC index / when floated separately.
  */
-export function buildFeaturedWindows({ floating = [], research = [], limit = HOME_WINDOW_LIMIT } = {}) {
+export function buildFeaturedWindows({ floating = [], research = [], live = [], limit = HOME_WINDOW_LIMIT } = {}) {
+  const picked = [];
+  const games = new Set();
+
+  for (const slide of live) {
+    if (picked.length >= limit) break;
+    const window = asLiveWindow(slide);
+    if (!window) continue;
+    const game = slideGameKey(window) || window.slug || window.id;
+    if (!game || games.has(game)) continue;
+    games.add(game);
+    picked.push(window);
+  }
+
   const pool = sortVaultCatalog([
     ...floating.filter((slide) => slide.floating === true && slide.surface !== "ewc-window"),
     ...research.filter((slide) => slide.surface !== "ewc-window"),
   ]);
-  const picked = [];
-  const games = new Set();
   for (const slide of pool) {
     if (picked.length >= limit) break;
     const game = slideGameKey(slide);

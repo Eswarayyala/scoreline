@@ -4,6 +4,7 @@ import { db } from "../firebase";
 import { CIRCUIT_CMS_MOCK } from "../data/circuitCmsMock";
 import { VAULT_SLIDES } from "../data/platformShowcase";
 import { seedResearchCmsRecords } from "../data/esportsResearch";
+import { seedBgmiLiveRecords } from "../data/bgmiLiveSeed";
 import { buildFilterGames } from "../data/gameCatalog";
 import { mergeEwcEditions } from "../data/eventScope";
 import { normalizeEdition } from "../data/vaultDeskSchema";
@@ -73,6 +74,23 @@ function mergeWithSeed(remote = []) {
       poster: ["upload", "url"].includes(existing.posterSource) ? existing.poster : (existing.poster || item.poster),
       posterSource: existing.posterSource || item.posterSource,
       posterIndex: existing.posterIndex ?? item.posterIndex ?? 0,
+    });
+  });
+  seedBgmiLiveRecords().forEach((item) => {
+    const existing = byId.get(item.id);
+    if (!existing) {
+      byId.set(item.id, item);
+      return;
+    }
+    byId.set(item.id, {
+      ...existing,
+      ...item,
+      // Live standings always refresh from seed; keep owner Live/Off + embed overrides.
+      floating: existing.floating === false ? false : true,
+      floatingPriority: existing.floatingPriority ?? item.floatingPriority,
+      liveEmbedUrl: existing.liveEmbedUrl || item.liveEmbedUrl || "",
+      poster: ["upload", "url"].includes(existing.posterSource) ? existing.poster : (item.poster || existing.poster),
+      posterSource: existing.posterSource || item.posterSource,
     });
   });
   if (![...byId.values()].some((item) => item.surface === "vault")) {

@@ -263,7 +263,10 @@ export default function VaultDetailPage({
             )}
             {slide.eventStatus === "live" && (
               <div className="mt-5 space-y-3 text-sm text-slate-300">
-                <p>Stage · {slide.activeStage}</p>
+                <p>
+                  Stage · {slide.activeStage}
+                  {slide.liveSnapshot ? ` · ${slide.liveSnapshot}` : ""}
+                </p>
                 {slide.liveEmbedUrl && (
                   <a className="text-neon" href={slide.liveEmbedUrl} target="_blank" rel="noreferrer">
                     Open live telecast
@@ -274,19 +277,31 @@ export default function VaultDetailPage({
                   <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="text-slate-500">
-                        <th>Group</th>
-                        <th>Team</th>
-                        <th>Pts</th>
-                        <th>W</th>
+                        <th className="py-1 pr-2 font-mono text-[10px] uppercase tracking-widest">#</th>
+                        <th className="py-1 pr-2 font-mono text-[10px] uppercase tracking-widest">Team</th>
+                        <th className="py-1 pr-2 font-mono text-[10px] uppercase tracking-widest">WWCD</th>
+                        {slide.pointsTable.some((row) => row.finish != null && String(row.finish).trim() !== "") && (
+                          <th className="py-1 pr-2 font-mono text-[10px] uppercase tracking-widest">Finish</th>
+                        )}
+                        {slide.pointsTable.some((row) => row.placement != null && String(row.placement).trim() !== "") && (
+                          <th className="py-1 pr-2 font-mono text-[10px] uppercase tracking-widest">Place pts</th>
+                        )}
+                        <th className="py-1 font-mono text-[10px] uppercase tracking-widest">Total</th>
                       </tr>
                     </thead>
                     <tbody>
                       {slide.pointsTable.map((row, i) => (
-                        <tr key={i}>
-                          <td>{row.group}</td>
-                          <td>{row.team}</td>
-                          <td>{row.points}</td>
-                          <td>{row.wins}</td>
+                        <tr key={i} className="border-t border-white/5">
+                          <td className="py-1.5 pr-2">{row.group}</td>
+                          <td className="py-1.5 pr-2">{row.team}</td>
+                          <td className="py-1.5 pr-2">{row.wins}</td>
+                          {slide.pointsTable.some((item) => item.finish != null && String(item.finish).trim() !== "") && (
+                            <td className="py-1.5 pr-2">{row.finish || "—"}</td>
+                          )}
+                          {slide.pointsTable.some((item) => item.placement != null && String(item.placement).trim() !== "") && (
+                            <td className="py-1.5 pr-2">{row.placement || "—"}</td>
+                          )}
+                          <td className="py-1.5 font-mono text-white">{row.points}</td>
                         </tr>
                       ))}
                     </tbody>
