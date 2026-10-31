@@ -24,7 +24,7 @@ import {
   updateProfile,
 } from "firebase/auth";
 import { Link, Navigate, Route, Routes, useNavigate, useLocation } from "react-router-dom";
-import { db, auth, realtimeDb, signInWithGoogle, completeGoogleSignInReturn } from "./firebase";
+import { db, auth, realtimeDb, signInWithGoogle, completeGoogleSignInReturn, signInWithGrindInfoId, syncPrivateHandleLookup } from "./firebase";
 import PlatformHome from "./components/layout/PlatformHome";
 import HubSections from "./components/layout/HubSections";
 import PublicNav from "./components/layout/PublicNav";
@@ -142,6 +142,7 @@ import {
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { onValue, ref as databaseRef, onDisconnect, serverTimestamp, set as setDatabaseValue } from "firebase/database";
 
+const ID_SIGN_IN_ENABLED = Boolean(import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY);
 const PLAYERS_COLLECTION = collection(db, "players");
 const playerDocRef = (uid) => doc(db, "players", uid);
 const scrimHistoryDocRef = (uid, tournamentId) => doc(db, "players", uid, "scrimHistory", tournamentId);
@@ -990,10 +991,10 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowse
             </Field>
           ) : (
             <>
-            <Field label="Account email">
-              <TextInput value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="you@email.com" autoComplete="username" required />
+            <Field label={ID_SIGN_IN_ENABLED ? "GrindInfo ID or account email" : "Account email"}>
+              <TextInput value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder={ID_SIGN_IN_ENABLED ? "name#1234 or you@email.com" : "you@email.com"} autoComplete="username" required />
             </Field>
-            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -6 }}>Password accounts sign in with email. Main accounts should Continue with Google.</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -6 }}>{ID_SIGN_IN_ENABLED ? "Email/password accounts can use their GrindInfo ID. Sign in with email once to link an existing ID. Main Google accounts should Continue with Google." : "GrindInfo ID sign-in will appear after App Check and the matching Cloud Functions are configured. Main Google accounts should Continue with Google."}</div>
             </>
           )}
           <Field label="Password">
@@ -3738,11 +3739,16 @@ export default function App() {
         await updateProfile(cred.user, { displayName: playerNameFromInput(name) });
       } else {
         const identifier = String(email || "").trim();
-        if (!isEmailLike(identifier)) {
-          setAuthError("Sign in with the account email (or Continue with Google). GrindInfo IDs are public labels and no longer map to emails.");
-          return;
+        if (isEmailLike(identifier)) {
+          await signInWithEmailAndPassword(auth, identifier, password);
+          try { await syncPrivateHandleLookup(); } catch { /* Login still succeeds if ID linking needs setup. */ }
+        } else {
+          if (!ID_SIGN_IN_ENABLED) {
+            setAuthError("GrindInfo ID sign-in is not configured yet. Use your account email for now.");
+            return;
+          }
+          await signInWithGrindInfoId(identifier, password);
         }
-        await signInWithEmailAndPassword(auth, identifier, password);
       }
       navigate("/tournaments", { replace: true });
     } catch (e) {
@@ -3756,6 +3762,8 @@ export default function App() {
         "auth/user-disabled": "This account is disabled.",
         "auth/weak-password": "Password should be at least 6 characters.",
         "auth/invalid-email": "That email address doesn't look right.",
+        "functions/failed-precondition": "Sign in with your account email once to link this GrindInfo ID.",
+        "functions/unauthenticated": "The GrindInfo ID or password did not match, or ID sign-in is not configured yet.",
       };
       setAuthError(messages[e.code] || "Something went wrong — try again.");
     } finally {
