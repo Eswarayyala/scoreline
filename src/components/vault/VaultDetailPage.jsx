@@ -12,6 +12,7 @@ import StreamEmbed from "../shared/StreamEmbed";
 import { useGameBanner } from "../../hooks/useMediaLibrary";
 import SectionBackHome from "../layout/SectionBackHome";
 import { windowFactBlurb } from "./TournamentWindowCard";
+import CompetitorNameLink from "./CompetitorNameLink";
 import { fadeUp } from "../../motion/presets";
 import { gameDeskPath, themeForGame } from "../../data/gameThemes";
 
@@ -293,7 +294,9 @@ export default function VaultDetailPage({
                       {slide.pointsTable.map((row, i) => (
                         <tr key={i} className="border-t border-white/5">
                           <td className="py-1.5 pr-2">{row.group}</td>
-                          <td className="py-1.5 pr-2">{row.team}</td>
+                          <td className="py-1.5 pr-2">
+                            {row.team ? <CompetitorNameLink name={row.team} /> : "—"}
+                          </td>
                           <td className="py-1.5 pr-2">{row.wins}</td>
                           {slide.pointsTable.some((item) => item.finish != null && String(item.finish).trim() !== "") && (
                             <td className="py-1.5 pr-2">{row.finish || "—"}</td>

@@ -5,10 +5,17 @@ export const LOGO_STORAGE_KEY = "grindinfo-logo-id";
 export const LOGO_OPTIONS = [
   {
     id: "console-final",
-    label: "Handheld console",
-    note: "Your finished Logo 1 · blue / pink",
-    src: "/brand/collection/logo-b-icon.png",
-    markSrc: "/brand/collection/logo-b-icon.png",
+    label: "GrindInfo lockup",
+    note: "Local upload · console + GRINDINFO wordmark",
+    src: "/brand/collection/logo-new.png",
+    markSrc: "/brand/collection/logo-new.png",
+  },
+  {
+    id: "score-rail-black",
+    label: "Score-rail mark",
+    note: "Neon black G · blue score rail",
+    src: "/brand/grindinfo-mark.svg",
+    markSrc: "/brand/grindinfo-mark.svg",
   },
   {
     id: "wordmark-ring",
@@ -47,20 +54,25 @@ export const LOGO_OPTIONS = [
   },
 ];
 
-/** Agent pick: finished handheld console (Logo 1) — clean mark, matches blue/orange site. */
+/** Latest local upload (Downloads/new logo). */
 export const DEFAULT_LOGO_ID = "console-final";
-const LOGO_PICK_VERSION = "grindinfo-logo-pick-v3";
+const LOGO_PICK_VERSION = "grindinfo-logo-pick-v6";
+const LOGO_PICK_TOKEN = "6";
 
 export function getLogoOption(id) {
-  return LOGO_OPTIONS.find((o) => o.id === id) || LOGO_OPTIONS[0];
+  return (
+    LOGO_OPTIONS.find((o) => o.id === id)
+    || LOGO_OPTIONS.find((o) => o.id === DEFAULT_LOGO_ID)
+    || LOGO_OPTIONS[0]
+  );
 }
 
 export function readStoredLogoId() {
   try {
-    // One-time lock-in of the agent default after chrome refresh (overrides old picker trials).
-    if (localStorage.getItem(LOGO_PICK_VERSION) !== "3") {
+    // One-time lock-in so browsers that were forced onto the score-rail mark return to the original.
+    if (localStorage.getItem(LOGO_PICK_VERSION) !== LOGO_PICK_TOKEN) {
       localStorage.setItem(LOGO_STORAGE_KEY, DEFAULT_LOGO_ID);
-      localStorage.setItem(LOGO_PICK_VERSION, "3");
+      localStorage.setItem(LOGO_PICK_VERSION, LOGO_PICK_TOKEN);
       return DEFAULT_LOGO_ID;
     }
     const id = localStorage.getItem(LOGO_STORAGE_KEY);
@@ -74,7 +86,7 @@ export function readStoredLogoId() {
 export function writeStoredLogoId(id) {
   try {
     localStorage.setItem(LOGO_STORAGE_KEY, id);
-    localStorage.setItem(LOGO_PICK_VERSION, "3");
+    localStorage.setItem(LOGO_PICK_VERSION, LOGO_PICK_TOKEN);
   } catch {
     /* ignore */
   }

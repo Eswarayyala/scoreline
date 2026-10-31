@@ -63,7 +63,7 @@ export async function buildScrimFlyerCanvas(tournament = {}) {
   ctx.fill();
 
   const access = isPublicScrim(tournament) ? "PUBLIC" : isInviteOnlyScrim(tournament) ? "INVITE" : "PRIVATE";
-  ctx.fillStyle = isInviteOnlyScrim(tournament) ? "#fbbf24" : "#39ff14";
+  ctx.fillStyle = isInviteOnlyScrim(tournament) ? "#fbbf24" : "#3b82ff";
   ctx.font = "600 26px JetBrains Mono, monospace";
   ctx.fillText(access, 96, 240);
 

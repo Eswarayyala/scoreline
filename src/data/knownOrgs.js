@@ -156,7 +156,54 @@ export const KNOWN_FRANCHISES = [
   "Ferrari Esports Team",
   "Team Redline",
   "REVIVAL Esports",
+  // BGMI / PUBG Mobile orgs (short lobby tags + full names merge via aliases)
+  "Nongshim RedForce",
+  "Dplus KIA",
+  "Team Soul",
+  "GodLike",
+  "8Bit",
+  "Orange Rock",
+  "S8UL Esports",
+  "S8UL",
+  "Entity Gaming",
+  "Hydra Official",
+  "Revenant Esports",
+  "Global Esports",
+  "Blind Esports",
+  "Team Forever",
+  "Enigma Gaming",
+  "Orangutan",
+  "Team Tamilas",
+  "Medal Esports",
+  "Skylightz Gaming",
+  "Reckoning Esports",
+  "Gods Reign",
 ].sort((a, b) => b.length - a.length);
+
+/** Short lobby / seed tags → canonical franchise label for merge. */
+export const ORG_ALIASES = {
+  soul: "Team Soul",
+  "team soul": "Team Soul",
+  gl: "GodLike",
+  godlike: "GodLike",
+  "8bit": "8Bit",
+  ns: "Nongshim RedForce",
+  "nongshim redforce": "Nongshim RedForce",
+  "dplus kia": "Dplus KIA",
+  dk: "Dplus KIA",
+  s8ul: "S8UL",
+  orangutan: "Orangutan",
+  entity: "Entity Gaming",
+  hydra: "Hydra Official",
+  revenant: "Revenant Esports",
+  ge: "Global Esports",
+  forever: "Team Forever",
+  enigma: "Enigma Gaming",
+  tamilas: "Team Tamilas",
+  skylightz: "Skylightz Gaming",
+  reckoning: "Reckoning Esports",
+  "gods reign": "Gods Reign",
+};
 
 const ORG_PATTERN =
   /\b(team|esports|e-sports|gaming|clan|org|organisation|organization|corp|academy|gladiators|ninjas|thieves|subliners|empire|phoenix|spirit|vitality|faze|liquid|falcons|heretics|gambit|luminosity|cloud9|astralis|fnatic|paper\s*rex|navi|natus|mouz|optic|gen\.?g|t1|drx|loud|acend|heroic|furia|ence|virtus|g2)\b/i;
@@ -176,10 +223,12 @@ export function isPlaceholderCompetitor(name = "") {
 export function canonicalOrgName(name = "") {
   const text = String(name || "").trim();
   if (!text) return "";
+  const alias = ORG_ALIASES[text.toLowerCase()];
+  const base = alias || text;
   const hit = KNOWN_FRANCHISES.find(
-    (org) => text.toLowerCase() === org.toLowerCase() || text.toLowerCase().startsWith(`${org.toLowerCase()} `),
+    (org) => base.toLowerCase() === org.toLowerCase() || base.toLowerCase().startsWith(`${org.toLowerCase()} `),
   );
-  return hit || text.replace(/\s*\([^)]*\)\s*$/, "").trim() || text;
+  return hit || base.replace(/\s*\([^)]*\)\s*$/, "").trim() || base;
 }
 
 export function looksLikeFranchiseName(name = "") {

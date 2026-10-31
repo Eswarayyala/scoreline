@@ -1,4 +1,4 @@
-import { formatForGame } from "./vaultDeskSchema";
+import { formatForGame, normalizeStageEntries } from "./vaultDeskSchema";
 import { canonicalOrgName, isPlaceholderCompetitor, looksLikeFranchiseName } from "./knownOrgs";
 
 const PLAYER_ROLES = new Set(["MVP", "Best IGL", "Fan favourite"]);
@@ -105,7 +105,56 @@ function rolesFromEdition(edition, game) {
     if (!row.team && !row.player) return;
   });
 
+  (edition.stages || []).forEach((stage) => {
+    const stageName = String(stage.name || "Stage").trim() || "Stage";
+    normalizeStageEntries(stage).forEach((entry) => {
+      if (!entry.name || isPlaceholderCompetitor(entry.name)) return;
+      const status = String(entry.status || "").trim();
+      roles.push({
+        role: status ? `${stageName} · ${status}` : stageName,
+        name: entry.name,
+        prize: "",
+        sourceField: competitor === "Player" ? "player" : "team",
+        competitorHint: competitor === "Player" ? "player" : competitor === "Team" ? "team" : "mixed",
+      });
+    });
+  });
+
+  (edition.finalsTable || []).forEach((row) => {
+    ["team", "winner", "player", "driver"].forEach((key) => {
+      const value = String(row?.[key] || "").trim();
+      if (!value || isPlaceholderCompetitor(value)) return;
+      const asPlayer = key === "player" || key === "driver" || competitor === "Player";
+      roles.push({
+        role: row.place ? `Finals · ${row.place}` : "Finals",
+        name: value,
+        prize: "",
+        sourceField: asPlayer ? "player" : "team",
+        competitorHint: asPlayer ? "player" : "team",
+      });
+    });
+  });
+
   return roles;
+}
+
+function rolesFromPointsTable(slide = {}) {
+  const rows = Array.isArray(slide.pointsTable) ? slide.pointsTable : [];
+  return rows
+    .map((row, index) => {
+      const name = String(row?.team || "").trim();
+      if (!name || isPlaceholderCompetitor(name)) return null;
+      const rank = String(row.group || row.rank || index + 1).trim();
+      const pts = String(row.points || "").trim();
+      return {
+        role: rank ? `Standings #${rank}` : "Standings",
+        name,
+        prize: pts ? `${pts} pts` : "",
+        sourceField: "team",
+        competitorHint: "team",
+      };
+    })
+    .filter(Boolean);
 }
 
 function scoreAppearance(appearance) {
@@ -176,33 +225,66 @@ function classifyEntry(entry) {
   };
 }
 
-/** Build a name → career timeline index across vault research slides. */
+function ingestRole(map, name, appearance, scores) {
+  const added = pushAppearance(map, name, appearance);
+  if (!added) return;
+  const entry = map.get(normalizeKey(canonicalOrgName(name)));
+  if (entry) {
+    entry.sourceScores.franchise += scores.franchise;
+    entry.sourceScores.player += scores.player;
+  }
+}
+
+/** Build a name → career timeline index across vault research + live standings (fast client data). */
 export function buildCompetitorIndex(slides = []) {
   const map = new Map();
   slides.forEach((slide) => {
     if (slide.blog || slide.surface === "blog") return;
-    (slide.editions || []).forEach((edition) => {
-      const game = edition.game || slide.game || "";
-      rolesFromEdition(edition, game).forEach(({ role, name, prize, sourceField, competitorHint }) => {
-        const added = pushAppearance(map, name, {
+    const slideGame = slide.game || "";
+    const slideYear = slide.season || slide.year || "";
+    const slideEvent = slide.title || slide.event || "";
+
+    rolesFromPointsTable(slide).forEach(({ role, name, prize, sourceField, competitorHint }) => {
+      ingestRole(
+        map,
+        name,
+        {
           role,
           prize: prize || "",
-          year: edition.year || edition.season || "",
-          event: edition.event || slide.title || "",
-          game,
-          prizePool: edition.prizePool || "",
+          year: slideYear,
+          event: slideEvent,
+          game: slideGame,
+          prizePool: slide.prizePool || "",
           slug: slide.slug || "",
-          eventScope: edition.eventScope || slide.eventScope || "",
+          eventScope: slide.eventScope || "",
           sourceField,
           competitorHint,
-        });
-        if (!added) return;
-        const scores = scoreAppearance({ role, name, sourceField, competitorHint });
-        const entry = map.get(normalizeKey(canonicalOrgName(name)));
-        if (entry) {
-          entry.sourceScores.franchise += scores.franchise;
-          entry.sourceScores.player += scores.player;
-        }
+          live: slide.eventStatus === "live",
+        },
+        scoreAppearance({ role, name, sourceField, competitorHint }),
+      );
+    });
+
+    (slide.editions || []).forEach((edition) => {
+      const game = edition.game || slideGame;
+      rolesFromEdition(edition, game).forEach(({ role, name, prize, sourceField, competitorHint }) => {
+        ingestRole(
+          map,
+          name,
+          {
+            role,
+            prize: prize || "",
+            year: edition.year || edition.season || slideYear,
+            event: edition.event || slideEvent,
+            game,
+            prizePool: edition.prizePool || "",
+            slug: slide.slug || "",
+            eventScope: edition.eventScope || slide.eventScope || "",
+            sourceField,
+            competitorHint,
+          },
+          scoreAppearance({ role, name, sourceField, competitorHint }),
+        );
       });
     });
   });
@@ -215,8 +297,8 @@ export function buildCompetitorIndex(slides = []) {
 
 export function listFranchises(slides = []) {
   return buildCompetitorIndex(slides)
-    .filter((entry) => entry.kind === "franchise")
-    .filter((entry) => entry.gameCount >= 2 || entry.appearanceCount >= 2 || entry.titles >= 1)
+    .filter((entry) => entry.kind === "franchise" || (entry.teamRoleCount > 0 && entry.playerRoleCount === 0))
+    .filter((entry) => entry.gameCount >= 2 || entry.appearanceCount >= 1 || entry.titles >= 1)
     .sort(
       (a, b) =>
         b.gameCount - a.gameCount ||
@@ -239,9 +321,20 @@ export function listPlayers(slides = []) {
 }
 
 export function findCompetitor(slides = [], rawName = "") {
-  const key = normalizeKey(canonicalOrgName(rawName));
+  const label = String(rawName || "").trim();
+  const key = normalizeKey(canonicalOrgName(label));
   if (!key) return null;
-  return buildCompetitorIndex(slides).find((entry) => entry.key === key || normalizeKey(entry.name) === key) || null;
+  const hit = buildCompetitorIndex(slides).find((entry) => entry.key === key || normalizeKey(entry.name) === key);
+  if (hit) return hit;
+  // Stub so standings clicks still open a visible franchise page before past events are uploaded.
+  if (!label || isPlaceholderCompetitor(label)) return null;
+  const name = canonicalOrgName(label) || label;
+  return classifyEntry({
+    name,
+    key,
+    appearances: [],
+    sourceScores: { franchise: looksLikeFranchiseName(name) ? 6 : 2, player: 0 },
+  });
 }
 
 export function dossierPath(name) {

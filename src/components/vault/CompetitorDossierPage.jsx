@@ -43,8 +43,9 @@ export default function CompetitorDossierPage({ slides = [], name = "" }) {
     );
   }
 
-  const isFranchise = dossier.kind === "franchise";
+  const isFranchise = dossier.kind === "franchise" || dossier.kind === "unclassified";
   const champs = dossier.titles || dossier.appearances.filter((row) => /champion/i.test(row.role)).length;
+  const hasHistory = (dossier.appearances || []).length > 0;
   const safeGame = gameTabs.some((tab) => tab.game === activeGame) ? activeGame : gameTabs[0]?.game || "";
   const activeRows = gameTabs.find((tab) => tab.game === safeGame)?.rows || [];
   const visibleTabs = gameTabs.slice(0, page.visible);
@@ -93,57 +94,68 @@ export default function CompetitorDossierPage({ slides = [], name = "" }) {
       </div>
 
       <section className="mt-8">
-        <h2 className="font-display text-3xl text-white">By title</h2>
-        <div className="mt-3 flex flex-wrap items-center gap-1 border-b border-white/10">
-          {tabsToShow.map((tab) => {
-            const on = tab.game === safeGame;
-            return (
-              <button
-                key={tab.game}
-                type="button"
-                onClick={() => setActiveGame(tab.game)}
-                className={`px-2.5 py-2 font-mono text-[10px] uppercase tracking-wider ${
-                  on ? "border-b border-neon text-white" : "border-b border-transparent text-slate-500 hover:text-slate-300"
-                }`}
-              >
-                {tab.game}
-              </button>
-            );
-          })}
-        </div>
-        <LoadMoreBar
-          className="mt-2"
-          total={gameTabs.length}
-          shown={page.visible}
-          pageSize={TAB_PAGE}
-          initial={TAB_PAGE}
-          onMore={page.more}
-          onLess={page.less}
-        />
-        <ul className="mt-4 space-y-3">
-          {activeRows.map((row, index) => (
-            <li key={`${row.year}-${row.event}-${row.role}-${index}`} className="border-t border-white/5 pt-3">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-neon">
-                {[row.year, row.eventScope, row.sourceField].filter(Boolean).join(" · ")}
-              </p>
-              <p className="mt-1 text-lg text-white">
-                {row.slug ? (
-                  <Link to={`/vault/${row.slug}`} className="text-white no-underline hover:text-neon">
-                    {row.event}
-                  </Link>
-                ) : (
-                  row.event
-                )}
-              </p>
-              <p className="mt-1 flex items-center gap-2 text-sm text-slate-300">
-                <Trophy size={14} className="text-neon" />
-                {row.role}
-                {row.prize ? ` · ${row.prize}` : ""}
-                {row.prizePool ? ` · ${row.prizePool}` : ""}
-              </p>
-            </li>
-          ))}
-        </ul>
+        <h2 className="font-display text-3xl text-white">Merged tournament record</h2>
+        <p className="mt-1 text-sm text-slate-400">
+          Appearances from live standings and past vault events are merged under this franchise. New past events fill in as they are uploaded.
+        </p>
+        {!hasHistory ? (
+          <p className="mt-6 rounded-xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
+            No past vault editions linked yet for {dossier.name}. Open standings will still land here, and history grows as past tournaments are added.
+          </p>
+        ) : (
+          <>
+            <div className="mt-3 flex flex-wrap items-center gap-1 border-b border-white/10">
+              {tabsToShow.map((tab) => {
+                const on = tab.game === safeGame;
+                return (
+                  <button
+                    key={tab.game}
+                    type="button"
+                    onClick={() => setActiveGame(tab.game)}
+                    className={`px-2.5 py-2 font-mono text-[10px] uppercase tracking-wider ${
+                      on ? "border-b border-neon text-white" : "border-b border-transparent text-slate-500 hover:text-slate-300"
+                    }`}
+                  >
+                    {tab.game}
+                  </button>
+                );
+              })}
+            </div>
+            <LoadMoreBar
+              className="mt-2"
+              total={gameTabs.length}
+              shown={page.visible}
+              pageSize={TAB_PAGE}
+              initial={TAB_PAGE}
+              onMore={page.more}
+              onLess={page.less}
+            />
+            <ul className="mt-4 space-y-3">
+              {activeRows.map((row, index) => (
+                <li key={`${row.year}-${row.event}-${row.role}-${index}`} className="border-t border-white/5 pt-3">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-neon">
+                    {[row.year, row.eventScope, row.live ? "live" : row.sourceField].filter(Boolean).join(" · ")}
+                  </p>
+                  <p className="mt-1 text-lg text-white">
+                    {row.slug ? (
+                      <Link to={`/vault/${row.slug}`} className="text-white no-underline hover:text-neon">
+                        {row.event}
+                      </Link>
+                    ) : (
+                      row.event
+                    )}
+                  </p>
+                  <p className="mt-1 flex items-center gap-2 text-sm text-slate-300">
+                    <Trophy size={14} className="text-neon" />
+                    {row.role}
+                    {row.prize ? ` · ${row.prize}` : ""}
+                    {row.prizePool ? ` · ${row.prizePool}` : ""}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </section>
     </article>
   );

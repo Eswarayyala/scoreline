@@ -89,7 +89,7 @@ export function resolveScrimDeskPhase(scrim = {}) {
         prize,
         needsCheckIn ? "Check-in before room codes" : "",
       ].filter(Boolean).join(" · "),
-      accent: "neon",
+      accent: "blue",
     };
   }
 

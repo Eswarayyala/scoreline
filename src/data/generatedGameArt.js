@@ -64,9 +64,17 @@ export function generatedPackName(game) {
   return PACK_ALIAS[game] || game;
 }
 
+/** Bump when replacing pack bytes so browsers/CDN drop stale 24h media cache. */
+const GENERATED_ASSET_REV = {
+  bgmi: "official-20261031",
+};
+
 export function generatedAssetPath(game, kind, index) {
   const pack = generatedPackName(game);
-  return `/media/generated/${slugMedia(pack)}/${kind}-${index}.jpg`;
+  const slug = slugMedia(pack);
+  const base = `/media/generated/${slug}/${kind}-${index}.jpg`;
+  const rev = GENERATED_ASSET_REV[slug];
+  return rev ? `${base}?v=${encodeURIComponent(rev)}` : base;
 }
 
 export function generatedAssetsFor(game, kind) {

@@ -29,6 +29,8 @@ export function GrindInfoMark({ height = 40, className = "" }) {
     };
   }, []);
   const opt = getLogoOption(id);
+  const neonBlack = opt.id === "score-rail-black";
+  const wideLockup = opt.id === "console-final";
   return (
     <img
       className={className}
@@ -38,9 +40,12 @@ export function GrindInfoMark({ height = 40, className = "" }) {
       style={{
         height,
         width: "auto",
-        maxWidth: Math.round(height * 3.2),
+        maxWidth: Math.round(height * (wideLockup ? 5.6 : 3.2)),
         objectFit: "contain",
         display: "block",
+        filter: neonBlack
+          ? "drop-shadow(0 0 6px rgba(10,10,10,0.45)) drop-shadow(0 0 14px rgba(59,130,255,0.28))"
+          : undefined,
       }}
       draggable={false}
     />

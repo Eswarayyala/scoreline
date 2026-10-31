@@ -589,6 +589,12 @@ function similarityMatch(me, them) {
   return { score, reasons };
 }
 const PLAYER_AVATARS = ["🎮", "⚡", "🎯", "🛡️", "🔥", "❄️", "🐺", "🦊", "🦁", "🤖", "👾", "🌟"];
+const CHAT_EMOJIS = [
+  "😀", "😂", "🥹", "😍", "😎", "🤔", "🙌", "👏", "🔥", "💯",
+  "❤️", "💀", "😭", "😤", "🤝", "👀", "🎯", "⚡", "🏆", "🎮",
+  "💬", "✅", "❌", "🫡", "🫶", "💪", "🥳", "😴", "🤯", "🥷",
+  "👍", "👎", "✌️", "🤞", "🙏", "💥", "✨", "🌟", "🦊", "🐺",
+];
 const GAME_ICONS = {
   "Valorant": "🎯",
   "League of Legends": "🛡️",
@@ -2266,6 +2272,7 @@ function FriendChat({ currentUser, friend, onClose, muted = false, onToggleMute,
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
   const [sending, setSending] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const logRef = useRef(null);
   const inputRef = useRef(null);
   const participants = [currentUser.uid, friend.uid].sort();
@@ -2310,6 +2317,19 @@ function FriendChat({ currentUser, friend, onClose, muted = false, onToggleMute,
     const latest = messages.reduce((max, item) => Math.max(max, Number(item.createdAt) || 0), 0);
     onSeen(friend.uid, conversationId, latest || Date.now());
   }, [active, ready, messages, friend.uid, conversationId, onSeen]);
+  const insertEmoji = (emoji) => {
+    const input = inputRef.current;
+    const start = typeof input?.selectionStart === "number" ? input.selectionStart : text.length;
+    const end = typeof input?.selectionEnd === "number" ? input.selectionEnd : text.length;
+    const next = `${text.slice(0, start)}${emoji}${text.slice(end)}`.slice(0, 1000);
+    setText(next);
+    requestAnimationFrame(() => {
+      if (!input) return;
+      input.focus();
+      const pos = Math.min(start + emoji.length, next.length);
+      try { input.setSelectionRange(pos, pos); } catch { /* ignore non-text inputs */ }
+    });
+  };
   const send = async (event) => {
     event.preventDefault();
     const clean = text.trim().slice(0, 1000);
@@ -2318,6 +2338,7 @@ function FriendChat({ currentUser, friend, onClose, muted = false, onToggleMute,
     setSending(true);
     setMessages((current) => [...current, pending]);
     setText("");
+    setEmojiOpen(false);
     setError("");
     try {
       await addDoc(CHAT_MESSAGES_COLLECTION(conversationId), { senderId: currentUser.uid, text: clean, createdAt: pending.createdAt });
@@ -2363,7 +2384,7 @@ function FriendChat({ currentUser, friend, onClose, muted = false, onToggleMute,
       </header>
       <div ref={logRef} aria-live="polite" style={{ flex: 1, overflowY: "auto", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
         {messages.map((message) => (
-          <div key={message.id} style={{ alignSelf: message.senderId === currentUser.uid ? "flex-end" : "flex-start", maxWidth: "85%", padding: "8px 10px", background: message.senderId === currentUser.uid ? "var(--panel-raised)" : "transparent", border: "1px solid var(--border)", whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontSize: 13 }}>
+          <div key={message.id} style={{ alignSelf: message.senderId === currentUser.uid ? "flex-end" : "flex-start", maxWidth: "85%", padding: "8px 10px", background: message.senderId === currentUser.uid ? "var(--panel-raised)" : "transparent", border: "1px solid var(--border)", whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontSize: 15, lineHeight: 1.45 }}>
             {message.text}
           </div>
         ))}
@@ -2371,7 +2392,65 @@ function FriendChat({ currentUser, friend, onClose, muted = false, onToggleMute,
         {!ready && !error && <span style={{ color: "var(--text-muted)", fontSize: 13, padding: 8 }}>Opening chat…</span>}
       </div>
       {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 12, padding: "0 10px 8px" }}>{error}</div>}
+      {emojiOpen && (
+        <div
+          role="listbox"
+          aria-label="Emoji picker"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(8, minmax(0, 1fr))",
+            gap: 4,
+            padding: "8px 10px",
+            borderTop: "1px solid var(--border)",
+            background: "var(--panel-raised)",
+            maxHeight: 148,
+            overflowY: "auto",
+          }}
+        >
+          {CHAT_EMOJIS.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              role="option"
+              aria-label={`Insert ${emoji}`}
+              onClick={() => insertEmoji(emoji)}
+              style={{
+                border: "1px solid var(--border)",
+                background: "var(--panel-bg)",
+                color: "var(--page-text)",
+                cursor: "pointer",
+                fontSize: 18,
+                lineHeight: 1.2,
+                padding: "6px 0",
+              }}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      )}
       <form onSubmit={send} style={{ display: "flex", gap: 8, padding: 10, borderTop: "1px solid var(--border)", alignItems: "center" }}>
+        <button
+          type="button"
+          aria-label={emojiOpen ? "Hide emoji picker" : "Show emoji picker"}
+          aria-pressed={emojiOpen}
+          onClick={() => setEmojiOpen((open) => !open)}
+          disabled={!ready}
+          style={{
+            flexShrink: 0,
+            width: 38,
+            height: 38,
+            border: "1px solid var(--border-strong)",
+            background: emojiOpen ? "var(--panel-raised)" : "transparent",
+            color: "var(--page-text)",
+            cursor: ready ? "pointer" : "default",
+            fontSize: 18,
+            lineHeight: 1,
+            opacity: ready ? 1 : 0.5,
+          }}
+        >
+          😊
+        </button>
         <TextInput ref={inputRef} aria-label="Message" value={text} maxLength={1000} onChange={(event) => setText(event.target.value)} placeholder="Write a message" autoComplete="off" style={{ flex: 1, minWidth: 0 }} />
         <Button type="submit" disabled={!ready || sending || !text.trim()} style={{ flexShrink: 0 }}>Send</Button>
       </form>
@@ -2380,6 +2459,8 @@ function FriendChat({ currentUser, friend, onClose, muted = false, onToggleMute,
 }
 
 const CHAT_POPUP_MAX = 6;
+/** Temporary kill-switch: motivation / disclaimer / fact flyers stay off until re-enabled. */
+const SITE_FLYER_POPUPS_ENABLED = false;
 
 function ChatPopup({
   open,
@@ -4070,7 +4151,10 @@ export default function App() {
   }, [siteRole]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!SITE_FLYER_POPUPS_ENABLED || !user) {
+      setCurrentPopup(null);
+      return undefined;
+    }
     const getKeys = (popup) => ({
       next: `grindinfo-popup-next:${user.uid}:${popup.id}:${popup.frequency || "random"}`,
       session: `grindinfo-popup-session:${user.uid}:${popup.id}`,
@@ -4283,6 +4367,9 @@ export default function App() {
   const mutedFriendSet = useMemo(() => new Set(mutedFriendIds), [mutedFriendIds]);
   const chatFocusRef = useRef({ open: false, focusedUid: null });
   chatFocusRef.current = { open: chatPopupOpen, focusedUid: focusedChatUid };
+  const userPrefsRef = useRef(userPrefs);
+  userPrefsRef.current = userPrefs;
+  const chatPrimeRef = useRef(new Map());
   const acceptedFriendsByUid = useMemo(
     () => Object.fromEntries(acceptedFriends.map((friend) => [friend.uid, friend])),
     [acceptedFriendKey],
@@ -4290,6 +4377,7 @@ export default function App() {
   useEffect(() => {
     if (!user?.uid) {
       setChatUnreadByUid({});
+      chatPrimeRef.current = new Map();
       return undefined;
     }
     const messageStops = new Map();
@@ -4304,9 +4392,19 @@ export default function App() {
         (snapshot) => {
           const focus = chatFocusRef.current;
           const viewing = focus.open && focus.focusedUid === friendUid;
+          const incomingTimes = snapshot.docs
+            .map((item) => item.data() || {})
+            .filter((data) => data.senderId && data.senderId !== user.uid)
+            .map((data) => Number(data.createdAt) || 0);
+          const latestIncoming = incomingTimes.length ? Math.max(...incomingTimes) : 0;
+          const primedAt = chatPrimeRef.current.get(conversationId);
+          const isPrime = primedAt == null;
+          if (isPrime) chatPrimeRef.current.set(conversationId, latestIncoming);
+
           if (viewing) {
             const latest = snapshot.docs[0]?.data()?.createdAt;
             markFriendChatSeen(friendUid, conversationId, Number(latest) || Date.now());
+            if (!isPrime && latestIncoming > primedAt) chatPrimeRef.current.set(conversationId, latestIncoming);
             return;
           }
           const seenAt = Number(readChatSeenMap()[conversationId]) || 0;
@@ -4326,12 +4424,18 @@ export default function App() {
             }
             return { ...current, [friendUid]: unread };
           });
-          if (unread > 0) {
+          const freshText = !isPrime && latestIncoming > primedAt;
+          if (freshText) chatPrimeRef.current.set(conversationId, latestIncoming);
+          if (unread > 0 && freshText) {
             const friend = acceptedFriendsByUid[friendUid] || { uid: friendUid, name: "Friend" };
             setActiveChats((current) => {
               if (current.some((item) => item.uid === friendUid)) return current;
               return [...current, friend].slice(-CHAT_POPUP_MAX);
             });
+            if (normalizeNotifyPrefs(userPrefsRef.current || {}).chats !== false) {
+              setFocusedChatUid(friendUid);
+              setChatPopupOpen(true);
+            }
           }
         },
         () => {},
@@ -4353,6 +4457,7 @@ export default function App() {
           if (liveIds.has(id)) return;
           messageStops.get(id)?.();
           messageStops.delete(id);
+          chatPrimeRef.current.delete(id);
         });
       },
       () => {
@@ -6343,10 +6448,10 @@ export default function App() {
         />
       )}
       {!user && authDialogOpen && <AuthScreen onGoogleSignIn={handleGoogleSignIn} onEmailAuth={handleEmailAuth} authError={authError} authBusy={authBusy} onBrowseAsGuest={browseAsGuest} onClose={() => setAuthDialogOpen(false)} requireChoice={!guestMode} knownAccounts={knownAccounts} />}
-      <SitePopup popup={currentPopup} onDismiss={dismissSitePopup} />
+      {SITE_FLYER_POPUPS_ENABLED ? <SitePopup popup={currentPopup} onDismiss={dismissSitePopup} /> : null}
       <EsportsFactFlyer
         popups={activePopups}
-        enabled
+        enabled={SITE_FLYER_POPUPS_ENABLED}
         userId={user?.uid || null}
         paused={Boolean(
           currentPopup
@@ -6355,6 +6460,7 @@ export default function App() {
           || reportTarget
           || joinDisclaimerOpen
           || authDialogOpen
+          || chatPopupOpen
         )}
       />
       <Toast message={toast} />

@@ -11,12 +11,12 @@ import {
   stageStatusLabel,
 } from "../../data/vaultDeskSchema";
 import { flyerForEvent } from "../../data/platformShowcase";
-import { dossierPath } from "../../data/competitorIndex";
 import { posterForEdition } from "../../data/eventPoster";
 import { isEwcEdition } from "../../data/eventScope";
 import ShareEventCard from "./ShareEventCard";
 import EwcTitleCard from "./EwcTitleCard";
 import TournamentWindowCard, { WINDOW_CARD_HEIGHT, windowFactBlurb } from "./TournamentWindowCard";
+import CompetitorNameLink from "./CompetitorNameLink";
 import { editionEventKey } from "../../data/eventSpotlight";
 
 function editionHighlightMap(edition = {}) {
@@ -68,13 +68,7 @@ function eventPoster(edition, fallback, game) {
 }
 
 function NameLink({ children }) {
-  const name = String(children || "").trim();
-  if (!name) return null;
-  return (
-    <Link to={dossierPath(name)} className="text-neon no-underline hover:underline">
-      {name}
-    </Link>
-  );
+  return <CompetitorNameLink name={children}>{children}</CompetitorNameLink>;
 }
 
 export function EventBody({ edition, game, compact = false }) {

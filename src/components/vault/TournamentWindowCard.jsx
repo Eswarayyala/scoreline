@@ -3,6 +3,7 @@ import { Calendar, Gamepad2, MapPin, Monitor, Trophy, Users } from "lucide-react
 import { flyerForEvent } from "../../data/platformShowcase";
 import { publicScopeKicker } from "../../data/eventScope";
 import { useEventWindowPoster } from "../../hooks/useMediaLibrary";
+import CompetitorNameLink from "./CompetitorNameLink";
 
 const STATUS_STYLES = {
   upcoming: {
@@ -13,9 +14,9 @@ const STATUS_STYLES = {
   },
   live: {
     label: "Live",
-    bg: "rgba(255, 45, 149, 0.22)",
-    border: "rgba(255, 45, 149, 0.55)",
-    color: "#ff9fd0",
+    bg: "rgba(255, 107, 26, 0.22)",
+    border: "rgba(255, 107, 26, 0.55)",
+    color: "#ffb38a",
   },
   checkin: {
     label: "Check-in",
@@ -32,9 +33,10 @@ const STATUS_STYLES = {
 };
 
 const PHASE_BORDER = {
-  pink: { border: "rgba(255, 45, 149, 0.55)", glow: "rgba(255, 45, 149, 0.22)" },
+  pink: { border: "rgba(255, 107, 26, 0.55)", glow: "rgba(255, 107, 26, 0.18)" },
   amber: { border: "rgba(251, 191, 36, 0.5)", glow: "rgba(251, 191, 36, 0.18)" },
-  neon: { border: "rgba(57, 255, 20, 0.45)", glow: "rgba(57, 255, 20, 0.14)" },
+  // Was lime green — map to blue so open/scrim windows no longer flash green.
+  neon: { border: "rgba(59, 130, 255, 0.45)", glow: "rgba(59, 130, 255, 0.12)" },
   blue: { border: "rgba(59, 130, 255, 0.45)", glow: "rgba(59, 130, 255, 0.12)" },
   slate: { border: "rgba(148, 163, 184, 0.4)", glow: "rgba(148, 163, 184, 0.1)" },
 };
@@ -348,8 +350,8 @@ function StatusPill({ status, label = "" }) {
 }
 
 const FLYER_BADGE_TONES = {
-  neon: { bg: "rgba(57, 255, 20, 0.16)", border: "rgba(57, 255, 20, 0.45)", color: "#b8ff9a" },
-  pink: { bg: "rgba(255, 45, 149, 0.18)", border: "rgba(255, 45, 149, 0.5)", color: "#ff9fd0" },
+  neon: { bg: "rgba(59, 130, 255, 0.16)", border: "rgba(59, 130, 255, 0.45)", color: "#9ec5ff" },
+  pink: { bg: "rgba(255, 107, 26, 0.18)", border: "rgba(255, 107, 26, 0.5)", color: "#ffb38a" },
   blue: { bg: "rgba(59, 130, 255, 0.18)", border: "rgba(59, 130, 255, 0.5)", color: "#9ec5ff" },
   amber: { bg: "rgba(251, 191, 36, 0.16)", border: "rgba(251, 191, 36, 0.45)", color: "#fcd34d" },
   slate: { bg: "rgba(148, 163, 184, 0.14)", border: "rgba(148, 163, 184, 0.35)", color: "#cbd5e1" },
@@ -494,7 +496,14 @@ function ChampionSpotlight({ model, compact }) {
       <div className="min-w-0">
         {model.champion ? (
           <div className={`font-['Bebas_Neue',sans-serif] uppercase tracking-wide text-white ${compact ? "text-[1.05rem] leading-tight" : "text-3xl"}`}>
-            Champions: {model.champion}
+            Champions:{" "}
+            <span className="pointer-events-auto relative z-[3]">
+              <CompetitorNameLink
+                name={model.champion}
+                stopCardNav
+                className="text-white no-underline hover:text-neon"
+              />
+            </span>
             {showWon ? (
               <span
                 className={`ml-1.5 inline text-[var(--accent-secondary)] ${compact ? "text-[0.92rem]" : "text-2xl"}`}
@@ -527,8 +536,12 @@ function PayoutStrip({ model }) {
     >
       <div className="min-w-0 text-center">
         <div className="font-mono text-[8px] uppercase tracking-widest text-slate-400">Runner-up</div>
-        <div className="mt-0.5 truncate text-xs text-slate-100">
-          {model.runnerUp || model.runnerPrize || "—"}
+        <div className="pointer-events-auto relative z-[3] mt-0.5 truncate text-xs text-slate-100">
+          {model.runnerUp ? (
+            <CompetitorNameLink name={model.runnerUp} stopCardNav className="text-slate-100 no-underline hover:text-neon" />
+          ) : (
+            model.runnerPrize || "—"
+          )}
         </div>
         {model.runnerUp && model.runnerPrize ? (
           <div className="truncate text-[10px] text-[var(--accent-secondary)]">{model.runnerPrize}</div>
@@ -536,8 +549,12 @@ function PayoutStrip({ model }) {
       </div>
       <div className="min-w-0 text-center">
         <div className="font-mono text-[8px] uppercase tracking-widest text-slate-400">3rd place</div>
-        <div className="mt-0.5 truncate text-xs text-slate-100">
-          {model.thirdPlace || model.thirdPrize || "—"}
+        <div className="pointer-events-auto relative z-[3] mt-0.5 truncate text-xs text-slate-100">
+          {model.thirdPlace ? (
+            <CompetitorNameLink name={model.thirdPlace} stopCardNav className="text-slate-100 no-underline hover:text-neon" />
+          ) : (
+            model.thirdPrize || "—"
+          )}
         </div>
         {model.thirdPlace && model.thirdPrize ? (
           <div className="truncate text-[10px] text-[var(--accent-secondary)]">{model.thirdPrize}</div>
@@ -545,8 +562,12 @@ function PayoutStrip({ model }) {
       </div>
       <div className="min-w-0 text-center">
         <div className="font-mono text-[8px] uppercase tracking-widest text-slate-400">MVP</div>
-        <div className="mt-0.5 truncate text-xs text-slate-100">
-          {model.mvp || model.mvpPrize || "—"}
+        <div className="pointer-events-auto relative z-[3] mt-0.5 truncate text-xs text-slate-100">
+          {model.mvp ? (
+            <CompetitorNameLink name={model.mvp} stopCardNav className="text-slate-100 no-underline hover:text-neon" />
+          ) : (
+            model.mvpPrize || "—"
+          )}
         </div>
         {model.mvp && model.mvpPrize ? (
           <div className="truncate text-[10px] text-[var(--accent-secondary)]">{model.mvpPrize}</div>
@@ -578,7 +599,9 @@ function FinalistsTable({ rows, compact }) {
               : undefined
           }
         >
-          <span className="truncate font-medium text-white">{row.team}</span>
+          <span className="pointer-events-auto relative z-[3] truncate font-medium text-white">
+            <CompetitorNameLink name={row.team} stopCardNav className="text-white no-underline hover:text-neon" />
+          </span>
           <span className="truncate text-slate-300">{row.placement || "—"}</span>
           <span className="truncate text-right text-slate-200">{row.prize || "—"}</span>
         </div>
@@ -686,7 +709,7 @@ export default function TournamentWindowCard({
           className="pointer-events-none absolute inset-0 opacity-30"
           style={{
             background:
-              "linear-gradient(135deg, transparent 40%, rgba(255,45,149,0.1) 70%, rgba(59,130,255,0.14) 100%)",
+              "linear-gradient(135deg, transparent 40%, rgba(255,107,26,0.08) 70%, rgba(59,130,255,0.14) 100%)",
           }}
         />
       </div>
