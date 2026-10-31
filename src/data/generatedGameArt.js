@@ -66,7 +66,34 @@ export function generatedPackName(game) {
 
 /** Bump when replacing pack bytes so browsers/CDN drop stale 24h media cache. */
 const GENERATED_ASSET_REV = {
-  bgmi: "official-20261031",
+  valorant: "official-20261031c",
+  "league-of-legends": "official-20261031c",
+  cs2: "official-20261031c",
+  "dota-2": "official-20261031c",
+  "apex-legends": "official-20261031c",
+  fortnite: "official-20261031c",
+  "overwatch-2": "official-20261031c",
+  "rocket-league": "official-20261031c",
+  pubg: "official-20261031c",
+  bgmi: "official-20261031c",
+  "mobile-legends-bang-bang": "official-20261031c",
+  "free-fire": "official-20261031c",
+  "call-of-duty": "official-20261031c",
+  "rainbow-six-siege": "official-20261031c",
+  "honor-of-kings": "official-20261031c",
+  "clash-royale": "official-20261031c",
+  "brawl-stars": "official-20261031c",
+  "starcraft-ii": "official-20261031c",
+  "teamfight-tactics": "official-20261031c",
+  "street-fighter-6": "official-20261031c",
+  "tekken-8": "official-20261031c",
+  "ea-sports-fc": "official-20261031c",
+  rennsport: "official-20261031c",
+  trackmania: "official-20261031c",
+  chess: "official-20261031c",
+  "fatal-fury": "official-20261031c",
+  crossfire: "official-20261031c",
+  "standoff-2": "official-20261031c",
 };
 
 export function generatedAssetPath(game, kind, index) {
@@ -97,11 +124,12 @@ export function generatedCollectionsFor(game) {
       kind: kind.id,
       game,
       tournamentId: "",
-      title: `${game} · ${kind.label} · generated`,
+      title: `${game} · ${kind.label} · official`,
       defaultUrl: assets[0].url,
       coverUrl: assets[0].url,
       seeded: true,
       generated: true,
+      official: true,
       pack,
     };
   });

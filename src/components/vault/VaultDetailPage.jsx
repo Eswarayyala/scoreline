@@ -83,9 +83,7 @@ export default function VaultDetailPage({
     <article className="mx-auto max-w-5xl px-5 pb-20 pt-6" style={gameTheme.cssVars}>
       <div className="mb-5 space-y-2 border-b border-white/10 py-3">
         <div className="flex flex-wrap items-center gap-4">
-          <Link to="/vault" className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neon">
-            <ArrowLeft size={14} /> The Vault
-          </Link>
+          {/* Back/Home live in SectionBackHome — skip duplicate "The Vault" here. */}
           {slide.game ? (
             <Link
               to={gameDeskPath(slide.game)}
@@ -95,7 +93,7 @@ export default function VaultDetailPage({
               {slide.game} desk
             </Link>
           ) : null}
-          {(slide.research || slide.surface === "research" || slide.surface === "ewc-window") && (
+          {(isChampionship || slide.surface === "ewc-window") && (
             <Link to="/vault/ewc" className="font-mono text-xs uppercase tracking-widest text-neon">
               EWC index
             </Link>
@@ -105,9 +103,10 @@ export default function VaultDetailPage({
               type="button"
               onClick={() => onToggleBookmark(slide.slug)}
               className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neon"
+              aria-label={bookmarked ? "Remove bookmark" : "Bookmark"}
             >
               {bookmarked ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
-              {bookmarked ? "Bookmarked" : "Bookmark"}
+              {eventFocused ? null : bookmarked ? "Bookmarked" : "Bookmark"}
             </button>
           )}
         </div>

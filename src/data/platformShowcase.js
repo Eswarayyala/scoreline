@@ -18,6 +18,12 @@ export function packBackgroundForGame(game, index = 1) {
   return generatedAssetPath(pack, "background", index);
 }
 
+export function packAvatarForGame(game, index = 1) {
+  const pack = generatedPackName(game);
+  if (!pack || !GENERATED_PACKS.includes(pack)) return "";
+  return generatedAssetPath(pack, "avatar", index);
+}
+
 const STOCK_BANNERS = {
   Valorant: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1600&q=80",
   "Apex Legends": "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1600&q=80",
@@ -185,7 +191,12 @@ export function flyersForEvent(item = {}, extras = []) {
 }
 
 export function avatarForGame(game) {
-  return GAME_AVATARS[game] || fallbackAvatar;
+  return (
+    packAvatarForGame(game)
+    || GAME_AVATARS[game]
+    || packAvatarForGame(generatedPackName(game))
+    || fallbackAvatar
+  );
 }
 
 export function avatarForGamer(player = {}) {

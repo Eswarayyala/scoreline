@@ -7431,21 +7431,6 @@ function TournamentResults({ results, isAdmin, onSave }) {
   );
 }
 
-function TournamentInvitePanel({ tournament, friends, invites, onInvite }) {
-  const [friendUid, setFriendUid] = useState("");
-  const selectedFriend = friends.find((friend) => friend.uid === friendUid);
-  const existing = invites.find((invite) => invite.tournamentId === tournament.id && invite.inviteeUid === friendUid);
-  if (tournament.registrationOpen === false || isTournamentArchived(tournament)) return <section style={{ marginTop: 16, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>Invite a friend</Eyebrow><div style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 7 }}>Invites are closed for this scrim.</div></section>;
-  return <section style={{ marginTop: 16, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
-    <Eyebrow>Invite a friend</Eyebrow>
-    <div style={{ color: "var(--text-muted)", fontSize: 12, margin: "7px 0 10px" }}>Invite an accepted friend to view this scrim. They still need to join (and get approved on private scrims) before room codes unlock.</div>
-    {friends.length === 0 ? <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Add a friend first, then you can invite them here.</div> : <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      <Select aria-label="Choose friend to invite" value={friendUid} onChange={(event) => setFriendUid(event.target.value)}><option value="">Choose a friend</option>{friends.map((friend) => <option key={friend.uid} value={friend.uid}>{friend.name}{friend.playerTag ? ` · #${friend.playerTag}` : ""}</option>)}</Select>
-      <Button disabled={!selectedFriend || existing?.status === "pending" || existing?.status === "accepted"} onClick={() => selectedFriend && onInvite(selectedFriend)}>{existing?.status === "pending" ? "Invite pending" : existing?.status === "accepted" ? "Invite accepted" : existing?.status === "declined" ? "Send invite again" : "Send scrim invite"}</Button>
-    </div>}
-  </section>;
-}
-
 function HostControls({ tournament, requests, lobby, onUpdateSettings, onCloseTournament, onSaveLobby }) {
   const [joinMode, setJoinMode] = useState(tournament.joinMode === "open" ? "open" : tournament.joinMode === "invite" ? "invite" : "request");
   const [publicStats, setPublicStats] = useState(tournament.publicStats === true);
