@@ -68,7 +68,7 @@ export async function buildScrimFlyerCanvas(tournament = {}) {
   ctx.fillText(access, 96, 240);
 
   if (scrimIsPaid(tournament)) {
-    ctx.fillStyle = "#ff2d95";
+    ctx.fillStyle = "#ff6b1a";
     ctx.fillText(`PRIZE ₹${Number(tournament.prizeAmount).toLocaleString()}`, 280, 240);
   }
 

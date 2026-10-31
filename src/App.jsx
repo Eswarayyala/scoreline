@@ -28,8 +28,21 @@ import { db, auth, realtimeDb, signInWithGoogle, completeGoogleSignInReturn } fr
 import PlatformHome from "./components/layout/PlatformHome";
 import HubSections from "./components/layout/HubSections";
 import PublicNav from "./components/layout/PublicNav";
+import GrindInfoLogo from "./components/brand/GrindInfoLogo";
+import BrandSlowMo from "./components/brand/BrandSlowMo";
 import SectionBackHome from "./components/layout/SectionBackHome";
 import TournamentOpsRail from "./components/layout/TournamentOpsRail";
+import SiteUiLayoutDesk from "./components/cms/SiteUiLayoutDesk";
+import ScrimMotivatePop from "./components/scrims/ScrimMotivatePop";
+import {
+  UI_LAYOUT_DOC,
+  canAccessSurface,
+  defaultUiLayout,
+  layoutPayloadForSave,
+  normalizeUiLayout,
+  showGamesRail,
+  showVaultOnHome,
+} from "./data/siteUiLayout";
 import VaultDetailPage from "./components/vault/VaultDetailPage";
 import VaultLibraryPage from "./components/vault/VaultLibraryPage";
 import TournamentWindowCard from "./components/vault/TournamentWindowCard";
@@ -886,8 +899,10 @@ function AuthScreen({ onGoogleSignIn, onEmailAuth, authError, authBusy, onBrowse
       <div role="dialog" aria-modal={requireChoice ? "true" : "false"} aria-label="Sign in to GrindInfo" onMouseDown={(event) => event.stopPropagation()} className="gi-auth-panel" style={{ width: "min(380px, 100%)", maxHeight: "calc(100vh - 100px)", overflowY: "auto", padding: 20, color: "var(--page-text)", background: "var(--panel-bg)", border: "1px solid var(--border-strong)", boxShadow: "var(--panel-shadow)", pointerEvents: "auto", animation: "gi-auth-in 320ms cubic-bezier(0.22,1,0.36,1) both" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
           <div>
-            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, color: "var(--page-text)", letterSpacing: "0.04em" }}>GRINDINFO</div>
-            <Eyebrow color="var(--accent-secondary)">Sign in for player features</Eyebrow>
+            <GrindInfoLogo size="md" />
+            <div style={{ marginTop: 8 }}>
+              <Eyebrow color="var(--accent-secondary)">Sign in for player features</Eyebrow>
+            </div>
           </div>
           {!requireChoice && <button type="button" aria-label="Close sign in" onClick={onClose} style={{ background: "none", border: 0, color: "var(--text-muted)", fontSize: 22, cursor: "pointer" }}>×</button>}
         </div>
@@ -2849,7 +2864,7 @@ function SitePopup({ popup, onDismiss }) {
   );
 }
 
-function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerAccess, popups, onSavePopup, onDeletePopup, staff, onSetSupport, onSaveSupportPermissions, supportPermissions = null, tournaments, archiveEntries = [], blogPosts, blogPrivateById = {}, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], deletedCircuitRecords = [], onSaveCircuit, onDeleteCircuit, onRestoreCircuit, onPurgeCircuit, onImportArchive, filterGames = FILTER_GAMES, ewcWindows = [], blogSlides = [], supportChanges = [], onReviewSupportChange, deskGate = null, onSaveDeskPassword }) {
+function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerAccess, popups, onSavePopup, onDeletePopup, staff, onSetSupport, onSaveSupportPermissions, supportPermissions = null, tournaments, archiveEntries = [], blogPosts, blogPrivateById = {}, onBlogReview, onPromoteBlog, archiveSubmissions = [], onArchiveDecision, auditLog = [], onOpenTournament, initialTab = "overview", circuitRecords = [], deletedCircuitRecords = [], onSaveCircuit, onDeleteCircuit, onRestoreCircuit, onPurgeCircuit, onImportArchive, filterGames = FILTER_GAMES, ewcWindows = [], blogSlides = [], supportChanges = [], onReviewSupportChange, deskGate = null, onSaveDeskPassword, uiLayout = null, onSaveUiLayout = null }) {
   const isOwner = role === "owner";
   const perms = normalizeSupportPermissions(supportPermissions);
   const canVault = isOwner || supportHas(perms, "vaultEdit");
@@ -2863,7 +2878,7 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
       ...(canLibrary ? ["library"] : []),
       ...(canBlogs ? ["blogs"] : []),
       ...(canReports ? ["reports"] : []),
-      ...(isOwner ? ["live matrix", "support changes", "activity log", "popups", "support access"] : ["my requests"]),
+      ...(isOwner ? ["ui layout", "live matrix", "support changes", "activity log", "popups", "support access"] : ["my requests"]),
     ],
     [canVault, canLibrary, canBlogs, canReports, isOwner],
   );
@@ -2950,7 +2965,7 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
                 cursor: "pointer",
               }}
             >
-              {name === "vault" ? "Vault" : name === "tournaments" ? "Scrims" : name === "live matrix" ? "Matrix" : name === "support changes" ? "Changes" : name === "activity log" ? "Log" : name === "support access" ? "Access" : name === "my requests" ? "Requests" : name[0].toUpperCase() + name.slice(1)}
+              {name === "vault" ? "Vault" : name === "tournaments" ? "Scrims" : name === "ui layout" ? "UI" : name === "live matrix" ? "Matrix" : name === "support changes" ? "Changes" : name === "activity log" ? "Log" : name === "support access" ? "Access" : name === "my requests" ? "Requests" : name[0].toUpperCase() + name.slice(1)}
             </button>
           ))}
       </div>
@@ -2974,6 +2989,9 @@ function OwnerDashboard({ role, reports, onStatusChange, bans = [], onSetPlayerA
       {tab === "vault" && canVault && <div style={{ display: "grid", gap: 28 }}><VaultResearchDesk records={circuitRecords} deletedRecords={deletedCircuitRecords} role={role} onSave={onSaveCircuit} onDelete={onDeleteCircuit} onRestore={onRestoreCircuit} onPurge={onPurgeCircuit} filterGames={filterGames} permissions={perms} /><VaultMonitor submissions={archiveSubmissions} blogPosts={blogPosts} onDecision={supportHas(perms, "archiveDecide") || isOwner ? onArchiveDecision : undefined} onPromote={supportHas(perms, "blogPromote") || isOwner ? onPromoteBlog : undefined} /></div>}
       {tab === "activity log" && isOwner && <StaffActivityLog actions={auditLog} />}
       {tab === "blogs" && canBlogs && <section><p style={{ color: "var(--text-muted)", fontSize: 13 }}>Watch every community blog from this desk. Publish or decline pending posts, then promote a published story into The Vault from the Vault tab.</p><div style={{ display: "flex", gap: 16, margin: "0 0 14px", fontSize: 13, color: "var(--text-muted)" }}><span>Pending {pendingBlogs}</span><span>Published {blogPosts.filter((post) => post.status === "published").length}</span><span>Total {blogPosts.length}</span></div>{blogPosts.length === 0 ? <EmptyState title="No blog posts yet" body="Community submissions will appear here for preview." /> : <div style={{ display: "grid", gap: 10 }}>{[...blogPosts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 30).map((post) => <article key={post.id} style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)" }}><Eyebrow>{post.game} · {post.status}{post.eventScope ? ` · ${post.eventScope}` : ""} · by {blogCreditStaff(post, blogPrivateById[post.id])}</Eyebrow><h2 style={{ fontFamily: "'Bebas Neue', sans-serif", margin: "6px 0" }}>{post.title}</h2><ExpandableBlogBody text={post.content} />{post.docsUrl && <a href={post.docsUrl} target="_blank" rel="noopener noreferrer" className="text-neon" style={{ marginRight: 10 }}>Docs</a>}{post.source && <a href={post.source} target="_blank" rel="noopener noreferrer" className="text-neon">Source</a>}{post.status === "pending" && (isOwner || supportHas(perms, "blogReview")) && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Button onClick={() => onBlogReview(post.id, "published")}>Publish</Button><Button variant="danger" onClick={() => onBlogReview(post.id, "rejected")}>Decline</Button></div>}</article>)}</div>}</section>}
+      {tab === "ui layout" && isOwner && onSaveUiLayout && (
+        <SiteUiLayoutDesk layout={uiLayout} onSave={onSaveUiLayout} />
+      )}
       {tab === "popups" && isOwner && <section>
         <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Create plain-text safety reminders or general popups. General popups appear at random intervals of 15 to 30 minutes while someone is actively browsing.</p>
         <Button onClick={() => openEditor()}>Add popup</Button>
@@ -3415,6 +3433,7 @@ export default function App() {
     ? (windowLocation.state?.background || location.state?.background || { pathname: "/", search: "", hash: "", state: null, key: "blog-bg" })
     : null;
   const routesLocation = blogOpen ? blogBackground : windowLocation;
+  // blogAllowed is computed after uiLayout/user state below
   const closeBlogOverlay = () => {
     if (windowLocation.state?.background || location.state?.background) {
       navigate(-1);
@@ -3452,6 +3471,7 @@ export default function App() {
   const [siteRoleResolved, setSiteRoleResolved] = useState(!auth.currentUser);
   const [deskGate, setDeskGate] = useState(null);
   const [deskGateLoading, setDeskGateLoading] = useState(true);
+  const [uiLayout, setUiLayout] = useState(() => defaultUiLayout());
   const [friendRequests, setFriendRequests] = useState([]);
   const [blockedUsers, setBlockedUsers] = useState([]);
   const [tournamentInvites, setTournamentInvites] = useState([]);
@@ -3604,6 +3624,7 @@ export default function App() {
     try {
       await signInWithGoogle();
       try { localStorage.setItem("grindinfo-last-active", String(Date.now())); } catch { /* private mode */ }
+      navigate("/tournaments", { replace: true });
     } catch (e) {
       if (e?.code === "auth/popup-closed-by-user" || e?.code === "auth/cancelled-popup-request") {
         setAuthBusy(false);
@@ -3614,7 +3635,7 @@ export default function App() {
         : "Couldn't finish Google sign-in — try Google again, or use email and password.");
       setAuthBusy(false);
     }
-  }, []);
+  }, [navigate]);
 
   const handleEmailAuth = useCallback(async (mode, { name, email, password }) => {
     setAuthError("");
@@ -3635,6 +3656,7 @@ export default function App() {
         }
         await signInWithEmailAndPassword(auth, identifier, password);
       }
+      navigate("/tournaments", { replace: true });
     } catch (e) {
       const messages = {
         "auth/email-already-in-use": "That email is already registered — try signing in instead.",
@@ -3651,7 +3673,7 @@ export default function App() {
     } finally {
       setAuthBusy(false);
     }
-  }, []);
+  }, [navigate]);
 
   const handleSignOut = useCallback(() => {
     sessionStorage.removeItem("grindinfo-guest-mode");
@@ -3674,7 +3696,8 @@ export default function App() {
     setGuestMode(true);
     setAuthDialogOpen(false);
     setAuthError("");
-  }, []);
+    navigate("/tournaments", { replace: true });
+  }, [navigate]);
 
   // ---- player profiles ----
   const [dashTabHint, setDashTabHint] = useState(() => new URLSearchParams(window.location.search).get("tab") || "overview");
@@ -3808,6 +3831,22 @@ export default function App() {
     });
     return () => { stopRole(); stopModerator(); stopGate(); };
   }, [user]);
+
+  useEffect(() => {
+    const stop = onSnapshot(
+      doc(db, "siteSettings", UI_LAYOUT_DOC),
+      (snapshot) => {
+        const next = normalizeUiLayout(snapshot.exists() ? snapshot.data() : defaultUiLayout());
+        // Vault belongs on Home, not the main header tab.
+        if (next.surfaces.vault.place === "nav" || next.surfaces.vault.place === "both") {
+          next.surfaces.vault = { ...next.surfaces.vault, place: "home" };
+        }
+        setUiLayout(next);
+      },
+      () => setUiLayout(defaultUiLayout()),
+    );
+    return () => stop();
+  }, []);
 
   useEffect(() => {
     if (!user) return undefined;
@@ -5635,6 +5674,14 @@ export default function App() {
     showToast(`${role === "owner" ? "Owner" : "Support"} desk password saved`);
   };
 
+  const saveUiLayout = async (layout) => {
+    if (siteRole !== "owner") throw new Error("Only the owner can change the public UI layout.");
+    const payload = layoutPayloadForSave(layout, user?.uid);
+    await setDoc(doc(db, "siteSettings", UI_LAYOUT_DOC), payload);
+    setUiLayout(normalizeUiLayout(payload));
+    showToast("UI layout saved");
+  };
+
   const saveSupportPermissions = async (targetUid, permissions) => {
     if (siteRole !== "owner" || !targetUid) throw new Error("Owner access required");
     const ref = doc(SITE_ROLES_COLLECTION, targetUid);
@@ -5659,6 +5706,13 @@ export default function App() {
   const isAdmin = !!(selected && user && (isOwner || selected.coAdminUserIds?.includes(user.uid)));
   const isSiteStaff = siteRole === "owner" || siteRole === "support";
   const dashboardRole = isSiteStaff ? siteRole : null;
+  const blogAllowed = isSiteStaff || canAccessSurface(uiLayout, "blog", !!user);
+
+  useEffect(() => {
+    if (routePath !== "/blog") return;
+    if (blogAllowed) return;
+    navigate("/tournaments", { replace: true });
+  }, [routePath, blogAllowed, navigate]);
 
   // Keep participation history in sync when the open scrim updates your seat / results.
   useEffect(() => {
@@ -5700,6 +5754,15 @@ export default function App() {
 
   const vaultEditId = routePath.match(/^\/admin\/portal\/vault\/([^/]+)/)?.[1];
   const needsAuthChoice = !user && !guestMode;
+
+  // Guest / signed-in sessions land on Scrims once per tab; Home icon still opens `/`.
+  useEffect(() => {
+    if (authLoading || needsAuthChoice) return;
+    if (routePath !== "/") return;
+    if (sessionStorage.getItem("grindinfo-default-scrims") === "1") return;
+    sessionStorage.setItem("grindinfo-default-scrims", "1");
+    navigate("/tournaments", { replace: true });
+  }, [authLoading, needsAuthChoice, routePath, navigate]);
 
   if (authLoading) {
     return (
@@ -5796,6 +5859,8 @@ export default function App() {
                       filterGames={circuitCms.filterGames}
                       deskGate={deskGate}
                       onSaveDeskPassword={saveDeskRolePassword}
+                      uiLayout={uiLayout}
+                      onSaveUiLayout={saveUiLayout}
                     />
                   )}
                 </StaffDeskGate>
@@ -5806,7 +5871,16 @@ export default function App() {
 
         {!needsAuthChoice && !routePath.startsWith("/admin") && (
           <>
-            <div style={{ position: "relative", zIndex: 55 }}>
+            <div
+              style={{
+                position: "sticky",
+                top: 0,
+                zIndex: 70,
+                background: "color-mix(in srgb, var(--page-bg-solid) 90%, transparent)",
+                backdropFilter: "blur(14px)",
+                WebkitBackdropFilter: "blur(14px)",
+              }}
+            >
               <Header
                 saving={saving}
                 user={user}
@@ -5859,17 +5933,22 @@ export default function App() {
                 friendRequestCount={notifyPrefs.friends ? pendingFriendRequestCount : 0}
                 onOpenFriendRequests={() => setShowFriendRequests(true)}
               />
-              <PublicNav pathname={routePath} />
+              <PublicNav pathname={routePath} signedIn={!!user} uiLayout={uiLayout} />
             </div>
             <div className={`mx-auto px-5 pb-24 ${(routesLocation.pathname || "/") === "/" || String(routesLocation.pathname || "").startsWith("/vault") || String(routesLocation.pathname || "").startsWith("/games") ? "max-w-6xl" : "max-w-5xl"}`}>
               <Routes location={routesLocation}>
                 <Route path="/" element={(
-                  <PlatformHome slides={homeSlides}>
-                    <HubSections />
+                  <PlatformHome
+                    slides={homeSlides}
+                    showVault={showVaultOnHome(uiLayout, !!user)}
+                    showGames={showGamesRail(uiLayout, !!user)}
+                  >
+                    <HubSections signedIn={!!user} uiLayout={uiLayout} />
                   </PlatformHome>
                 )} />
-                <Route path="/games" element={<GamesDirectoryPage />} />
-                <Route path="/games/:slug" element={(
+                <Route path="/brand/slowmo" element={<BrandSlowMo />} />
+                <Route path="/games" element={canAccessSurface(uiLayout, "games", !!user) ? <GamesDirectoryPage /> : <Navigate to="/tournaments" replace />} />
+                <Route path="/games/:slug" element={canAccessSurface(uiLayout, "games", !!user) ? (
                   <GameDeskPage
                     slug={routePath.replace(/^\/games\//, "").split("/")[0] || ""}
                     vaultSlides={vaultSlides}
@@ -5881,8 +5960,8 @@ export default function App() {
                       navigate(`/tournaments/${id}`);
                     }}
                   />
-                )} />
-                <Route path="/vault" element={(
+                ) : <Navigate to="/tournaments" replace />} />
+                <Route path="/vault" element={!(isSiteStaff || canAccessSurface(uiLayout, "vault", !!user)) ? <Navigate to="/tournaments" replace /> : (
                   <VaultLibraryPage
                     slides={vaultSlides}
                     bookmarkSlugs={vaultBookmarks.slugs}
@@ -5900,15 +5979,14 @@ export default function App() {
                     </div>
                   </VaultLibraryPage>
                 )} />
-                <Route path="/vault/ewc" element={<EwcDirectoryPage slides={vaultSlides} liveEntries={archiveEntries} />} />
-                <Route path="/vault/legacy" element={<PreEwcHistoryPage />} />
-                <Route path="/vault/franchises" element={<CompetitorDirectoryPage slides={vaultSlides} kind="franchise" />} />
-                <Route path="/vault/players" element={<CompetitorDirectoryPage slides={vaultSlides} kind="player" />} />
-                <Route path="/vault/dossier/:name" element={<CompetitorDossierPage slides={vaultSlides} name={routePath.replace(/^\/vault\/dossier\//, "").split("/")[0] || ""} />} />
-                <Route path="/vault/:slug" element={<VaultDetailPage slides={vaultSlides} slug={routePath.replace(/^\/vault\//, "").split("/")[0]} liveEntries={archiveEntries} bookmarked={vaultBookmarks.has(routePath.replace(/^\/vault\//, "").split("/")[0])} onToggleBookmark={vaultBookmarks.toggle} />} />
+                <Route path="/vault/ewc" element={!(isSiteStaff || canAccessSurface(uiLayout, "vault", !!user)) ? <Navigate to="/tournaments" replace /> : <EwcDirectoryPage slides={vaultSlides} liveEntries={archiveEntries} />} />
+                <Route path="/vault/legacy" element={!(isSiteStaff || canAccessSurface(uiLayout, "vault", !!user)) ? <Navigate to="/tournaments" replace /> : <PreEwcHistoryPage />} />
+                <Route path="/vault/franchises" element={!(isSiteStaff || canAccessSurface(uiLayout, "vault", !!user)) ? <Navigate to="/tournaments" replace /> : <CompetitorDirectoryPage slides={vaultSlides} kind="franchise" />} />
+                <Route path="/vault/players" element={!(isSiteStaff || canAccessSurface(uiLayout, "vault", !!user)) ? <Navigate to="/tournaments" replace /> : <CompetitorDirectoryPage slides={vaultSlides} kind="player" />} />
+                <Route path="/vault/dossier/:name" element={!(isSiteStaff || canAccessSurface(uiLayout, "vault", !!user)) ? <Navigate to="/tournaments" replace /> : <CompetitorDossierPage slides={vaultSlides} name={routePath.replace(/^\/vault\/dossier\//, "").split("/")[0] || ""} />} />
+                <Route path="/vault/:slug" element={!(isSiteStaff || canAccessSurface(uiLayout, "vault", !!user)) ? <Navigate to="/tournaments" replace /> : <VaultDetailPage slides={vaultSlides} slug={routePath.replace(/^\/vault\//, "").split("/")[0]} liveEntries={archiveEntries} bookmarked={vaultBookmarks.has(routePath.replace(/^\/vault\//, "").split("/")[0])} onToggleBookmark={vaultBookmarks.toggle} />} />
                 <Route path="/tournaments" element={(
                   <>
-                    <SectionBackHome />
                     <TournamentOpsRail
                       signedIn={!!user}
                       onNew={() => {
@@ -5956,6 +6034,24 @@ export default function App() {
                       }}
                       onSignIn={() => setAuthDialogOpen(true)}
                     />
+                    {!showArchivedTournaments ? (
+                      <ScrimMotivatePop
+                        enabled
+                        tournaments={tournaments.filter((item) => canSeeScrimInList(item, {
+                          uid: user?.uid,
+                          invites: tournamentInvites,
+                        }))}
+                        avoidGames={[
+                          ...(myProfile?.games || []),
+                          ...(scrimAlerts.games || []),
+                        ]}
+                        onOpen={(id) => {
+                          setSelectedId(id);
+                          setView("detail");
+                          navigate(`/tournaments/${id}`);
+                        }}
+                      />
+                    ) : null}
                   </>
                 )} />
                 <Route path="/hosts/:uid" element={(() => {
@@ -6080,7 +6176,7 @@ export default function App() {
                     onToggleFollow={toggleFollowHost}
                   />
                 ) : <EmptyState title="Scrim not found" body="This event is missing or was removed." actionLabel="Back to scrims" onAction={() => navigate("/tournaments")} />} />
-                <Route path="/find-players" element={user ? (
+                <Route path="/find-players" element={!canAccessSurface(uiLayout, "findPlayers", !!user) ? <Navigate to="/tournaments" replace /> : user ? (
                   <FindPlayersPage
                     gamesList={circuitCms.filterGames}
                     currentUid={user.uid}
@@ -6095,7 +6191,6 @@ export default function App() {
                   />
                 ) : (
                   <div className="pt-8">
-                    <SectionBackHome />
                     <h1 className="m-0 font-['Bebas_Neue',sans-serif] text-5xl">Find players</h1>
                     <p className="mb-4 mt-2 text-sm text-stone-400">Sign in to search similar players and send a connect request.</p>
                     <Button onClick={() => setAuthDialogOpen(true)}>Sign in to find players</Button>
@@ -6108,15 +6203,15 @@ export default function App() {
                     <p className="mt-2 text-sm text-stone-400">That link is not a GrindInfo page.</p>
                     <div className="mt-4 flex flex-wrap gap-3">
                       <Link to="/" className="font-mono text-xs uppercase tracking-wider text-neon">Home</Link>
-                      <Link to="/find-players" className="font-mono text-xs uppercase tracking-wider text-neon">Find players</Link>
                       <Link to="/tournaments" className="font-mono text-xs uppercase tracking-wider text-neon">Scrims</Link>
-                      <Link to="/blog" state={{ background: routesLocation }} className="font-mono text-xs uppercase tracking-wider text-neon">Community blog</Link>
+                      <Link to="/vault" className="font-mono text-xs uppercase tracking-wider text-neon">Vault</Link>
+                      <Link to="/find-players" className="font-mono text-xs uppercase tracking-wider text-neon">Find players</Link>
                     </div>
                   </div>
                 } />
               </Routes>
             </div>
-            {blogOpen && (
+            {blogOpen && blogAllowed && (
               <BlogOverlay onClose={closeBlogOverlay}>
                 <BlogPage
                   overlay
@@ -6285,19 +6380,20 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAcc
 
   return (
     <div style={{ borderBottom: "1px solid var(--border)" }}>
-      <div style={{ maxWidth: 1152, margin: "0 auto", padding: "20px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-        <Link to="/" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", textDecoration: "none", color: "inherit" }}>
-          <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, letterSpacing: "0.04em", color: "var(--page-text)" }}>
-            GRINDINFO
-          </span>
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--accent-secondary)", letterSpacing: "0.1em" }}>
-            TOURNAMENT OPS
-          </span>
-        </Link>
+      <div style={{ maxWidth: 1152, margin: "0 auto", padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+        <div
+          style={{
+            position: "sticky",
+            left: 12,
+            top: 0,
+            zIndex: 2,
+            flexShrink: 0,
+            alignSelf: "center",
+          }}
+        >
+          <GrindInfoLogo size="md" />
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <span aria-live="polite" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: saving ? "var(--accent)" : "var(--text-muted)", minWidth: 70, textAlign: "right" }}>
-            {saving ? "SAVING…" : "SAVED"}
-          </span>
           {!user ? <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {guestMode && <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--text-muted)" }}>GUEST</span>}
             <Button variant="ghost" onClick={onSignInClick}>Sign in / join</Button>
@@ -6409,8 +6505,8 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAcc
               ) : null}
               <details ref={accountMenu} style={{ position: "relative" }} onToggle={(event) => { if (event.currentTarget.open) closeOtherMenu(event.currentTarget); }}>
                 <summary
-                  aria-label="Account menu"
-                  style={{ listStyle: "none", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "var(--page-text)", border: "1px solid var(--border)", background: "var(--panel-bg)", padding: "6px 9px", fontFamily: "'Inter', sans-serif", fontSize: 12 }}
+                  aria-label={`Account menu for ${displayName}`}
+                  style={{ listStyle: "none", display: "flex", alignItems: "center", gap: 6, cursor: "pointer", color: "var(--page-text)", border: "1px solid var(--border)", background: "var(--panel-bg)", padding: 5, fontFamily: "'Inter', sans-serif", fontSize: 12 }}
                 >
                   {user?.photoURL || (profile?.avatar && String(profile.avatar).length > 2) ? (
                     <img src={avatarSrc} alt="" className="aspect-square h-[30px] w-[30px] rounded-full object-cover" />
@@ -6419,8 +6515,7 @@ function Header({ saving, user, guestMode, onSignInClick, onSignOut, onSwitchAcc
                       {initials}
                     </span>
                   )}
-                  <span style={{ maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</span>
-                  <span aria-hidden="true" style={{ color: "var(--text-muted)" }}>⌄</span>
+                  <span aria-hidden="true" style={{ color: "var(--text-muted)", paddingRight: 4 }}>⌄</span>
                 </summary>
                 <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 60, width: 280 }}>
                   <div style={{ padding: 14, background: "var(--panel-bg)", border: "1px solid var(--border)", boxShadow: "var(--panel-shadow)" }}>

@@ -1,18 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bookmark, BookmarkCheck } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
 import { VAULT_SLIDES } from "../../data/platformShowcase";
 import { canonicalFilterGame, gameMatchesFilter } from "../../data/gameCatalog";
 import { sortVaultCatalog } from "../../data/floatingWindows";
-import LoadMoreBar, { usePagedVisible } from "../shared/LoadMoreBar";
 import StickyFilterBar from "../shared/StickyFilterBar";
 import TournamentWindowCard, { WINDOW_CARD_HEIGHT } from "./TournamentWindowCard";
 import SectionBackHome from "../layout/SectionBackHome";
 import PageEnter from "../motion/PageEnter";
-import { fadeUp, hoverLift, staggerDelay, tapPress } from "../../motion/presets";
-/** Even page size so the 2-up window grid always fills complete rows. */
-const LIBRARY_PAGE = 8;
+import FocusRail from "../motion/FocusRail";
 
 /** Vault catalog shows game (or EWC year) windows — never home event spotlights. */
 function asVaultCatalogCard(slide = {}) {
@@ -27,43 +23,6 @@ function asVaultCatalogCard(slide = {}) {
     title: game || slide.title,
     href: slide.slug ? `/vault/${slide.slug}` : slide.href || "/vault",
   };
-}
-
-function PagedSlideGrid({ items, bookmarkSet, onToggleBookmark, persistKey = "vault-library" }) {
-  const page = usePagedVisible(items.length, LIBRARY_PAGE, LIBRARY_PAGE, persistKey);
-  const shown = items.slice(0, page.visible);
-  const reduce = useReducedMotion();
-  return (
-    <>
-      <div className="mb-3 grid auto-rows-fr grid-cols-2 gap-3">
-        {shown.map((slide, index) => (
-          <motion.div
-            key={slide.slug || slide.id}
-            className="overflow-hidden"
-            style={{ height: WINDOW_CARD_HEIGHT }}
-            {...fadeUp(reduce, staggerDelay(index, 0.04, reduce))}
-            whileHover={hoverLift(reduce)}
-            whileTap={tapPress}
-          >
-            <SlideCard
-              slide={slide}
-              bookmarked={bookmarkSet.has(slide.slug)}
-              onToggleBookmark={onToggleBookmark}
-            />
-          </motion.div>
-        ))}
-      </div>
-      <LoadMoreBar
-        className="mb-10"
-        total={items.length}
-        shown={page.visible}
-        pageSize={LIBRARY_PAGE}
-        initial={LIBRARY_PAGE}
-        onMore={page.more}
-        onLess={page.less}
-      />
-    </>
-  );
 }
 
 function SlideCard({ slide, bookmarked, onToggleBookmark }) {
@@ -107,6 +66,7 @@ function readVaultFilters() {
   }
 }
 
+/** Full Vault catalog — vertical focus rail (home carousel stays horizontal). */
 export default function VaultLibraryPage({
   slides = VAULT_SLIDES,
   children,
@@ -122,7 +82,6 @@ export default function VaultLibraryPage({
   const catalogItems = useMemo(
     () => items.filter((slide) => {
       if (slide.blog || slide.surface === "blog") return false;
-      // Prefer research game vaults + EWC years; skip event-named library presets (home-only).
       if (slide.surface === "vault" && !slide.research && slide.title && slide.game && slide.title !== slide.game) {
         return false;
       }
@@ -155,10 +114,9 @@ export default function VaultLibraryPage({
     });
     const featured = filtered.filter((slide) => slide.featured);
     const rest = sortVaultCatalog(filtered.filter((slide) => !slide.featured));
-    // Keep home featured order first, then the rest of the catalog by year (2026 → past).
     return [...featured, ...rest];
   }, [catalogItems, onlyBookmarks, bookmarkSet, game, scope]);
-  const pagePersistKey = `vault-library:${game}:${scope}:${onlyBookmarks ? "bm" : "all"}`;
+
   useEffect(() => {
     try {
       sessionStorage.setItem(VAULT_FILTER_KEY, JSON.stringify({ game, scope, onlyBookmarks }));
@@ -166,13 +124,16 @@ export default function VaultLibraryPage({
       /* ignore */
     }
   }, [game, scope, onlyBookmarks]);
+
   return (
     <PageEnter className="pb-28 pt-6">
       <SectionBackHome />
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="m-0 font-['Bebas_Neue',sans-serif] text-4xl tracking-wide text-white md:text-5xl">The Vault</h1>
-          <p className="mt-1 max-w-xl text-xs text-slate-500">Game vaults and live EWC years — open a card for every event on that title.</p>
+          <p className="mt-1 max-w-xl text-xs text-slate-500">
+            Vertical focus stack — the centered window expands. Filters still apply.
+          </p>
         </div>
         <button
           type="button"
@@ -186,7 +147,7 @@ export default function VaultLibraryPage({
           {bookmarkSlugs.length ? ` · ${bookmarkSlugs.length}` : ""}
         </button>
       </div>
-      <StickyFilterBar className="mb-6 -mx-0 border-white/5 bg-slate-950/90" trailing={(
+      <StickyFilterBar className="mb-4 -mx-0 border-white/5 bg-slate-950/90" trailing={(
         <Link to="/vault/ewc" className="font-mono text-[10px] uppercase tracking-widest text-slate-500 no-underline hover:text-neon">
           EWC index
         </Link>
@@ -221,11 +182,34 @@ export default function VaultLibraryPage({
         </label>
       </StickyFilterBar>
       {visible.length > 0 ? (
-        <PagedSlideGrid
+        <FocusRail
+          key={`${game}:${scope}:${onlyBookmarks ? "bm" : "all"}:${visible.length}`}
           items={visible}
-          bookmarkSet={bookmarkSet}
-          onToggleBookmark={onToggleBookmark}
-          persistKey={pagePersistKey}
+          axis="y"
+          ariaLabel="Vault catalog"
+          height={WINDOW_CARD_HEIGHT}
+          slotHeight={WINDOW_CARD_HEIGHT}
+          slotWidth="min(100%, 340px)"
+          focusScale={1.1}
+          peerScale={0.86}
+          viewportMax="min(78vh, 720px)"
+          getKey={(slide) => slide.slug || slide.id}
+          renderItem={(slide, { focused }) => (
+            <div
+              style={{
+                height: "100%",
+                width: "100%",
+                // Peers only focus on tap; open the link once the card is centered.
+                pointerEvents: focused ? "auto" : "none",
+              }}
+            >
+              <SlideCard
+                slide={slide}
+                bookmarked={bookmarkSet.has(slide.slug)}
+                onToggleBookmark={onToggleBookmark}
+              />
+            </div>
+          )}
         />
       ) : (
         <p className="mb-10 text-sm text-slate-400">No vault windows match these filters.</p>

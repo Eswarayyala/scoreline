@@ -14,9 +14,19 @@ export const hoverLift = (reduce = false) =>
 
 export const tapPress = { scale: 0.985 };
 
-/** Opacity-only so nested `position: fixed` docks (Back/Home) stay viewport-fixed. */
+/**
+ * Soft route enter. Light y is safe — Back/Home docks portal to document.body.
+ * Keep motion short so nav feels snappy between desks.
+ */
 export const pageEnter = (reduce = false) => ({
+  initial: { opacity: 0, y: reduce ? 0 : 10 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: reduce ? 0.12 : 0.38, ease: [0.22, 1, 0.36, 1] },
+});
+
+/** Header / shell fade — no vertical shift so chrome stays planted. */
+export const shellEnter = (reduce = false) => ({
   initial: { opacity: 0 },
   animate: { opacity: 1 },
-  transition: { duration: reduce ? 0.12 : 0.28, ease: [0.22, 1, 0.36, 1] },
+  transition: { duration: reduce ? 0.1 : 0.32, ease: [0.22, 1, 0.36, 1] },
 });

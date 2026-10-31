@@ -1094,9 +1094,35 @@ service cloud.firestore {
       allow create, update, delete: if isSiteOwner();
     }
 
+    function validUiLayoutSurface(row) {
+      return row is map
+        && row.keys().hasOnly(['guest', 'user', 'place'])
+        && row.keys().hasAll(['guest', 'user', 'place'])
+        && row.guest is bool
+        && row.user is bool
+        && row.place in ['nav', 'home', 'both', 'off'];
+    }
+    function validUiLayout(data) {
+      return data.keys().hasOnly(['surfaces', 'updatedAt', 'updatedBy'])
+        && data.keys().hasAll(['surfaces', 'updatedAt'])
+        && data.surfaces is map
+        && data.surfaces.keys().hasOnly(['scrims', 'findPlayers', 'vault', 'blog', 'games'])
+        && data.surfaces.keys().hasAll(['scrims', 'findPlayers', 'vault', 'blog', 'games'])
+        && validUiLayoutSurface(data.surfaces.scrims)
+        && validUiLayoutSurface(data.surfaces.findPlayers)
+        && validUiLayoutSurface(data.surfaces.vault)
+        && validUiLayoutSurface(data.surfaces.blog)
+        && validUiLayoutSurface(data.surfaces.games)
+        && data.updatedAt is int
+        && (!data.keys().hasAny(['updatedBy'])
+            || (data.updatedBy is string && data.updatedBy.size() <= 128));
+    }
+
     match /siteSettings/{docId} {
       allow get: if (docId == 'deskGate' && isSiteStaff())
-                 || (docId == 'features' && canBrowsePublicData());
+                 || (docId == 'features' && canBrowsePublicData())
+                 || (docId == 'uiLayout' && canBrowsePublicData());
+      allow list: if false;
       allow create, update: if
         (isSiteOwner()
          && docId == 'deskGate'
@@ -1118,7 +1144,12 @@ service cloud.firestore {
             && request.resource.data.updatedAt is int
             && (!request.resource.data.keys().hasAny(['updatedBy'])
                 || (request.resource.data.updatedBy is string
-                    && request.resource.data.updatedBy == request.auth.uid)));
+                    && request.resource.data.updatedBy == request.auth.uid)))
+        || (isSiteOwner()
+            && docId == 'uiLayout'
+            && validUiLayout(request.resource.data)
+            && (!request.resource.data.keys().hasAny(['updatedBy'])
+                || request.resource.data.updatedBy == request.auth.uid));
       allow delete: if false;
     }
 

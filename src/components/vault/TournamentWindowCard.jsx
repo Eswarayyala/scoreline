@@ -754,7 +754,7 @@ export default function TournamentWindowCard({
                 rel="noopener noreferrer"
                 className="inline-flex w-full items-center justify-center rounded-lg px-3 py-2.5 text-center font-mono text-[10px] uppercase tracking-[0.14em] text-white no-underline"
                 style={{
-                  background: "linear-gradient(90deg, #ff2d95, #ff5eb0)",
+                  background: "linear-gradient(90deg, #ff6b1a, #ff9a4d)",
                   boxShadow: "0 0 22px rgba(255, 45, 149, 0.35)",
                 }}
               >
