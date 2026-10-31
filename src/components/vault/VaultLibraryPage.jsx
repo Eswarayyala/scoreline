@@ -10,9 +10,20 @@ import SectionBackHome from "../layout/SectionBackHome";
 import PageEnter from "../motion/PageEnter";
 import FocusRail from "../motion/FocusRail";
 
-/** Vault catalog shows game (or EWC year) windows — never home event spotlights. */
+/** Vault catalog shows game / EWC / live desks — never home event spotlights. */
 function asVaultCatalogCard(slide = {}) {
   if (!slide || slide.surface === "ewc-window") return slide;
+  if (slide.eventStatus === "live") {
+    return {
+      ...slide,
+      spotlight: false,
+      spotlightEdition: undefined,
+      spotlightEventKey: undefined,
+      eventName: slide.title || slide.eventName || "",
+      title: slide.title || slide.game || "",
+      href: slide.slug ? `/vault/${slide.slug}` : slide.href || "/vault",
+    };
+  }
   const game = slide.game || slide.title || "";
   return {
     ...slide,
@@ -82,7 +93,15 @@ export default function VaultLibraryPage({
   const catalogItems = useMemo(
     () => items.filter((slide) => {
       if (slide.blog || slide.surface === "blog") return false;
-      if (slide.surface === "vault" && !slide.research && slide.title && slide.game && slide.title !== slide.game) {
+      // Keep live desks visible; hide other one-off vault event clones from the game grid.
+      if (
+        slide.eventStatus !== "live"
+        && slide.surface === "vault"
+        && !slide.research
+        && slide.title
+        && slide.game
+        && slide.title !== slide.game
+      ) {
         return false;
       }
       return true;
@@ -112,9 +131,12 @@ export default function VaultLibraryPage({
       if (scope === "ewc" && (slide.floating === true || slide.surface === "ewc-window" || slide.featured)) return gameOk;
       return false;
     });
-    const featured = filtered.filter((slide) => slide.featured);
-    const rest = sortVaultCatalog(filtered.filter((slide) => !slide.featured));
-    return [...featured, ...rest];
+    const live = filtered.filter((slide) => slide.eventStatus === "live");
+    const featured = filtered.filter((slide) => slide.featured && slide.eventStatus !== "live");
+    const rest = sortVaultCatalog(
+      filtered.filter((slide) => !slide.featured && slide.eventStatus !== "live"),
+    );
+    return [...live, ...featured, ...rest];
   }, [catalogItems, onlyBookmarks, bookmarkSet, game, scope]);
 
   useEffect(() => {
