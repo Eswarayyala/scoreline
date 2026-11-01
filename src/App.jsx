@@ -70,7 +70,7 @@ import { assembleFloatingSlides, buildFeaturedWindows, floatingPolicyFromRecords
 import { vaultEventHref } from "./data/eventSpotlight";
 import { useEsportsMedia } from "./hooks/useEsportsMedia";
 import { fetchGamePoster, mergeVaultMedia } from "./services/esportsMedia";
-import { FILTER_GAMES, PUBG_FAMILY_LABEL, canonicalFilterGame, filterGameAliases, gameMatchesFilter, isPubgFamily } from "./data/gameCatalog";
+import { FILTER_GAMES, SCRIM_GAMES, canonicalFilterGame, filterGameAliases, gameMatchesFilter, isPubgFamily } from "./data/gameCatalog";
 import {
   canSeeScrimInList,
   canViewScrimRoom,
@@ -623,7 +623,7 @@ const GAME_ICONS = {
   "Teamfight Tactics": "♟️",
   "Other": "🎮",
 };
-const QUICK_PICK_GAMES = ["Valorant", PUBG_FAMILY_LABEL, "Apex Legends"];
+const QUICK_PICK_GAMES = ["BGMI", "Free Fire", "Valorant", "Call of Duty"];
 const BIO_EXAMPLES = [
   { label: "Friendly", text: "Here to improve, have fun, and find a friendly squad." },
   { label: "Competitive", text: "Focused on ranked games, clear comms, and steady improvement." },
@@ -6450,14 +6450,14 @@ export default function App() {
         )}
 
       {user && showNewTournament && (
-        <NewTournamentModal slides={vaultSlides} gameArt={circuitCms.records} gamesList={circuitCms.filterGames} onClose={() => setShowNewTournament(false)} onCreate={addTournament} />
+        <NewTournamentModal slides={vaultSlides} gameArt={circuitCms.records} gamesList={SCRIM_GAMES} onClose={() => setShowNewTournament(false)} onCreate={addTournament} />
       )}
       {user && showScrimAlertPrefs && (
         <ScrimAlertPrefs
           open
           onClose={() => setShowScrimAlertPrefs(false)}
           alerts={scrimAlerts}
-          gamesList={circuitCms.filterGames}
+          gamesList={SCRIM_GAMES}
           officialHosts={officialHosts}
           onSave={saveScrimAlerts}
           onToggleFollow={toggleFollowHost}
@@ -7001,7 +7001,7 @@ function TournamentList({
   );
 }
 
-function NewTournamentModal({ onClose, onCreate, slides = [], gameArt = [], gamesList = FILTER_GAMES }) {
+function NewTournamentModal({ onClose, onCreate, slides = [], gameArt = [], gamesList = SCRIM_GAMES }) {
   const [name, setName] = useState("");
   const [game, setGame] = useState(gamesList[0]);
   const [kind, setKind] = useState("bracket");

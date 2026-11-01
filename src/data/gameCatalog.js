@@ -68,6 +68,9 @@ const GAME_ALIASES = {
   "pubg / pubg mobile": "PUBG Mobile",
   "call of duty (cdl & warzone)": "Call of Duty",
   "call of duty: warzone": "Call of Duty",
+  "call of duty mobile": "Call of Duty",
+  "cod mobile": "Call of Duty",
+  "codm": "Call of Duty",
   "garena free fire": "Free Fire",
   "free fire max": "Free Fire",
   "honor of kings (hok)": "Honor of Kings",
@@ -146,3 +149,15 @@ export function buildFilterGames(extra = []) {
 }
 
 export const FILTER_GAMES = buildFilterGames();
+
+/**
+ * Scrims desk — India competitive volume (Vault / CMS keep FILTER_GAMES).
+ * Ranked by India esports / midcore play: BGMI, Free Fire, Valorant, COD Mobile.
+ * Chess / Ludo / casual board titles stay off this list (high downloads, low scrim desk).
+ */
+export const SCRIM_GAMES = ["BGMI", "Free Fire", "Valorant", "Call of Duty"];
+
+export function isScrimCatalogGame(game = "") {
+  const canonical = canonicalFilterGame(game);
+  return SCRIM_GAMES.some((title) => title.toLowerCase() === canonical.toLowerCase());
+}
