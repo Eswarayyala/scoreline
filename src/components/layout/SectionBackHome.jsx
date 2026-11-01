@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const btnStyle = {
   display: "inline-flex",
@@ -20,20 +20,65 @@ const btnStyle = {
   textTransform: "uppercase",
 };
 
+const FOCUS_PARAMS = ["event", "compare", "details", "game"];
+
+function parentPathFor(pathname = "/", fallback = "/") {
+  const path = String(pathname || "/");
+  if (/^\/tournaments\/[^/]+/.test(path)) return "/tournaments";
+  if (/^\/hosts\/[^/]+/.test(path)) return "/tournaments";
+  if (/^\/games\/[^/]+/.test(path)) return "/games";
+  if (/^\/vault\/dossier\//.test(path)) return "/vault/franchises";
+  if (/^\/vault\/(ewc|legacy|franchises|players)$/.test(path)) return "/vault";
+  if (/^\/vault\/[^/]+/.test(path)) return "/vault";
+  if (/^\/community/.test(path)) return "/";
+  return fallback;
+}
+
+function stripFocusSearch(search = "") {
+  const params = new URLSearchParams(search);
+  let changed = false;
+  FOCUS_PARAMS.forEach((key) => {
+    if (params.has(key)) {
+      params.delete(key);
+      changed = true;
+    }
+  });
+  return changed ? params : null;
+}
+
 /**
  * Viewport-fixed Back / Home dock.
  * Portaled to document.body so page motion transforms cannot trap `position: fixed`
  * or let window cards paint over the controls.
+ *
+ * Back order:
+ * 1) Peel focused query layers (?event / compare / details) so deep-linked windows
+ *    return to the edition stack instead of jumping to the site entry screen.
+ * 2) In-app history via React Router idx (not window.history.length).
+ * 3) Section parent path (scrim → /tournaments, vault slug → /vault, …).
  */
 export default function SectionBackHome({ label = "Home", to = "/" } = {}) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const goBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
+    const cleared = stripFocusSearch(location.search);
+    if (cleared) {
+      const search = cleared.toString();
+      navigate(
+        { pathname: location.pathname, search: search ? `?${search}` : "", hash: location.hash },
+        { replace: false },
+      );
+      return;
+    }
+
+    const idx = window.history.state?.idx;
+    if (typeof idx === "number" && idx > 0) {
       navigate(-1);
       return;
     }
-    navigate(to, { replace: true });
+
+    navigate(parentPathFor(location.pathname, to), { replace: true });
   };
 
   const dock = (
