@@ -65,7 +65,7 @@ import SupportAccessDesk from "./components/cms/SupportAccessDesk";
 import StaffDeskGate from "./components/cms/StaffDeskGate";
 import { useCircuitCms } from "./hooks/useCircuitCms";
 import { useStaffChangeRequests } from "./hooks/useStaffChangeRequests";
-import { deskGateDocPath, hashDeskPassword, hashFieldForRole } from "./lib/deskGate";
+import { createDeskPassword, deskGateDocPath, hashFieldForRole, saltFieldForRole } from "./lib/deskGate";
 import { assembleFloatingSlides, buildFeaturedWindows, floatingPolicyFromRecords, mergeEwcWindows } from "./data/floatingWindows";
 import { vaultEventHref } from "./data/eventSpotlight";
 import { useEsportsMedia } from "./hooks/useEsportsMedia";
@@ -3129,8 +3129,8 @@ function DeskPasswordSettings({ gate = null, onSave }) {
     setMessage("");
     setBusy(role);
     try {
-      const hash = await hashDeskPassword(value);
-      await onSave(role, hash);
+      const { hash, salt } = await createDeskPassword(value);
+      await onSave(role, hash, salt);
       if (role === "owner") setOwnerPass("");
       else setSupportPass("");
       setMessage(`${role === "owner" ? "Owner" : "Support"} desk password updated.`);
@@ -5889,13 +5889,17 @@ export default function App() {
     showToast(enabled ? "Support access granted" : "Support access removed");
   };
 
-  const saveDeskRolePassword = async (role, hash) => {
+  const saveDeskRolePassword = async (role, hash, salt = "") => {
     if (siteRole !== "owner") throw new Error("Only the owner can set desk passwords.");
     const field = hashFieldForRole(role);
+    const saltField = saltFieldForRole(role);
     const payload = {
       ownerHash: String(deskGate?.ownerHash || ""),
       supportHash: String(deskGate?.supportHash || ""),
+      ownerSalt: String(deskGate?.ownerSalt || ""),
+      supportSalt: String(deskGate?.supportSalt || ""),
       [field]: hash,
+      [saltField]: String(salt || ""),
       updatedAt: Date.now(),
       updatedBy: user.uid,
     };

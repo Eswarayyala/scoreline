@@ -603,7 +603,8 @@ service cloud.firestore {
 
     match /officialHosts/{hostUid} {
       allow get, list: if canBrowsePublicData();
-      allow create, update, delete: if isSiteOwner() || isSiteStaff();
+      // Owner-only: support must not mint official host badges.
+      allow create, update, delete: if isSiteOwner();
     }
 
     match /hostRequests/{requestUid} {
@@ -1126,12 +1127,22 @@ service cloud.firestore {
       allow create, update: if
         (isSiteOwner()
          && docId == 'deskGate'
-         && request.resource.data.keys().hasOnly(['ownerHash', 'supportHash', 'updatedAt', 'updatedBy'])
+         && request.resource.data.keys().hasOnly(['ownerHash', 'supportHash', 'ownerSalt', 'supportSalt', 'updatedAt', 'updatedBy'])
          && request.resource.data.keys().hasAll(['ownerHash', 'supportHash', 'updatedAt'])
          && request.resource.data.ownerHash is string
          && request.resource.data.ownerHash.size() <= 128
          && request.resource.data.supportHash is string
          && request.resource.data.supportHash.size() <= 128
+         && (!request.resource.data.keys().hasAny(['ownerSalt'])
+             || (request.resource.data.ownerSalt is string
+                 && (request.resource.data.ownerSalt.size() == 0
+                     || (request.resource.data.ownerSalt.size() >= 16
+                         && request.resource.data.ownerSalt.size() <= 128))))
+         && (!request.resource.data.keys().hasAny(['supportSalt'])
+             || (request.resource.data.supportSalt is string
+                 && (request.resource.data.supportSalt.size() == 0
+                     || (request.resource.data.supportSalt.size() >= 16
+                         && request.resource.data.supportSalt.size() <= 128))))
          && request.resource.data.updatedAt is int
          && (!request.resource.data.keys().hasAny(['updatedBy'])
              || (request.resource.data.updatedBy is string

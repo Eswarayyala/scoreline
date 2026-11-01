@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { clearDeskUnlock, hashDeskPassword, hashFieldForRole, readDeskUnlock, writeDeskUnlock } from "../../lib/deskGate";
+import { clearDeskUnlock, createDeskPassword, hashFieldForRole, readDeskUnlock, saltFieldForRole, verifyDeskPassword, writeDeskUnlock } from "../../lib/deskGate";
 
 export default function StaffDeskGate({
   role,
@@ -16,11 +16,13 @@ export default function StaffDeskGate({
   const [setupConfirm, setSetupConfirm] = useState("");
   const [unlocked, setUnlocked] = useState(() => readDeskUnlock(role));
   const field = hashFieldForRole(role);
+  const saltField = saltFieldForRole(role);
   const requiredHash = String(gate?.[field] || "");
+  const requiredSalt = String(gate?.[saltField] || "");
 
   useEffect(() => {
     setUnlocked(readDeskUnlock(role));
-  }, [role, requiredHash]);
+  }, [role, requiredHash, requiredSalt]);
 
   const unlock = async (event) => {
     event.preventDefault();
@@ -31,8 +33,8 @@ export default function StaffDeskGate({
         setError(isOwner ? "Set a desk password below first." : "Owner has not set a support desk password yet.");
         return;
       }
-      const next = await hashDeskPassword(password);
-      if (next !== requiredHash) {
+      const ok = await verifyDeskPassword(password, requiredHash, requiredSalt);
+      if (!ok) {
         setError("Incorrect desk password.");
         return;
       }
@@ -55,8 +57,8 @@ export default function StaffDeskGate({
     }
     setBusy(true);
     try {
-      const hash = await hashDeskPassword(setupPassword);
-      await onSaveRolePassword(role, hash);
+      const { hash, salt } = await createDeskPassword(setupPassword);
+      await onSaveRolePassword(role, hash, salt);
       writeDeskUnlock(role);
       setUnlocked(true);
       setSetupPassword("");
