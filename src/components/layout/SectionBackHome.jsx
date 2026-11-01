@@ -52,9 +52,10 @@ function stripFocusSearch(search = "") {
  * or let window cards paint over the controls.
  *
  * Back order:
- * 1) Peel focused query layers (?event / compare / details) so deep-linked windows
- *    return to the edition stack instead of jumping to the site entry screen.
- * 2) In-app history via React Router idx (not window.history.length).
+ * 1) Real in-app history (home → window returns home). Prefer Router idx over
+ *    window.history.length, which is polluted by prior browser tabs.
+ * 2) Only if this is the first SPA entry: peel ?event / compare / details so a
+ *    cold deep-link still shows the edition stack instead of bouncing out.
  * 3) Section parent path (scrim → /tournaments, vault slug → /vault, …).
  */
 export default function SectionBackHome({ label = "Home", to = "/" } = {}) {
@@ -62,19 +63,19 @@ export default function SectionBackHome({ label = "Home", to = "/" } = {}) {
   const location = useLocation();
 
   const goBack = () => {
+    const idx = window.history.state?.idx;
+    if (typeof idx === "number" && idx > 0) {
+      navigate(-1);
+      return;
+    }
+
     const cleared = stripFocusSearch(location.search);
     if (cleared) {
       const search = cleared.toString();
       navigate(
         { pathname: location.pathname, search: search ? `?${search}` : "", hash: location.hash },
-        { replace: false },
+        { replace: true },
       );
-      return;
-    }
-
-    const idx = window.history.state?.idx;
-    if (typeof idx === "number" && idx > 0) {
-      navigate(-1);
       return;
     }
 
