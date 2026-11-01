@@ -1,4 +1,5 @@
-const RAWG_API_KEY = String(import.meta.env.VITE_RAWG_API_KEY || "").trim();
+/** Live RAWG only in DEV — never ship the key or live calls in production builds. Prefer static packs under public/media. */
+const RAWG_API_KEY = import.meta.env.DEV ? String(import.meta.env.VITE_RAWG_API_KEY || "").trim() : "";
 const RAWG_BASE = "https://api.rawg.io/api/games";
 
 export const COMPETITIVE_GAMES = [
