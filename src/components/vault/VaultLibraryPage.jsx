@@ -136,8 +136,8 @@ export default function VaultLibraryPage({
       if (scope === "ewc" && (slide.floating === true || slide.surface === "ewc-window" || slide.featured)) return gameOk;
       return false;
     });
-    const live = filtered.filter((slide) => slide.eventStatus === "live");
-    const featured = filtered.filter((slide) => slide.featured && slide.eventStatus !== "live");
+    const live = sortVaultCatalog(filtered.filter((slide) => slide.eventStatus === "live"));
+    const featured = sortVaultCatalog(filtered.filter((slide) => slide.featured && slide.eventStatus !== "live"));
     const rest = sortVaultCatalog(
       filtered.filter((slide) => !slide.featured && slide.eventStatus !== "live"),
     );

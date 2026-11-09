@@ -4,7 +4,7 @@ import { db } from "../firebase";
 import { CIRCUIT_CMS_MOCK } from "../data/circuitCmsMock";
 import { VAULT_SLIDES } from "../data/platformShowcase";
 import { seedResearchCmsRecords } from "../data/esportsResearch";
-import { seedBgmiLiveRecords } from "../data/bgmiLiveSeed";
+import { seedBgmiLiveRecords, seedBmicPubgMobileRecords } from "../data/bgmiLiveSeed";
 import { buildFilterGames } from "../data/gameCatalog";
 import { mergeEwcEditions } from "../data/eventScope";
 import { normalizeEdition } from "../data/vaultDeskSchema";
@@ -76,7 +76,7 @@ function mergeWithSeed(remote = []) {
       posterIndex: existing.posterIndex ?? item.posterIndex ?? 0,
     });
   });
-  seedBgmiLiveRecords().forEach((item) => {
+  [...seedBgmiLiveRecords(), ...seedBmicPubgMobileRecords()].forEach((item) => {
     const existing = byId.get(item.id);
     if (!existing) {
       byId.set(item.id, item);
@@ -85,7 +85,8 @@ function mergeWithSeed(remote = []) {
     byId.set(item.id, {
       ...existing,
       ...item,
-      // Live standings always refresh from seed; keep owner Live/Off + embed overrides.
+      // Finale / standings refresh from seed; keep owner Live/Off + embed overrides.
+      // Distinct ids (live-bmic-2026 vs bmic-2026-pubg-mobile) keep the two windows from merging.
       floating: existing.floating === false ? false : true,
       floatingPriority: existing.floatingPriority ?? item.floatingPriority,
       liveEmbedUrl: existing.liveEmbedUrl || item.liveEmbedUrl || "",
@@ -254,7 +255,8 @@ export function useCircuitCms({ canWrite = false } = {}) {
   const vaultSlides = useMemo(
     () => liveRecords
       .filter((item) => item.surface === "vault")
-      .sort((a, b) => (Number(b.floatingPriority) || 0) - (Number(a.floatingPriority) || 0) || (b.updatedAt || 0) - (a.updatedAt || 0)),
+      .sort((a, b) => (Number(b.updatedAt || b.createdAt) || 0) - (Number(a.updatedAt || a.createdAt) || 0)
+        || (Number(b.floatingPriority) || 0) - (Number(a.floatingPriority) || 0)),
     [liveRecords],
   );
 

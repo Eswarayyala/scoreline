@@ -38,13 +38,24 @@ function slideGameKey(slide) {
     .trim();
 }
 
-/** Prefer newest years, keep one card per game, hard-cap for home / vault featured rail. */
+/** Newest uploads first; floatingPriority / year are tie-breakers only. */
+export function slideUploadRecency(slide = {}) {
+  return Number(slide.updatedAt || slide.createdAt || slide.reviewedAt || 0);
+}
+
+export function compareWindowsByUploadRecency(a, b) {
+  const recency = slideUploadRecency(b) - slideUploadRecency(a);
+  if (recency) return recency;
+  const priority = (Number(b.floatingPriority) || 0) - (Number(a.floatingPriority) || 0);
+  if (priority) return priority;
+  const yearDelta = slideYear(b) - slideYear(a);
+  if (yearDelta) return yearDelta;
+  return String(a.title || a.game || "").localeCompare(String(b.title || b.game || ""));
+}
+
+/** Prefer recently uploaded windows, keep one card per game, hard-cap for home / vault featured rail. */
 export function curateHomeWindows(slides = [], limit = HOME_WINDOW_LIMIT) {
-  const ranked = [...slides].sort((a, b) => {
-    const yearDelta = slideYear(b) - slideYear(a);
-    if (yearDelta) return yearDelta;
-    return (Number(b.floatingPriority) || 0) - (Number(a.floatingPriority) || 0);
-  });
+  const ranked = [...slides].sort(compareWindowsByUploadRecency);
   const picked = [];
   const games = new Set();
   for (const slide of ranked) {
@@ -66,11 +77,7 @@ export function curateHomeWindows(slides = [], limit = HOME_WINDOW_LIMIT) {
 }
 
 export function sortVaultCatalog(slides = []) {
-  return [...slides].sort((a, b) => {
-    const yearDelta = slideYear(b) - slideYear(a);
-    if (yearDelta) return yearDelta;
-    return String(a.title || a.game || "").localeCompare(String(b.title || b.game || ""));
-  });
+  return [...slides].sort(compareWindowsByUploadRecency);
 }
 
 function asLiveWindow(slide = {}) {
@@ -96,7 +103,7 @@ export function buildFeaturedWindows({ floating = [], research = [], live = [], 
   const picked = [];
   const games = new Set();
 
-  for (const slide of live) {
+  for (const slide of [...live].sort(compareWindowsByUploadRecency)) {
     if (picked.length >= limit) break;
     const window = asLiveWindow(slide);
     if (!window) continue;
@@ -165,7 +172,7 @@ function dedupeSlides(slides = []) {
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
-  }).sort((a, b) => (Number(b.floatingPriority) || 0) - (Number(a.floatingPriority) || 0));
+  }).sort(compareWindowsByUploadRecency);
 }
 
 export function assembleFloatingSlides({ policy = DEFAULT_FLOATING_POLICY, ewcWindows = [], records = [], blogSlides = [] }) {

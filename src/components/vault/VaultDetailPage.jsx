@@ -256,15 +256,59 @@ export default function VaultDetailPage({
             )}
 
             {slide.eventStatus === "completed" && !slide.editions?.length && !isChampionship && (
-              <dl className="mt-5 grid gap-2 text-sm text-slate-300">
-                {slide.winners && <div>Winners · {slide.winners}</div>}
-                {slide.runnerUps && <div>Runner-ups · {slide.runnerUps}</div>}
-                {slide.secondRunnerUps && <div>Second runner-ups · {slide.secondRunnerUps}</div>}
-                {slide.mvp && <div>MVP · {slide.mvp}</div>}
-                {slide.bestIgl && <div>Best IGL · {slide.bestIgl}</div>}
-                {slide.fanFavourite && <div>Fan favourite · {slide.fanFavourite}</div>}
-                {slide.bestClutches && <div>Best clutches · {slide.bestClutches}</div>}
-              </dl>
+              <div className="mt-5 space-y-4 text-sm text-slate-300">
+                <dl className="grid gap-2">
+                  {slide.winners && <div>Winners · {slide.winners}</div>}
+                  {slide.runnerUps && <div>Runner-ups · {slide.runnerUps}</div>}
+                  {slide.secondRunnerUps && <div>Second runner-ups · {slide.secondRunnerUps}</div>}
+                  {slide.mvp && <div>MVP · {slide.mvp}</div>}
+                  {slide.bestIgl && <div>Best IGL · {slide.bestIgl}</div>}
+                  {slide.fanFavourite && <div>Fan favourite · {slide.fanFavourite}</div>}
+                  {slide.bestClutches && <div>Best clutches · {slide.bestClutches}</div>}
+                </dl>
+                {slide.liveSnapshot && (
+                  <p className="text-slate-400">
+                    Stage · {slide.activeStage || "Finals"}
+                    {` · ${slide.liveSnapshot}`}
+                  </p>
+                )}
+                {!!slide.pointsTable?.length && (
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="text-slate-500">
+                        <th className="py-1 pr-2 font-mono text-[10px] uppercase tracking-widest">#</th>
+                        <th className="py-1 pr-2 font-mono text-[10px] uppercase tracking-widest">Team</th>
+                        <th className="py-1 pr-2 font-mono text-[10px] uppercase tracking-widest">WWCD</th>
+                        {slide.pointsTable.some((row) => row.finish != null && String(row.finish).trim() !== "") && (
+                          <th className="py-1 pr-2 font-mono text-[10px] uppercase tracking-widest">Finish</th>
+                        )}
+                        {slide.pointsTable.some((row) => row.placement != null && String(row.placement).trim() !== "") && (
+                          <th className="py-1 pr-2 font-mono text-[10px] uppercase tracking-widest">Place pts</th>
+                        )}
+                        <th className="py-1 font-mono text-[10px] uppercase tracking-widest">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {slide.pointsTable.map((row, i) => (
+                        <tr key={i} className="border-t border-white/5">
+                          <td className="py-1.5 pr-2">{row.group}</td>
+                          <td className="py-1.5 pr-2">
+                            {row.team ? <CompetitorNameLink name={row.team} /> : "—"}
+                          </td>
+                          <td className="py-1.5 pr-2">{row.wins}</td>
+                          {slide.pointsTable.some((item) => item.finish != null && String(item.finish).trim() !== "") && (
+                            <td className="py-1.5 pr-2">{row.finish || "—"}</td>
+                          )}
+                          {slide.pointsTable.some((item) => item.placement != null && String(item.placement).trim() !== "") && (
+                            <td className="py-1.5 pr-2">{row.placement || "—"}</td>
+                          )}
+                          <td className="py-1.5 font-mono text-white">{row.points}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             )}
             {slide.eventStatus === "live" && (
               <div className="mt-5 space-y-3 text-sm text-slate-300">

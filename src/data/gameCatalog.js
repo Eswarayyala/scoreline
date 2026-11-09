@@ -152,10 +152,9 @@ export const FILTER_GAMES = buildFilterGames();
 
 /**
  * Scrims desk — India competitive volume (Vault / CMS keep FILTER_GAMES).
- * Ranked by India esports / midcore play: BGMI, Free Fire, Valorant, COD Mobile.
- * Chess / Ludo / casual board titles stay off this list (high downloads, low scrim desk).
+ * BGMI / Free Fire / Chess for regional youth circuits; Valorant + COD for PC/mobile shooters.
  */
-export const SCRIM_GAMES = ["BGMI", "Free Fire", "Valorant", "Call of Duty"];
+export const SCRIM_GAMES = ["BGMI", "Free Fire", "Chess", "Valorant", "Call of Duty"];
 
 export function isScrimCatalogGame(game = "") {
   const canonical = canonicalFilterGame(game);

@@ -623,7 +623,7 @@ const GAME_ICONS = {
   "Teamfight Tactics": "♟️",
   "Other": "🎮",
 };
-const QUICK_PICK_GAMES = ["BGMI", "Free Fire", "Valorant", "Call of Duty"];
+const QUICK_PICK_GAMES = ["BGMI", "Free Fire", "Chess", "Valorant", "Call of Duty"];
 const BIO_EXAMPLES = [
   { label: "Friendly", text: "Here to improve, have fun, and find a friendly squad." },
   { label: "Competitive", text: "Focused on ranked games, clear comms, and steady improvement." },
@@ -3829,12 +3829,15 @@ export default function App() {
   );
   const liveVaultEvents = useMemo(
     () =>
-      circuitCms.records.filter(
-        (item) =>
-          item.eventStatus === "live"
-          && item.enabled !== false
-          && (item.surface === "vault" || item.surface === "tournament"),
-      ),
+      circuitCms.records
+        .filter(
+          (item) =>
+            item.eventStatus === "live"
+            && item.enabled !== false
+            && (item.surface === "vault" || item.surface === "tournament"),
+        )
+        .sort((a, b) => (Number(b.updatedAt || b.createdAt) || 0) - (Number(a.updatedAt || a.createdAt) || 0)
+          || (Number(b.floatingPriority) || 0) - (Number(a.floatingPriority) || 0)),
     [circuitCms.records],
   );
   const homeSlides = useMemo(
