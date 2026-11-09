@@ -3830,12 +3830,12 @@ export default function App() {
   const liveVaultEvents = useMemo(
     () =>
       circuitCms.records
-        .filter(
-          (item) =>
-            item.eventStatus === "live"
-            && item.enabled !== false
-            && (item.surface === "vault" || item.surface === "tournament"),
-        )
+        .filter((item) => {
+          if (item.enabled === false) return false;
+          if (item.surface !== "vault" && item.surface !== "tournament") return false;
+          if (item.eventStatus === "live") return true;
+          return item.eventStatus === "completed" && item.floating === true;
+        })
         .sort((a, b) => (Number(b.updatedAt || b.createdAt) || 0) - (Number(a.updatedAt || a.createdAt) || 0)
           || (Number(b.floatingPriority) || 0) - (Number(a.floatingPriority) || 0)),
     [circuitCms.records],
@@ -3869,20 +3869,25 @@ export default function App() {
         seen.add(key);
         return true;
       }).map((slide) => {
-        const stripped =
-          slide.surface === "ewc-window" || slide.eventStatus === "live"
-            ? slide
-            : {
-                ...slide,
-                spotlight: false,
-                spotlightEdition: undefined,
-                spotlightEventKey: undefined,
-                eventName: "",
-                title: slide.game || slide.title,
-              };
+        const keepEventChrome =
+          slide.surface === "ewc-window"
+          || slide.eventStatus === "live"
+          || (slide.eventStatus === "completed"
+            && slide.floating === true
+            && (slide.surface === "vault" || slide.surface === "tournament"));
+        const stripped = keepEventChrome
+          ? slide
+          : {
+              ...slide,
+              spotlight: false,
+              spotlightEdition: undefined,
+              spotlightEventKey: undefined,
+              eventName: "",
+              title: slide.game || slide.title,
+            };
         return {
           ...stripped,
-          floating: floatKeys.has(slide.slug || slide.id) || slide.eventStatus === "live",
+          floating: floatKeys.has(slide.slug || slide.id) || keepEventChrome,
           featured: false,
           // Catalog chrome stays game-level; open still lands on the latest event tab.
           href: vaultEventHref({ ...stripped, editions: slide.editions }),

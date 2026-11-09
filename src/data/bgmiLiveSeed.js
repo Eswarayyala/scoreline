@@ -53,8 +53,7 @@ export function seedBgmiLiveRecords() {
     {
       id: BGMI_LIVE_EVENT_ID,
       surface: "vault",
-      // Keep "live" so vault catalog does not collapse this into a generic BGMI game header.
-      eventStatus: "live",
+      eventStatus: "completed",
       slug: "bmic-2026-live",
       title: liveSnapshot.event || "BGMI International Cup (BMIC) 2026",
       game: "BGMI",
@@ -96,8 +95,8 @@ export function seedBmicPubgMobileRecords() {
     {
       id: BMIC_PUBG_MOBILE_EVENT_ID,
       surface: "vault",
-      // Separate live window under PUBG Mobile — never shares id/slug/game with the BGMI BMIC card.
-      eventStatus: "live",
+      // Separate window under PUBG Mobile — never shares id/slug/game with the BGMI BMIC card.
+      eventStatus: "completed",
       slug: "bmic-2026-pubg-mobile",
       title: "BMIC 2026 · PUBG Mobile desk",
       game: "PUBG Mobile",

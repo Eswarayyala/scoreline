@@ -81,7 +81,15 @@ export function sortVaultCatalog(slides = []) {
 }
 
 function asLiveWindow(slide = {}) {
-  if (!slide || slide.eventStatus !== "live" || slide.enabled === false) return null;
+  if (!slide || slide.enabled === false) return null;
+  const isLive = slide.eventStatus === "live";
+  // Floated completed vault finales (e.g. BMIC) stay on the home rail without
+  // pretending the lobby is still open.
+  const isFloatedFinale =
+    slide.eventStatus === "completed"
+    && slide.floating === true
+    && (slide.surface === "vault" || slide.surface === "tournament");
+  if (!isLive && !isFloatedFinale) return null;
   const slug = slide.slug || slide.id;
   if (!slug) return null;
   return {

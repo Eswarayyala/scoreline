@@ -1,7 +1,7 @@
 /**
  * Client-only demo scrims for Scrims page preview.
  * Never written to Firestore — merged into the local tournaments list.
- * India competitive catalog: BGMI, Free Fire, Valorant, Call of Duty.
+ * India competitive catalog: BGMI, Free Fire, Chess, Valorant, Call of Duty.
  */
 
 import { isScrimCatalogGame } from "./gameCatalog";
@@ -113,6 +113,54 @@ export const DEMO_SCRIMS = [
     adminDisplayName: "LaneCall#0099",
     isDemo: true,
     createdAt: Date.now() - 9e5,
+    updatedAt: Date.now(),
+  },
+  {
+    id: "demo-scrim-chess-rapid",
+    name: "India Rapid Desk · Chess 10+5",
+    game: "Chess",
+    format: "Swiss · 10+5",
+    kind: "bracket",
+    status: "upcoming",
+    joinMode: "open",
+    published: true,
+    registrationOpen: true,
+    startDate: isoDay(2),
+    endDate: isoDay(2),
+    prizeAmount: 4000,
+    prizeCurrency: "INR",
+    maxSlots: 32,
+    region: "India",
+    rankBand: "Intermediate",
+    blurb: "FIDE Rapid-style Swiss. Pairings drop 15 minutes before round 1.",
+    ...DEMO_HOST,
+    adminDisplayName: "BoardOps#2100",
+    isDemo: true,
+    createdAt: Date.now() - 6e6,
+    updatedAt: Date.now(),
+  },
+  {
+    id: "demo-scrim-chess-blitz",
+    name: "Blitz Ladder · Chess 3+2",
+    game: "Chess",
+    format: "Swiss · 3+2",
+    kind: "bracket",
+    status: "live",
+    joinMode: "open",
+    published: true,
+    registrationOpen: true,
+    startDate: isoDay(0),
+    endDate: isoDay(0),
+    prizeAmount: 2000,
+    prizeCurrency: "INR",
+    maxSlots: 24,
+    region: "India",
+    rankBand: "Beginner",
+    blurb: "Open blitz ladder for collegiate and club players. No entry fee.",
+    ...DEMO_HOST,
+    adminDisplayName: "ClockFlag#3344",
+    isDemo: true,
+    createdAt: Date.now() - 2e6,
     updatedAt: Date.now(),
   },
   {
