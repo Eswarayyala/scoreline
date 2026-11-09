@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GitNexus · branch vs main</title>
+  <style>
+    :root {
+      --bg: #05070c;
+      --panel: #0c1018;
+      --text: #f4f7ff;
+      --muted: #9aa8c2;
+      --dim: #6b7a96;
+      --border: #1e2a3d;
+      --accent: #ff2d95;
+      --ok: #3ddea8;
+      --warn: #fbbf24;
+      --crit: #ff5c6c;
+      --blue: #3b82ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(59,130,255,.14), transparent 34%),
+        radial-gradient(circle at 92% 8%, rgba(255,45,149,.12), transparent 32%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+      min-height: 100vh;
+    }
+    main { max-width: 980px; margin: 0 auto; padding: 28px 18px 64px; }
+    h1 {
+      font-family: "Bebas Neue", Impact, sans-serif;
+      font-size: clamp(2rem, 5vw, 3rem);
+      letter-spacing: .04em;
+      margin: 0 0 6px;
+      font-weight: 400;
+    }
+    .mono {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 11px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .muted { color: var(--muted); }
+    .dim { color: var(--dim); font-size: 13px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+      margin: 22px 0;
+    }
+    .stat {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: 14px;
+    }
+    .stat strong {
+      display: block;
+      font-size: 1.6rem;
+      margin-top: 6px;
+    }
+    .pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border: 1px solid currentColor;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .crit { color: var(--crit); }
+    .high { color: var(--warn); }
+    .low { color: var(--ok); }
+    section {
+      margin-top: 28px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+    }
+    h2 {
+      font-family: "Bebas Neue", Impact, sans-serif;
+      font-size: 1.6rem;
+      letter-spacing: .03em;
+      margin: 0 0 10px;
+      font-weight: 400;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--dim);
+      font-weight: 500;
+    }
+    code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      color: var(--blue);
+    }
+    ol.next {
+      margin: 0;
+      padding-left: 1.2rem;
+      color: var(--muted);
+    }
+    ol.next li { margin: 8px 0; }
+    a { color: var(--accent); }
+    .bar {
+      height: 8px;
+      background: #121826;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+    .bar > span { display: block; height: 100%; background: var(--accent); }
+    .links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="mono">GitNexus report · local branch → main</p>
+    <h1>Branch impact vs main</h1>
+    <p class="muted">
+      Source: <code>gitnexus detect-changes --scope compare --base-ref main</code>
+      · Branch <code>cursor/media-library-scrims-size</code>
+      · Indexed commit <code>e781ec6</code>
+      · Generated Oct 31, 2026
+    </p>
+    <div class="links">
+      <a href="http://127.0.0.1:4747" target="_blank" rel="noreferrer">Open GitNexus graph UI (:4747)</a>
+      <a href="/tournaments">Back to Scrims</a>
+    </div>
+
+    <div class="grid">
+      <div class="stat">
+        <span class="mono dim">Risk</span>
+        <strong class="crit">CRITICAL</strong>
+        <span class="pill crit">merge review</span>
+      </div>
+      <div class="stat">
+        <span class="mono dim">Changed files</span>
+        <strong>427</strong>
+      </div>
+      <div class="stat">
+        <span class="mono dim">Changed symbols</span>
+        <strong>1,778</strong>
+      </div>
+      <div class="stat">
+        <span class="mono dim">Affected flows</span>
+        <strong>258</strong>
+      </div>
+    </div>
+    <p class="dim">Listing capped — counts cover the full compare. Whole-branch delta since <code>main</code>, not only today’s popup/demo work.</p>
+
+    <section>
+      <h2>Graph structure (top modules)</h2>
+      <table>
+        <thead>
+          <tr><th>Module</th><th>Symbols</th><th>Cohesion</th><th>Role</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Data</td><td>402</td><td>75%<div class="bar"><span style="width:75%"></span></div></td><td class="muted">Largest shared area</td></tr>
+          <tr><td>Cms</td><td>117</td><td>73%<div class="bar"><span style="width:73%"></span></div></td><td class="muted">Owner / support desks</td></tr>
+          <tr><td>Vault</td><td>60</td><td>79%<div class="bar"><span style="width:79%"></span></div></td><td class="muted">Archive / windows</td></tr>
+          <tr><td>Scrims</td><td>23</td><td>84%<div class="bar"><span style="width:84%"></span></div></td><td class="muted">Live desk cluster</td></tr>
+          <tr><td>Brand</td><td>10</td><td>100%<div class="bar"><span style="width:100%"></span></div></td><td class="muted">Logo / BrandSlowMo</td></tr>
+          <tr><td>Motion</td><td>7</td><td>100%<div class="bar"><span style="width:100%"></span></div></td><td class="muted">FocusRail / presets</td></tr>
+        </tbody>
+      </table>
+      <p class="dim" style="margin-top:10px">Structural <code>check --cycles</code>: clean (0 cycles) when run successfully.</p>
+    </section>
+
+    <section>
+      <h2>Top affected execution flows (vs main)</h2>
+      <table>
+        <thead>
+          <tr><th>Flow</th><th>Steps</th><th>Changed symbols</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>ShareFlyer → GeneratedPackName</code></td>
+            <td>9</td>
+            <td class="muted">shareFlyer, buildScrimFlyerCanvas, flyer/pack helpers</td>
+          </tr>
+          <tr>
+            <td><code>Run → SlugMedia</code></td>
+            <td>9</td>
+            <td class="muted">buildEventShareCanvas, media slug / pack paths</td>
+          </tr>
+          <tr>
+            <td><code>DeleteCircuit → ModeKeyForPermission</code></td>
+            <td>8</td>
+            <td class="muted">support permissions / vault delete path</td>
+          </tr>
+          <tr>
+            <td><code>DecideArchiveSubmission → EmptyFinalsRow</code></td>
+            <td>7</td>
+            <td class="muted">serializeEdition, normalizeEdition, emptyEdition</td>
+          </tr>
+          <tr>
+            <td><code>ShareFlyer → EventPosterSeed</code></td>
+            <td>6</td>
+            <td class="muted">defaultPosterForEvent, eventPosterSeed</td>
+          </tr>
+          <tr>
+            <td><code>Rows → IsPlaceholderCompetitor</code></td>
+            <td>6</td>
+            <td class="muted">competitor index / franchise rows</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="dim">+ 248 more flows in the full graph response.</p>
+    </section>
+
+    <section>
+      <h2>Look / landing symbol risks (local targets)</h2>
+      <table>
+        <thead>
+          <tr><th>Symbol</th><th>Risk</th><th>Direct callers</th><th>Suggestion</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>PlatformHome</code></td>
+            <td><span class="pill low">LOW</span></td>
+            <td class="muted">App only</td>
+            <td class="muted">Safe to restyle landing composition</td>
+          </tr>
+          <tr>
+            <td><code>PublicNav</code></td>
+            <td><span class="pill low">LOW</span></td>
+            <td class="muted">App only</td>
+            <td class="muted">Safe to change default-tab chrome</td>
+          </tr>
+          <tr>
+            <td><code>EsportsFactFlyer</code></td>
+            <td><span class="pill low">LOW</span></td>
+            <td class="muted">App only</td>
+            <td class="muted">Preview-safe flyer work</td>
+          </tr>
+          <tr>
+            <td><code>withDemoScrims</code></td>
+            <td><span class="pill low">LOW</span></td>
+            <td class="muted">App tournaments listener</td>
+            <td class="muted">Demo seed stays client-only</td>
+          </tr>
+          <tr>
+            <td><code>FocusRail</code></td>
+            <td><span class="pill high">HIGH</span></td>
+            <td class="muted">GameThemeRail, GamesDirectoryPage, VaultCarousel, VaultLibraryPage</td>
+            <td class="muted">Change once — retest Home, Games, Vault rails</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Next steps GitNexus recommends</h2>
+      <ol class="next">
+        <li>Treat this PR as a <strong style="color:var(--text)">large merge</strong> — review flyer / media pack / vault archive flows before shipping to <code>main</code>.</li>
+        <li>For UI look work, start with <code>Brand</code> + <code>PlatformHome</code> / <code>PublicNav</code> (LOW). Touch <code>FocusRail</code> only with a full rails pass.</li>
+        <li>Before commit/merge: re-run <code>gitnexus detect-changes -s staged</code> (or compare main) on the final staged set — don’t trust a truncated listing alone.</li>
+        <li>Review d=1 callers on HIGH symbols first (WILL BREAK).</li>
+        <li>Optional: fix Windows FTS (VC++ Redistributable + Git OpenSSL on PATH), then <code>gitnexus analyze --repair-fts</code> so keyword search works.</li>
+        <li>Open the live graph UI on port 4747 for cluster/process exploration.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Practical smoke pass · Oct 31, 2026</h2>
+      <p class="muted">Guest Playwright run against <code>localhost:5173</code> — the checklist we agreed to run before <code>main</code>.</p>
+      <table>
+        <thead>
+          <tr><th>Check</th><th>Result</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Scrims default desk + demos</td>
+            <td><span class="pill low">PASS</span></td>
+            <td class="muted">8 demo cards, Today strip, filters intact, 0 console errors</td>
+          </tr>
+          <tr>
+            <td>Share flyer</td>
+            <td><span class="pill low">PASS</span></td>
+            <td class="muted">“Flyer ready” + PNG download on demo Valorant scrim</td>
+          </tr>
+          <tr>
+            <td>FocusRail · Home</td>
+            <td><span class="pill low">PASS</span></td>
+            <td class="muted">Vault windows 7 · Games desks 10</td>
+          </tr>
+          <tr>
+            <td>FocusRail · Games</td>
+            <td><span class="pill low">PASS</span></td>
+            <td class="muted"><code>/games</code> stack region loads</td>
+          </tr>
+          <tr>
+            <td>FocusRail · Vault</td>
+            <td><span class="pill low">PASS</span></td>
+            <td class="muted"><code>/vault</code> catalog region + contributor desk</td>
+          </tr>
+          <tr>
+            <td>Vault archive decide (owner)</td>
+            <td><span class="pill high">SKIP</span></td>
+            <td class="muted">Needs signed-in owner/support — run manually before merge</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="dim" style="margin-top:12px">Kept: Scrims as default landing · neon pink · demo scrims · esports fact flyers. No architecture rewrite.</p>
+    </section>
+  </main>
+</body>
+</html>

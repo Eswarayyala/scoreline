@@ -1,0 +1,765 @@
+{
+  "generatedAt": "2026-10-22T04:58:36.714Z",
+  "manifest": "C:\\Users\\eswar\\Downloads\\game_assets_manifest_270.json",
+  "totals": {
+    "jobs": 279,
+    "saved": 83,
+    "skipped": 7,
+    "failed": 5
+  },
+  "placements": [
+    {
+      "game": "Valorant",
+      "kind": "avatars",
+      "id": "valorant_avatar_1",
+      "path": "src\\assets\\games\\valorant\\avatars\\valorant_avatar_1.jpg",
+      "status": "skipped-exists"
+    },
+    {
+      "game": "Valorant",
+      "kind": "avatars",
+      "id": "valorant_avatar_2",
+      "path": "src\\assets\\games\\valorant\\avatars\\valorant_avatar_2.jpg",
+      "status": "skipped-exists"
+    },
+    {
+      "game": "Valorant",
+      "kind": "avatars",
+      "id": "valorant_avatar_3",
+      "path": "src\\assets\\games\\valorant\\avatars\\valorant_avatar_3.jpg",
+      "status": "skipped-exists"
+    },
+    {
+      "game": "Valorant",
+      "kind": "backgrounds",
+      "id": "valorant_bg_1",
+      "path": "src\\assets\\games\\valorant\\backgrounds\\valorant_bg_1.jpg",
+      "status": "skipped-exists"
+    },
+    {
+      "game": "Valorant",
+      "kind": "backgrounds",
+      "id": "valorant_bg_2",
+      "path": "src\\assets\\games\\valorant\\backgrounds\\valorant_bg_2.jpg",
+      "status": "skipped-exists"
+    },
+    {
+      "game": "Valorant",
+      "kind": "backgrounds",
+      "id": "valorant_bg_3",
+      "path": "src\\assets\\games\\valorant\\backgrounds\\valorant_bg_3.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Valorant",
+      "kind": "posters",
+      "id": "valorant_poster_1",
+      "path": "src\\assets\\games\\valorant\\posters\\valorant_poster_1.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Valorant",
+      "kind": "posters",
+      "id": "valorant_poster_2",
+      "path": "src\\assets\\games\\valorant\\posters\\valorant_poster_2.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Valorant",
+      "kind": "posters",
+      "id": "valorant_poster_3",
+      "path": "src\\assets\\games\\valorant\\posters\\valorant_poster_3.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "League of Legends",
+      "kind": "avatars",
+      "id": "league_of_legends_avatar_1",
+      "path": "src\\assets\\games\\league-of-legends\\avatars\\league_of_legends_avatar_1.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "League of Legends",
+      "kind": "avatars",
+      "id": "league_of_legends_avatar_2",
+      "path": "src\\assets\\games\\league-of-legends\\avatars\\league_of_legends_avatar_2.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "League of Legends",
+      "kind": "avatars",
+      "id": "league_of_legends_avatar_3",
+      "path": "src\\assets\\games\\league-of-legends\\avatars\\league_of_legends_avatar_3.jpg",
+      "status": "skipped-exists"
+    },
+    {
+      "game": "League of Legends",
+      "kind": "backgrounds",
+      "id": "league_of_legends_bg_1",
+      "path": "src\\assets\\games\\league-of-legends\\backgrounds\\league_of_legends_bg_1.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "League of Legends",
+      "kind": "backgrounds",
+      "id": "league_of_legends_bg_2",
+      "path": "src\\assets\\games\\league-of-legends\\backgrounds\\league_of_legends_bg_2.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "League of Legends",
+      "kind": "backgrounds",
+      "id": "league_of_legends_bg_3",
+      "path": "src\\assets\\games\\league-of-legends\\backgrounds\\league_of_legends_bg_3.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "League of Legends",
+      "kind": "posters",
+      "id": "league_of_legends_poster_1",
+      "path": "src\\assets\\games\\league-of-legends\\posters\\league_of_legends_poster_1.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "League of Legends",
+      "kind": "posters",
+      "id": "league_of_legends_poster_2",
+      "path": "src\\assets\\games\\league-of-legends\\posters\\league_of_legends_poster_2.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "League of Legends",
+      "kind": "posters",
+      "id": "league_of_legends_poster_3",
+      "path": "src\\assets\\games\\league-of-legends\\posters\\league_of_legends_poster_3.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "CS2",
+      "kind": "avatars",
+      "id": "cs2_avatar_1",
+      "path": "src\\assets\\games\\cs2\\avatars\\cs2_avatar_1.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "CS2",
+      "kind": "avatars",
+      "id": "cs2_avatar_2",
+      "path": "src\\assets\\games\\cs2\\avatars\\cs2_avatar_2.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "CS2",
+      "kind": "avatars",
+      "id": "cs2_avatar_3",
+      "path": "src\\assets\\games\\cs2\\avatars\\cs2_avatar_3.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "CS2",
+      "kind": "backgrounds",
+      "id": "cs2_bg_1",
+      "path": "src\\assets\\games\\cs2\\backgrounds\\cs2_bg_1.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "CS2",
+      "kind": "backgrounds",
+      "id": "cs2_bg_2",
+      "path": "src\\assets\\games\\cs2\\backgrounds\\cs2_bg_2.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "CS2",
+      "kind": "backgrounds",
+      "id": "cs2_bg_3",
+      "path": "src\\assets\\games\\cs2\\backgrounds\\cs2_bg_3.jpg",
+      "status": "skipped-exists"
+    },
+    {
+      "game": "CS2",
+      "kind": "posters",
+      "id": "cs2_poster_1",
+      "path": "src\\assets\\games\\cs2\\posters\\cs2_poster_1.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "CS2",
+      "kind": "posters",
+      "id": "cs2_poster_2",
+      "path": "src\\assets\\games\\cs2\\posters\\cs2_poster_2.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "CS2",
+      "kind": "posters",
+      "id": "cs2_poster_3",
+      "path": "src\\assets\\games\\cs2\\posters\\cs2_poster_3.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Dota 2",
+      "kind": "avatars",
+      "id": "dota_2_avatar_1",
+      "path": "src\\assets\\games\\dota-2\\avatars\\dota_2_avatar_1.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "Dota 2",
+      "kind": "avatars",
+      "id": "dota_2_avatar_2",
+      "path": "src\\assets\\games\\dota-2\\avatars\\dota_2_avatar_2.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "Dota 2",
+      "kind": "avatars",
+      "id": "dota_2_avatar_3",
+      "path": "src\\assets\\games\\dota-2\\avatars\\dota_2_avatar_3.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "Dota 2",
+      "kind": "backgrounds",
+      "id": "dota_2_bg_1",
+      "path": "src\\assets\\games\\dota-2\\backgrounds\\dota_2_bg_1.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Dota 2",
+      "kind": "backgrounds",
+      "id": "dota_2_bg_2",
+      "path": "src\\assets\\games\\dota-2\\backgrounds\\dota_2_bg_2.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Dota 2",
+      "kind": "backgrounds",
+      "id": "dota_2_bg_3",
+      "path": "src\\assets\\games\\dota-2\\backgrounds\\dota_2_bg_3.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Dota 2",
+      "kind": "posters",
+      "id": "dota_2_poster_1",
+      "path": "src\\assets\\games\\dota-2\\posters\\dota_2_poster_1.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Dota 2",
+      "kind": "posters",
+      "id": "dota_2_poster_2",
+      "path": "src\\assets\\games\\dota-2\\posters\\dota_2_poster_2.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Dota 2",
+      "kind": "posters",
+      "id": "dota_2_poster_3",
+      "path": "src\\assets\\games\\dota-2\\posters\\dota_2_poster_3.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Overwatch 2",
+      "kind": "avatars",
+      "id": "overwatch_2_avatar_1",
+      "path": "src\\assets\\games\\overwatch-2\\avatars\\overwatch_2_avatar_1.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "Overwatch 2",
+      "kind": "avatars",
+      "id": "overwatch_2_avatar_2",
+      "path": "src\\assets\\games\\overwatch-2\\avatars\\overwatch_2_avatar_2.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "Overwatch 2",
+      "kind": "avatars",
+      "id": "overwatch_2_avatar_3",
+      "path": "src\\assets\\games\\overwatch-2\\avatars\\overwatch_2_avatar_3.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "Overwatch 2",
+      "kind": "backgrounds",
+      "id": "overwatch_2_bg_1",
+      "path": "src\\assets\\games\\overwatch-2\\backgrounds\\overwatch_2_bg_1.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Overwatch 2",
+      "kind": "backgrounds",
+      "id": "overwatch_2_bg_2",
+      "path": "src\\assets\\games\\overwatch-2\\backgrounds\\overwatch_2_bg_2.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Overwatch 2",
+      "kind": "backgrounds",
+      "id": "overwatch_2_bg_3",
+      "path": "src\\assets\\games\\overwatch-2\\backgrounds\\overwatch_2_bg_3.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Overwatch 2",
+      "kind": "posters",
+      "id": "overwatch_2_poster_1",
+      "path": "src\\assets\\games\\overwatch-2\\posters\\overwatch_2_poster_1.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Overwatch 2",
+      "kind": "posters",
+      "id": "overwatch_2_poster_2",
+      "path": "src\\assets\\games\\overwatch-2\\posters\\overwatch_2_poster_2.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Overwatch 2",
+      "kind": "posters",
+      "id": "overwatch_2_poster_3",
+      "path": "src\\assets\\games\\overwatch-2\\posters\\overwatch_2_poster_3.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Rocket League",
+      "kind": "avatars",
+      "id": "rocket_league_avatar_1",
+      "path": "src\\assets\\games\\rocket-league\\avatars\\rocket_league_avatar_1.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "Rocket League",
+      "kind": "avatars",
+      "id": "rocket_league_avatar_2",
+      "path": "src\\assets\\games\\rocket-league\\avatars\\rocket_league_avatar_2.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "Rocket League",
+      "kind": "avatars",
+      "id": "rocket_league_avatar_3",
+      "path": "src\\assets\\games\\rocket-league\\avatars\\rocket_league_avatar_3.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "Rocket League",
+      "kind": "backgrounds",
+      "id": "rocket_league_bg_1",
+      "path": "src\\assets\\games\\rocket-league\\backgrounds\\rocket_league_bg_1.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Rocket League",
+      "kind": "backgrounds",
+      "id": "rocket_league_bg_2",
+      "path": "src\\assets\\games\\rocket-league\\backgrounds\\rocket_league_bg_2.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Rocket League",
+      "kind": "backgrounds",
+      "id": "rocket_league_bg_3",
+      "path": "src\\assets\\games\\rocket-league\\backgrounds\\rocket_league_bg_3.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Rocket League",
+      "kind": "posters",
+      "id": "rocket_league_poster_1",
+      "path": "src\\assets\\games\\rocket-league\\posters\\rocket_league_poster_1.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Rocket League",
+      "kind": "posters",
+      "id": "rocket_league_poster_2",
+      "path": "src\\assets\\games\\rocket-league\\posters\\rocket_league_poster_2.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Rocket League",
+      "kind": "posters",
+      "id": "rocket_league_poster_3",
+      "path": "src\\assets\\games\\rocket-league\\posters\\rocket_league_poster_3.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Apex Legends",
+      "kind": "avatars",
+      "id": "apex_legends_avatar_1",
+      "path": "src\\assets\\games\\apex-legends\\avatars\\apex_legends_avatar_1.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "Apex Legends",
+      "kind": "avatars",
+      "id": "apex_legends_avatar_2",
+      "path": "src\\assets\\games\\apex-legends\\avatars\\apex_legends_avatar_2.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "Apex Legends",
+      "kind": "avatars",
+      "id": "apex_legends_avatar_3",
+      "path": "src\\assets\\games\\apex-legends\\avatars\\apex_legends_avatar_3.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "Apex Legends",
+      "kind": "backgrounds",
+      "id": "apex_legends_bg_1",
+      "path": "src\\assets\\games\\apex-legends\\backgrounds\\apex_legends_bg_1.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Apex Legends",
+      "kind": "backgrounds",
+      "id": "apex_legends_bg_2",
+      "path": "src\\assets\\games\\apex-legends\\backgrounds\\apex_legends_bg_2.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Apex Legends",
+      "kind": "backgrounds",
+      "id": "apex_legends_bg_3",
+      "path": "src\\assets\\games\\apex-legends\\backgrounds\\apex_legends_bg_3.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Apex Legends",
+      "kind": "posters",
+      "id": "apex_legends_poster_1",
+      "path": "src\\assets\\games\\apex-legends\\posters\\apex_legends_poster_1.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Apex Legends",
+      "kind": "posters",
+      "id": "apex_legends_poster_2",
+      "path": "src\\assets\\games\\apex-legends\\posters\\apex_legends_poster_2.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "Apex Legends",
+      "kind": "posters",
+      "id": "apex_legends_poster_3",
+      "path": "src\\assets\\games\\apex-legends\\posters\\apex_legends_poster_3.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "PUBG",
+      "kind": "avatars",
+      "id": "pubg_avatar_1",
+      "path": "src\\assets\\games\\pubg\\avatars\\pubg_avatar_1.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "PUBG",
+      "kind": "avatars",
+      "id": "pubg_avatar_2",
+      "path": "src\\assets\\games\\pubg\\avatars\\pubg_avatar_2.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "PUBG",
+      "kind": "avatars",
+      "id": "pubg_avatar_3",
+      "path": "src\\assets\\games\\pubg\\avatars\\pubg_avatar_3.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "PUBG",
+      "kind": "backgrounds",
+      "id": "pubg_bg_1",
+      "path": "src\\assets\\games\\pubg\\backgrounds\\pubg_bg_1.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "PUBG",
+      "kind": "backgrounds",
+      "id": "pubg_bg_2",
+      "path": "src\\assets\\games\\pubg\\backgrounds\\pubg_bg_2.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "PUBG",
+      "kind": "backgrounds",
+      "id": "pubg_bg_3",
+      "path": "src\\assets\\games\\pubg\\backgrounds\\pubg_bg_3.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "PUBG",
+      "kind": "posters",
+      "id": "pubg_poster_1",
+      "path": "src\\assets\\games\\pubg\\posters\\pubg_poster_1.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "PUBG",
+      "kind": "posters",
+      "id": "pubg_poster_2",
+      "path": "src\\assets\\games\\pubg\\posters\\pubg_poster_2.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "PUBG",
+      "kind": "posters",
+      "id": "pubg_poster_3",
+      "path": "src\\assets\\games\\pubg\\posters\\pubg_poster_3.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "PUBG Mobile",
+      "kind": "avatars",
+      "id": "pubg_mobile_avatar_1",
+      "path": "src\\assets\\games\\pubg-mobile\\avatars\\pubg_mobile_avatar_1.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "PUBG Mobile",
+      "kind": "avatars",
+      "id": "pubg_mobile_avatar_2",
+      "path": "src\\assets\\games\\pubg-mobile\\avatars\\pubg_mobile_avatar_2.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "PUBG Mobile",
+      "kind": "avatars",
+      "id": "pubg_mobile_avatar_3",
+      "path": "src\\assets\\games\\pubg-mobile\\avatars\\pubg_mobile_avatar_3.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "PUBG Mobile",
+      "kind": "backgrounds",
+      "id": "pubg_mobile_bg_1",
+      "path": "src\\assets\\games\\pubg-mobile\\backgrounds\\pubg_mobile_bg_1.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "PUBG Mobile",
+      "kind": "backgrounds",
+      "id": "pubg_mobile_bg_2",
+      "path": "src\\assets\\games\\pubg-mobile\\backgrounds\\pubg_mobile_bg_2.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "PUBG Mobile",
+      "kind": "backgrounds",
+      "id": "pubg_mobile_bg_3",
+      "path": "src\\assets\\games\\pubg-mobile\\backgrounds\\pubg_mobile_bg_3.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "PUBG Mobile",
+      "kind": "posters",
+      "id": "pubg_mobile_poster_1",
+      "path": "src\\assets\\games\\pubg-mobile\\posters\\pubg_mobile_poster_1.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "PUBG Mobile",
+      "kind": "posters",
+      "id": "pubg_mobile_poster_2",
+      "path": "src\\assets\\games\\pubg-mobile\\posters\\pubg_mobile_poster_2.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "PUBG Mobile",
+      "kind": "posters",
+      "id": "pubg_mobile_poster_3",
+      "path": "src\\assets\\games\\pubg-mobile\\posters\\pubg_mobile_poster_3.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "BGMI",
+      "kind": "avatars",
+      "id": "bgmi_avatar_1",
+      "path": "src\\assets\\games\\bgmi\\avatars\\bgmi_avatar_1.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "BGMI",
+      "kind": "avatars",
+      "id": "bgmi_avatar_2",
+      "path": "src\\assets\\games\\bgmi\\avatars\\bgmi_avatar_2.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "BGMI",
+      "kind": "avatars",
+      "id": "bgmi_avatar_3",
+      "path": "src\\assets\\games\\bgmi\\avatars\\bgmi_avatar_3.jpg",
+      "resolution": "1080x1080",
+      "status": "saved"
+    },
+    {
+      "game": "BGMI",
+      "kind": "backgrounds",
+      "id": "bgmi_bg_1",
+      "path": "src\\assets\\games\\bgmi\\backgrounds\\bgmi_bg_1.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "BGMI",
+      "kind": "backgrounds",
+      "id": "bgmi_bg_2",
+      "path": "src\\assets\\games\\bgmi\\backgrounds\\bgmi_bg_2.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "BGMI",
+      "kind": "backgrounds",
+      "id": "bgmi_bg_3",
+      "path": "src\\assets\\games\\bgmi\\backgrounds\\bgmi_bg_3.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "BGMI",
+      "kind": "posters",
+      "id": "bgmi_poster_1",
+      "path": "src\\assets\\games\\bgmi\\posters\\bgmi_poster_1.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "BGMI",
+      "kind": "posters",
+      "id": "bgmi_poster_2",
+      "path": "src\\assets\\games\\bgmi\\posters\\bgmi_poster_2.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "BGMI",
+      "kind": "posters",
+      "id": "bgmi_poster_3",
+      "path": "src\\assets\\games\\bgmi\\posters\\bgmi_poster_3.jpg",
+      "resolution": "1080x1920",
+      "status": "saved"
+    },
+    {
+      "game": "PUBG PC",
+      "kind": "avatars",
+      "id": "pubg_pc_avatar_1",
+      "path": "src\\assets\\games\\pubg-pc\\avatars\\pubg_pc_avatar_1.jpg",
+      "status": "failed",
+      "error": "HTTP 402 Payment Required · {\"success\":false,\"error\":{\"message\":\"Insufficient balance. This request costs ~0.0020 pollen, but your available balance is 0.0000. Top up at https://enter.pollinations.ai/top-up?r"
+    },
+    {
+      "game": "PUBG PC",
+      "kind": "avatars",
+      "id": "pubg_pc_avatar_2",
+      "path": "src\\assets\\games\\pubg-pc\\avatars\\pubg_pc_avatar_2.jpg",
+      "status": "failed",
+      "error": "HTTP 402 Payment Required · {\"success\":false,\"error\":{\"message\":\"Insufficient balance. This request costs ~0.0020 pollen, but your available balance is 0.0000. Top up at https://enter.pollinations.ai/top-up?r"
+    },
+    {
+      "game": "PUBG PC",
+      "kind": "avatars",
+      "id": "pubg_pc_avatar_3",
+      "path": "src\\assets\\games\\pubg-pc\\avatars\\pubg_pc_avatar_3.jpg",
+      "status": "failed",
+      "error": "HTTP 402 Payment Required · {\"success\":false,\"error\":{\"message\":\"Insufficient balance. This request costs ~0.0020 pollen, but your available balance is 0.0000. Top up at https://enter.pollinations.ai/top-up?r"
+    },
+    {
+      "game": "PUBG PC",
+      "kind": "backgrounds",
+      "id": "pubg_pc_bg_1",
+      "path": "src\\assets\\games\\pubg-pc\\backgrounds\\pubg_pc_bg_1.jpg",
+      "status": "failed",
+      "error": "HTTP 402 Payment Required · {\"success\":false,\"error\":{\"message\":\"Insufficient balance. This request costs ~0.0020 pollen, but your available balance is 0.0000. Top up at https://enter.pollinations.ai/top-up?r"
+    },
+    {
+      "game": "PUBG PC",
+      "kind": "backgrounds",
+      "id": "pubg_pc_bg_2",
+      "path": "src\\assets\\games\\pubg-pc\\backgrounds\\pubg_pc_bg_2.jpg",
+      "status": "failed",
+      "error": "HTTP 402 Payment Required · {\"success\":false,\"error\":{\"message\":\"Insufficient balance. This request costs ~0.0020 pollen, but your available balance is 0.0000. Top up at https://enter.pollinations.ai/top-up?r"
+    }
+  ]
+}

@@ -30,5 +30,11 @@ dist-ssr
 *.sw?
 .vercel
 
+# Firebase CLI / hosting upload cache
+.firebase/
+
+# Local scratch uploads and one-off probes
+tmp/
+
 # GitNexus local knowledge-graph index
 .gitnexus/
