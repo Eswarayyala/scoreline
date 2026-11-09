@@ -42,13 +42,17 @@ export const UI_SURFACES = [
   },
 ];
 
+/** Archives stay in nav — home is for the desk CTA + Scrims / Find players only. */
 const DEFAULT_SURFACE = {
   scrims: { guest: true, user: true, place: "nav" },
   findPlayers: { guest: true, user: true, place: "nav" },
-  vault: { guest: true, user: true, place: "home" },
-  blog: { guest: true, user: true, place: "home" },
-  games: { guest: true, user: true, place: "home" },
+  vault: { guest: true, user: true, place: "nav" },
+  blog: { guest: true, user: true, place: "nav" },
+  games: { guest: true, user: true, place: "nav" },
 };
+
+const HOME_DESK_HUBS = new Set(["scrims", "findPlayers"]);
+const ARCHIVE_SURFACES = new Set(["vault", "blog", "games"]);
 
 export function defaultUiLayout() {
   return {
@@ -98,7 +102,10 @@ export function navLinksFor(layout, signedIn) {
   const links = [{ id: "home", to: "/", label: "Home", end: true, icon: "home" }];
   for (const item of UI_SURFACES) {
     const row = surfaces[item.id];
-    if (!audienceVisible(row, signedIn) || !placeIncludes(row, "nav")) continue;
+    if (!audienceVisible(row, signedIn) || row.place === "off") continue;
+    // Archives stripped from home still need a nav entry when place was "home".
+    const inNav = placeIncludes(row, "nav") || (ARCHIVE_SURFACES.has(item.id) && placeIncludes(row, "home"));
+    if (!inNav) continue;
     links.push({
       id: item.id,
       to: item.to,
@@ -110,7 +117,7 @@ export function navLinksFor(layout, signedIn) {
   return links;
 }
 
-/** Home hub tiles (not games rail / vault carousel). */
+/** Home hub tiles — Scrims / Find players only (archives live in nav). */
 export function homeHubSectionsFor(layout, signedIn) {
   const surfaces = normalizeUiLayout(layout).surfaces;
   const kickers = {
@@ -121,8 +128,9 @@ export function homeHubSectionsFor(layout, signedIn) {
     games: "Desks",
   };
   return UI_SURFACES.filter((item) => {
+    if (!HOME_DESK_HUBS.has(item.id)) return false;
     const row = surfaces[item.id];
-    return audienceVisible(row, signedIn) && placeIncludes(row, "home") && item.id !== "games";
+    return audienceVisible(row, signedIn) && (placeIncludes(row, "home") || placeIncludes(row, "nav"));
   }).map((item) => ({
     id: item.id,
     to: item.to,
@@ -133,14 +141,14 @@ export function homeHubSectionsFor(layout, signedIn) {
   }));
 }
 
-export function showGamesRail(layout, signedIn) {
-  const row = normalizeUiLayout(layout).surfaces.games;
-  return audienceVisible(row, signedIn) && placeIncludes(row, "home");
+/** Games rail stays off home — open Games from nav. */
+export function showGamesRail(_layout, _signedIn) {
+  return false;
 }
 
-export function showVaultOnHome(layout, signedIn) {
-  const row = normalizeUiLayout(layout).surfaces.vault;
-  return audienceVisible(row, signedIn) && placeIncludes(row, "home");
+/** Vault carousel stays off home — open Vault from nav. */
+export function showVaultOnHome(_layout, _signedIn) {
+  return false;
 }
 
 export function canAccessSurface(layout, surfaceId, signedIn) {

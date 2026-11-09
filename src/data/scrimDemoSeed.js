@@ -212,11 +212,12 @@ export const DEMO_SCRIMS = [
   },
 ];
 
-/** Real Firestore docs first; demos fill the air for empty or thin desks. */
+/** Real Firestore docs only in production. Demos fill empty desks in local DEV. */
 export function withDemoScrims(live = []) {
   const real = Array.isArray(live)
     ? live.filter((item) => !item?.isDemo && isScrimCatalogGame(item?.game))
     : [];
+  if (!import.meta.env.DEV) return real;
   const liveIds = new Set(real.map((item) => item.id));
   const demos = DEMO_SCRIMS.filter((item) => !liveIds.has(item.id));
   return [...demos, ...real];

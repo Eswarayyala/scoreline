@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import {
   doc,
   collection,
@@ -32,7 +32,6 @@ import GrindInfoLogo from "./components/brand/GrindInfoLogo";
 import BrandSlowMo from "./components/brand/BrandSlowMo";
 import SectionBackHome from "./components/layout/SectionBackHome";
 import TournamentOpsRail from "./components/layout/TournamentOpsRail";
-import SiteUiLayoutDesk from "./components/cms/SiteUiLayoutDesk";
 import EsportsFactFlyer from "./components/popups/EsportsFactFlyer";
 import ThemeSwitcher from "./components/layout/ThemeSwitcher";
 import { ESPORTS_FACTS } from "./data/esportsFacts";
@@ -55,14 +54,8 @@ import CompetitorDirectoryPage from "./components/vault/CompetitorDirectoryPage"
 import EwcDirectoryPage from "./components/vault/EwcDirectoryPage";
 import PreEwcHistoryPage from "./components/vault/PreEwcHistoryPage";
 import { useVaultBookmarks } from "./hooks/useVaultBookmarks";
-import VaultResearchDesk from "./components/cms/VaultResearchDesk";
 import { avatarForGamer, bannerForGame, flyerForEvent, flyersForGame, isStockBannerUrl } from "./data/platformShowcase";
 import { readImageFile } from "./lib/readImageFile";
-import CircuitCmsDesk from "./components/cms/CircuitCmsDesk";
-import FloatingWindowsDesk from "./components/cms/FloatingWindowsDesk";
-import SupportChangeQueue from "./components/cms/SupportChangeQueue";
-import SupportAccessDesk from "./components/cms/SupportAccessDesk";
-import StaffDeskGate from "./components/cms/StaffDeskGate";
 import { useCircuitCms } from "./hooks/useCircuitCms";
 import { useStaffChangeRequests } from "./hooks/useStaffChangeRequests";
 import { createDeskPassword, deskGateDocPath, hashFieldForRole, saltFieldForRole } from "./lib/deskGate";
@@ -70,6 +63,16 @@ import { assembleFloatingSlides, buildFeaturedWindows, floatingPolicyFromRecords
 import { vaultEventHref } from "./data/eventSpotlight";
 import { useEsportsMedia } from "./hooks/useEsportsMedia";
 import { fetchGamePoster, mergeVaultMedia } from "./services/esportsMedia";
+
+/** Owner / CMS desks — lazy so guests never download Matrix, circuit forms, or layout desk. */
+const SiteUiLayoutDesk = lazy(() => import("./components/cms/SiteUiLayoutDesk"));
+const VaultResearchDesk = lazy(() => import("./components/cms/VaultResearchDesk"));
+const CircuitCmsDesk = lazy(() => import("./components/cms/CircuitCmsDesk"));
+const FloatingWindowsDesk = lazy(() => import("./components/cms/FloatingWindowsDesk"));
+const SupportChangeQueue = lazy(() => import("./components/cms/SupportChangeQueue"));
+const SupportAccessDesk = lazy(() => import("./components/cms/SupportAccessDesk"));
+const StaffDeskGate = lazy(() => import("./components/cms/StaffDeskGate"));
+const LiveMatrixDesk = lazy(() => import("./components/cms/LiveMatrixDesk"));
 import { FILTER_GAMES, SCRIM_GAMES, canonicalFilterGame, filterGameAliases, gameMatchesFilter, isPubgFamily } from "./data/gameCatalog";
 import {
   canSeeScrimInList,
@@ -123,7 +126,6 @@ import BlogOverlay from "./components/blog/BlogOverlay";
 import CollectionPicker from "./components/cms/CollectionPicker";
 import AvatarRosterPicker from "./components/cms/AvatarRosterPicker";
 import MediaLibraryDesk from "./components/cms/MediaLibraryDesk";
-import LiveMatrixDesk from "./components/cms/LiveMatrixDesk";
 import LfgNoticeBoard from "./components/ecosystem/LfgNoticeBoard";
 import Countdown from "./components/shared/Countdown";
 import DynamicPointsTable from "./components/shared/DynamicPointsTable";
@@ -6059,70 +6061,72 @@ export default function App() {
                 </div>
               </header>
               <div className="mx-auto max-w-6xl px-5 pb-24">
-                <StaffDeskGate
-                  role={dashboardRole}
-                  gate={deskGate}
-                  gateLoading={deskGateLoading}
-                  isOwner={dashboardRole === "owner"}
-                  onSaveRolePassword={saveDeskRolePassword}
-                >
-                  {vaultEditId ? (
-                    <VaultResearchDesk
-                      focusId={decodeURIComponent(vaultEditId)}
-                      records={circuitCms.records}
-                      deletedRecords={circuitCms.deletedRecords}
-                      role={siteRole || "support"}
-                      onSave={saveCircuit}
-                      onDelete={deleteCircuit}
-                      onRestore={restoreCircuit}
-                      onPurge={purgeCircuit}
-                      filterGames={circuitCms.filterGames}
-                    />
-                  ) : (
-                    <OwnerDashboard
-                      key={dashTabHint}
-                      initialTab={dashTabHint}
-                      circuitRecords={circuitCms.records}
-                      onSaveCircuit={saveCircuit}
-                      onDeleteCircuit={deleteCircuit}
-                      deletedCircuitRecords={circuitCms.deletedRecords}
-                      onRestoreCircuit={restoreCircuit}
-                      onPurgeCircuit={purgeCircuit}
-                      ewcWindows={ewcWindows}
-                      blogSlides={blogSlides}
-                      supportChanges={staffChanges.requests}
-                      onReviewSupportChange={reviewSupportChange}
-                      role={siteRole || "support"}
-                      reports={privateReports}
-                      onStatusChange={updateReportStatus}
-                      bans={siteBans}
-                      onSetPlayerAccess={setPlayerAccess}
-                      popups={adminPopups}
-                      onSavePopup={saveSitePopup}
-                      onDeletePopup={deleteSitePopup}
-                      staff={siteStaff}
-                      onSetSupport={setSupportAccess}
-                      onSaveSupportPermissions={saveSupportPermissions}
-                      supportPermissions={supportPermissions}
-                      tournaments={tournaments}
-                      archiveEntries={archiveEntries}
-                      blogPosts={blogPosts}
-                      blogPrivateById={blogPrivateById}
-                      onBlogReview={reviewBlogPost}
-                      onPromoteBlog={promoteBlogToArchive}
-                      archiveSubmissions={archiveSubmissions}
-                      onArchiveDecision={decideArchiveSubmission}
-                      auditLog={auditLog}
-                      onOpenTournament={(id) => navigate(`/tournaments/${id}`)}
-                      onImportArchive={importArchiveEntries}
-                      filterGames={circuitCms.filterGames}
-                      deskGate={deskGate}
-                      onSaveDeskPassword={saveDeskRolePassword}
-                      uiLayout={uiLayout}
-                      onSaveUiLayout={saveUiLayout}
-                    />
-                  )}
-                </StaffDeskGate>
+                <Suspense fallback={<div className="px-5 py-16 text-center text-stone-400"><LoadingScreen label="Loading staff desk" /></div>}>
+                  <StaffDeskGate
+                    role={dashboardRole}
+                    gate={deskGate}
+                    gateLoading={deskGateLoading}
+                    isOwner={dashboardRole === "owner"}
+                    onSaveRolePassword={saveDeskRolePassword}
+                  >
+                    {vaultEditId ? (
+                      <VaultResearchDesk
+                        focusId={decodeURIComponent(vaultEditId)}
+                        records={circuitCms.records}
+                        deletedRecords={circuitCms.deletedRecords}
+                        role={siteRole || "support"}
+                        onSave={saveCircuit}
+                        onDelete={deleteCircuit}
+                        onRestore={restoreCircuit}
+                        onPurge={purgeCircuit}
+                        filterGames={circuitCms.filterGames}
+                      />
+                    ) : (
+                      <OwnerDashboard
+                        key={dashTabHint}
+                        initialTab={dashTabHint}
+                        circuitRecords={circuitCms.records}
+                        onSaveCircuit={saveCircuit}
+                        onDeleteCircuit={deleteCircuit}
+                        deletedCircuitRecords={circuitCms.deletedRecords}
+                        onRestoreCircuit={restoreCircuit}
+                        onPurgeCircuit={purgeCircuit}
+                        ewcWindows={ewcWindows}
+                        blogSlides={blogSlides}
+                        supportChanges={staffChanges.requests}
+                        onReviewSupportChange={reviewSupportChange}
+                        role={siteRole || "support"}
+                        reports={privateReports}
+                        onStatusChange={updateReportStatus}
+                        bans={siteBans}
+                        onSetPlayerAccess={setPlayerAccess}
+                        popups={adminPopups}
+                        onSavePopup={saveSitePopup}
+                        onDeletePopup={deleteSitePopup}
+                        staff={siteStaff}
+                        onSetSupport={setSupportAccess}
+                        onSaveSupportPermissions={saveSupportPermissions}
+                        supportPermissions={supportPermissions}
+                        tournaments={tournaments}
+                        archiveEntries={archiveEntries}
+                        blogPosts={blogPosts}
+                        blogPrivateById={blogPrivateById}
+                        onBlogReview={reviewBlogPost}
+                        onPromoteBlog={promoteBlogToArchive}
+                        archiveSubmissions={archiveSubmissions}
+                        onArchiveDecision={decideArchiveSubmission}
+                        auditLog={auditLog}
+                        onOpenTournament={(id) => navigate(`/tournaments/${id}`)}
+                        onImportArchive={importArchiveEntries}
+                        filterGames={circuitCms.filterGames}
+                        deskGate={deskGate}
+                        onSaveDeskPassword={saveDeskRolePassword}
+                        uiLayout={uiLayout}
+                        onSaveUiLayout={saveUiLayout}
+                      />
+                    )}
+                  </StaffDeskGate>
+                </Suspense>
               </div>
             </div>
           ) : <Navigate to="/" replace />
