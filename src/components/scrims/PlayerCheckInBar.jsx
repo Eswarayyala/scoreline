@@ -70,7 +70,7 @@ export default function PlayerCheckInBar({
         <div>
           <p className="m-0 font-mono text-[10px] uppercase tracking-widest text-neon">You&apos;re in</p>
           <p className="m-0 text-sm text-slate-300">
-            Checked in. Room codes unlock when the host posts them.
+            Checked in. Scroll to Live lobby for room ID / password when the host posts them.
             {roster ? ` · ${roster}` : ""}
           </p>
         </div>

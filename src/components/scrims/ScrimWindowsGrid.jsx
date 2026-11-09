@@ -8,9 +8,11 @@ export default function ScrimWindowsGrid({
   tournaments = [],
   currentUserId = null,
   currentUserName = "",
+  officialHostIds = [],
   onOpen,
 }) {
   const reduce = useReducedMotion();
+  const official = new Set((officialHostIds || []).map(String).filter(Boolean));
 
   return (
     <div
@@ -21,7 +23,11 @@ export default function ScrimWindowsGrid({
       }}
     >
       {tournaments.map((t, index) => {
-        const slide = scrimWindowSlide(t, { currentUserId, currentUserName });
+        const slide = scrimWindowSlide(t, {
+          currentUserId,
+          currentUserName,
+          verifiedHost: official.has(String(t.adminUserId || "")),
+        });
         return (
           <motion.div
             key={t.id}

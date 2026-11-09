@@ -5348,16 +5348,32 @@ export default function App() {
 
   const chooseScrimNotifyPrompt = async (want) => {
     if (!user) return;
+    let browserPushOptIn = scrimAlerts.browserPushOptIn === true;
+    if (want === true && typeof window !== "undefined" && "Notification" in window) {
+      try {
+        const permission = Notification.permission === "granted"
+          ? "granted"
+          : await Notification.requestPermission();
+        browserPushOptIn = permission === "granted";
+      } catch {
+        browserPushOptIn = false;
+      }
+    }
     await saveScrimAlerts({
       ...scrimAlerts,
       enabled: want === true,
+      browserPushOptIn: want === true ? browserPushOptIn : false,
       games: want ? (myProfile?.games || []).map(String).filter(Boolean).slice(0, 20) : (scrimAlerts.games || []),
       notifyChannelsChosen: true,
       notifyFriends: notifyPrefs.friends,
       notifyChats: notifyPrefs.chats,
       notifyBlogs: notifyPrefs.blogs,
     });
-    showToast(want ? "Scrim alerts on for your games" : "Scrim alerts off — turn on anytime");
+    showToast(
+      want
+        ? (browserPushOptIn ? "Scrim alerts + browser push on for your games" : "Scrim alerts on for your games — enable browser notifications anytime")
+        : "Scrim alerts off — turn on anytime",
+    );
   };
 
   const saveSavedRoster = async ({ name, memberIds }) => {
@@ -6185,6 +6201,14 @@ export default function App() {
                     slides={homeSlides}
                     showVault={showVaultOnHome(uiLayout, !!user)}
                     showGames={showGamesRail(uiLayout, !!user)}
+                    signedIn={!!user}
+                    onSignIn={() => setAuthDialogOpen(true)}
+                    onHost={() => {
+                      if (!user) { setAuthDialogOpen(true); return; }
+                      if (myAccess?.restricted) { showToast("This account is restricted from hosting tournaments."); return; }
+                      setShowNewTournament(true);
+                      navigate("/tournaments", { state: { fromHome: true } });
+                    }}
                   >
                     <HubSections signedIn={!!user} uiLayout={uiLayout} />
                   </PlatformHome>
@@ -6261,6 +6285,7 @@ export default function App() {
                       hostVerification={hostVerification}
                       showHostVerifyPrompt={showHostVerifyPrompt}
                       onDismissHostVerify={dismissHostVerifyPrompt}
+                      officialHostIds={officialHosts.filter((row) => row.enabled !== false).map((row) => row.uid)}
                       tournaments={tournaments.filter((item) => canSeeScrimInList(item, {
                         uid: user?.uid,
                         invites: tournamentInvites,
@@ -6360,6 +6385,7 @@ export default function App() {
                     stats={selectedStats}
                     isAdmin={isAdmin}
                     isOwner={isOwner}
+                    official={Boolean(officialHosts.find((row) => row.uid === selected?.adminUserId && row.enabled !== false))}
                     currentUserId={user?.uid || null}
                     currentUserName={grindHandle(safeProfileName(myProfile?.displayName, user?.displayName), myProfile?.playerTag)}
                     registrations={selectedRegistrations}
@@ -6824,6 +6850,7 @@ function TournamentList({
   hostVerification = null,
   showHostVerifyPrompt = false,
   onDismissHostVerify = null,
+  officialHostIds = [],
 }) {
   const [localArchived, setLocalArchived] = useState(false);
   const [accessFilter, setAccessFilter] = useState("all");
@@ -7006,6 +7033,7 @@ function TournamentList({
           tournaments={visibleTournaments}
           currentUserId={currentUserId}
           currentUserName={currentUserName}
+          officialHostIds={officialHostIds}
           onOpen={onOpen}
         />
       )}
@@ -7611,6 +7639,7 @@ function TournamentDetail(props) {
     onDeleteStat,
     following = false,
     onToggleFollow = null,
+    official = false,
   } = props;
 
   const accessOpts = { uid: currentUserId, registrations: registrations || [], isAdmin };
@@ -7638,7 +7667,7 @@ function TournamentDetail(props) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
         <div>
           <Eyebrow color="var(--text-dim)">
-            Hosted by{" "}
+            {official ? "Verified host · " : "Hosted by "}
             {tournament.adminUserId ? (
               <Link
                 to={`/hosts/${tournament.adminUserId}`}
@@ -7650,6 +7679,22 @@ function TournamentDetail(props) {
               tournament.adminDisplayName || (tournament.adminUserId === currentUserId ? currentUserName : "Scrim host")
             )}
           </Eyebrow>
+          {official ? (
+            <div
+              style={{
+                display: "inline-block",
+                marginTop: 8,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10,
+                letterSpacing: "0.1em",
+                color: "var(--accent-contrast)",
+                background: "var(--accent)",
+                padding: "4px 10px",
+              }}
+            >
+              VERIFIED HOST
+            </div>
+          ) : null}
           <div className="mb-3 aspect-video max-w-sm overflow-hidden rounded-xl border border-white/10">
             <img src={flyerForEvent(tournament)} alt="" className="h-full w-full object-cover" />
           </div>
@@ -7757,7 +7802,7 @@ function TournamentDetail(props) {
         <section style={{ marginTop: 16, padding: 16, background: "var(--panel-bg)", border: "1px solid var(--border)" }}>
           <Eyebrow>Check-in required</Eyebrow>
           <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
-            You&apos;re approved. Tap check-in above to unlock room codes and confirm you&apos;ll show.
+            You&apos;re approved. Tap <strong>I&apos;m in</strong> above to unlock the Live lobby panel and confirm you&apos;ll show. Room ID / password appear there when the host posts them.
           </p>
         </section>
       )}

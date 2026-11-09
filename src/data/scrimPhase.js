@@ -104,9 +104,12 @@ export function resolveScrimDeskPhase(scrim = {}) {
 }
 
 /** Access / prize / flyer chips — phase stays on the status pill. */
-export function scrimDeskBadges(scrim = {}) {
+export function scrimDeskBadges(scrim = {}, { verifiedHost = false } = {}) {
   const phase = resolveScrimDeskPhase(scrim);
   const badges = scrimFlyerBadges(scrim).filter((badge) => badge.id !== "live-flyer");
+  if (verifiedHost) {
+    badges.unshift({ id: "verified-host", label: "Verified host", tone: "neon" });
+  }
   if (scrim.published === true && isPublicScrim(scrim) && phase.phase !== "results") {
     badges.push({ id: "live-flyer", label: "Flyer", tone: "blue" });
   }
@@ -122,8 +125,9 @@ export function scrimDeskBadges(scrim = {}) {
 }
 
 /** Build TournamentWindowCard slide fields for a scrim. */
-export function scrimWindowSlide(scrim = {}, { currentUserId = null, currentUserName = "" } = {}) {
+export function scrimWindowSlide(scrim = {}, { currentUserId = null, currentUserName = "", verifiedHost = false } = {}) {
   const phase = resolveScrimDeskPhase(scrim);
+  const hostName = scrim.adminDisplayName || (scrim.adminUserId === currentUserId ? currentUserName : "Scrim host");
   return {
     ...scrim,
     surface: "scrim",
@@ -133,10 +137,10 @@ export function scrimWindowSlide(scrim = {}, { currentUserId = null, currentUser
     ctaLabel: phase.ctaLabel,
     fact: phase.fact,
     phaseAccent: phase.accent,
-    kicker: `Hosted by ${scrim.adminDisplayName || (scrim.adminUserId === currentUserId ? currentUserName : "Scrim host")}`,
+    kicker: verifiedHost ? `Verified host · ${hostName}` : `Hosted by ${hostName}`,
     region: [scrim.region, scrim.rankBand].filter(Boolean).join(" · ") || scrim.region,
     mode: isPublicScrim(scrim) ? "Public" : "Private",
-    flyerBadges: scrimDeskBadges(scrim),
+    flyerBadges: scrimDeskBadges(scrim, { verifiedHost }),
     teamCount: scrim.maxSlots || "",
     startAt: scrim.startDate,
     endAt: scrim.endDate,
